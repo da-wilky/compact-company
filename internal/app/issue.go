@@ -14,6 +14,8 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"golang.org/x/text/currency"
 )
 
 func init() {
@@ -157,28 +159,101 @@ func (a *App) renderDraftFailure(w http.ResponseWriter, r *http.Request, d draft
 }
 
 type issuedInvoice struct {
-	ID       int64
-	Number   string
-	Status   string
-	PaidDate string
-	SHA256   string
-	Snapshot invoiceData
+	ID        int64
+	Number    string
+	Status    string
+	PaidDate  string
+	SHA256    string
+	CancelsID int64
+	Snapshot  invoiceData
+	Lines     []issuedLine
+	// AmountDue is the gross less every cancellation's; empty while no line is cancelled.
+	AmountDue string
 }
+
+type issuedLine struct {
+	lineData
+	ID          int64
+	CancelledBy *invoiceRef
+}
+
+// invoiceStatus is the status of invoice i; cancellation is derived from its lines, never stored.
+const invoiceStatus = `CASE WHEN i.number IS NULL THEN 'draft' WHEN i.kind = 'cancellation' THEN 'cancellation'
+	ELSE (SELECT CASE WHEN count(x.id) = 0 THEN iif(i.paid_date IS NULL, 'issued', 'paid')
+		WHEN count(x.id) = count(*) THEN 'cancelled' ELSE 'partially_cancelled' END
+		FROM invoice_line l LEFT JOIN invoice_line x ON x.cancels_line_id = l.id WHERE l.invoice_id = i.id) END`
 
 // loadIssued returns sql.ErrNoRows unless id is issued. It reads the snapshot,
 // so later changes to business or customer data don't show.
 func (a *App) loadIssued(id int64) (issuedInvoice, error) {
-	inv := issuedInvoice{ID: id, Status: "issued"}
+	inv := issuedInvoice{ID: id}
 	var snapshot string
-	err := a.db.QueryRow(`SELECT number, snapshot, pdf_sha256, ifnull(paid_date, '') FROM invoice WHERE id = ? AND number IS NOT NULL`, id).
-		Scan(&inv.Number, &snapshot, &inv.SHA256, &inv.PaidDate)
+	err := a.db.QueryRow(`SELECT i.number, i.snapshot, i.pdf_sha256, ifnull(i.paid_date, ''), ifnull(i.cancels_id, 0), `+invoiceStatus+`
+		FROM invoice i WHERE i.id = ? AND i.number IS NOT NULL`, id).
+		Scan(&inv.Number, &snapshot, &inv.SHA256, &inv.PaidDate, &inv.CancelsID, &inv.Status)
 	if err != nil {
 		return inv, err
 	}
-	if inv.PaidDate != "" {
-		inv.Status = "paid"
+	if err := json.Unmarshal([]byte(snapshot), &inv.Snapshot); err != nil {
+		return inv, err
 	}
-	return inv, json.Unmarshal([]byte(snapshot), &inv.Snapshot)
+	if err := a.loadIssuedLines(&inv); err != nil {
+		return inv, err
+	}
+	if inv.Status == "cancelled" || inv.Status == "partially_cancelled" {
+		inv.AmountDue, err = a.amountDue(inv)
+	}
+	return inv, err
+}
+
+// loadIssuedLines pairs the snapshot's lines, which are in position order, with their ids and cancellations.
+func (a *App) loadIssuedLines(inv *issuedInvoice) error {
+	rows, err := a.db.Query(`SELECT l.id, c.id, c.number FROM invoice_line l
+		LEFT JOIN invoice_line x ON x.cancels_line_id = l.id LEFT JOIN invoice c ON c.id = x.invoice_id
+		WHERE l.invoice_id = ? ORDER BY l.position, l.id`, inv.ID)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = rows.Close() }()
+	for i := 0; rows.Next(); i++ {
+		if i >= len(inv.Snapshot.Lines) {
+			return fmt.Errorf("invoice %d has more lines than its snapshot", inv.ID)
+		}
+		l := issuedLine{lineData: inv.Snapshot.Lines[i]}
+		var cancelID sql.NullInt64
+		var cancelNumber sql.NullString
+		if err := rows.Scan(&l.ID, &cancelID, &cancelNumber); err != nil {
+			return err
+		}
+		l.CancelledBy = claimedBy(cancelID, cancelNumber)
+		inv.Lines = append(inv.Lines, l)
+	}
+	return rows.Err()
+}
+
+func (a *App) amountDue(inv issuedInvoice) (string, error) {
+	unit := currency.MustParseISO(inv.Snapshot.Currency)
+	due, err := parseAmount(inv.Snapshot.Totals.Gross, unit)
+	if err != nil {
+		return "", err
+	}
+	rows, err := a.db.Query(`SELECT snapshot ->> '$.totals.gross' FROM invoice WHERE cancels_id = ?`, inv.ID)
+	if err != nil {
+		return "", err
+	}
+	defer func() { _ = rows.Close() }()
+	for rows.Next() {
+		var gross string
+		if err := rows.Scan(&gross); err != nil {
+			return "", err
+		}
+		cancelled, err := parseAmount(strings.TrimPrefix(gross, "-"), unit)
+		if err != nil {
+			return "", err
+		}
+		due -= cancelled
+	}
+	return formatAmount(due, unit), rows.Err()
 }
 
 func (a *App) invoiceShow(w http.ResponseWriter, r *http.Request) {

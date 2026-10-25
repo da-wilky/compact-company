@@ -72,3 +72,18 @@
 "invoices.service_period" = { en = "Service period", de = "Leistungszeitraum" }
 "invoices.download" = { en = "Download PDF", de = "PDF herunterladen" }
 "invoices.sha256" = { en = "SHA-256 of the PDF", de = "SHA-256 des PDFs" }
+"invoices.cancellation" = { en = "Cancellation invoice %s", de = "Stornorechnung %s" }
+"invoices.status.cancellation" = { en = "Cancellation invoice", de = "Stornorechnung" }
+"invoices.status.cancelled" = { en = "Cancelled", de = "Storniert" }
+"invoices.status.partially_cancelled" = { en = "Partially cancelled", de = "Teilweise storniert" }
+"invoices.cancel" = { en = "Cancel lines", de = "Positionen stornieren" }
+"invoices.cancel_title" = { en = "Cancel lines of invoice %s", de = "Positionen der Rechnung %s stornieren" }
+"invoices.cancel_lines" = { en = "Lines to cancel", de = "Zu stornierende Positionen" }
+"invoices.cancel_warning" = { en = "Cancelling issues a cancellation invoice right away, with the next invoice number, reversing the ticked lines. Their time entries can be billed again. A cancelled line can't be restored.", de = "Beim Stornieren wird sofort eine Stornorechnung mit der nächsten Rechnungsnummer gestellt, die die angekreuzten Positionen aufhebt. Ihre Zeiteinträge können erneut abgerechnet werden. Eine stornierte Position lässt sich nicht wiederherstellen." }
+"invoices.cancel_issue" = { en = "Issue cancellation invoice", de = "Stornorechnung stellen" }
+"invoices.cancelled_by" = { en = "Cancelled by %s", de = "Storniert durch %s" }
+"invoices.cancels" = { en = "Cancels invoice", de = "Storniert Rechnung" }
+"invoices.reason" = { en = "Reason", de = "Grund" }
+"invoices.amount_due" = { en = "Amount still due", de = "Noch offener Betrag" }
+"invoices.back_to_invoice" = { en = "Back to invoice", de = "Zurück zur Rechnung" }
+"invoices.error.cancel_lines" = { en = "Tick at least one line of this invoice that isn't cancelled yet.", de = "Bitte mindestens eine noch nicht stornierte Position dieser Rechnung ankreuzen." }

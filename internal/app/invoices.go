@@ -61,7 +61,7 @@ type customerOption struct {
 	Name string
 }
 
-var invoiceStatuses = []string{"draft", "issued", "paid"}
+var invoiceStatuses = []string{"draft", "issued", "paid", "cancelled"}
 
 // StatusLink is the list URL for status, keeping the customer filter.
 func (p invoicesPage) StatusLink(status string) string {
@@ -90,14 +90,13 @@ func (a *App) invoiceList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Issued rows show their snapshot, so later customer or business changes don't reach them.
-	rows, err := a.db.Query(`SELECT i.id, ifnull(i.number, ''), ifnull(i.snapshot ->> '$.customer.name', c.name),
-		ifnull(i.issue_date, ''), ifnull(i.paid_date, ''), i.currency, ifnull(i.snapshot ->> '$.totals.gross', '')
+	rows, err := a.db.Query(`SELECT * FROM (SELECT i.id, ifnull(i.number, '') number, ifnull(i.snapshot ->> '$.customer.name', c.name),
+		ifnull(i.issue_date, '') issue_date, ifnull(i.paid_date, '') paid_date, i.currency, ifnull(i.snapshot ->> '$.totals.gross', ''),
+		`+invoiceStatus+` status
 		FROM invoice i JOIN customer c ON c.id = i.customer_id
-		WHERE (?1 = 0 OR i.customer_id = ?1)
-		AND (?2 = '' OR (?2 = 'draft' AND i.number IS NULL)
-			OR (?2 = 'issued' AND i.number IS NOT NULL AND i.paid_date IS NULL)
-			OR (?2 = 'paid' AND i.paid_date IS NOT NULL))
-		ORDER BY i.number IS NOT NULL, i.issue_date DESC, i.id DESC`, page.Customer, page.Status)
+		WHERE (?1 = 0 OR i.customer_id = ?1))
+		WHERE ?2 = '' OR ?2 = status OR (?2 = 'cancelled' AND status = 'partially_cancelled') OR (?2 = 'paid' AND paid_date != '')
+		ORDER BY number != '', issue_date DESC, id DESC`, page.Customer, page.Status)
 	if err != nil {
 		a.serverError(w, r, err)
 		return
@@ -105,17 +104,9 @@ func (a *App) invoiceList(w http.ResponseWriter, r *http.Request) {
 	defer func() { _ = rows.Close() }()
 	for rows.Next() {
 		var row invoiceRow
-		if err := rows.Scan(&row.ID, &row.Number, &row.Customer, &row.IssueDate, &row.PaidDate, &row.Currency, &row.Gross); err != nil {
+		if err := rows.Scan(&row.ID, &row.Number, &row.Customer, &row.IssueDate, &row.PaidDate, &row.Currency, &row.Gross, &row.Status); err != nil {
 			a.serverError(w, r, err)
 			return
-		}
-		switch {
-		case row.Number == "":
-			row.Status = "draft"
-		case row.PaidDate != "":
-			row.Status = "paid"
-		default:
-			row.Status = "issued"
 		}
 		page.Rows = append(page.Rows, row)
 	}
