@@ -1,0 +1,17 @@
+{{define "title"}}{{t "projects.title" .Data.Customer.Name}}{{end}}
+{{define "content"}}
+{{with .Data}}
+<h1>{{t "projects.title" .Customer.Name}}</h1>
+<p><a href="/customers/{{.Customer.ID}}">{{t "projects.customer" .Customer.Number}}</a> · <a href="/customers/{{.Customer.ID}}/projects/new">{{t "projects.new"}}</a> · {{if .ShowArchived}}<a href="/customers/{{.Customer.ID}}/projects">{{t "archive.hide"}}</a>{{else}}<a href="/customers/{{.Customer.ID}}/projects?archived=1">{{t "archive.show"}}</a>{{end}}</p>
+{{with .Projects}}
+<table>
+<thead><tr><th>{{t "projects.name"}}</th><th>{{t "projects.billable"}}</th><th class="num">{{t "projects.effective_rate"}}</th></tr></thead>
+<tbody>
+{{range .}}<tr><td><a href="/projects/{{.ID}}">{{.Name}}</a>{{if .Archived}} <span class="hint">({{t "archive.archived"}})</span>{{end}}</td><td>{{if .Billable}}{{t "projects.yes"}}{{else}}{{t "projects.no"}}{{end}}</td><td class="num">{{.EffectiveRate}} {{$.Data.Customer.Currency}}{{if not .HourlyRate}} <span class="hint">({{t "projects.customer_rate"}})</span>{{end}}</td></tr>
+{{end}}</tbody>
+</table>
+{{else}}
+<p>{{t "projects.empty"}}</p>
+{{end}}
+{{end}}
+{{end}}

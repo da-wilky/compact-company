@@ -1,0 +1,22 @@
+{{define "title"}}{{t "settings.title"}}{{end}}
+{{define "content"}}
+<h1>{{t "settings.title"}}</h1>
+{{with .Data}}
+{{with .Error}}<p class="error" role="alert">{{t .}}</p>{{end}}
+<form method="post" action="/settings" class="settings">
+<label>{{t "settings.language"}}
+<select name="language">
+{{range .Languages}}<option value="{{.Value}}"{{if eq .Value $.Data.Language}} selected{{end}}>{{.Name}}</option>
+{{end}}</select>
+</label>
+<label>{{t "settings.timezone"}}
+<input name="timezone" value="{{.Timezone}}" required spellcheck="false" autocomplete="off">
+</label>
+<p class="hint">{{t "settings.timezone_hint"}}</p>
+<p class="hint">{{t "settings.current_time" (datetime .Now)}}</p>
+<label><input type="checkbox" name="parallel_entries"{{if .ParallelEntries}} checked{{end}}> {{t "settings.parallel_entries"}}</label>
+<p class="hint">{{t "settings.parallel_entries_hint"}}</p>
+<button type="submit">{{t "settings.save"}}</button>
+</form>
+{{end}}
+{{end}}

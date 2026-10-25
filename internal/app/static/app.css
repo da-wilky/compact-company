@@ -1,0 +1,69 @@
+:root {
+  color-scheme: light dark;
+  --fg: #1d1d1f;
+  --bg: #fbfbfa;
+  --muted: #6e6e73;
+  --line: #e3e3e0;
+  --accent: #2f5d8a;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --fg: #ececec;
+    --bg: #18181a;
+    --muted: #9a9aa0;
+    --line: #2c2c30;
+    --accent: #7fa8d6;
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font: 16px/1.5 system-ui, sans-serif;
+  color: var(--fg);
+  background: var(--bg);
+}
+
+header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--line);
+}
+
+header .brand { font-weight: 600; color: var(--fg); text-decoration: none; }
+header .user { color: var(--muted); font-size: 0.9rem; }
+header .user form { display: inline; margin-left: 0.5rem; }
+
+main { max-width: 60rem; margin: 0 auto; padding: 1rem; }
+
+a { color: var(--accent); }
+
+header nav { margin-right: auto; }
+
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: 0.4rem 0.5rem; border-bottom: 1px solid var(--line); }
+.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+.form { display: grid; gap: 0.75rem; max-width: 32rem; }
+.form label { display: grid; gap: 0.25rem; }
+.form input, .form select, .form textarea { font: inherit; padding: 0.35rem 0.5rem; }
+.form button { justify-self: start; font: inherit; padding: 0.4rem 1rem; }
+.errors { color: #b3261e; }
+
+.settings label { display: block; margin-bottom: 0.75rem; }
+.settings select, .settings input { display: block; margin-top: 0.25rem; font: inherit; }
+.hint { color: var(--muted); font-size: 0.9rem; }
+.error { color: #b3261e; }
+
+.timers { display: grid; gap: 0.35rem; font-size: 0.9rem; }
+.timers p { margin: 0; }
+.timers form, .timer { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; }
+.timers input, .timers select, .timers button { font: inherit; padding: 0.2rem 0.4rem; }
+.tag { color: var(--muted); border: 1px solid var(--line); border-radius: 0.25rem; padding: 0 0.3rem; }
+.badge { color: #fff; background: #b3261e; border-radius: 0.25rem; padding: 0 0.4rem; }

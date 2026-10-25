@@ -1,0 +1,9 @@
+"error.home" = { en = "Back to the start page", de = "Zurück zur Startseite" }
+"error.not_found" = { en = "Not found.", de = "Nicht gefunden." }
+"error.method_not_allowed" = { en = "This action is not supported here.", de = "Diese Aktion wird hier nicht unterstützt." }
+"error.forbidden" = { en = "You are not allowed to change this.", de = "Du darfst das nicht ändern." }
+"error.server" = { en = "Something went wrong. Please try again.", de = "Etwas ist schiefgelaufen. Bitte versuche es erneut." }
+"error.login_failed" = { en = "Login failed. Please try again.", de = "Anmeldung fehlgeschlagen. Bitte versuche es erneut." }
+"error.invalid_day" = { en = "Invalid day.", de = "Ungültiger Tag." }
+"error.invalid_week" = { en = "Invalid week.", de = "Ungültige Woche." }
+"error.invalid_project" = { en = "Invalid project.", de = "Ungültiges Projekt." }

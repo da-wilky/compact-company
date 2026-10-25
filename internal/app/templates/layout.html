@@ -1,0 +1,24 @@
+{{define "layout"}}<!doctype html>
+<html lang="{{.Lang}}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{template "title" .}} · compact-company</title>
+<link rel="stylesheet" href="/static/app.css">
+<script src="/static/htmx.min.js" defer></script>
+<meta name="htmx-config" content='{"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"422","swap":true},{"code":"[45]..","swap":false,"error":true}]}'>
+</head>
+<body>
+<header>
+<a class="brand" href="/">compact-company</a>
+{{if .User}}<nav><a href="/week">{{t "week.nav"}}</a> · <a href="/entries">{{t "entries.nav"}}</a> · <a href="/customers">{{t "customers.title"}}</a></nav>
+{{template "timers" .}}{{end}}
+{{with .User}}<span class="user">{{t "layout.signed_in_as" .DisplayName}} · <a href="/settings">{{t "layout.settings"}}</a>
+<form method="post" action="/logout"><button>{{t "layout.logout"}}</button></form></span>{{end}}
+</header>
+<main>
+{{template "content" .}}
+</main>
+</body>
+</html>
+{{end}}

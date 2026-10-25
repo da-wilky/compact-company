@@ -1,0 +1,4 @@
+"login.title" = { en = "Log in", de = "Anmelden" }
+"login.submit" = { en = "Log in", de = "Anmelden" }
+"login.not_allowed.title" = { en = "Access not allowed", de = "Zugriff nicht erlaubt" }
+"login.not_allowed.body" = { en = "Your account (subject %s) is not allowed to use this instance. Ask the operator to add it.", de = "Dein Konto (Subject %s) ist für diese Instanz nicht freigeschaltet. Bitte den Betreiber, es hinzuzufügen." }

@@ -1,0 +1,23 @@
+"customers.title" = { en = "Customers", de = "Kunden" }
+"customers.new" = { en = "New customer", de = "Neuer Kunde" }
+"customers.edit" = { en = "Customer %s", de = "Kunde %s" }
+"customers.empty" = { en = "No customers yet.", de = "Noch keine Kunden." }
+"customers.number" = { en = "Number", de = "Nummer" }
+"customers.name" = { en = "Name", de = "Name" }
+"customers.address" = { en = "Address", de = "Anschrift" }
+"customers.email" = { en = "Email", de = "E-Mail" }
+"customers.currency" = { en = "Currency (ISO 4217)", de = "Währung (ISO 4217)" }
+"customers.hourly_rate" = { en = "Default hourly rate", de = "Standard-Stundensatz" }
+"customers.invoice_language" = { en = "Invoice language", de = "Rechnungssprache" }
+"customers.timezone" = { en = "Timezone", de = "Zeitzone" }
+"customers.note" = { en = "Note", de = "Notiz" }
+"customers.projects" = { en = "Projects", de = "Projekte" }
+"customers.save" = { en = "Save", de = "Speichern" }
+"customers.error.name" = { en = "Name is required.", de = "Name ist erforderlich." }
+"customers.error.currency" = { en = "Currency must be an ISO 4217 code such as EUR.", de = "Währung muss ein ISO-4217-Code wie EUR sein." }
+"customers.error.hourly_rate_required" = { en = "Default hourly rate is required.", de = "Standard-Stundensatz ist erforderlich." }
+"customers.error.hourly_rate" = { en = "Default hourly rate must be a non-negative decimal with no more decimals than the currency allows.", de = "Standard-Stundensatz muss eine nicht negative Dezimalzahl mit höchstens so vielen Nachkommastellen sein, wie die Währung erlaubt." }
+"customers.error.invoice_language" = { en = "Unsupported invoice language.", de = "Nicht unterstützte Rechnungssprache." }
+"customers.error.timezone" = { en = "Unknown timezone.", de = "Unbekannte Zeitzone." }
+"customers.error.timer_running" = { en = "A timer is running on a project of this customer.", de = "Auf einem Projekt dieses Kunden läuft ein Timer." }
+"customers.error.has_projects" = { en = "This customer has projects.", de = "Dieser Kunde hat Projekte." }
