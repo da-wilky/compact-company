@@ -10,3 +10,4 @@
 "week.fri" = { en = "Fri", de = "Fr" }
 "week.sat" = { en = "Sat", de = "Sa" }
 "week.sun" = { en = "Sun", de = "So" }
+"week.subtitle" = { en = "Hours per project and day", de = "Stunden pro Projekt und Tag" }

@@ -20,8 +20,15 @@ type weekRow struct {
 	Total   time.Duration
 }
 
+type weekCustomer struct {
+	id       int64
+	Name     string
+	Projects []weekRow
+}
+
 type weekDay struct {
 	Weekday, Date string
+	Today         bool
 	Time          time.Time
 }
 
@@ -29,7 +36,8 @@ var weekdays = [7]string{"week.mon", "week.tue", "week.wed", "week.thu", "week.f
 
 type weekPage struct {
 	Days       [7]weekDay
-	Rows       []weekRow
+	Customers  []weekCustomer
+	Unassigned weekRow
 	Totals     [7]time.Duration
 	Total      time.Duration
 	Prev, Next string
@@ -43,6 +51,7 @@ func (a *App) week(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	day := a.now().In(loc)
+	today := day.Format(dayLayout)
 	if s := r.FormValue("week"); s != "" {
 		if day, err = time.ParseInLocation(dayLayout, s, loc); err != nil {
 			a.errorPage(w, r, http.StatusBadRequest, "error.invalid_week")
@@ -52,17 +61,19 @@ func (a *App) week(w http.ResponseWriter, r *http.Request) {
 	monday := time.Date(day.Year(), day.Month(), day.Day()-(int(day.Weekday())+6)%7, 0, 0, 0, 0, loc)
 	var bounds [8]time.Time
 	page := weekPage{Prev: monday.AddDate(0, 0, -7).Format(dayLayout), Next: monday.AddDate(0, 0, 7).Format(dayLayout), Everyone: r.FormValue("everyone") != ""}
+	page.Unassigned.Project = "none"
 	for i := range bounds {
 		bounds[i] = time.Date(monday.Year(), monday.Month(), monday.Day()+i, 0, 0, 0, 0, loc)
 		if i < 7 {
-			page.Days[i] = weekDay{weekdays[i], bounds[i].Format(dayLayout), bounds[i]}
+			date := bounds[i].Format(dayLayout)
+			page.Days[i] = weekDay{weekdays[i], date, date == today, bounds[i]}
 		}
 	}
 	rows, err := a.db.Query(`
-		SELECT ifnull(e.project_id, 'none'), ifnull(c.name || ' · ' || p.name, ''), e.start_time, e.end_time
+		SELECT ifnull(e.project_id, 'none'), ifnull(c.id, 0), ifnull(c.name, ''), ifnull(p.name, ''), e.start_time, e.end_time
 		FROM time_entry e LEFT JOIN project p ON p.id = e.project_id LEFT JOIN customer c ON c.id = p.customer_id
 		WHERE (? OR e.user_id = ?) AND e.start_time >= ? AND e.start_time < ?
-		ORDER BY e.project_id IS NULL, c.name, p.name, p.id`,
+		ORDER BY e.project_id IS NULL, c.name, c.id, p.name, p.id`,
 		page.Everyone, currentUser(r).ID, bounds[0].Unix(), bounds[7].Unix())
 	if err != nil {
 		a.serverError(w, r, err)
@@ -70,15 +81,23 @@ func (a *App) week(w http.ResponseWriter, r *http.Request) {
 	}
 	defer func() { _ = rows.Close() }()
 	for rows.Next() {
-		var row weekRow
-		var start int64
+		var project, customer, name string
+		var customerID, start int64
 		var end sql.NullInt64
-		if err := rows.Scan(&row.Project, &row.Name, &start, &end); err != nil {
+		if err := rows.Scan(&project, &customerID, &customer, &name, &start, &end); err != nil {
 			a.serverError(w, r, err)
 			return
 		}
-		if n := len(page.Rows); n == 0 || page.Rows[n-1].Project != row.Project {
-			page.Rows = append(page.Rows, row)
+		row := &page.Unassigned
+		if project != "none" {
+			if n := len(page.Customers); n == 0 || page.Customers[n-1].id != customerID {
+				page.Customers = append(page.Customers, weekCustomer{id: customerID, Name: customer})
+			}
+			c := &page.Customers[len(page.Customers)-1]
+			if n := len(c.Projects); n == 0 || c.Projects[n-1].Project != project {
+				c.Projects = append(c.Projects, weekRow{Project: project, Name: name})
+			}
+			row = &c.Projects[len(c.Projects)-1]
 		}
 		finish := a.now()
 		if end.Valid {
@@ -89,18 +108,14 @@ func (a *App) week(w http.ResponseWriter, r *http.Request) {
 		for i > 0 && start < bounds[i].Unix() {
 			i--
 		}
-		last := &page.Rows[len(page.Rows)-1]
-		last.Days[i] += d
-		last.Total += d
+		row.Days[i] += d
+		row.Total += d
 		page.Totals[i] += d
 		page.Total += d
 	}
 	if err := rows.Err(); err != nil {
 		a.serverError(w, r, err)
 		return
-	}
-	if n := len(page.Rows); n == 0 || page.Rows[n-1].Project != "none" {
-		page.Rows = append(page.Rows, weekRow{Project: "none"})
 	}
 	a.render(w, r, http.StatusOK, "week", page)
 }
