@@ -50,6 +50,7 @@
           buildPhase = ''
             runHook preBuild
             HOME=$TMPDIR GOLANGCI_LINT_CACHE=$TMPDIR/golangci-lint golangci-lint run ./...
+            HOME=$TMPDIR GOLANGCI_LINT_CACHE=$TMPDIR/golangci-lint golangci-lint fmt --diff ./...
             runHook postBuild
           '';
           doCheck = false;
