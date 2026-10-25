@@ -160,6 +160,17 @@ func TestInvalidCustomerFieldsAreRejected(t *testing.T) {
 	}
 }
 
+func TestCustomerTimezoneLocalIsRejected(t *testing.T) {
+	ta := newTestApp(t, devConfig)
+	form := customerForm("acme", "85")
+	form.Set("timezone", "Local")
+
+	res := ta.client().postForm("/customers", form)
+
+	res.wantStatus(t, http.StatusUnprocessableEntity)
+	res.wantBody(t, "Unknown timezone.")
+}
+
 func TestNewCustomerFormDefaultsFromConfig(t *testing.T) {
 	ta := newTestApp(t, devConfig+`
 [defaults]

@@ -8,7 +8,6 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"time"
 
 	"golang.org/x/text/currency"
 )
@@ -128,7 +127,7 @@ func customerFromForm(r *http.Request, prev *storedRate) (customer, int64, []str
 	if !supportedLanguage(c.InvoiceLanguage) {
 		errs = append(errs, "customers.error.invoice_language")
 	}
-	if _, err := time.LoadLocation(c.Timezone); err != nil || c.Timezone == "" {
+	if !validTimezone(c.Timezone) {
 		errs = append(errs, "customers.error.timezone")
 	}
 	var rate int64
