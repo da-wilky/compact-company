@@ -10,7 +10,7 @@
 <script src="/static/app.js" defer></script>
 <meta name="htmx-config" content='{"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"422","swap":true},{"code":"[45]..","swap":false,"error":true}]}'>
 </head>
-<body>
+<body data-prev-month="{{t "picker.prev_month"}}" data-next-month="{{t "picker.next_month"}}" data-week="{{t "picker.week"}}" data-pick-day="{{t "picker.pick_day"}}">
 <div class="shell">
 <aside class="side">
 <a class="brand" href="/"><svg class="logo" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="9" fill="var(--accent)"/><path d="M22.5 10.5A8.5 8.5 0 1 0 22.5 21.5" fill="none" stroke="var(--accent-fg)" stroke-width="3" stroke-linecap="round"/><path d="M19 13.4A4 4 0 1 0 19 18.6" fill="none" stroke="var(--accent-fg)" stroke-width="2.4" stroke-linecap="round"/></svg><span class="word"><b>compact</b>company</span></a>
