@@ -1,11 +1,14 @@
 {{define "title"}}{{t "entries.title" (date .Data.From)}}{{end}}
 {{define "content"}}
 {{with .Data}}
+<div class="page-head">
 <h1>{{t "entries.title" (date .From)}}</h1>
-<p><a href="/entries?day={{.Prev}}{{with .Project}}&project={{.}}{{end}}{{if .Everyone}}&everyone=1{{end}}">{{t "entries.prev"}}</a> ·
-<a href="/entries?day={{.Next}}{{with .Project}}&project={{.}}{{end}}{{if .Everyone}}&everyone=1{{end}}">{{t "entries.next"}}</a> ·
-{{if .Everyone}}<a href="/entries?day={{.Day}}{{with .Project}}&project={{.}}{{end}}">{{t "entries.mine"}}</a>{{else}}<a href="/entries?day={{.Day}}{{with .Project}}&project={{.}}{{end}}&everyone=1">{{t "entries.everyone"}}</a>{{end}} ·
-<a href="/entries/new">{{t "entries.new"}}</a></p>
+<div class="toolbar">
+<span class="seg"><a href="/entries?day={{.Prev}}{{with .Project}}&project={{.}}{{end}}{{if .Everyone}}&everyone=1{{end}}">{{t "entries.prev"}}</a><a href="/entries?day={{.Next}}{{with .Project}}&project={{.}}{{end}}{{if .Everyone}}&everyone=1{{end}}">{{t "entries.next"}}</a></span>
+<span class="seg"><a href="/entries?day={{.Day}}{{with .Project}}&project={{.}}{{end}}"{{if not .Everyone}} aria-current="true"{{end}}>{{t "entries.mine"}}</a><a href="/entries?day={{.Day}}{{with .Project}}&project={{.}}{{end}}&everyone=1"{{if .Everyone}} aria-current="true"{{end}}>{{t "entries.everyone"}}</a></span>
+</div>
+</div>
+<p class="actions"><a href="/entries/new">{{t "entries.new"}}</a></p>
 {{with .Entries}}
 <table>
 <thead><tr>{{if $.Data.Everyone}}<th>{{t "entries.user"}}</th>{{end}}<th>{{t "entries.time"}}</th><th class="num">{{t "entries.duration"}}</th><th>{{t "entries.project"}}</th><th>{{t "entries.description"}}</th><th>{{t "entries.billable"}}</th></tr></thead>

@@ -2,7 +2,7 @@
 {{define "content"}}
 {{with .Data}}
 <h1>{{with .Project.ID}}{{t "projects.edit" $.Data.Project.Name}}{{else}}{{t "projects.new"}}{{end}}</h1>
-<p><a href="/customers/{{.Customer.ID}}/projects">{{t "projects.title" .Customer.Name}}</a></p>
+<p class="actions"><a href="/customers/{{.Customer.ID}}/projects">{{t "projects.title" .Customer.Name}}</a></p>
 {{with .Errors}}<ul class="errors">{{range .}}<li>{{t .}}</li>{{end}}</ul>{{end}}
 <form method="post" action="{{with .Project.ID}}/projects/{{.}}{{else}}/customers/{{$.Data.Customer.ID}}/projects{{end}}" class="form">
 <label>{{t "projects.name"}} <input name="name" value="{{.Project.Name}}" required></label>

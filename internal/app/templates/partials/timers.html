@@ -12,7 +12,7 @@
 {{if .Overdue}}<span class="badge" role="status">{{t "timers.overdue"}}</span>{{end}}
 </div>
 {{else}}{{template "timer-start" .}}
-{{end}}{{if and .Running $.User.ParallelEntries}}<details class="timer-add"><summary title="{{t "timers.start"}}"><span aria-hidden="true">+</span></summary>
+{{end}}{{if and .Running $.User.ParallelEntries}}<details class="timer-add"><summary aria-label="{{t "timers.start"}}" title="{{t "timers.start"}}"><span aria-hidden="true">+</span></summary>
 {{template "timer-start" .}}
 </details>{{end}}{{end}}</div>{{end}}
 
