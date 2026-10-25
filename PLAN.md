@@ -48,7 +48,7 @@ Server-rendered HTML, one CSS file, no framework. Typst must be on `PATH` (the N
 
 - One binary: `compact-company serve --config config.toml`
 - Data dir: `app.db` (SQLite, WAL), `invoices/<year>/<number>.pdf`
-- Config (TOML): listen address, data dir, OIDC issuer/client/secret file, allowed subject(s), seller data, tax mode, numbering formats, Typst template dir, font paths
+- Config (TOML): listen address, data dir, OIDC issuer/client/secret file, allowed subject(s), business data (optional, overrides settings – ADR 0005), tax mode, numbering formats, Typst template dir, font paths
 - Secrets only via files (`*_file` options), never inline – fits sops-nix
 
 ## Data model
@@ -63,42 +63,13 @@ Server-rendered HTML, one CSS file, no framework. Typst must be on `PATH` (the N
 Rules:
 - Only one running timer.
 - Invoice numbers are assigned when issuing, not for drafts: format configurable, default `{year}-{seq:03}`, sequence per year, inside one transaction → no gaps.
-- Issuing freezes the invoice: snapshot of seller data, customer address, lines and totals is stored; PDF is rendered once and hashed. No edits after issuing.
+- Issuing freezes the invoice: snapshot of business data, customer address, lines and totals is stored; PDF is rendered once and hashed. No edits after issuing.
 - Corrections only via a cancellation invoice (Stornorechnung) referencing the original, never by editing or deleting.
 - Time entries linked to an issued invoice are locked; cancelling the invoice releases them.
 
 ## Typst contract
 
-The app renders `<template_dir>/invoice.typ` with:
-
-```sh
-typst compile --root <template_dir> --font-path <fonts> \
-  --input data='<json>' <template_dir>/invoice.typ <out.pdf>
-```
-
-The template reads `json(bytes(sys.inputs.data))`. JSON shape (version it: `"version": 1`):
-
-```json
-{
-  "version": 1,
-  "kind": "invoice",
-  "number": "2026-001",
-  "issue_date": "2026-10-25",
-  "due_date": "2026-11-08",
-  "service_period": "Oktober 2026",
-  "seller": { "name": "…", "company": "…", "address": ["…"], "email": "…", "web": "…", "phone": "…",
-              "tax_number": "…", "bank": { "name": "…", "iban": "…", "bic": "…" }, "small_business": true, "vat_rate": 19 },
-  "customer": { "number": "K-001", "name": "…", "address": ["…"] },
-  "lines": [ { "description": "…", "detail": "…", "quantity": 1, "unit": "psch.", "unit_price": "150.00" } ],
-  "totals": { "net": "150.00", "vat": "0.00", "gross": "150.00" },
-  "cancels": null
-}
-```
-
-Money as decimal strings, never floats.
-
-- The repo ships a neutral default template (`templates/default/invoice.typ`).
-- swilk uses its own design: `~/workspace/mine/gewerbe/corporate-design/typst/` gets an `invoice.typ` entry point that maps this JSON onto the existing `rechnung()` / `stornorechnung()` functions in `lib/vorlagen.typ`. The `firma.toml` values move into `seller` in the app config.
+Specified in the Phase 2 PRD (#15) and, once built, documented in `templates/README.md`.
 
 ## Phases
 
@@ -110,12 +81,8 @@ Money as decimal strings, never floats.
 - Done when: running locally with `nix run`, time can be tracked against a project of a new customer
 
 ### Phase 2 – Invoices
-- Draft from customer + period: pull unbilled billable entries (grouped per project or per entry), add free lines
-- Preview (render without number, watermark "Entwurf"/"Draft")
-- Issue: assign number, snapshot, render, store PDF + hash
-- Mark paid, cancel via cancellation invoice, download PDF
-- Default Typst template + swilk entry point in corporate-design
-- Done when: invoice 2026-001 for Genossenschaft Aufwind can be reproduced identically to the current PDF
+- Specified in the PRD #15 with its sub-issues; it supersedes the invoice parts of the data model above.
+- Done when: invoice 2026-001 for Genossenschaft Aufwind is reproduced with every page pixel-identical to the current PDF
 
 ### Phase 3 – Overview
 - Dashboard: running timer, hours this week/month, unbilled hours per customer, open and overdue invoices
