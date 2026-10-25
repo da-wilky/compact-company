@@ -41,3 +41,8 @@ header .user { color: var(--muted); font-size: 0.9rem; }
 main { max-width: 60rem; margin: 0 auto; padding: 1rem; }
 
 a { color: var(--accent); }
+
+.settings label { display: block; margin-bottom: 0.75rem; }
+.settings select, .settings input { display: block; margin-top: 0.25rem; font: inherit; }
+.hint { color: var(--muted); font-size: 0.9rem; }
+.error { color: #b3261e; }

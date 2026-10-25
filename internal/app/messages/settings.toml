@@ -1,0 +1,8 @@
+"settings.title" = { en = "Settings", de = "Einstellungen" }
+"settings.language" = { en = "Language", de = "Sprache" }
+"settings.timezone" = { en = "Timezone", de = "Zeitzone" }
+"settings.timezone_hint" = { en = "IANA name, e.g. Europe/Berlin", de = "IANA-Name, z. B. Europe/Berlin" }
+"settings.current_time" = { en = "Current time: %s", de = "Aktuelle Uhrzeit: %s" }
+"settings.save" = { en = "Save", de = "Speichern" }
+"settings.error.language" = { en = "Unsupported language.", de = "Nicht unterstützte Sprache." }
+"settings.error.timezone" = { en = "Unknown timezone. Use an IANA name such as Europe/Berlin.", de = "Unbekannte Zeitzone. Bitte einen IANA-Namen wie Europe/Berlin verwenden." }
