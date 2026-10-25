@@ -1,7 +1,7 @@
-{{define "title"}}{{t "entries.title" .Data.Day}}{{end}}
+{{define "title"}}{{t "entries.title" (date .Data.From)}}{{end}}
 {{define "content"}}
 {{with .Data}}
-<h1>{{t "entries.title" .Day}}</h1>
+<h1>{{t "entries.title" (date .From)}}</h1>
 <p><a href="/entries?day={{.Prev}}{{with .Project}}&project={{.}}{{end}}{{if .Everyone}}&everyone=1{{end}}">{{t "entries.prev"}}</a> ·
 <a href="/entries?day={{.Next}}{{with .Project}}&project={{.}}{{end}}{{if .Everyone}}&everyone=1{{end}}">{{t "entries.next"}}</a> ·
 {{if .Everyone}}<a href="/entries?day={{.Day}}{{with .Project}}&project={{.}}{{end}}">{{t "entries.mine"}}</a>{{else}}<a href="/entries?day={{.Day}}{{with .Project}}&project={{.}}{{end}}&everyone=1">{{t "entries.everyone"}}</a>{{end}} ·

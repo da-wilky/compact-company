@@ -45,6 +45,7 @@ type entryRow struct {
 
 type entriesPage struct {
 	Day, Prev, Next string
+	From            time.Time
 	Everyone        bool
 	Project         string
 	Self            string
@@ -95,7 +96,7 @@ func (a *App) entryList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer func() { _ = rows.Close() }()
-	page := entriesPage{Day: from.Format(dayLayout), Prev: from.AddDate(0, 0, -1).Format(dayLayout), Next: to.Format(dayLayout), Everyone: everyone, Project: project, Self: r.URL.RequestURI()}
+	page := entriesPage{Day: from.Format(dayLayout), From: from,Prev: from.AddDate(0, 0, -1).Format(dayLayout), Next: to.Format(dayLayout), Everyone: everyone, Project: project, Self: r.URL.RequestURI()}
 	for rows.Next() {
 		var e entryRow
 		var userID, start int64

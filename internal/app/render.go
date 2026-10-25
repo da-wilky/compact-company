@@ -54,7 +54,7 @@ func parsePages() (map[string]*template.Template, error) {
 			continue
 		}
 		// "t" is rebound per request to the viewer's language in render.
-		t, err := template.New(name).Funcs(template.FuncMap{"t": fmt.Sprintf, "datetime": time.Time.String, "clock": time.Time.String, "duration": formatDuration}).
+		t, err := template.New(name).Funcs(template.FuncMap{"t": fmt.Sprintf, "datetime": time.Time.String, "clock": time.Time.String, "date": time.Time.String, "duration": formatDuration}).
 			ParseFS(templates, "templates/layout.html", "templates/partials/*.html", f)
 		if err != nil {
 			return nil, err
@@ -101,6 +101,8 @@ func loadCatalog() (catalog.Catalog, error) {
 
 var datetimeLayouts = map[string]string{"en": "2006-01-02 15:04", "de": "02.01.2006 15:04"}
 
+var dateLayouts = map[string]string{"en": "2006-01-02", "de": "02.01.2006"}
+
 // viewerLocation is the zone all times are shown and attributed to days in:
 // the user's timezone, or the configured default before login.
 func (a *App) viewerLocation(r *http.Request) (*time.Location, error) {
@@ -146,6 +148,7 @@ func (a *App) write(w http.ResponseWriter, r *http.Request, status int, page, na
 	t.Funcs(template.FuncMap{
 		"t":        p.Sprintf,
 		"datetime": func(ts time.Time) string { return ts.In(loc).Format(datetimeLayouts[lang]) },
+		"date":     func(ts time.Time) string { return ts.In(loc).Format(dateLayouts[lang]) },
 		"clock":    func(ts time.Time) string { return ts.In(loc).Format("15:04") },
 	})
 	var buf bytes.Buffer

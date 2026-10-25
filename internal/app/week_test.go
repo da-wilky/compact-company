@@ -118,4 +118,27 @@ func TestEditingFromADrilledInCellReturnsToIt(t *testing.T) {
 	wantRedirect(t, c.postForm(edit, update), "/entries?day=2026-10-26")
 }
 
-var editLinkWithReturn = regexp.MustCompile(`href="((/entries/\d+)\?return=[^"]+)"`)
+func TestWeekAndDayDatesFollowTheLanguage(t *testing.T) {
+	ta := newTestApp(t, germanDevConfig)
+	c := ta.client()
+
+	week := c.get("/week?week=2026-10-28")
+	day := c.get("/entries?day=2026-10-28")
+
+	week.wantBody(t, "Woche ab 26.10.2026")
+	week.wantBody(t, "<th>Mo<br>26.10.2026</th>")
+	week.wantBody(t, `href="/week?week=2026-11-02">Nächste Woche</a>`)
+	day.wantBody(t, "Einträge am 28.10.2026")
+	day.wantBody(t, `href="/entries?day=2026-10-29">Nächster Tag</a>`)
+}
+
+func TestWeekAlwaysShowsTheUnassignedRow(t *testing.T) {
+	ta := newTestApp(t, devConfig)
+	c := ta.client()
+
+	res := c.get("/week")
+
+	res.wantBody(t, `<tr><th>Unassigned</th><td class="num"></td>`)
+}
+
+var editLinkWithReturn =regexp.MustCompile(`href="((/entries/\d+)\?return=[^"]+)"`)

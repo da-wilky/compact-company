@@ -20,7 +20,10 @@ type weekRow struct {
 	Total   time.Duration
 }
 
-type weekDay struct{ Weekday, Date string }
+type weekDay struct {
+	Weekday, Date string
+	Time          time.Time
+}
 
 var weekdays = [7]string{"week.mon", "week.tue", "week.wed", "week.thu", "week.fri", "week.sat", "week.sun"}
 
@@ -52,7 +55,7 @@ func (a *App) week(w http.ResponseWriter, r *http.Request) {
 	for i := range bounds {
 		bounds[i] = time.Date(monday.Year(), monday.Month(), monday.Day()+i, 0, 0, 0, 0, loc)
 		if i < 7 {
-			page.Days[i] = weekDay{weekdays[i], bounds[i].Format(dayLayout)}
+			page.Days[i] = weekDay{weekdays[i], bounds[i].Format(dayLayout), bounds[i]}
 		}
 	}
 	rows, err := a.db.Query(`
@@ -95,6 +98,9 @@ func (a *App) week(w http.ResponseWriter, r *http.Request) {
 	if err := rows.Err(); err != nil {
 		a.serverError(w, r, err)
 		return
+	}
+	if n := len(page.Rows); n == 0 || page.Rows[n-1].Project != "none" {
+		page.Rows = append(page.Rows, weekRow{Project: "none"})
 	}
 	a.render(w, r, http.StatusOK, "week", page)
 }
