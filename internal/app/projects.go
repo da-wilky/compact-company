@@ -65,6 +65,15 @@ func (a *App) loadProjectCustomer(id int64) (projectCustomer, error) {
 	return c, nil
 }
 
+// customerUnit is read inside the write transaction so a concurrent currency change can't mis-scale the rate.
+func customerUnit(tx *sql.Tx, id int64) (currency.Unit, error) {
+	var cur string
+	if err := tx.QueryRow(`SELECT currency FROM customer WHERE id = ?`, id).Scan(&cur); err != nil {
+		return currency.Unit{}, err
+	}
+	return currency.MustParseISO(cur), nil
+}
+
 // customerFromPath writes 404 or 500 itself when ok is false.
 func (a *App) customerFromPath(w http.ResponseWriter, r *http.Request) (projectCustomer, bool) {
 	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
@@ -154,13 +163,28 @@ func (a *App) projectCreate(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	tx, err := a.db.Begin()
+	if err != nil {
+		a.serverError(w, r, err)
+		return
+	}
+	defer func() { _ = tx.Rollback() }()
+	if c.unit, err = customerUnit(tx, c.ID); err != nil {
+		a.serverError(w, r, err)
+		return
+	}
 	p, rate, errs := projectFromForm(r, c.unit)
 	if errs != nil {
+		_ = tx.Rollback()
 		a.render(w, r, http.StatusUnprocessableEntity, "project", projectPage{Customer: c, Project: p, Errors: errs})
 		return
 	}
-	if _, err := a.db.Exec(`INSERT INTO project (customer_id, name, hourly_rate, billable) VALUES (?, ?, ?, ?)`,
+	if _, err := tx.Exec(`INSERT INTO project (customer_id, name, hourly_rate, billable) VALUES (?, ?, ?, ?)`,
 		c.ID, p.Name, rate, p.Billable); err != nil {
+		a.serverError(w, r, err)
+		return
+	}
+	if err := tx.Commit(); err != nil {
 		a.serverError(w, r, err)
 		return
 	}
@@ -210,14 +234,29 @@ func (a *App) projectUpdate(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	tx, err := a.db.Begin()
+	if err != nil {
+		a.serverError(w, r, err)
+		return
+	}
+	defer func() { _ = tx.Rollback() }()
+	if c.unit, err = customerUnit(tx, c.ID); err != nil {
+		a.serverError(w, r, err)
+		return
+	}
 	p, rate, errs := projectFromForm(r, c.unit)
 	p.ID, p.Archived = stored.ID, stored.Archived
 	if errs != nil {
+		_ = tx.Rollback()
 		a.render(w, r, http.StatusUnprocessableEntity, "project", projectPage{Customer: c, Project: p, Errors: errs})
 		return
 	}
-	if _, err := a.db.Exec(`UPDATE project SET name = ?, hourly_rate = ?, billable = ? WHERE id = ?`,
+	if _, err := tx.Exec(`UPDATE project SET name = ?, hourly_rate = ?, billable = ? WHERE id = ?`,
 		p.Name, rate, p.Billable, p.ID); err != nil {
+		a.serverError(w, r, err)
+		return
+	}
+	if err := tx.Commit(); err != nil {
 		a.serverError(w, r, err)
 		return
 	}
