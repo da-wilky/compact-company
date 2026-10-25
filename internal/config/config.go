@@ -57,6 +57,7 @@ type Auth struct {
 }
 
 type Invoice struct {
+	NumberFormat    string   `toml:"number_format"`
 	PaymentDays     int      `toml:"payment_days"`
 	RoundingMinutes int      `toml:"rounding_minutes"`
 	TemplateDir     string   `toml:"template_dir"`
@@ -78,7 +79,7 @@ func Load(path string) (Config, error) {
 		CustomerNumberFormat: "K-{seq:03}",
 		Auth:                 Auth{SessionIdleTimeout: 14 * 24 * time.Hour},
 		Defaults:             Defaults{Currency: "EUR", Language: "en", Timezone: "UTC"},
-		Invoice:              Invoice{PaymentDays: 14},
+		Invoice:              Invoice{NumberFormat: "{year}-{seq:03}", PaymentDays: 14},
 	}
 	md, err := decodeStrict(path, &cfg)
 	if err != nil {

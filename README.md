@@ -47,6 +47,7 @@ timezone = "Europe/Berlin"         # default: UTC
 parallel_entries = false
 
 [invoice]                          # defaults for new drafts
+number_format = "{year}-{seq:03}"  # default; {year} and {seq} once each; no "/" or ".."
 payment_days = 14                  # default; positive
 rounding_minutes = 0               # default; 0, 5, 10, 15 or 30
 ```
