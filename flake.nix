@@ -66,6 +66,8 @@
             pkgs.golangci-lint
             pkgs.sqlite
           ];
+          # Debug builds compile cgo at -O0, which Nix's _FORTIFY_SOURCE hardening turns into an error; nothing here needs cgo.
+          CGO_ENABLED = "0";
         };
       });
     };
