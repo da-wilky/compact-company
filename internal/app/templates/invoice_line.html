@@ -12,5 +12,13 @@
 <label>{{t "invoices.unit_price" .Draft.Currency}} <input name="unit_price" value="{{.Line.UnitPrice}}" required inputmode="decimal"></label>
 <button>{{t "invoices.save"}}</button>
 </form>
+{{with .Entries}}<h2>{{t "invoices.line_entries"}}</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>{{t "invoices.entry_date"}}</th><th>{{t "invoices.entry_user"}}</th><th class="num">{{t "invoices.entry_duration"}}</th><th>{{t "invoices.description"}}</th></tr></thead>
+<tbody>
+{{range .}}<tr><td>{{day .Date}}</td><td>{{.User}}</td><td class="num">{{duration .Duration}}</td><td>{{.Description}}</td></tr>
+{{end}}</tbody>
+</table></div>
+{{end}}
 {{end}}
 {{end}}

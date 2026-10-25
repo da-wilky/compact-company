@@ -1,0 +1,12 @@
+{{define "title"}}{{t "invoices.refresh"}}{{end}}
+{{define "content"}}
+{{with .Data.Draft}}
+<h1>{{t "invoices.refresh"}}</h1>
+<p class="actions"><a href="/invoices/{{.ID}}">{{t "invoices.back"}}</a></p>
+<form method="post" action="/invoices/{{.ID}}/refresh" class="form">
+<p>{{t "invoices.refresh_warning"}}</p>
+<p class="hint">{{t "invoices.from"}} {{day .Header.From}} · {{t "invoices.to"}} {{day .Header.To}}</p>
+<button>{{t "invoices.refresh"}}</button>
+</form>
+{{end}}
+{{end}}
