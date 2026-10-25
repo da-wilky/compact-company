@@ -87,8 +87,8 @@ h1 { margin: 0 0 1rem; font-size: 1.75rem; font-weight: 650; letter-spacing: -.0
 
 .pager { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; }
 .pager .prev, .pager .next { display: grid; place-items: center; width: 34px; height: 34px; border: 1px solid var(--field); border-radius: 50%; background: var(--surface); color: var(--fg); font-size: 0; }
-.pager .prev::before { content: "‹"; font-size: 1.3rem; line-height: 1; }
-.pager .next::before { content: "›"; font-size: 1.3rem; line-height: 1; }
+.pager .prev::before, .pager .next::before { content: ""; width: 16px; height: 16px; background: currentColor; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10 3 5 8l5 5'/%3E%3C/svg%3E") center / contain no-repeat; }
+.pager .next::before { transform: scaleX(-1); }
 .pager .prev:hover, .pager .next:hover { border-color: var(--accent); color: var(--accent); text-decoration: none; }
 .jump { display: flex; gap: .3rem; margin: 0; }
 .jump input { padding: .3rem .6rem; border-radius: 999px; font-variant-numeric: tabular-nums; }

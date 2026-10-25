@@ -5,11 +5,11 @@
 <div><h1>{{t "week.title" (date (index .Days 0).Time)}}</h1>
 <p class="hint">{{t "week.subtitle"}}</p></div>
 <nav class="pager" aria-label="{{t "week.nav"}}">
+{{if not .Current}}<a class="pill" href="/week{{if .Everyone}}?everyone=1{{end}}">{{t "week.this"}}</a>{{end}}
 <a class="prev" href="/week?week={{.Prev}}{{if .Everyone}}&everyone=1{{end}}">{{t "week.prev"}}</a>
 <form class="jump" action="/week">{{if .Everyone}}<input type="hidden" name="everyone" value="1">{{end}}
 <input type="date" name="week" value="{{(index .Days 0).Date}}" aria-label="{{t "week.jump"}}"><noscript><button>{{t "entries.jump"}}</button></noscript></form>
 <a class="next" href="/week?week={{.Next}}{{if .Everyone}}&everyone=1{{end}}">{{t "week.next"}}</a>
-{{if not .Current}}<a class="pill" href="/week{{if .Everyone}}?everyone=1{{end}}">{{t "week.this"}}</a>{{end}}
 </nav>
 </div>
 <div class="filters">
