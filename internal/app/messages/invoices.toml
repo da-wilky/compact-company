@@ -1,0 +1,57 @@
+"invoices.title" = { en = "Invoices", de = "Rechnungen" }
+"invoices.new" = { en = "New draft", de = "Neuer Entwurf" }
+"invoices.empty" = { en = "No invoices.", de = "Keine Rechnungen." }
+"invoices.number" = { en = "Number", de = "Nummer" }
+"invoices.customer" = { en = "Customer", de = "Kunde" }
+"invoices.issue_date" = { en = "Issue date", de = "Rechnungsdatum" }
+"invoices.gross" = { en = "Gross", de = "Brutto" }
+"invoices.status" = { en = "Status", de = "Status" }
+"invoices.paid" = { en = "Paid", de = "Bezahlt" }
+"invoices.show" = { en = "Show", de = "Anzeigen" }
+"invoices.all" = { en = "All", de = "Alle" }
+"invoices.all_customers" = { en = "All customers", de = "Alle Kunden" }
+"invoices.filter" = { en = "Filter", de = "Filtern" }
+"invoices.status.draft" = { en = "Draft", de = "Entwurf" }
+"invoices.status.issued" = { en = "Issued", de = "Gestellt" }
+"invoices.status.paid" = { en = "Paid", de = "Bezahlt" }
+"invoices.draft_for" = { en = "Draft for %s", de = "Entwurf für %s" }
+"invoices.from" = { en = "Entries from", de = "Einträge von" }
+"invoices.to" = { en = "Entries to", de = "Einträge bis" }
+"invoices.service_from" = { en = "Service period from", de = "Leistungszeitraum von" }
+"invoices.service_to" = { en = "Service period to", de = "Leistungszeitraum bis" }
+"invoices.payment_days" = { en = "Payment days", de = "Zahlungsziel (Tage)" }
+"invoices.grouping" = { en = "Lines from time", de = "Positionen aus Zeiten" }
+"invoices.grouping.project" = { en = "One line per project", de = "Eine Position je Projekt" }
+"invoices.grouping.entry" = { en = "One line per entry", de = "Eine Position je Eintrag" }
+"invoices.rounding" = { en = "Round time to", de = "Zeit runden auf" }
+"invoices.rounding.none" = { en = "No rounding", de = "Nicht runden" }
+"invoices.rounding.minutes" = { en = "%d minutes", de = "%d Minuten" }
+"invoices.create" = { en = "Create draft", de = "Entwurf anlegen" }
+"invoices.save" = { en = "Save", de = "Speichern" }
+"invoices.delete" = { en = "Delete draft", de = "Entwurf löschen" }
+"invoices.no_lines" = { en = "No lines yet.", de = "Noch keine Positionen." }
+"invoices.add_line" = { en = "Add line", de = "Position hinzufügen" }
+"invoices.edit_line" = { en = "Edit line", de = "Position bearbeiten" }
+"invoices.back" = { en = "Back to draft", de = "Zurück zum Entwurf" }
+"invoices.generated" = { en = "from time", de = "aus Zeiten" }
+"invoices.description" = { en = "Description", de = "Beschreibung" }
+"invoices.detail" = { en = "Detail", de = "Detail" }
+"invoices.quantity" = { en = "Quantity", de = "Menge" }
+"invoices.unit" = { en = "Unit", de = "Einheit" }
+"invoices.unit_price" = { en = "Unit price (%s)", de = "Einzelpreis (%s)" }
+"invoices.price" = { en = "Unit price", de = "Einzelpreis" }
+"invoices.total" = { en = "Total", de = "Summe" }
+"invoices.net" = { en = "Net", de = "Netto" }
+"invoices.vat" = { en = "VAT %d %%", de = "USt. %d %%" }
+"invoices.move_up" = { en = "Move up", de = "Nach oben" }
+"invoices.move_down" = { en = "Move down", de = "Nach unten" }
+"invoices.delete_line" = { en = "Delete line", de = "Position löschen" }
+"invoices.error.customer" = { en = "Choose a customer.", de = "Bitte einen Kunden wählen." }
+"invoices.error.range" = { en = "Enter a valid date range.", de = "Bitte einen gültigen Zeitraum angeben." }
+"invoices.error.service_period" = { en = "Enter a valid service period.", de = "Bitte einen gültigen Leistungszeitraum angeben." }
+"invoices.error.grouping" = { en = "Choose how lines are grouped.", de = "Bitte wählen, wie Positionen gebildet werden." }
+"invoices.error.rounding" = { en = "Choose a rounding increment.", de = "Bitte eine Rundung wählen." }
+"invoices.error.payment_days" = { en = "Payment days must be a positive whole number.", de = "Das Zahlungsziel muss eine positive ganze Zahl sein." }
+"invoices.error.description" = { en = "Description is required.", de = "Beschreibung ist erforderlich." }
+"invoices.error.quantity" = { en = "Quantity must be a non-negative decimal with at most 3 decimals.", de = "Menge muss eine nicht negative Dezimalzahl mit höchstens 3 Nachkommastellen sein." }
+"invoices.error.unit_price" = { en = "Unit price must be a non-negative decimal with no more decimals than the currency allows.", de = "Einzelpreis muss eine nicht negative Dezimalzahl mit höchstens so vielen Nachkommastellen sein, wie die Währung erlaubt." }

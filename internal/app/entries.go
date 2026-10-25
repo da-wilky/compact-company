@@ -437,7 +437,7 @@ func (a *App) entryFromPath(w http.ResponseWriter, r *http.Request, loc *time.Lo
 	var userID, start, end int64
 	var project, invoice sql.NullInt64
 	var billable sql.NullBool
-	err = a.db.QueryRow(`SELECT user_id, project_id, start_time, end_time, description, billable, invoice_id
+	err = a.db.QueryRow(`SELECT user_id, project_id, start_time, end_time, description, billable, invoice_line_id
 		FROM time_entry WHERE id = ? AND end_time IS NOT NULL`, id).
 		Scan(&userID, &project, &start, &end, &f.Description, &billable, &invoice)
 	if errors.Is(err, sql.ErrNoRows) {

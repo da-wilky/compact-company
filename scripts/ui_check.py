@@ -40,7 +40,11 @@ def seed(api):
         d = monday + datetime.timedelta(days=day)
         api.post(f"{base}/entries", form={"project": projects.get(project, ""), "start": f"{d}T{hours[0]:02}:00", "end": f"{d}T{hours[1]:02}:00", "description": f"{project or 'Admin'} work", "billable": ""})
     api.post(f"{base}/timers", form={"project": projects["Hosting"], "description": "Server update"})
-    return customer, projects["Website relaunch"]
+    draft = api.post(f"{base}/invoices", form={"customer": customer, "from": str(monday), "to": str(today), "grouping": "project", "rounding_minutes": "15", "payment_days": "14"}, max_redirects=0).headers["location"]
+    for line in [("Website relaunch", "Design and implementation of the new landing page", "12.5", "h", "85"), ("Hosting", "", "1", "month", "29.90")]:
+        api.post(f"{base}{draft}/lines", form=dict(zip(("description", "detail", "quantity", "unit", "unit_price"), line)))
+    line = re.search(rf'href="({draft}/lines/\d+)"', api.get(f"{base}{draft}").text()).group(1)
+    return customer, projects["Website relaunch"], draft, line
 
 
 def main():
@@ -48,10 +52,11 @@ def main():
     with sync_playwright() as p:
         browser = p.chromium.launch(executable_path=chromium)
         api = browser.new_context().request
-        customer, project = seed(api)
+        customer, project, draft, line = seed(api)
         today = datetime.date.today().isoformat()
         pages = ["/", "/week", "/week?everyone=1", "/entries", f"/entries?day={today}&project={project}", "/entries/new",
                  "/customers", "/customers/new", f"/customers/{customer}", f"/customers/{customer}/projects", f"/projects/{project}",
+                 "/invoices", "/invoices/new", draft, f"{draft}/lines/new", line,
                  "/settings", "/no-such-page"]
         for viewport, (width, height) in VIEWPORTS.items():
             for scheme in ("light", "dark"):

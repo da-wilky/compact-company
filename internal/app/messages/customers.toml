@@ -21,3 +21,5 @@
 "customers.error.timezone" = { en = "Unknown timezone.", de = "Unbekannte Zeitzone." }
 "customers.error.timer_running" = { en = "A timer is running on a project of this customer.", de = "Auf einem Projekt dieses Kunden läuft ein Timer." }
 "customers.error.has_projects" = { en = "This customer has projects.", de = "Dieser Kunde hat Projekte." }
+"customers.error.has_invoices" = { en = "This customer has invoices.", de = "Dieser Kunde hat Rechnungen." }
+"customers.error.currency_invoiced" = { en = "The currency of a customer with invoices can't change.", de = "Die Währung eines Kunden mit Rechnungen kann nicht geändert werden." }
