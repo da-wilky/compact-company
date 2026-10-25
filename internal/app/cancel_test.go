@@ -66,6 +66,7 @@ func TestCancellingLinesIssuesACancellationInvoiceFromTheSameSequence(t *testing
 	wantInOrder(t, res.body, "Workshop", "-1.5", "85.00", "-127.50", "-127.50", "-24.23", "-151.73")
 	res.wantNoBody(t, "Hosting")
 	res.wantNoBody(t, `href="`+cancellation+`/cancel"`)
+	res.wantNoBody(t, "Mark paid")
 	c.get(cancellation+"/pdf").wantStatus(t, http.StatusOK)
 	next := c.createDraft(draftForm(c.customerPath("acme"), "2026-10-01", "2026-10-31"))
 	c.addLine(next, lineForm("Extra", "1", "10"))
