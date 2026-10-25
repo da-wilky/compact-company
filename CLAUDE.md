@@ -1,3 +1,5 @@
+Adding routes, pages, strings, migrations or tests, or touching the flake: see `docs/agents/codebase.md`. Review rules: `CODING_STANDARDS.md`.
+
 ## Agent skills
 
 ### Issue tracker
