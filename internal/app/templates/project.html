@@ -1,0 +1,15 @@
+{{define "title"}}{{with .Data.Project.ID}}{{$.Data.Project.Name}}{{else}}{{t "projects.new"}}{{end}}{{end}}
+{{define "content"}}
+{{with .Data}}
+<h1>{{with .Project.ID}}{{t "projects.edit" $.Data.Project.Name}}{{else}}{{t "projects.new"}}{{end}}</h1>
+<p><a href="/customers/{{.Customer.ID}}/projects">{{t "projects.title" .Customer.Name}}</a></p>
+{{with .Errors}}<ul class="errors">{{range .}}<li>{{t .}}</li>{{end}}</ul>{{end}}
+<form method="post" action="{{with .Project.ID}}/projects/{{.}}{{else}}/customers/{{$.Data.Customer.ID}}/projects{{end}}" class="form">
+<label>{{t "projects.name"}} <input name="name" value="{{.Project.Name}}" required></label>
+<label>{{t "projects.hourly_rate" .Customer.Currency}} <input name="hourly_rate" value="{{.Project.HourlyRate}}" inputmode="decimal" placeholder="{{.Customer.HourlyRate}}">
+<span class="hint">{{t "projects.hourly_rate_hint" .Customer.HourlyRate .Customer.Currency}}</span></label>
+<label><input type="checkbox" name="billable"{{if .Project.Billable}} checked{{end}}> {{t "projects.billable_default"}}</label>
+<button>{{t "projects.save"}}</button>
+</form>
+{{end}}
+{{end}}

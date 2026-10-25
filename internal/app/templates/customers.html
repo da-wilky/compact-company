@@ -4,9 +4,9 @@
 <p><a href="/customers/new">{{t "customers.new"}}</a></p>
 {{with .Data}}
 <table>
-<thead><tr><th>{{t "customers.number"}}</th><th>{{t "customers.name"}}</th><th class="num">{{t "customers.hourly_rate"}}</th></tr></thead>
+<thead><tr><th>{{t "customers.number"}}</th><th>{{t "customers.name"}}</th><th class="num">{{t "customers.hourly_rate"}}</th><th>{{t "customers.projects"}}</th></tr></thead>
 <tbody>
-{{range .}}<tr><td>{{.Number}}</td><td><a href="/customers/{{.ID}}">{{.Name}}</a></td><td class="num">{{.HourlyRate}} {{.Currency}}</td></tr>
+{{range .}}<tr><td>{{.Number}}</td><td><a href="/customers/{{.ID}}">{{.Name}}</a></td><td class="num">{{.HourlyRate}} {{.Currency}}</td><td><a href="/customers/{{.ID}}/projects">{{t "customers.projects"}}</a></td></tr>
 {{end}}</tbody>
 </table>
 {{else}}
