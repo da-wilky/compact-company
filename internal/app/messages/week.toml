@@ -1,0 +1,12 @@
+"week.nav" = { en = "Week", de = "Woche" }
+"week.title" = { en = "Week of %s", de = "Woche ab %s" }
+"week.prev" = { en = "Previous week", de = "Vorherige Woche" }
+"week.next" = { en = "Next week", de = "Nächste Woche" }
+"week.total" = { en = "Total", de = "Summe" }
+"week.mon" = { en = "Mon", de = "Mo" }
+"week.tue" = { en = "Tue", de = "Di" }
+"week.wed" = { en = "Wed", de = "Mi" }
+"week.thu" = { en = "Thu", de = "Do" }
+"week.fri" = { en = "Fri", de = "Fr" }
+"week.sat" = { en = "Sat", de = "Sa" }
+"week.sun" = { en = "Sun", de = "So" }

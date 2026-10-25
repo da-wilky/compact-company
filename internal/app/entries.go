@@ -47,6 +47,7 @@ type entriesPage struct {
 	Day, Prev, Next string
 	Everyone        bool
 	Project         string
+	Self            string
 	Entries         []entryRow
 }
 
@@ -94,7 +95,7 @@ func (a *App) entryList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer func() { _ = rows.Close() }()
-	page := entriesPage{Day: from.Format(dayLayout), Prev: from.AddDate(0, 0, -1).Format(dayLayout), Next: to.Format(dayLayout), Everyone: everyone, Project: project}
+	page := entriesPage{Day: from.Format(dayLayout), Prev: from.AddDate(0, 0, -1).Format(dayLayout), Next: to.Format(dayLayout), Everyone: everyone, Project: project, Self: r.URL.RequestURI()}
 	for rows.Next() {
 		var e entryRow
 		var userID, start int64
@@ -134,12 +135,14 @@ type entryPage struct {
 	Customers []pickerCustomer
 	Errors    []string
 	ReadOnly  bool
+	Return    string
 }
 
 // renderEntry offers the stored project keep ("" = none) even when it no longer receives new time.
 func (a *App) renderEntry(w http.ResponseWriter, r *http.Request, status int, page entryPage, keep string) {
 	keepID, _ := strconv.ParseInt(keep, 10, 64)
 	var err error
+	page.Return = r.FormValue("return")
 	if page.Customers, err = a.loadPicker(keepID); err != nil {
 		a.serverError(w, r, err)
 		return
@@ -264,7 +267,7 @@ func (a *App) entryCreate(w http.ResponseWriter, r *http.Request) {
 		a.serverError(w, r, err)
 		return
 	}
-	http.Redirect(w, r, "/entries?day="+time.Unix(s.start, 0).In(loc).Format(dayLayout), http.StatusSeeOther)
+	redirectBack(w, r, time.Unix(s.start, 0).In(loc).Format(dayLayout))
 }
 
 func formatInput(t time.Time, loc *time.Location) string {
@@ -363,7 +366,7 @@ func (a *App) entryUpdate(w http.ResponseWriter, r *http.Request) {
 		a.serverError(w, r, err)
 		return
 	}
-	http.Redirect(w, r, "/entries?day="+time.Unix(s.start, 0).In(loc).Format(dayLayout), http.StatusSeeOther)
+	redirectBack(w, r, time.Unix(s.start, 0).In(loc).Format(dayLayout))
 }
 
 func forbidden(w http.ResponseWriter) {
@@ -388,5 +391,14 @@ func (a *App) entryDelete(w http.ResponseWriter, r *http.Request) {
 		a.serverError(w, r, err)
 		return
 	}
-	http.Redirect(w, r, "/entries?day="+f.Start[:len(dayLayout)], http.StatusSeeOther)
+	redirectBack(w, r, f.Start[:len(dayLayout)])
+}
+
+// redirectBack returns to the listing the entry was opened from, else to the given day.
+func redirectBack(w http.ResponseWriter, r *http.Request, day string) {
+	to := r.PostFormValue("return")
+	if !strings.HasPrefix(to, "/entries?") {
+		to = "/entries?day=" + day
+	}
+	http.Redirect(w, r, to, http.StatusSeeOther)
 }

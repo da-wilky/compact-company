@@ -4,6 +4,7 @@
 <h1>{{if .Entry.ID}}{{t "entries.edit"}}{{else}}{{t "entries.new"}}{{end}}</h1>
 {{with .Errors}}<ul class="errors">{{range .}}<li>{{t .}}</li>{{end}}</ul>{{end}}
 <form method="post" action="{{with .Entry.ID}}/entries/{{.}}{{else}}/entries{{end}}" class="form">
+<input type="hidden" name="return" value="{{.Return}}">
 <fieldset{{if .ReadOnly}} disabled{{end}}>
 <label>{{t "entries.project"}} <select name="project">
 <option value="">{{t "timers.no_project"}}</option>
@@ -22,6 +23,6 @@
 </fieldset>
 {{if not .ReadOnly}}<button>{{t "entries.save"}}</button>{{end}}
 </form>
-{{if and .Entry.ID (not .ReadOnly)}}<form method="post" action="/entries/{{.Entry.ID}}/delete"><button>{{t "entries.delete"}}</button></form>{{end}}
+{{if and .Entry.ID (not .ReadOnly)}}<form method="post" action="/entries/{{.Entry.ID}}/delete"><input type="hidden" name="return" value="{{.Return}}"><button>{{t "entries.delete"}}</button></form>{{end}}
 {{end}}
 {{end}}
