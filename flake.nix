@@ -28,19 +28,52 @@
         };
       });
 
-      apps = forAll (pkgs: {
-        default = {
-          type = "app";
-          program = toString (
-            pkgs.writeShellScript "compact-company-dev" ''
-              if [ $# -eq 0 ]; then
-                set -- serve --config ${./config.dev.toml}
-              fi
-              exec ${pkgs.lib.getExe self.packages.${pkgs.stdenv.hostPlatform.system}.default} "$@"
-            ''
-          );
-        };
-      });
+      apps = forAll (
+        pkgs:
+        pkgs.lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux {
+          ui-check = {
+            type = "app";
+            program = pkgs.lib.getExe (
+              pkgs.writeShellApplication {
+                name = "ui-check";
+                runtimeInputs = [
+                  pkgs.go
+                  pkgs.curl
+                  (pkgs.python3.withPackages (p: [ p.playwright ]))
+                ];
+                text = ''
+                  [ -f go.mod ] || { echo "run from the repository root" >&2; exit 1; }
+                  # A host LD_LIBRARY_PATH pointing at newer libraries breaks Chromium's glibc.
+                  unset LD_LIBRARY_PATH
+                  port=''${UI_CHECK_PORT:-9450}
+                  work=$(mktemp -d)
+                  mkdir "$work/shots"
+                  printf 'listen = "127.0.0.1:%s"\ndata_dir = "%s/data"\n\n[auth]\nmode = "none"\n' "$port" "$work" > "$work/config.toml"
+                  CGO_ENABLED=0 go build -o "$work/compact-company" ./cmd/compact-company
+                  "$work/compact-company" serve --config "$work/config.toml" > "$work/server.log" 2>&1 &
+                  server=$!
+                  trap 'kill $server' EXIT
+                  for _ in $(seq 50); do curl -s -o /dev/null "http://127.0.0.1:$port/" && break; sleep 0.2; done
+                  python3 -I scripts/ui_check.py "http://127.0.0.1:$port" "$work/shots" ${pkgs.lib.getExe pkgs.chromium}
+                '';
+              }
+            );
+          };
+        }
+        // {
+          default = {
+            type = "app";
+            program = toString (
+              pkgs.writeShellScript "compact-company-dev" ''
+                if [ $# -eq 0 ]; then
+                  set -- serve --config ${./config.dev.toml}
+                fi
+                exec ${pkgs.lib.getExe self.packages.${pkgs.stdenv.hostPlatform.system}.default} "$@"
+              ''
+            );
+          };
+        }
+      );
 
       checks = forAll (pkgs: {
         tests = self.packages.${pkgs.stdenv.hostPlatform.system}.default;

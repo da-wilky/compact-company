@@ -190,7 +190,7 @@ button.icon:hover { filter: brightness(1.1); }
 
 .week th, .week td { padding-left: .6rem; padding-right: .6rem; }
 .week th:first-child { font-weight: 550; white-space: nowrap; }
-.week thead a { color: inherit; }
+.week thead a { color: inherit; white-space: nowrap; }
 .week col.today { background: color-mix(in oklab, var(--accent) 9%, transparent); }
 .week col.weekend { background: color-mix(in oklab, var(--fg) 3%, transparent); }
 .week tr.customer th { padding-top: .9rem; padding-bottom: .3rem; color: var(--muted); font-size: .75rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }

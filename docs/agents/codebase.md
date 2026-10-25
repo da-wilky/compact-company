@@ -10,7 +10,7 @@ internal/db/migrations/       NNNN_name.sql
 internal/app/                 the http.Handler; one file per feature
   templates/                  layout.html + one template per page
   messages/<feature>.toml     translation catalog
-  static/                     app.css, htmx.min.js, served at /static/
+  static/                     app.css, app.js, htmx.min.js, favicon.svg, fonts/; served at /static/
   harness_test.go             test harness (package app_test)
   export_test.go              test-only exports
 ```
@@ -34,6 +34,20 @@ func init() {
 ## Add a page
 
 `internal/app/templates/<page>.html` defines `"title"` and `"content"`. Strings via `{{t "key" args…}}`.
+
+Build the page from the shared components in `app.css`:
+
+| Class | For |
+|---|---|
+| `.page-head` | title row: `h1` (plus `.hint` subtitle or a `.pill` action) left, `.pager` right |
+| `.pager` | navigation: `.prev` / `.next` links, a `form.jump` with a date input (`app.js` turns it into the calendar picker), `.pill` shortcuts before `.prev` |
+| `.filters` | filter row under `.page-head`: `.label`, `.seg` toggle (`aria-current` marks the active option), removable `.chip` |
+| `.actions` | row of pill links |
+| `.form`, `.settings` | form cards; a `.hint` inside a label stays muted |
+
+Strings that `app.js` needs come from the catalog as `data-*` attributes on `<body>` in `layout.html`.
+
+To preview while tests are red (`nix run` builds with tests and fails), use `go run ./cmd/compact-company serve --config <copy of config.dev.toml>` on another port; 9440 is often taken by the VS Code debug session. Templates and static files are embedded, so restart after each change.
 
 ## Add catalog strings
 
@@ -70,6 +84,8 @@ The harness injects `data_dir`; test configs leave it out. OIDC tests use the st
 ## Checks
 
 `nix flake check -L` is what CI runs: tests, lint and formatting. Flakes see only git-tracked files, so `git add` new files first.
+
+After any template or CSS change, run `nix run .#ui-check` (Linux): it seeds a throwaway instance, renders every page at 1280 and 390 px in light and dark, fails on horizontal overflow or invisible text, and prints a directory of screenshots. Look at the screenshots of the pages you touched; the check can't judge alignment or wrapping. New pages go into `pages` in `scripts/ui_check.py`.
 
 ## Nix
 
