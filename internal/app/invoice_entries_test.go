@@ -80,7 +80,7 @@ func TestPerProjectLinesRoundTheirTotalTime(t *testing.T) {
 	c.createEntry(entryForm(website, "2026-09-02T08:00", "2026-09-02T08:08", "a"))
 	c.createEntry(entryForm(website, "2026-09-03T08:00", "2026-09-03T08:08", "b"))
 
-	c.get(c.createDraft(pullForm(c, "project", "15"))).wantBody(t, `<td class="num">0.25</td>`)
+	wantInOrder(t, c.get(c.createDraft(pullForm(c, "project", "15"))).body, "website", "0.25", "h", "Net")
 }
 
 func TestUnroundedHoursRoundHalfUpToTwoDecimals(t *testing.T) {
@@ -89,7 +89,7 @@ func TestUnroundedHoursRoundHalfUpToTwoDecimals(t *testing.T) {
 	website, _ := c.acmeProjects()
 	c.createEntry(entryForm(website, "2026-09-02T08:00:00", "2026-09-02T09:00:18", "a"))
 
-	c.get(c.createDraft(pullForm(c, "project", "0"))).wantBody(t, `<td class="num">1.01</td>`)
+	wantInOrder(t, c.get(c.createDraft(pullForm(c, "project", "0"))).body, "website", "1.01", "h", "Net")
 }
 
 const lockedMessage = "remove it from the draft or cancel the line first"
@@ -157,7 +157,7 @@ func TestGeneratedLinesAreEditableAndListTheirEntries(t *testing.T) {
 	form.Set("detail", "September")
 	wantRedirect(t, alice.postForm(line, form), draft)
 
-	wantInOrder(t, alice.get(draft).body, "Website relaunch", "from time", "September", `<td class="num">2</td>`, "90.00", "180.00")
+	wantInOrder(t, alice.get(draft).body, "Website relaunch", "from time", "September", "2", "90.00", "180.00")
 }
 
 func TestRefreshRegeneratesGeneratedLinesFromTheCurrentRangeAndKeepsFreeLines(t *testing.T) {
