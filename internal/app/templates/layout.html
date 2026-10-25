@@ -11,7 +11,7 @@
 <header>
 <a class="brand" href="/">compact-company</a>
 {{if .User}}<nav><a href="/customers">{{t "customers.title"}}</a></nav>{{end}}
-{{with .User}}<span class="user">{{t "layout.signed_in_as" .DisplayName}}</span>{{end}}
+{{with .User}}<span class="user">{{t "layout.signed_in_as" .DisplayName}} · <a href="/settings">{{t "layout.settings"}}</a></span>{{end}}
 </header>
 <main>
 {{template "content" .}}

@@ -64,5 +64,6 @@ func TestDevModeAcceptedOnLoopbackAddress(t *testing.T) {
 func TestInvalidDefaultsFailStartup(t *testing.T) {
 	wantStartupError(t, devConfig+"[defaults]\nlanguage = \"fr\"\n", "defaults.language")
 	wantStartupError(t, devConfig+"[defaults]\ntimezone = \"Mars/Olympus\"\n", "defaults.timezone")
+	wantStartupError(t, devConfig+"[defaults]\ntimezone = \"Local\"\n", "defaults.timezone")
 	wantStartupError(t, devConfig+"[defaults]\ncurrency = \"XYZ\"\n", "defaults.currency")
 }

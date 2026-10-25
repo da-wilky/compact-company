@@ -53,3 +53,8 @@ th, td { text-align: left; padding: 0.4rem 0.5rem; border-bottom: 1px solid var(
 .form input, .form select, .form textarea { font: inherit; padding: 0.35rem 0.5rem; }
 .form button { justify-self: start; font: inherit; padding: 0.4rem 1rem; }
 .errors { color: #b3261e; }
+
+.settings label { display: block; margin-bottom: 0.75rem; }
+.settings select, .settings input { display: block; margin-top: 0.25rem; font: inherit; }
+.hint { color: var(--muted); font-size: 0.9rem; }
+.error { color: #b3261e; }
