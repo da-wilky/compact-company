@@ -10,8 +10,16 @@ function tickTimers() {
 }
 
 function markCurrentNav() {
+  const team = new URLSearchParams(location.search).has("everyone");
   for (const a of document.querySelectorAll(".tabs a")) {
     if (location.pathname.startsWith(a.pathname)) a.setAttribute("aria-current", "page");
+    if (team && (a.pathname === "/week" || a.pathname === "/entries")) a.search = "?everyone=1";
+  }
+}
+
+function submitJumpsOnChange() {
+  for (const input of document.querySelectorAll(".jump input[type=date]")) {
+    input.addEventListener("change", () => input.value && input.form.requestSubmit());
   }
 }
 
@@ -35,4 +43,5 @@ tickTimers();
 setInterval(tickTimers, 1000);
 document.addEventListener("htmx:afterSwap", tickTimers);
 markCurrentNav();
+submitJumpsOnChange();
 timezoneSelects();

@@ -41,6 +41,7 @@ type weekPage struct {
 	Totals     [7]time.Duration
 	Total      time.Duration
 	Prev, Next string
+	Current    bool
 	Everyone   bool
 }
 
@@ -67,6 +68,7 @@ func (a *App) week(w http.ResponseWriter, r *http.Request) {
 		if i < 7 {
 			date := bounds[i].Format(dayLayout)
 			page.Days[i] = weekDay{weekdays[i], date, date == today, bounds[i]}
+			page.Current = page.Current || date == today
 		}
 	}
 	rows, err := a.db.Query(`

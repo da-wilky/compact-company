@@ -4,10 +4,17 @@
 <div class="page-head">
 <div><h1>{{t "week.title" (date (index .Days 0).Time)}}</h1>
 <p class="hint">{{t "week.subtitle"}}</p></div>
-<div class="toolbar">
-<span class="seg"><a href="/week?week={{.Prev}}{{if .Everyone}}&everyone=1{{end}}">{{t "week.prev"}}</a><a href="/week?week={{.Next}}{{if .Everyone}}&everyone=1{{end}}">{{t "week.next"}}</a></span>
-<span class="seg"><a href="/week?week={{(index .Days 0).Date}}"{{if not .Everyone}} aria-current="true"{{end}}>{{t "entries.mine"}}</a><a href="/week?week={{(index .Days 0).Date}}&everyone=1"{{if .Everyone}} aria-current="true"{{end}}>{{t "entries.everyone"}}</a></span>
+<nav class="pager" aria-label="{{t "week.nav"}}">
+<a class="prev" href="/week?week={{.Prev}}{{if .Everyone}}&everyone=1{{end}}">{{t "week.prev"}}</a>
+<form class="jump" action="/week">{{if .Everyone}}<input type="hidden" name="everyone" value="1">{{end}}
+<input type="date" name="week" value="{{(index .Days 0).Date}}" aria-label="{{t "week.jump"}}"><noscript><button>{{t "entries.jump"}}</button></noscript></form>
+<a class="next" href="/week?week={{.Next}}{{if .Everyone}}&everyone=1{{end}}">{{t "week.next"}}</a>
+{{if not .Current}}<a class="pill" href="/week{{if .Everyone}}?everyone=1{{end}}">{{t "week.this"}}</a>{{end}}
+</nav>
 </div>
+<div class="filters">
+<span class="label">{{t "entries.show"}}</span>
+<span class="seg"><a href="/week?week={{(index .Days 0).Date}}"{{if not .Everyone}} aria-current="true"{{end}}>{{t "entries.mine"}}</a><a href="/week?week={{(index .Days 0).Date}}&everyone=1"{{if .Everyone}} aria-current="true"{{end}}>{{t "entries.everyone"}}</a></span>
 </div>
 <div class="table-wrap">
 <table class="week">

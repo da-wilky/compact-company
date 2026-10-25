@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -43,13 +44,59 @@ type entryRow struct {
 	Billable    sql.NullBool
 }
 
+const entriesPerPage = 10
+
+type entryDay struct {
+	Weekday   string
+	Date      time.Time
+	Total     time.Duration
+	Continued bool
+	Entries   []entryRow
+}
+
+// entriesFilter is what /entries shows: one Day ("" = every day), only the viewer's
+// entries unless Everyone, and an optional Project ("none" = unassigned).
+type entriesFilter struct {
+	Day      string
+	Everyone bool
+	Project  string
+}
+
+func (f entriesFilter) url(before string) string {
+	q := url.Values{}
+	if f.Day != "" {
+		q.Set("day", f.Day)
+	}
+	if f.Everyone {
+		q.Set("everyone", "1")
+	}
+	if f.Project != "" {
+		q.Set("project", f.Project)
+	}
+	if before != "" {
+		q.Set("before", before)
+	}
+	if len(q) == 0 {
+		return "/entries"
+	}
+	return "/entries?" + q.Encode()
+}
+
+func (f entriesFilter) with(change func(*entriesFilter)) string {
+	change(&f)
+	return f.url("")
+}
+
 type entriesPage struct {
-	Day, Prev, Next string
-	From            time.Time
-	Everyone        bool
-	Project         string
-	Self            string
-	Entries         []entryRow
+	entriesFilter
+	From                  time.Time
+	IsToday               bool
+	ProjectName           string
+	Self                  string
+	Prev, Next, Today     string
+	All, Mine, Team, Bare string
+	More                  string
+	Days                  []entryDay
 }
 
 func (a *App) entryList(w http.ResponseWriter, r *http.Request) {
@@ -58,45 +105,81 @@ func (a *App) entryList(w http.ResponseWriter, r *http.Request) {
 		a.serverError(w, r, err)
 		return
 	}
-	day := a.now().In(loc)
-	if s := r.FormValue("day"); s != "" {
-		if day, err = time.ParseInLocation(dayLayout, s, loc); err != nil {
-			a.errorPage(w, r, http.StatusBadRequest, "error.invalid_day")
-			return
-		}
-	}
-	from := time.Date(day.Year(), day.Month(), day.Day(), 0, 0, 0, 0, loc)
-	to := from.AddDate(0, 0, 1)
 	u := currentUser(r)
-	everyone := r.FormValue("everyone") != ""
-	project := r.FormValue("project")
-	args := []any{everyone, u.ID, from.Unix(), to.Unix()}
-	filter := ""
-	switch project {
+	f := entriesFilter{Everyone: r.FormValue("everyone") != "", Project: r.FormValue("project")}
+	where, args := " WHERE (? OR e.user_id = ?)", []any{f.Everyone, u.ID}
+	page := entriesPage{}
+	switch f.Project {
 	case "":
 	case "none":
-		filter = " AND e.project_id IS NULL"
+		where += " AND e.project_id IS NULL"
 	default:
-		id, err := strconv.ParseInt(project, 10, 64)
+		id, err := strconv.ParseInt(f.Project, 10, 64)
 		if err != nil {
 			a.errorPage(w, r, http.StatusBadRequest, "error.invalid_project")
 			return
 		}
-		filter = " AND e.project_id = ?"
+		err = a.db.QueryRow(`SELECT c.name || ' · ' || p.name FROM project p JOIN customer c ON c.id = p.customer_id WHERE p.id = ?`, id).Scan(&page.ProjectName)
+		if errors.Is(err, sql.ErrNoRows) {
+			a.errorPage(w, r, http.StatusBadRequest, "error.invalid_project")
+			return
+		}
+		if err != nil {
+			a.serverError(w, r, err)
+			return
+		}
+		where += " AND e.project_id = ?"
 		args = append(args, id)
 	}
+	totalsWhere, totalsArgs := where, args
+	today := a.now().In(loc).Format(dayLayout)
+	limit := ""
+	var cursorDay string
+	if s := r.FormValue("day"); s != "" {
+		day, err := time.ParseInLocation(dayLayout, s, loc)
+		if err != nil {
+			a.errorPage(w, r, http.StatusBadRequest, "error.invalid_day")
+			return
+		}
+		f.Day = s
+		page.From = day
+		page.IsToday = s == today
+		page.Prev = f.with(func(f *entriesFilter) { f.Day = day.AddDate(0, 0, -1).Format(dayLayout) })
+		page.Next = f.with(func(f *entriesFilter) { f.Day = day.AddDate(0, 0, 1).Format(dayLayout) })
+		page.Today = f.with(func(f *entriesFilter) { f.Day = today })
+		page.All = f.with(func(f *entriesFilter) { f.Day = "" })
+		where += " AND e.start_time >= ? AND e.start_time < ?"
+		args = append(args, day.Unix(), day.AddDate(0, 0, 1).Unix())
+	} else {
+		if s := r.FormValue("before"); s != "" {
+			start, id, err := parseCursor(s)
+			if err != nil {
+				a.errorPage(w, r, http.StatusBadRequest, "error.invalid_page")
+				return
+			}
+			cursorDay = time.Unix(start, 0).In(loc).Format(dayLayout)
+			where += " AND (e.start_time, e.id) < (?, ?)"
+			args = append(args, start, id)
+		}
+		limit = fmt.Sprintf(" LIMIT %d", entriesPerPage+1)
+	}
+	page.entriesFilter = f
+	page.Self = f.url("")
+	page.Mine = f.with(func(f *entriesFilter) { f.Everyone = false })
+	page.Team = f.with(func(f *entriesFilter) { f.Everyone = true })
+	page.Bare = f.with(func(f *entriesFilter) { f.Project = "" })
+
 	rows, err := a.db.Query(`
 		SELECT e.id, e.user_id, u.display_name, ifnull(c.name || ' · ' || p.name, ''), e.start_time, e.end_time, e.description, e.billable
 		FROM time_entry e JOIN user u ON u.id = e.user_id
-		LEFT JOIN project p ON p.id = e.project_id LEFT JOIN customer c ON c.id = p.customer_id
-		WHERE (? OR e.user_id = ?) AND e.start_time >= ? AND e.start_time < ?`+filter+` ORDER BY e.start_time, e.id`,
-		args...)
+		LEFT JOIN project p ON p.id = e.project_id LEFT JOIN customer c ON c.id = p.customer_id`+where+`
+		ORDER BY e.start_time DESC, e.id DESC`+limit, args...)
 	if err != nil {
 		a.serverError(w, r, err)
 		return
 	}
 	defer func() { _ = rows.Close() }()
-	page := entriesPage{Day: from.Format(dayLayout), From: from, Prev: from.AddDate(0, 0, -1).Format(dayLayout), Next: to.Format(dayLayout), Everyone: everyone, Project: project, Self: r.URL.RequestURI()}
+	var entries []entryRow
 	for rows.Next() {
 		var e entryRow
 		var userID, start int64
@@ -113,13 +196,78 @@ func (a *App) entryList(w http.ResponseWriter, r *http.Request) {
 			e.End = time.Unix(end.Int64, 0)
 		}
 		e.Duration = e.End.Sub(e.Start)
-		page.Entries = append(page.Entries, e)
+		entries = append(entries, e)
 	}
 	if err := rows.Err(); err != nil {
 		a.serverError(w, r, err)
 		return
 	}
+	if limit != "" && len(entries) > entriesPerPage {
+		entries = entries[:entriesPerPage]
+		last := entries[len(entries)-1]
+		page.More = f.url(fmt.Sprintf("%d-%d", last.Start.Unix(), last.ID))
+	}
+	for _, e := range entries {
+		start := e.Start.In(loc)
+		date := time.Date(start.Year(), start.Month(), start.Day(), 0, 0, 0, 0, loc)
+		if n := len(page.Days); n == 0 || !page.Days[n-1].Date.Equal(date) {
+			page.Days = append(page.Days, entryDay{Weekday: weekdays[(int(date.Weekday())+6)%7], Date: date, Continued: n == 0 && date.Format(dayLayout) == cursorDay})
+		}
+		d := &page.Days[len(page.Days)-1]
+		d.Entries = append(d.Entries, e)
+	}
+	if err := a.sumEntryDays(page.Days, totalsWhere, totalsArgs); err != nil {
+		a.serverError(w, r, err)
+		return
+	}
+	if r.Header.Get("HX-Request") != "" && r.FormValue("before") != "" {
+		a.execute(w, r, http.StatusOK, "entries", "entry-days", view{Data: page})
+		return
+	}
 	a.render(w, r, http.StatusOK, "entries", page)
+}
+
+// sumEntryDays totals each day over all its matching entries, not only the ones on this page.
+func (a *App) sumEntryDays(days []entryDay, where string, args []any) error {
+	if len(days) == 0 {
+		return nil
+	}
+	from, to := days[len(days)-1].Date, days[0].Date.AddDate(0, 0, 1)
+	rows, err := a.db.Query(`SELECT e.start_time, e.end_time FROM time_entry e`+where+` AND e.start_time >= ? AND e.start_time < ?`,
+		append(args, from.Unix(), to.Unix())...)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = rows.Close() }()
+	for rows.Next() {
+		var start int64
+		var end sql.NullInt64
+		if err := rows.Scan(&start, &end); err != nil {
+			return err
+		}
+		finish := a.now()
+		if end.Valid {
+			finish = time.Unix(end.Int64, 0)
+		}
+		for i := range days {
+			if s := time.Unix(start, 0); !s.Before(days[i].Date) && s.Before(days[i].Date.AddDate(0, 0, 1)) {
+				days[i].Total += finish.Sub(s)
+			}
+		}
+	}
+	return rows.Err()
+}
+
+func parseCursor(s string) (start, id int64, err error) {
+	a, b, ok := strings.Cut(s, "-")
+	if !ok {
+		return 0, 0, strconv.ErrSyntax
+	}
+	if start, err = strconv.ParseInt(a, 10, 64); err != nil {
+		return 0, 0, err
+	}
+	id, err = strconv.ParseInt(b, 10, 64)
+	return start, id, err
 }
 
 // entryForm holds the submitted values as the form shows them; Billable is "", "yes" or "no" ("" = project default).

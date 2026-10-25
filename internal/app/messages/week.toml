@@ -11,3 +11,5 @@
 "week.sat" = { en = "Sat", de = "Sa" }
 "week.sun" = { en = "Sun", de = "So" }
 "week.subtitle" = { en = "Hours per project and day", de = "Stunden pro Projekt und Tag" }
+"week.this" = { en = "This week", de = "Diese Woche" }
+"week.jump" = { en = "Go to week of date", de = "Zur Woche des Datums" }

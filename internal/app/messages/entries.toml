@@ -24,4 +24,11 @@
 "entries.delete" = { en = "Delete", de = "Löschen" }
 "entries.user" = { en = "User", de = "Benutzer" }
 "entries.mine" = { en = "Mine", de = "Meine" }
-"entries.everyone" = { en = "Everyone", de = "Alle" }
+"entries.everyone" = { en = "Team", de = "Team" }
+"entries.show" = { en = "Show", de = "Anzeigen" }
+"entries.day" = { en = "Day", de = "Tag" }
+"entries.jump" = { en = "Go", de = "Los" }
+"entries.today" = { en = "Today", de = "Heute" }
+"entries.all" = { en = "All entries", de = "Alle Einträge" }
+"entries.more" = { en = "Load more", de = "Mehr laden" }
+"entries.clear_project" = { en = "Remove project filter", de = "Projektfilter entfernen" }

@@ -105,6 +105,15 @@ func TestWeekNavigatesToPreviousAndNextWeek(t *testing.T) {
 	c.get("/week?week=nope").wantStatus(t, http.StatusBadRequest)
 }
 
+func TestWeekOffersThisWeekOnlyWhenElsewhere(t *testing.T) {
+	ta := newTestApp(t, devConfig)
+	c := ta.client()
+
+	c.get("/week").wantNoBody(t, "This week</a>")
+	c.get("/week?week=2026-11-04&everyone=1").wantBody(t, `<a class="pill" href="/week?everyone=1">This week</a>`)
+	c.get("/week?week=2026-11-04").wantBody(t, `<input type="date" name="week" value="2026-11-02"`)
+}
+
 func TestWeekShowsOnlyMineUnlessEveryone(t *testing.T) {
 	ta := newTestApp(t, devConfig+`
 [defaults]
@@ -120,7 +129,7 @@ timezone = "Europe/Berlin"
 
 	mine.wantBody(t, `<a href="/entries?day=2026-10-27&project=none">1:00</a>`)
 	mine.wantNoBody(t, "0:30")
-	mine.wantBody(t, `href="/week?week=2026-10-26&everyone=1">Everyone</a>`)
+	mine.wantBody(t, `href="/week?week=2026-10-26&everyone=1">Team</a>`)
 	everyone.wantBody(t, `<a href="/entries?day=2026-10-26&project=none&everyone=1">0:30</a>`)
 	everyone.wantBody(t, `<a href="/entries?day=2026-10-27&project=none&everyone=1">1:00</a>`)
 	everyone.wantBody(t, `href="/week?week=2026-11-02&everyone=1">Next week</a>`)
@@ -139,8 +148,9 @@ func TestEditingFromADrilledInCellReturnsToIt(t *testing.T) {
 	if len(links) != 2 {
 		t.Fatalf("edit links = %v", links)
 	}
-	c.get(links[0][1]).wantBody(t, `<input type="hidden" name="return" value="`+strings.ReplaceAll(cell, "&", "&amp;")+`">`)
-	edit, del := links[0][2], links[1][2]
+	self := "/entries?day=2026-10-26&amp;everyone=1&amp;project=" + project
+	c.get(links[0][1]).wantBody(t, `<input type="hidden" name="return" value="`+self+`">`)
+	edit, del := links[1][2], links[0][2]
 	update := entryForm(project, "2026-10-26T06:00", "2026-10-26T06:30", "first")
 	update.Set("return", cell)
 	wantRedirect(t, c.postForm(edit, update), cell)

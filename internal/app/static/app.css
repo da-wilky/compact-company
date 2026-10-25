@@ -80,11 +80,42 @@ h1 { margin: 0 0 1rem; font-size: 1.75rem; font-weight: 650; letter-spacing: -.0
 .page-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem; margin-bottom: 1.25rem; }
 .page-head h1 { margin: 0; }
 .page-head .hint { margin: .2rem 0 0; }
-.toolbar { display: flex; flex-wrap: wrap; gap: .5rem; }
-.seg { display: inline-flex; gap: 2px; }
-.seg a { padding: .3rem .8rem; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--muted); font-size: .9rem; }
+.page-head .title { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; }
+.pill { padding: .35rem .9rem; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--fg); font-size: .9rem; font-weight: 500; }
+.pill:hover { border-color: var(--accent); text-decoration: none; }
+.title .pill { border-color: var(--accent-soft); background: var(--accent-soft); color: var(--accent); }
+
+.pager { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; }
+.pager .prev, .pager .next { display: grid; place-items: center; width: 34px; height: 34px; border: 1px solid var(--field); border-radius: 50%; background: var(--surface); color: var(--fg); font-size: 0; }
+.pager .prev::before { content: "‹"; font-size: 1.3rem; line-height: 1; }
+.pager .next::before { content: "›"; font-size: 1.3rem; line-height: 1; }
+.pager .prev:hover, .pager .next:hover { border-color: var(--accent); color: var(--accent); text-decoration: none; }
+.jump { display: flex; gap: .3rem; margin: 0; }
+.jump input { padding: .3rem .6rem; border-radius: 999px; font-variant-numeric: tabular-nums; }
+
+.filters { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; margin: 0 0 1.25rem; padding: .5rem .75rem; border-radius: 12px; background: var(--side); }
+.filters .label { color: var(--muted); font-size: .75rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
+.seg { display: inline-flex; padding: 2px; border: 1px solid var(--field); border-radius: 999px; background: var(--surface); }
+.seg a { padding: .2rem .8rem; border-radius: 999px; color: var(--muted); font-size: .85rem; font-weight: 500; }
 .seg a:hover { color: var(--fg); text-decoration: none; }
-.seg a[aria-current] { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+.seg a[aria-current] { background: var(--accent); color: var(--accent-fg); }
+.chip { display: inline-flex; align-items: center; gap: .35rem; padding: .2rem .35rem .2rem .75rem; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: .85rem; font-weight: 500; }
+.chip a { display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; color: inherit; }
+.chip a:hover { background: var(--surface); text-decoration: none; }
+
+.entry-day { margin-bottom: .75rem; }
+.entry-day h2 { display: flex; align-items: baseline; gap: .75rem; margin: 1.25rem 0 .5rem; font-size: 1rem; font-weight: 650; }
+.entry-day h2 .sum { margin-left: auto; color: var(--muted); font-weight: 600; font-variant-numeric: tabular-nums; }
+.entry-day thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.entry-day table { table-layout: fixed; min-width: 40rem; }
+.entry-day .c-user { width: 9rem; }
+.entry-day .c-time { width: 8.5rem; }
+.entry-day .c-dur { width: 5.5rem; }
+.entry-day .c-project { width: 30%; }
+.entry-day .c-bill { width: 7rem; }
+.entry-day td { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.more { display: block; margin: 1rem auto 0; padding: .5rem 1.2rem; width: max-content; border: 1px solid var(--field); border-radius: 999px; background: var(--surface); color: var(--fg); font-weight: 500; }
+.more:hover { border-color: var(--accent); text-decoration: none; }
 
 button { padding: .45rem 1.1rem; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--fg); font: inherit; font-weight: 500; cursor: pointer; }
 button:hover { border-color: var(--accent); }

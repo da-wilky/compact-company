@@ -1,7 +1,10 @@
 package app_test
 
 import (
+	"fmt"
+	"html"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"regexp"
 	"strings"
@@ -30,9 +33,85 @@ func TestManualEntryShowsInTheDayListing(t *testing.T) {
 	c.get("/entries?day=2026-10-27").wantNoBody(t, "kickoff")
 }
 
+func TestEntriesListsAllDaysNewestFirstGroupedByDay(t *testing.T) {
+	ta := newTestApp(t, devConfig)
+	c := ta.client()
+	c.createEntry(entryForm("", "2026-10-20T08:00", "2026-10-20T09:00", "last week"))
+	c.createEntry(entryForm("", "2026-10-26T06:00", "2026-10-26T06:30", "early"))
+	c.createEntry(entryForm("", "2026-10-26T07:00", "2026-10-26T08:00", "later"))
+
+	res := c.get("/entries")
+
+	res.wantStatus(t, http.StatusOK)
+	wantInOrder(t, res.body, `<h2>Mon 2026-10-26 <span class="sum">1:30</span></h2>`, "later", "early", `<h2>Tue 2026-10-20 <span class="sum">1:00</span></h2>`, "last week")
+}
+
+func (c *client) hxGet(path string) *response {
+	c.t.Helper()
+	req := httptest.NewRequest(http.MethodGet, baseURL+path, nil)
+	req.Header.Set("HX-Request", "true")
+	return c.do(req)
+}
+
+var moreLink = regexp.MustCompile(`<a class="more" href="([^"]+)"`)
+
+func TestEntriesLoadTenAtATimeAndContinueTheDay(t *testing.T) {
+	ta := newTestApp(t, devConfig)
+	c := ta.client()
+	for h := 8; h < 19; h++ {
+		c.createEntry(entryForm("", fmt.Sprintf("2026-10-26T%02d:00", h), fmt.Sprintf("2026-10-26T%02d:30", h), fmt.Sprintf("entry %02d", h)))
+	}
+	c.createEntry(entryForm("", "2026-10-25T08:00", "2026-10-25T09:00", "sunday"))
+
+	first := c.get("/entries")
+
+	first.wantBody(t, `<h2>Mon 2026-10-26 <span class="sum">5:30</span></h2>`)
+	wantInOrder(t, first.body, "entry 18", "entry 09")
+	first.wantNoBody(t, "entry 08")
+	m := moreLink.FindStringSubmatch(first.body)
+	if m == nil {
+		t.Fatalf("no load-more link:\n%s", first.body)
+	}
+	more := c.hxGet(html.UnescapeString(m[1]))
+	more.wantNoBody(t, "<html")
+	more.wantNoBody(t, "entry 09")
+	more.wantNoBody(t, "<h2>Mon 2026-10-26")
+	wantInOrder(t, more.body, "entry 08", `<h2>Sun 2026-10-25 <span class="sum">1:00</span></h2>`, "sunday")
+	more.wantNoBody(t, `class="more"`)
+	c.get("/entries?before=nope").wantStatus(t, http.StatusBadRequest)
+}
+
+func TestEntryFiltersShowTheProjectAndKeepEachOther(t *testing.T) {
+	ta := newTestApp(t, devConfig)
+	c := ta.client()
+	project := c.websiteProject()
+
+	res := c.get("/entries?day=2026-10-26&project=" + project)
+
+	res.wantBody(t, `<span class="chip">acme · website <a href="/entries?day=2026-10-26"`)
+	res.wantBody(t, `href="/entries?day=2026-10-26&amp;everyone=1&amp;project=`+project+`">Team</a>`)
+	res.wantBody(t, `<a class="pill" href="/entries?project=`+project+`">All entries</a>`)
+	res.wantNoBody(t, ">Today</a>")
+	c.get("/entries?day=2026-10-25").wantBody(t, `<a class="pill" href="/entries?day=2026-10-26">Today</a>`)
+	c.get("/entries?project=999").wantStatus(t, http.StatusBadRequest)
+}
+
+// wantInOrder fails unless each of parts occurs in body, after the one before it.
+func wantInOrder(t *testing.T, body string, parts ...string) {
+	t.Helper()
+	rest := body
+	for _, p := range parts {
+		i := strings.Index(rest, p)
+		if i < 0 {
+			t.Fatalf("body lacks %q after the previous parts:\n%s", p, body)
+		}
+		rest = rest[i+len(p):]
+	}
+}
+
 var entryLink = regexp.MustCompile(`href="(/entries/\d+)[?"]`)
 
-// createEntry creates an entry and returns its path, scraped from its day's listing.
+// createEntry creates an entry and returns its path, scraped from its day's listing (newest first).
 func (c *client) createEntry(form url.Values) string {
 	c.t.Helper()
 	res := c.postForm("/entries", form)
@@ -41,7 +120,7 @@ func (c *client) createEntry(form url.Values) string {
 	if m == nil {
 		c.t.Fatal("no entry link in listing")
 	}
-	return m[len(m)-1][1]
+	return m[0][1]
 }
 
 func TestAssigningAnUnassignedEntryAppliesTheProjectDefault(t *testing.T) {
@@ -115,7 +194,7 @@ func TestColleaguesCanViewButNotChangeAnEntry(t *testing.T) {
 	everyone := bob.get("/entries?day=2026-10-26&everyone=1")
 	everyone.wantBody(t, "<td>alice</td><td>08:00–09:00</td>")
 	everyone.wantNoBody(t, `href="`+entry+`"`)
-	everyone.wantBody(t, `href="/entries?day=2026-10-27&everyone=1"`)
+	everyone.wantBody(t, `href="/entries?day=2026-10-27&amp;everyone=1"`)
 }
 
 func TestDayListingFiltersByProject(t *testing.T) {
@@ -130,7 +209,7 @@ func TestDayListingFiltersByProject(t *testing.T) {
 
 	website.wantBody(t, "on website")
 	website.wantNoBody(t, "orphan")
-	website.wantBody(t, `href="/entries?day=2026-10-27&project=`+project+`"`)
+	website.wantBody(t, `href="/entries?day=2026-10-27&amp;project=`+project+`"`)
 	unassigned.wantBody(t, "orphan")
 	unassigned.wantNoBody(t, "on website")
 	c.get("/entries?day=2026-10-26&project=x").wantStatus(t, http.StatusBadRequest)
@@ -227,7 +306,7 @@ func TestStoppedTimerIsListedWithItsEndAndDuration(t *testing.T) {
 	c.hxPost(timer+"/stop", nil)
 
 	list := c.get("/entries")
-	list.wantBody(t, "Entries on 2026-10-26")
+	list.wantBody(t, "<h2>Mon 2026-10-26 ")
 	list.wantBody(t, "09:00–10:30")
 	list.wantBody(t, `<td class="num">1:30</td>`)
 }
