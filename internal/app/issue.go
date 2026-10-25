@@ -224,7 +224,7 @@ func (a *App) loadIssuedLines(inv *issuedInvoice) error {
 		if err := rows.Scan(&l.ID, &cancelID, &cancelNumber); err != nil {
 			return err
 		}
-		l.CancelledBy = claimedBy(cancelID, cancelNumber)
+		l.CancelledBy = invoiceRefOrNil(cancelID, cancelNumber)
 		inv.Lines = append(inv.Lines, l)
 	}
 	return rows.Err()

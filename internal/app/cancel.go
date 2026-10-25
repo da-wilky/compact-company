@@ -17,9 +17,9 @@ func init() {
 }
 
 type cancelPage struct {
-	Invoice         issuedInvoice
-	Reason          string
-	Errors          []string
+	Invoice issuedInvoice
+	Reason  string
+	Errors  []string
 	renderFailure
 }
 

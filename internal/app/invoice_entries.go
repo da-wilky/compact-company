@@ -61,7 +61,7 @@ type invoiceRef struct {
 // claimJoin joins time_entry e to the invoice claiming it as ci.
 const claimJoin = ` LEFT JOIN invoice_line cl ON cl.id = e.invoice_line_id LEFT JOIN invoice ci ON ci.id = cl.invoice_id`
 
-func claimedBy(id sql.NullInt64, number sql.NullString) *invoiceRef {
+func invoiceRefOrNil(id sql.NullInt64, number sql.NullString) *invoiceRef {
 	if !id.Valid {
 		return nil
 	}
