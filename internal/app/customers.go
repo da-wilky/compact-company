@@ -50,6 +50,12 @@ type customer struct {
 	Timezone        string
 	HourlyRate      string
 	Note            string
+	Archived        bool
+}
+
+type customersPage struct {
+	Customers    []customer
+	ShowArchived bool
 }
 
 type customerPage struct {
@@ -59,28 +65,28 @@ type customerPage struct {
 }
 
 func (a *App) customerList(w http.ResponseWriter, r *http.Request) {
-	rows, err := a.db.Query(`SELECT id, number, name, currency, hourly_rate FROM customer WHERE archived = 0 ORDER BY id`)
+	page := customersPage{ShowArchived: r.FormValue("archived") != ""}
+	rows, err := a.db.Query(`SELECT id, number, name, currency, hourly_rate, archived FROM customer WHERE ? OR archived = 0 ORDER BY id`, page.ShowArchived)
 	if err != nil {
 		a.serverError(w, r, err)
 		return
 	}
 	defer func() { _ = rows.Close() }()
-	var customers []customer
 	for rows.Next() {
 		var c customer
 		var rate int64
-		if err := rows.Scan(&c.ID, &c.Number, &c.Name, &c.Currency, &rate); err != nil {
+		if err := rows.Scan(&c.ID, &c.Number, &c.Name, &c.Currency, &rate, &c.Archived); err != nil {
 			a.serverError(w, r, err)
 			return
 		}
 		c.HourlyRate = formatAmount(rate, currency.MustParseISO(c.Currency))
-		customers = append(customers, c)
+		page.Customers = append(page.Customers, c)
 	}
 	if err := rows.Err(); err != nil {
 		a.serverError(w, r, err)
 		return
 	}
-	a.render(w, r, http.StatusOK, "customers", customers)
+	a.render(w, r, http.StatusOK, "customers", page)
 }
 
 func (a *App) customerNew(w http.ResponseWriter, r *http.Request) {
@@ -180,27 +186,34 @@ func (a *App) insertCustomer(c customer, rate int64) error {
 	return tx.Commit()
 }
 
-func (a *App) customerEdit(w http.ResponseWriter, r *http.Request) {
+// loadCustomer writes 404 or 500 itself when ok is false.
+func (a *App) loadCustomer(w http.ResponseWriter, r *http.Request) (customer, bool) {
 	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil {
 		http.NotFound(w, r)
-		return
+		return customer{}, false
 	}
 	c := customer{ID: id}
 	var rate int64
-	err = a.db.QueryRow(`SELECT number, name, address, email, currency, invoice_language, timezone, hourly_rate, note
+	err = a.db.QueryRow(`SELECT number, name, address, email, currency, invoice_language, timezone, hourly_rate, note, archived
 		FROM customer WHERE id = ?`, id).
-		Scan(&c.Number, &c.Name, &c.Address, &c.Email, &c.Currency, &c.InvoiceLanguage, &c.Timezone, &rate, &c.Note)
+		Scan(&c.Number, &c.Name, &c.Address, &c.Email, &c.Currency, &c.InvoiceLanguage, &c.Timezone, &rate, &c.Note, &c.Archived)
 	if errors.Is(err, sql.ErrNoRows) {
 		http.NotFound(w, r)
-		return
+		return c, false
 	}
 	if err != nil {
 		a.serverError(w, r, err)
-		return
+		return c, false
 	}
 	c.HourlyRate = formatAmount(rate, currency.MustParseISO(c.Currency))
-	a.renderCustomer(w, r, http.StatusOK, c, nil)
+	return c, true
+}
+
+func (a *App) customerEdit(w http.ResponseWriter, r *http.Request) {
+	if c, ok := a.loadCustomer(w, r); ok {
+		a.renderCustomer(w, r, http.StatusOK, c, nil)
+	}
 }
 
 func (a *App) customerUpdate(w http.ResponseWriter, r *http.Request) {
@@ -216,8 +229,9 @@ func (a *App) customerUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 	defer func() { _ = tx.Rollback() }()
 	var number, oldCurrency string
+	var archived bool
 	var oldRate int64
-	err = tx.QueryRow(`SELECT number, currency, hourly_rate FROM customer WHERE id = ?`, id).Scan(&number, &oldCurrency, &oldRate)
+	err = tx.QueryRow(`SELECT number, currency, hourly_rate, archived FROM customer WHERE id = ?`, id).Scan(&number, &oldCurrency, &oldRate, &archived)
 	if errors.Is(err, sql.ErrNoRows) {
 		http.NotFound(w, r)
 		return
@@ -228,7 +242,7 @@ func (a *App) customerUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 	prev := storedRate{oldRate, currency.MustParseISO(oldCurrency)}
 	c, rate, errs := customerFromForm(r, &prev)
-	c.ID, c.Number = id, number
+	c.ID, c.Number, c.Archived = id, number, archived
 	if errs != nil {
 		_ = tx.Rollback()
 		a.renderCustomer(w, r, http.StatusUnprocessableEntity, c, errs)

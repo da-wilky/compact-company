@@ -37,11 +37,13 @@ type project struct {
 	HourlyRate    string
 	EffectiveRate string
 	Billable      bool
+	Archived      bool
 }
 
 type projectsPage struct {
-	Customer projectCustomer
-	Projects []project
+	Customer     projectCustomer
+	Projects     []project
+	ShowArchived bool
 }
 
 type projectPage struct {
@@ -87,18 +89,18 @@ func (a *App) projectList(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	rows, err := a.db.Query(`SELECT id, name, hourly_rate, billable FROM project
-		WHERE customer_id = ? AND archived = 0 ORDER BY id`, c.ID)
+	page := projectsPage{Customer: c, ShowArchived: r.FormValue("archived") != ""}
+	rows, err := a.db.Query(`SELECT id, name, hourly_rate, billable, archived FROM project
+		WHERE customer_id = ? AND (? OR archived = 0) ORDER BY id`, c.ID, page.ShowArchived)
 	if err != nil {
 		a.serverError(w, r, err)
 		return
 	}
 	defer func() { _ = rows.Close() }()
-	page := projectsPage{Customer: c}
 	for rows.Next() {
 		var p project
 		var rate sql.NullInt64
-		if err := rows.Scan(&p.ID, &p.Name, &rate, &p.Billable); err != nil {
+		if err := rows.Scan(&p.ID, &p.Name, &rate, &p.Billable, &p.Archived); err != nil {
 			a.serverError(w, r, err)
 			return
 		}
@@ -175,8 +177,8 @@ func (a *App) projectFromPath(w http.ResponseWriter, r *http.Request) (projectCu
 	p := project{ID: id}
 	var customerID int64
 	var rate sql.NullInt64
-	err = a.db.QueryRow(`SELECT customer_id, name, hourly_rate, billable FROM project WHERE id = ?`, id).
-		Scan(&customerID, &p.Name, &rate, &p.Billable)
+	err = a.db.QueryRow(`SELECT customer_id, name, hourly_rate, billable, archived FROM project WHERE id = ?`, id).
+		Scan(&customerID, &p.Name, &rate, &p.Billable, &p.Archived)
 	var c projectCustomer
 	if err == nil {
 		c, err = a.loadProjectCustomer(customerID)
@@ -209,7 +211,7 @@ func (a *App) projectUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	p, rate, errs := projectFromForm(r, c.unit)
-	p.ID = stored.ID
+	p.ID, p.Archived = stored.ID, stored.Archived
 	if errs != nil {
 		a.render(w, r, http.StatusUnprocessableEntity, "project", projectPage{Customer: c, Project: p, Errors: errs})
 		return

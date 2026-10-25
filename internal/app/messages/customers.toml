@@ -19,3 +19,5 @@
 "customers.error.hourly_rate" = { en = "Default hourly rate must be a non-negative decimal with no more decimals than the currency allows.", de = "Standard-Stundensatz muss eine nicht negative Dezimalzahl mit höchstens so vielen Nachkommastellen sein, wie die Währung erlaubt." }
 "customers.error.invoice_language" = { en = "Unsupported invoice language.", de = "Nicht unterstützte Rechnungssprache." }
 "customers.error.timezone" = { en = "Unknown timezone.", de = "Unbekannte Zeitzone." }
+"customers.error.timer_running" = { en = "A timer is running on a project of this customer.", de = "Auf einem Projekt dieses Kunden läuft ein Timer." }
+"customers.error.has_projects" = { en = "This customer has projects.", de = "Dieser Kunde hat Projekte." }

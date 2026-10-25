@@ -136,9 +136,11 @@ type entryPage struct {
 	ReadOnly  bool
 }
 
-func (a *App) renderEntry(w http.ResponseWriter, r *http.Request, status int, page entryPage) {
+// renderEntry offers the stored project keep ("" = none) even when it no longer receives new time.
+func (a *App) renderEntry(w http.ResponseWriter, r *http.Request, status int, page entryPage, keep string) {
+	keepID, _ := strconv.ParseInt(keep, 10, 64)
 	var err error
-	if page.Customers, err = a.loadPicker(); err != nil {
+	if page.Customers, err = a.loadPicker(keepID); err != nil {
 		a.serverError(w, r, err)
 		return
 	}
@@ -146,7 +148,7 @@ func (a *App) renderEntry(w http.ResponseWriter, r *http.Request, status int, pa
 }
 
 func (a *App) entryNew(w http.ResponseWriter, r *http.Request) {
-	a.renderEntry(w, r, http.StatusOK, entryPage{})
+	a.renderEntry(w, r, http.StatusOK, entryPage{}, "")
 }
 
 // savedEntry is a validated entry ready to be written.
@@ -157,7 +159,8 @@ type savedEntry struct {
 }
 
 // validateEntry checks f inside tx and returns what to store, or validation errors as catalog keys.
-func validateEntry(tx *sql.Tx, u *User, f entryForm, loc *time.Location) (savedEntry, []string, error) {
+// The stored project keep ("" = none) stays allowed after it was archived.
+func validateEntry(tx *sql.Tx, u *User, f entryForm, loc *time.Location, keep string) (savedEntry, []string, error) {
 	var s savedEntry
 	var errs []string
 	start, err := parseInput(f.Start, loc)
@@ -182,7 +185,12 @@ func validateEntry(tx *sql.Tx, u *User, f entryForm, loc *time.Location) (savedE
 	} else if id, err := strconv.ParseInt(f.Project, 10, 64); err != nil {
 		errs = append(errs, "entries.error.project")
 	} else {
-		def, err := activeProjectBillable(tx, id)
+		var def bool
+		if f.Project == keep {
+			err = tx.QueryRow(`SELECT billable FROM project WHERE id = ?`, id).Scan(&def)
+		} else {
+			def, err = activeProjectBillable(tx, id)
+		}
 		if errors.Is(err, sql.ErrNoRows) {
 			errs = append(errs, "entries.error.project")
 		} else if err != nil {
@@ -238,13 +246,13 @@ func (a *App) entryCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer func() { _ = tx.Rollback() }()
-	s, errs, err := validateEntry(tx, u, f, loc)
+	s, errs, err := validateEntry(tx, u, f, loc, "")
 	if err != nil {
 		a.serverError(w, r, err)
 		return
 	}
 	if errs != nil {
-		a.renderEntry(w, r, http.StatusUnprocessableEntity, entryPage{Entry: f, Errors: errs})
+		a.renderEntry(w, r, http.StatusUnprocessableEntity, entryPage{Entry: f, Errors: errs}, "")
 		return
 	}
 	if _, err := tx.Exec(`INSERT INTO time_entry (user_id, project_id, start_time, end_time, description, billable) VALUES (?, ?, ?, ?, ?, ?)`,
@@ -312,7 +320,7 @@ func (a *App) entryEdit(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	a.renderEntry(w, r, http.StatusOK, entryPage{Entry: f, ReadOnly: !mine})
+	a.renderEntry(w, r, http.StatusOK, entryPage{Entry: f, ReadOnly: !mine}, f.Project)
 }
 
 func (a *App) entryUpdate(w http.ResponseWriter, r *http.Request) {
@@ -337,13 +345,13 @@ func (a *App) entryUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer func() { _ = tx.Rollback() }()
-	s, errs, err := validateEntry(tx, currentUser(r), f, loc)
+	s, errs, err := validateEntry(tx, currentUser(r), f, loc, stored.Project)
 	if err != nil {
 		a.serverError(w, r, err)
 		return
 	}
 	if errs != nil {
-		a.renderEntry(w, r, http.StatusUnprocessableEntity, entryPage{Entry: f, Errors: errs})
+		a.renderEntry(w, r, http.StatusUnprocessableEntity, entryPage{Entry: f, Errors: errs}, stored.Project)
 		return
 	}
 	if _, err := tx.Exec(`UPDATE time_entry SET project_id = ?, start_time = ?, end_time = ?, description = ?, billable = ? WHERE id = ?`,

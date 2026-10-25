@@ -70,15 +70,15 @@ func (a *App) loadTimerBar(userID int64) (*timerBar, error) {
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
-	bar.Customers, err = a.loadPicker()
+	bar.Customers, err = a.loadPicker(0)
 	return bar, err
 }
 
-// loadPicker lists the projects that may receive new time, grouped by customer.
-func (a *App) loadPicker() ([]pickerCustomer, error) {
+// loadPicker lists the projects that may receive new time, plus project keep, grouped by customer.
+func (a *App) loadPicker(keep int64) ([]pickerCustomer, error) {
 	rows, err := a.db.Query(`
 		SELECT c.name, p.id, p.name FROM project p JOIN customer c ON c.id = p.customer_id
-		WHERE p.archived = 0 AND c.archived = 0 ORDER BY c.name, c.id, p.name, p.id`)
+		WHERE (p.archived = 0 AND c.archived = 0) OR p.id = ? ORDER BY c.name, c.id, p.name, p.id`, keep)
 	if err != nil {
 		return nil, err
 	}
