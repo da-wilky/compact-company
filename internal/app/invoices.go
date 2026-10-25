@@ -28,10 +28,16 @@ func init() {
 
 var groupings = []string{"project", "entry"}
 
+// Invoice kinds, as the invoice table's CHECK constraint allows them.
+const (
+	kindInvoice      = "invoice"
+	kindCancellation = "cancellation"
+)
+
 // draftVATPercent is the business's current VAT rate, which drafts are totalled at.
 func (a *App) draftVATPercent() (int64, error) {
 	b, err := a.loadBusiness()
-	if err != nil || b.TaxMode != "standard" {
+	if err != nil || b.TaxMode != config.TaxModeStandard {
 		return 0, err
 	}
 	return int64(b.VATRate), nil
@@ -247,8 +253,8 @@ func (a *App) draftCreate(w http.ResponseWriter, r *http.Request) {
 	var id int64
 	err = tx.QueryRow(`INSERT INTO invoice
 		(kind, customer_id, range_from, range_to, service_from, service_to, grouping, rounding_minutes, payment_days, currency)
-		SELECT 'invoice', id, ?1, ?2, ?1, ?2, ?3, ?4, ?5, currency FROM customer WHERE id = ?6 RETURNING id`,
-		f.From, f.To, f.Grouping, rounding, paymentDays, customerID).Scan(&id)
+		SELECT ?7, id, ?1, ?2, ?1, ?2, ?3, ?4, ?5, currency FROM customer WHERE id = ?6 RETURNING id`,
+		f.From, f.To, f.Grouping, rounding, paymentDays, customerID, kindInvoice).Scan(&id)
 	if errors.Is(err, sql.ErrNoRows) {
 		a.renderDraftNew(w, r, http.StatusUnprocessableEntity, f, []string{"invoices.error.customer"})
 		return
@@ -305,7 +311,7 @@ func (a *App) loadDraft(id int64) (draft, error) {
 	err := a.db.QueryRow(`SELECT c.number, c.name, i.currency, i.grouping, i.rounding_minutes,
 		i.range_from, i.range_to, i.service_from, i.service_to, i.payment_days
 		FROM invoice i JOIN customer c ON c.id = i.customer_id
-		WHERE i.id = ? AND i.kind = 'invoice' AND i.number IS NULL`, id).
+		WHERE i.id = ? AND i.kind = ? AND i.number IS NULL`, id, kindInvoice).
 		Scan(&d.CustomerNumber, &d.CustomerName, &d.Currency, &d.Grouping, &d.RoundingMinutes,
 			&d.Header.From, &d.Header.To, &d.Header.ServiceFrom, &d.Header.ServiceTo, &paymentDays)
 	if err != nil {
@@ -384,7 +390,7 @@ func (a *App) draftDelete(w http.ResponseWriter, r *http.Request) {
 		a.notFound(w, r)
 		return
 	}
-	res, err := a.db.Exec(`DELETE FROM invoice WHERE id = ? AND kind = 'invoice' AND number IS NULL`, id)
+	res, err := a.db.Exec(`DELETE FROM invoice WHERE id = ? AND kind = ? AND number IS NULL`, id, kindInvoice)
 	a.afterDraftWrite(w, r, res, err, "/invoices")
 }
 

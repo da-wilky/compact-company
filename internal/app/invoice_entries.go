@@ -81,7 +81,7 @@ func pullEntries(tx *sql.Tx, id int64) error {
 	var rounding int64
 	if err := tx.QueryRow(`SELECT c.timezone, i.range_from, i.range_to, i.grouping, i.rounding_minutes
 		FROM invoice i JOIN customer c ON c.id = i.customer_id
-		WHERE i.id = ? AND i.kind = 'invoice' AND i.number IS NULL`, id).
+		WHERE i.id = ? AND i.kind = ? AND i.number IS NULL`, id, kindInvoice).
 		Scan(&tz, &from, &to, &grouping, &rounding); err != nil {
 		return err
 	}

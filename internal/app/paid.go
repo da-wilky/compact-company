@@ -38,7 +38,7 @@ func (a *App) markPaid(w http.ResponseWriter, r *http.Request) {
 		a.refusePaid(w, r, id, date, http.StatusConflict, "invoices.error.paid_cancelled")
 		return
 	}
-	res, err := a.db.Exec(`UPDATE invoice SET paid_date = ? WHERE id = ? AND kind = 'invoice' AND number IS NOT NULL`, date, id)
+	res, err := a.db.Exec(`UPDATE invoice SET paid_date = ? WHERE id = ? AND kind = ? AND number IS NOT NULL`, date, id, kindInvoice)
 	a.afterDraftWrite(w, r, res, err, draftPath(id))
 }
 

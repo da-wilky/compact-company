@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"golang.org/x/text/currency"
+
+	"github.com/da-wilky/compact-company/internal/config"
 )
 
 // querier is *sql.DB or *sql.Tx, so issuing can build its snapshot inside its transaction.
@@ -127,7 +129,7 @@ func (a *App) invoiceJSON(q querier, id int64, number *string, issueDate string)
 		IssueDate: issueDate,
 		Business: businessData{Name: b.Name, Company: b.Company, Address: b.Address, Email: b.Email, Web: b.Web,
 			Phone: b.Phone, TaxNumber: b.TaxNumber, Bank: bankData{Name: b.Bank.Name, IBAN: b.Bank.IBAN, BIC: b.Bank.BIC}},
-		Tax: taxData{SmallBusiness: b.TaxMode != "standard"},
+		Tax: taxData{SmallBusiness: b.TaxMode != config.TaxModeStandard},
 	}
 	if !d.Tax.SmallBusiness {
 		d.Tax.VATRate = int64(b.VATRate)
