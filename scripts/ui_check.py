@@ -52,7 +52,7 @@ def main():
         today = datetime.date.today().isoformat()
         pages = ["/", "/week", "/week?everyone=1", "/entries", f"/entries?day={today}&project={project}", "/entries/new",
                  "/customers", "/customers/new", f"/customers/{customer}", f"/customers/{customer}/projects", f"/projects/{project}",
-                 "/settings", "/no-such-page"]
+                 "/settings", "/settings/business", "/no-such-page"]
         for viewport, (width, height) in VIEWPORTS.items():
             for scheme in ("light", "dark"):
                 page = browser.new_page(viewport={"width": width, "height": height}, color_scheme=scheme)
