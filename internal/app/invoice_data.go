@@ -99,13 +99,18 @@ func (e *missingBusinessError) Error() string {
 	return "missing business data: " + strings.Join(e.fields, ", ")
 }
 
-// issueDate is today in the customer's timezone of invoice id.
-func (a *App) issueDate(q querier, id int64) (string, error) {
+// customerLocation is the timezone of invoice id's customer.
+func customerLocation(q querier, id int64) (*time.Location, error) {
 	var tz string
 	if err := q.QueryRow(`SELECT c.timezone FROM invoice i JOIN customer c ON c.id = i.customer_id WHERE i.id = ?`, id).Scan(&tz); err != nil {
-		return "", err
+		return nil, err
 	}
-	loc, err := time.LoadLocation(tz)
+	return time.LoadLocation(tz)
+}
+
+// issueDate is today in the customer's timezone of invoice id.
+func (a *App) issueDate(q querier, id int64) (string, error) {
+	loc, err := customerLocation(q, id)
 	if err != nil {
 		return "", err
 	}
@@ -162,7 +167,7 @@ func (a *App) invoiceJSON(q querier, id int64, number *string, issueDate string)
 	}
 	d.DueDate = issued.AddDate(0, 0, paymentDays).Format(time.DateOnly)
 	unit := currency.MustParseISO(d.Currency)
-	lineIDs, totals, err := appendLines(q, id, unit, &d)
+	lines, totals, err := queryLines(q, id, unit)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -172,34 +177,11 @@ func (a *App) invoiceJSON(q querier, id int64, number *string, issueDate string)
 	if err != nil {
 		return nil, 0, err
 	}
-	for i, lineID := range lineIDs {
-		d.Lines[i].Entries = append([]lineEntry{}, entries[lineID]...)
+	d.Lines = []lineData{}
+	for _, l := range lines {
+		d.Lines = append(d.Lines, lineData{Description: l.Description, Detail: l.Detail, Quantity: l.Quantity, Unit: l.Unit,
+			UnitPrice: l.UnitPrice, Total: l.Total, Entries: append([]lineEntry{}, entries[l.ID]...)})
 	}
 	data, err := json.Marshal(d)
 	return data, t.Gross, err
-}
-
-// appendLines appends invoice id's lines to d and returns their ids and totals in minor units.
-func appendLines(q querier, id int64, unit currency.Unit, d *invoiceData) ([]int64, []int64, error) {
-	rows, err := q.Query(`SELECT id, description, detail, quantity, unit, unit_price
-		FROM invoice_line WHERE invoice_id = ? ORDER BY position, id`, id)
-	if err != nil {
-		return nil, nil, err
-	}
-	defer func() { _ = rows.Close() }()
-	var ids, totals []int64
-	d.Lines = []lineData{}
-	for rows.Next() {
-		var l lineData
-		var lineID, quantity, unitPrice int64
-		if err := rows.Scan(&lineID, &l.Description, &l.Detail, &quantity, &l.Unit, &unitPrice); err != nil {
-			return nil, nil, err
-		}
-		total := lineTotal(quantity, unitPrice)
-		l.Quantity, l.UnitPrice, l.Total = formatQuantity(quantity), formatAmount(unitPrice, unit), formatAmount(total, unit)
-		d.Lines = append(d.Lines, l)
-		ids = append(ids, lineID)
-		totals = append(totals, total)
-	}
-	return ids, totals, rows.Err()
 }

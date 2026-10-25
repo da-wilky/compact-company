@@ -36,10 +36,16 @@ type invoiceLine struct {
 
 // loadLines returns invoice id's lines in position order and their totals at vatPercent.
 func (a *App) loadLines(id int64, unit currency.Unit, vatPercent int64) ([]invoiceLine, invoiceTotals, error) {
-	rows, err := a.db.Query(`SELECT id, generated, description, detail, quantity, unit, unit_price
+	lines, totals, err := queryLines(a.db, id, unit)
+	return lines, totalsOf(totals, vatPercent), err
+}
+
+// queryLines returns invoice id's lines in position order and each line's total in minor units.
+func queryLines(q querier, id int64, unit currency.Unit) ([]invoiceLine, []int64, error) {
+	rows, err := q.Query(`SELECT id, generated, description, detail, quantity, unit, unit_price
 		FROM invoice_line WHERE invoice_id = ? ORDER BY position, id`, id)
 	if err != nil {
-		return nil, invoiceTotals{}, err
+		return nil, nil, err
 	}
 	defer func() { _ = rows.Close() }()
 	var lines []invoiceLine
@@ -48,17 +54,14 @@ func (a *App) loadLines(id int64, unit currency.Unit, vatPercent int64) ([]invoi
 		var l invoiceLine
 		var quantity, unitPrice int64
 		if err := rows.Scan(&l.ID, &l.Generated, &l.Description, &l.Detail, &quantity, &l.Unit, &unitPrice); err != nil {
-			return nil, invoiceTotals{}, err
+			return nil, nil, err
 		}
 		total := lineTotal(quantity, unitPrice)
 		l.Quantity, l.UnitPrice, l.Total = formatQuantity(quantity), formatAmount(unitPrice, unit), formatAmount(total, unit)
 		lines = append(lines, l)
 		totals = append(totals, total)
 	}
-	if err := rows.Err(); err != nil {
-		return nil, invoiceTotals{}, err
-	}
-	return lines, totalsOf(totals, vatPercent), nil
+	return lines, totals, rows.Err()
 }
 
 type linePage struct {

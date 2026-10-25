@@ -124,16 +124,33 @@ func (a *App) issueDraft(w http.ResponseWriter, r *http.Request) {
 
 // renderDraftFailure shows why d couldn't be rendered on the draft's page.
 func (a *App) renderDraftFailure(w http.ResponseWriter, r *http.Request, d draft, err error) {
+	page := draftPage{Draft: d}
+	if status, ok := page.explain(err); ok {
+		a.render(w, r, status, "invoice", page)
+		return
+	}
+	a.serverError(w, r, err)
+}
+
+// renderFailure is why an invoice couldn't be rendered, for the page that asked.
+type renderFailure struct {
+	MissingBusiness []string
+	TypstError      string
+}
+
+// explain records err and returns the status to answer with; ok is false unless err is a render failure.
+func (f *renderFailure) explain(err error) (status int, ok bool) {
 	var missing *missingBusinessError
 	var failed *typstError
 	switch {
 	case errors.As(err, &missing):
-		a.render(w, r, http.StatusConflict, "invoice", draftPage{Draft: d, MissingBusiness: missing.fields})
+		f.MissingBusiness = missing.fields
+		return http.StatusConflict, true
 	case errors.As(err, &failed):
-		a.render(w, r, http.StatusInternalServerError, "invoice", draftPage{Draft: d, TypstError: failed.message})
-	default:
-		a.serverError(w, r, err)
+		f.TypstError = failed.message
+		return http.StatusInternalServerError, true
 	}
+	return 0, false
 }
 
 type issuedInvoice struct {

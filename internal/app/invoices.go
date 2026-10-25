@@ -304,8 +304,7 @@ type draft struct {
 type draftPage struct {
 	Draft           draft
 	Errors          []string
-	MissingBusiness []string
-	TypstError      string
+	renderFailure
 }
 
 // loadDraft returns sql.ErrNoRows unless id is a draft.

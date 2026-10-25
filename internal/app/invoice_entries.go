@@ -77,15 +77,14 @@ type pulledLine struct {
 // pullEntries generates lines on draft id from its customer's billable, assigned, ended and unclaimed
 // entries starting in its range, and claims those entries. It returns sql.ErrNoRows unless id is a draft.
 func pullEntries(tx *sql.Tx, id int64) error {
-	var tz, from, to, grouping string
+	var from, to, grouping string
 	var rounding int64
-	if err := tx.QueryRow(`SELECT c.timezone, i.range_from, i.range_to, i.grouping, i.rounding_minutes
-		FROM invoice i JOIN customer c ON c.id = i.customer_id
-		WHERE i.id = ? AND i.kind = ? AND i.number IS NULL`, id, kindInvoice).
-		Scan(&tz, &from, &to, &grouping, &rounding); err != nil {
+	if err := tx.QueryRow(`SELECT range_from, range_to, grouping, rounding_minutes
+		FROM invoice WHERE id = ? AND kind = ? AND number IS NULL`, id, kindInvoice).
+		Scan(&from, &to, &grouping, &rounding); err != nil {
 		return err
 	}
-	loc, err := time.LoadLocation(tz)
+	loc, err := customerLocation(tx, id)
 	if err != nil {
 		return err
 	}
@@ -169,11 +168,7 @@ func (e lineEntry) Duration() time.Duration {
 
 // lineEntries returns the entries claimed by invoice id's lines, by line id, in start order.
 func (a *App) lineEntries(q querier, id int64) (map[int64][]lineEntry, error) {
-	var tz string
-	if err := q.QueryRow(`SELECT c.timezone FROM invoice i JOIN customer c ON c.id = i.customer_id WHERE i.id = ?`, id).Scan(&tz); err != nil {
-		return nil, err
-	}
-	loc, err := time.LoadLocation(tz)
+	loc, err := customerLocation(q, id)
 	if err != nil {
 		return nil, err
 	}
