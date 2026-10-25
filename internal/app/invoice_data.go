@@ -135,20 +135,23 @@ func (a *App) invoiceJSON(q querier, id int64, number *string, issueDate string)
 	var paymentDays int
 	var address string
 	var cancels cancelledData
+	var cancelledTax taxData
 	var isCancellation bool
 	err = q.QueryRow(`SELECT i.kind, i.service_from, i.service_to, i.payment_days, i.reason, i.currency,
 		c.number, c.name, c.address, c.invoice_language,
-		i.cancels_id IS NOT NULL, ifnull(o.number, ''), ifnull(o.issue_date, '')
+		i.cancels_id IS NOT NULL, ifnull(o.number, ''), ifnull(o.issue_date, ''),
+		ifnull(o.snapshot ->> '$.tax.small_business', 0), ifnull(o.snapshot ->> '$.tax.vat_rate', 0)
 		FROM invoice i JOIN customer c ON c.id = i.customer_id LEFT JOIN invoice o ON o.id = i.cancels_id
 		WHERE i.id = ?`, id).
 		Scan(&d.Kind, &d.ServicePeriod.From, &d.ServicePeriod.To, &paymentDays, &d.Reason, &d.Currency,
 			&d.Customer.Number, &d.Customer.Name, &address, &d.Language,
-			&isCancellation, &cancels.Number, &cancels.IssueDate)
+			&isCancellation, &cancels.Number, &cancels.IssueDate, &cancelledTax.SmallBusiness, &cancelledTax.VATRate)
 	if err != nil {
 		return nil, err
 	}
 	if isCancellation {
-		d.Cancels = &cancels
+		// A cancellation reverses exactly the tax that was charged, whatever the business's tax mode is now.
+		d.Cancels, d.Tax = &cancels, cancelledTax
 	}
 	d.Customer.Address = addressLines(address)
 	issued, err := time.Parse(time.DateOnly, issueDate)

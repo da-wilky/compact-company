@@ -68,3 +68,44 @@ func TestUndoingPaidMakesTheInvoiceIssuedAgain(t *testing.T) {
 	c.get("/invoices?status=issued").wantBody(t, "2026-001")
 	c.get("/invoices?status=paid").wantNoBody(t, "2026-001")
 }
+
+func TestMarkingPaidIsRefusedWhenEveryLineIsCancelled(t *testing.T) {
+	ta := newTestApp(t, devConfig)
+	c := ta.client()
+	invoice := c.issuedWorkshopAndHosting()
+	c.cancelLines(invoice, "", "Workshop", "Hosting")
+	c.get(invoice).wantNoBody(t, "Mark paid")
+
+	res := c.markPaid(invoice, "2026-11-03")
+
+	res.wantStatus(t, http.StatusConflict)
+	res.wantBody(t, "Every line of this invoice is cancelled, so it can&#39;t be marked paid.")
+	c.get(invoice).wantNoBody(t, "Paid on")
+}
+
+func TestAPartiallyCancelledInvoiceCanStillBeMarkedPaid(t *testing.T) {
+	ta := newTestApp(t, devConfig)
+	c := ta.client()
+	invoice := c.issuedWorkshopAndHosting()
+	c.cancelLines(invoice, "", "Hosting")
+
+	wantRedirect(t, c.markPaid(invoice, "2026-11-03"), invoice)
+
+	res := c.get(invoice)
+	res.wantBody(t, "Paid on 2026-11-03")
+	res.wantBody(t, "Partially cancelled")
+}
+
+func TestAPaidInvoiceCanStillBeCancelled(t *testing.T) {
+	ta := newTestApp(t, devConfig)
+	c := ta.client()
+	invoice := c.issuedWorkshopAndHosting()
+	wantRedirect(t, c.markPaid(invoice, "2026-11-03"), invoice)
+
+	cancellation := c.cancelLines(invoice, "refunded", "Workshop", "Hosting")
+
+	c.get(cancellation).wantBody(t, "Cancellation invoice 2026-002")
+	res := c.get(invoice)
+	res.wantBody(t, "K-001 acme · Cancelled")
+	res.wantBody(t, "Paid on 2026-11-03")
+}

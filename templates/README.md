@@ -79,7 +79,7 @@ A failing compile (a `panic`, a missing font, a syntax error) is shown to the us
 | `language` | The customer's invoice language: `en` or `de`. |
 | `currency` | ISO 4217 code of every amount. |
 | `business` | The sender. Empty strings for unset optional fields; `name`, `address` and `tax_number` are always set. |
-| `tax` | `small_business: true` means no VAT under § 19 UStG and `vat_rate` 0; otherwise `vat_rate` is the integer percent applied. |
+| `tax` | `small_business: true` means no VAT under § 19 UStG and `vat_rate` 0; otherwise `vat_rate` is the integer percent applied. A cancellation carries the cancelled invoice's `tax`. |
 | `customer` | The recipient. |
 | `lines` | In order. `quantity × unit_price = total`, rounded half up to the currency's minor unit. Cancellation lines carry negated quantities and totals. |
 | `lines[].entries` | The time entries billed by a line, oldest first; empty for free lines and cancellations. `seconds` is the tracked duration before rounding. |
