@@ -14,6 +14,8 @@
 </label>
 <p class="hint">{{t "settings.timezone_hint"}}</p>
 <p class="hint">{{t "settings.current_time" (datetime .Now)}}</p>
+<label><input type="checkbox" name="parallel_entries"{{if .ParallelEntries}} checked{{end}}> {{t "settings.parallel_entries"}}</label>
+<p class="hint">{{t "settings.parallel_entries_hint"}}</p>
 <button type="submit">{{t "settings.save"}}</button>
 </form>
 {{end}}
