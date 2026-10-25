@@ -1,0 +1,27 @@
+{{define "title"}}{{if .Data.Entry.ID}}{{t "entries.edit"}}{{else}}{{t "entries.new"}}{{end}}{{end}}
+{{define "content"}}
+{{with .Data}}
+<h1>{{if .Entry.ID}}{{t "entries.edit"}}{{else}}{{t "entries.new"}}{{end}}</h1>
+{{with .Errors}}<ul class="errors">{{range .}}<li>{{t .}}</li>{{end}}</ul>{{end}}
+<form method="post" action="{{with .Entry.ID}}/entries/{{.}}{{else}}/entries{{end}}" class="form">
+<fieldset{{if .ReadOnly}} disabled{{end}}>
+<label>{{t "entries.project"}} <select name="project">
+<option value="">{{t "timers.no_project"}}</option>
+{{range .Customers}}<optgroup label="{{.Name}}">
+{{range .Projects}}<option value="{{.ID}}"{{if eq (print .ID) $.Data.Entry.Project}} selected{{end}}>{{.Name}}</option>
+{{end}}</optgroup>
+{{end}}</select></label>
+<label>{{t "entries.start"}} <input type="datetime-local" name="start" value="{{.Entry.Start}}" required></label>
+<label>{{t "entries.end"}} <input type="datetime-local" name="end" value="{{.Entry.End}}" required></label>
+<label>{{t "entries.description"}} <input name="description" value="{{.Entry.Description}}"></label>
+<label>{{t "entries.billable"}} <select name="billable">
+<option value="">{{t "entries.billable_default"}}</option>
+<option value="yes"{{if eq .Entry.Billable "yes"}} selected{{end}}>{{t "projects.yes"}}</option>
+<option value="no"{{if eq .Entry.Billable "no"}} selected{{end}}>{{t "projects.no"}}</option>
+</select></label>
+</fieldset>
+{{if not .ReadOnly}}<button>{{t "entries.save"}}</button>{{end}}
+</form>
+{{if and .Entry.ID (not .ReadOnly)}}<form method="post" action="/entries/{{.Entry.ID}}/delete"><button>{{t "entries.delete"}}</button></form>{{end}}
+{{end}}
+{{end}}

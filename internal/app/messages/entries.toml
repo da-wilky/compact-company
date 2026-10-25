@@ -1,0 +1,27 @@
+"entries.title" = { en = "Entries on %s", de = "Einträge am %s" }
+"entries.nav" = { en = "Entries", de = "Einträge" }
+"entries.prev" = { en = "Previous day", de = "Vorheriger Tag" }
+"entries.next" = { en = "Next day", de = "Nächster Tag" }
+"entries.new" = { en = "New entry", de = "Neuer Eintrag" }
+"entries.edit" = { en = "Edit entry", de = "Eintrag bearbeiten" }
+"entries.empty" = { en = "No entries.", de = "Keine Einträge." }
+"entries.time" = { en = "Time", de = "Zeit" }
+"entries.duration" = { en = "Duration", de = "Dauer" }
+"entries.project" = { en = "Project", de = "Projekt" }
+"entries.description" = { en = "Description", de = "Beschreibung" }
+"entries.billable" = { en = "Billable", de = "Abrechenbar" }
+"entries.billable_default" = { en = "Project default", de = "Projektstandard" }
+"entries.running" = { en = "running", de = "läuft" }
+"entries.start" = { en = "Start", de = "Beginn" }
+"entries.end" = { en = "End", de = "Ende" }
+"entries.save" = { en = "Save", de = "Speichern" }
+"entries.error.start" = { en = "Start must be a date and time.", de = "Beginn muss ein Datum mit Uhrzeit sein." }
+"entries.error.end" = { en = "End must be a date and time.", de = "Ende muss ein Datum mit Uhrzeit sein." }
+"entries.error.order" = { en = "End must not be before start.", de = "Ende darf nicht vor dem Beginn liegen." }
+"entries.error.project" = { en = "This project can't receive new time.", de = "Auf dieses Projekt kann keine neue Zeit gebucht werden." }
+"entries.error.unassigned_billable" = { en = "An entry without a project can't be billable or not billable.", de = "Ein Eintrag ohne Projekt kann nicht als abrechenbar oder nicht abrechenbar markiert werden." }
+"entries.error.overlap" = { en = "This entry overlaps another of your entries.", de = "Dieser Eintrag überschneidet sich mit einem anderen deiner Einträge." }
+"entries.delete" = { en = "Delete", de = "Löschen" }
+"entries.user" = { en = "User", de = "Benutzer" }
+"entries.mine" = { en = "Mine", de = "Meine" }
+"entries.everyone" = { en = "Everyone", de = "Alle" }

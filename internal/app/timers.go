@@ -70,27 +70,33 @@ func (a *App) loadTimerBar(userID int64) (*timerBar, error) {
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
+	bar.Customers, err = a.loadPicker()
+	return bar, err
+}
 
-	rows, err = a.db.Query(`
+// loadPicker lists the projects that may receive new time, grouped by customer.
+func (a *App) loadPicker() ([]pickerCustomer, error) {
+	rows, err := a.db.Query(`
 		SELECT c.name, p.id, p.name FROM project p JOIN customer c ON c.id = p.customer_id
 		WHERE p.archived = 0 AND c.archived = 0 ORDER BY c.name, c.id, p.name, p.id`)
 	if err != nil {
 		return nil, err
 	}
 	defer func() { _ = rows.Close() }()
+	var customers []pickerCustomer
 	for rows.Next() {
 		var customer string
 		var p pickerProject
 		if err := rows.Scan(&customer, &p.ID, &p.Name); err != nil {
 			return nil, err
 		}
-		if n := len(bar.Customers); n == 0 || bar.Customers[n-1].Name != customer {
-			bar.Customers = append(bar.Customers, pickerCustomer{Name: customer})
+		if n := len(customers); n == 0 || customers[n-1].Name != customer {
+			customers = append(customers, pickerCustomer{Name: customer})
 		}
-		last := &bar.Customers[len(bar.Customers)-1]
+		last := &customers[len(customers)-1]
 		last.Projects = append(last.Projects, p)
 	}
-	return bar, rows.Err()
+	return customers, rows.Err()
 }
 
 // entryConflicts reports whether an entry of u spanning [start, end) (end invalid = running)
