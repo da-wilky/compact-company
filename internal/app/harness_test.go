@@ -65,6 +65,7 @@ func (c *clock) Advance(d time.Duration) {
 
 type testApp struct {
 	t     *testing.T
+	cfg   config.Config
 	app   *app.App
 	clock *clock
 }
@@ -73,33 +74,57 @@ type testApp struct {
 // data_dir is prepended so configTOML must not set it.
 func startApp(t *testing.T, configTOML string, c *clock) (*app.App, error) {
 	t.Helper()
-	dir := t.TempDir()
-	path := filepath.Join(dir, "config.toml")
-	content := "data_dir = " + strconv.Quote(dir) + "\n" + configTOML
-	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	cfg, err := config.Load(path)
+	cfg, err := loadConfig(t, configTOML)
 	if err != nil {
 		return nil, err
 	}
 	return app.New(cfg, c.Now)
 }
 
+func loadConfig(t *testing.T, configTOML string) (config.Config, error) {
+	t.Helper()
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.toml")
+	content := "data_dir = " + strconv.Quote(dir) + "\n" + configTOML
+	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	return config.Load(path)
+}
+
 func newTestApp(t *testing.T, configTOML string) *testApp {
 	t.Helper()
-	c := &clock{now: time.Date(2026, 10, 26, 9, 0, 0, 0, time.UTC)}
-	a, err := startApp(t, configTOML, c)
+	cfg, err := loadConfig(t, configTOML)
 	if err != nil {
-		t.Fatalf("start app: %v", err)
+		t.Fatalf("load config: %v", err)
 	}
-	t.Cleanup(func() { _ = a.Close() })
-	return &testApp{t: t, app: a, clock: c}
+	ta := &testApp{t: t, cfg: cfg, clock: &clock{now: time.Date(2026, 10, 26, 9, 0, 0, 0, time.UTC)}}
+	ta.start()
+	t.Cleanup(func() { _ = ta.app.Close() })
+	return ta
+}
+
+func (ta *testApp) start() {
+	ta.t.Helper()
+	a, err := app.New(ta.cfg, ta.clock.Now)
+	if err != nil {
+		ta.t.Fatalf("start app: %v", err)
+	}
+	ta.app = a
+}
+
+// restart closes the app and starts a new one on the same config and data dir.
+func (ta *testApp) restart() {
+	ta.t.Helper()
+	if err := ta.app.Close(); err != nil {
+		ta.t.Fatal(err)
+	}
+	ta.start()
 }
 
 type client struct {
 	t   *testing.T
-	h   http.Handler
+	ta  *testApp
 	jar http.CookieJar
 }
 
@@ -108,7 +133,7 @@ func (ta *testApp) client() *client {
 	if err != nil {
 		ta.t.Fatal(err)
 	}
-	return &client{t: ta.t, h: ta.app, jar: jar}
+	return &client{t: ta.t, ta: ta, jar: jar}
 }
 
 // loginAs logs in through the real session machinery, bypassing only OIDC.
@@ -135,7 +160,7 @@ func (c *client) do(req *http.Request) *response {
 		req.AddCookie(ck)
 	}
 	rec := httptest.NewRecorder()
-	c.h.ServeHTTP(rec, req)
+	c.ta.app.ServeHTTP(rec, req)
 	res := rec.Result()
 	c.jar.SetCookies(req.URL, res.Cookies())
 	body, err := io.ReadAll(res.Body)

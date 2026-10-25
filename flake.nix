@@ -20,8 +20,7 @@
           pname = "compact-company";
           version = "0.1.0";
           src = ./.;
-          vendorHash = pkgs.lib.fakeHash;
-          subPackages = [ "cmd/compact-company" ];
+          vendorHash = "sha256-r6CoiMLINV3XQ6RNzfARsVbZ0MRWsWh1vqpzt10ZYlg=";
           meta = {
             license = pkgs.lib.licenses.agpl3Only;
             mainProgram = "compact-company";

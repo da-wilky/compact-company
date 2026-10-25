@@ -24,6 +24,15 @@ var messages embed.FS
 
 var languages = []language.Tag{language.English, language.German}
 
+func supportedLanguage(lang string) bool {
+	for _, tag := range languages {
+		if tag.String() == lang {
+			return true
+		}
+	}
+	return false
+}
+
 type view struct {
 	Lang string
 	User *User
