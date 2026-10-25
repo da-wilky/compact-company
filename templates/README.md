@@ -90,3 +90,18 @@ A failing compile (a `panic`, a missing font, a syntax error) is shown to the us
 - Dates are ISO `YYYY-MM-DD`, in the customer's timezone.
 - Money and quantities are decimal strings with `.` as separator and an optional leading `-` (`"1083.75"`, `"-12.75"`, `"1.5"`); amounts carry the currency's minor-unit digits, quantities up to 3 decimals without trailing zeros. Formatting them is the template's job.
 - An issued invoice stores exactly this JSON as its snapshot, so its PDF can be rendered again from it.
+- Parse amounts with Typst's `decimal()`, not `float()`, so sums and VAT stay exact.
+
+## Comparing with a reference PDF
+
+To check that a template reproduces an existing PDF (for example one built by hand before switching to compact-company), issue the same invoice in the app, download it from `/invoices/{id}/pdf`, and compare every page's pixels. The PDF bytes differ between renders (creation date), the pixels must not:
+
+```sh
+nix shell nixpkgs#poppler-utils nixpkgs#imagemagick
+pdftoppm -r 150 -png reference.pdf ref
+pdftoppm -r 150 -png issued.pdf out
+ls ref-*.png out-*.png   # same page count
+for p in ref-*.png; do echo "$p $(magick compare -metric AE "$p" "out-${p#ref-}" null: 2>&1)"; done
+```
+
+`AE` is the number of differing pixels; every page must report `0`.
