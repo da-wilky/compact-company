@@ -163,6 +163,8 @@ type issuedInvoice struct {
 	PaidDate string
 	SHA256   string
 	Snapshot invoiceData
+	PaidForm string
+	Errors   []string
 }
 
 // loadIssued returns sql.ErrNoRows unless id is issued. It reads the snapshot,
@@ -200,6 +202,9 @@ func (a *App) invoiceShow(w http.ResponseWriter, r *http.Request) {
 	if errors.Is(err, sql.ErrNoRows) {
 		a.notFound(w, r)
 		return
+	}
+	if err == nil {
+		inv.PaidForm, err = a.issueDate(a.db, id)
 	}
 	if err != nil {
 		a.serverError(w, r, err)

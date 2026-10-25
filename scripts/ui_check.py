@@ -50,6 +50,7 @@ def seed(api):
     business = {"name": "Samuel Wilk", "company": "swilk", "address": "Hauptstraße 1\n12345 Berlin", "tax_number": "12/345/67890", "tax_mode": "standard", "vat_rate": "19"}
     api.post(f"{base}/settings/business", form=business)
     api.post(f"{base}{issued}/issue")
+    api.post(f"{base}{issued}/paid", form={"paid_date": str(today)})
     # Unset again so the draft's preview shows the missing-data page instead of a PDF download.
     api.post(f"{base}/settings/business", form=business | {"name": ""})
     return customer, projects["Website relaunch"], draft, line, entry, issued
