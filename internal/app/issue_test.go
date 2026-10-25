@@ -205,8 +205,7 @@ func TestLaterBusinessAndCustomerChangesLeaveIssuedInvoicesAlone(t *testing.T) {
 	res.wantBody(t, "K-001 acme ·")
 	wantInOrder(t, res.body, "127.50", "24.23", "151.73")
 	list := c.get("/invoices")
-	list.wantBody(t, "<td>acme</td>")
-	list.wantBody(t, "151.73 EUR")
+	wantInOrder(t, list.body, "2026-001", "acme", "151.73 EUR")
 	if c.get(draft+"/pdf").body != pdf {
 		t.Fatal("stored PDF changed")
 	}

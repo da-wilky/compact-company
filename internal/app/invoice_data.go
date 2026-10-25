@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"golang.org/x/text/currency"
+
+	"github.com/da-wilky/compact-company/internal/config"
 )
 
 // querier is *sql.DB or *sql.Tx, so issuing can build its snapshot inside its transaction.
@@ -97,28 +99,33 @@ func (e *missingBusinessError) Error() string {
 	return "missing business data: " + strings.Join(e.fields, ", ")
 }
 
-// issueDate is today in the customer's timezone of invoice id.
-func (a *App) issueDate(q querier, id int64) (string, error) {
+// customerLocation is the timezone of invoice id's customer.
+func customerLocation(q querier, id int64) (*time.Location, error) {
 	var tz string
 	if err := q.QueryRow(`SELECT c.timezone FROM invoice i JOIN customer c ON c.id = i.customer_id WHERE i.id = ?`, id).Scan(&tz); err != nil {
-		return "", err
+		return nil, err
 	}
-	loc, err := time.LoadLocation(tz)
+	return time.LoadLocation(tz)
+}
+
+// issueDate is today in the customer's timezone of invoice id.
+func (a *App) issueDate(q querier, id int64) (string, error) {
+	loc, err := customerLocation(q, id)
 	if err != nil {
 		return "", err
 	}
 	return a.now().In(loc).Format(time.DateOnly), nil
 }
 
-// invoiceJSON builds the template input for invoice id; a nil number makes it a draft.
+// invoiceJSON builds the template input for invoice id, and returns its gross in minor units; a nil number makes it a draft.
 // The bytes are what a snapshot stores, so a rendering can be reproduced from it.
-func (a *App) invoiceJSON(q querier, id int64, number *string, issueDate string) ([]byte, error) {
+func (a *App) invoiceJSON(q querier, id int64, number *string, issueDate string) ([]byte, int64, error) {
 	b, err := a.loadBusiness()
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	if missing := missingBusinessFields(b); missing != nil {
-		return nil, &missingBusinessError{fields: missing}
+		return nil, 0, &missingBusinessError{fields: missing}
 	}
 	d := invoiceData{
 		Version:   1,
@@ -127,7 +134,7 @@ func (a *App) invoiceJSON(q querier, id int64, number *string, issueDate string)
 		IssueDate: issueDate,
 		Business: businessData{Name: b.Name, Company: b.Company, Address: b.Address, Email: b.Email, Web: b.Web,
 			Phone: b.Phone, TaxNumber: b.TaxNumber, Bank: bankData{Name: b.Bank.Name, IBAN: b.Bank.IBAN, BIC: b.Bank.BIC}},
-		Tax: taxData{SmallBusiness: b.TaxMode != "standard"},
+		Tax: taxData{SmallBusiness: b.TaxMode != config.TaxModeStandard},
 	}
 	if !d.Tax.SmallBusiness {
 		d.Tax.VATRate = int64(b.VATRate)
@@ -147,7 +154,7 @@ func (a *App) invoiceJSON(q querier, id int64, number *string, issueDate string)
 			&d.Customer.Number, &d.Customer.Name, &address, &d.Language,
 			&isCancellation, &cancels.Number, &cancels.IssueDate, &cancelledTax.SmallBusiness, &cancelledTax.VATRate)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	if isCancellation {
 		// A cancellation reverses exactly the tax that was charged, whatever the business's tax mode is now.
@@ -156,47 +163,25 @@ func (a *App) invoiceJSON(q querier, id int64, number *string, issueDate string)
 	d.Customer.Address = addressLines(address)
 	issued, err := time.Parse(time.DateOnly, issueDate)
 	if err != nil {
-		return nil, fmt.Errorf("issue date: %w", err)
+		return nil, 0, fmt.Errorf("issue date: %w", err)
 	}
 	d.DueDate = issued.AddDate(0, 0, paymentDays).Format(time.DateOnly)
 	unit := currency.MustParseISO(d.Currency)
-	lineIDs, totals, err := appendLines(q, id, unit, &d)
+	lines, totals, err := queryLines(q, id, unit)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	t := totalsOf(totals, d.Tax.VATRate)
 	d.Totals = totalsData{Net: formatAmount(t.Net, unit), VAT: formatAmount(t.VAT, unit), Gross: formatAmount(t.Gross, unit)}
 	entries, err := a.lineEntries(q, id)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
-	for i, lineID := range lineIDs {
-		d.Lines[i].Entries = append([]lineEntry{}, entries[lineID]...)
-	}
-	return json.Marshal(d)
-}
-
-// appendLines appends invoice id's lines to d and returns their ids and totals in minor units.
-func appendLines(q querier, id int64, unit currency.Unit, d *invoiceData) ([]int64, []int64, error) {
-	rows, err := q.Query(`SELECT id, description, detail, quantity, unit, unit_price
-		FROM invoice_line WHERE invoice_id = ? ORDER BY position, id`, id)
-	if err != nil {
-		return nil, nil, err
-	}
-	defer func() { _ = rows.Close() }()
-	var ids, totals []int64
 	d.Lines = []lineData{}
-	for rows.Next() {
-		var l lineData
-		var lineID, quantity, unitPrice int64
-		if err := rows.Scan(&lineID, &l.Description, &l.Detail, &quantity, &l.Unit, &unitPrice); err != nil {
-			return nil, nil, err
-		}
-		total := lineTotal(quantity, unitPrice)
-		l.Quantity, l.UnitPrice, l.Total = formatQuantity(quantity), formatAmount(unitPrice, unit), formatAmount(total, unit)
-		d.Lines = append(d.Lines, l)
-		ids = append(ids, lineID)
-		totals = append(totals, total)
+	for _, l := range lines {
+		d.Lines = append(d.Lines, lineData{Description: l.Description, Detail: l.Detail, Quantity: l.Quantity, Unit: l.Unit,
+			UnitPrice: l.UnitPrice, Total: l.Total, Entries: append([]lineEntry{}, entries[l.ID]...)})
 	}
-	return ids, totals, rows.Err()
+	data, err := json.Marshal(d)
+	return data, t.Gross, err
 }

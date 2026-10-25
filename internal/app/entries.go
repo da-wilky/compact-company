@@ -190,7 +190,7 @@ func (a *App) entryList(w http.ResponseWriter, r *http.Request) {
 			a.serverError(w, r, err)
 			return
 		}
-		e.Invoice = claimedBy(invoice, number)
+		e.Invoice = invoiceRefOrNil(invoice, number)
 		e.Own = userID == u.ID
 		e.Start = time.Unix(start, 0)
 		e.Running = !end.Valid
@@ -463,7 +463,7 @@ func (a *App) entryFromPath(w http.ResponseWriter, r *http.Request, loc *time.Lo
 	case billable.Valid:
 		f.Billable = "no"
 	}
-	f.Invoice = claimedBy(invoice, number)
+	f.Invoice = invoiceRefOrNil(invoice, number)
 	return f, userID == currentUser(r).ID, true
 }
 

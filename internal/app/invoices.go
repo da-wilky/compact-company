@@ -28,10 +28,16 @@ func init() {
 
 var groupings = []string{"project", "entry"}
 
+// Invoice kinds, as the invoice table's CHECK constraint allows them.
+const (
+	kindInvoice      = "invoice"
+	kindCancellation = "cancellation"
+)
+
 // draftVATPercent is the business's current VAT rate, which drafts are totalled at.
 func (a *App) draftVATPercent() (int64, error) {
 	b, err := a.loadBusiness()
-	if err != nil || b.TaxMode != "standard" {
+	if err != nil || b.TaxMode != config.TaxModeStandard {
 		return 0, err
 	}
 	return int64(b.VATRate), nil
@@ -91,7 +97,7 @@ func (a *App) invoiceList(w http.ResponseWriter, r *http.Request) {
 	}
 	// Issued rows show their snapshot, so later customer or business changes don't reach them.
 	rows, err := a.db.Query(`SELECT * FROM (SELECT i.id, ifnull(i.number, '') number, ifnull(i.snapshot ->> '$.customer.name', c.name),
-		ifnull(i.issue_date, '') issue_date, ifnull(i.paid_date, '') paid_date, i.currency, ifnull(i.snapshot ->> '$.totals.gross', ''),
+		ifnull(i.issue_date, '') issue_date, ifnull(i.paid_date, '') paid_date, i.currency, i.gross,
 		`+invoiceStatus+` status
 		FROM invoice i JOIN customer c ON c.id = i.customer_id
 		WHERE (?1 = 0 OR i.customer_id = ?1))
@@ -104,9 +110,13 @@ func (a *App) invoiceList(w http.ResponseWriter, r *http.Request) {
 	defer func() { _ = rows.Close() }()
 	for rows.Next() {
 		var row invoiceRow
-		if err := rows.Scan(&row.ID, &row.Number, &row.Customer, &row.IssueDate, &row.PaidDate, &row.Currency, &row.Gross, &row.Status); err != nil {
+		var gross sql.NullInt64
+		if err := rows.Scan(&row.ID, &row.Number, &row.Customer, &row.IssueDate, &row.PaidDate, &row.Currency, &gross, &row.Status); err != nil {
 			a.serverError(w, r, err)
 			return
+		}
+		if gross.Valid {
+			row.Gross = formatAmount(gross.Int64, currency.MustParseISO(row.Currency))
 		}
 		page.Rows = append(page.Rows, row)
 	}
@@ -247,8 +257,8 @@ func (a *App) draftCreate(w http.ResponseWriter, r *http.Request) {
 	var id int64
 	err = tx.QueryRow(`INSERT INTO invoice
 		(kind, customer_id, range_from, range_to, service_from, service_to, grouping, rounding_minutes, payment_days, currency)
-		SELECT 'invoice', id, ?1, ?2, ?1, ?2, ?3, ?4, ?5, currency FROM customer WHERE id = ?6 RETURNING id`,
-		f.From, f.To, f.Grouping, rounding, paymentDays, customerID).Scan(&id)
+		SELECT ?7, id, ?1, ?2, ?1, ?2, ?3, ?4, ?5, currency FROM customer WHERE id = ?6 RETURNING id`,
+		f.From, f.To, f.Grouping, rounding, paymentDays, customerID, kindInvoice).Scan(&id)
 	if errors.Is(err, sql.ErrNoRows) {
 		a.renderDraftNew(w, r, http.StatusUnprocessableEntity, f, []string{"invoices.error.customer"})
 		return
@@ -292,10 +302,9 @@ type draft struct {
 }
 
 type draftPage struct {
-	Draft           draft
-	Errors          []string
-	MissingBusiness []string
-	TypstError      string
+	Draft  draft
+	Errors []string
+	renderFailure
 }
 
 // loadDraft returns sql.ErrNoRows unless id is a draft.
@@ -305,7 +314,7 @@ func (a *App) loadDraft(id int64) (draft, error) {
 	err := a.db.QueryRow(`SELECT c.number, c.name, i.currency, i.grouping, i.rounding_minutes,
 		i.range_from, i.range_to, i.service_from, i.service_to, i.payment_days
 		FROM invoice i JOIN customer c ON c.id = i.customer_id
-		WHERE i.id = ? AND i.kind = 'invoice' AND i.number IS NULL`, id).
+		WHERE i.id = ? AND i.kind = ? AND i.number IS NULL`, id, kindInvoice).
 		Scan(&d.CustomerNumber, &d.CustomerName, &d.Currency, &d.Grouping, &d.RoundingMinutes,
 			&d.Header.From, &d.Header.To, &d.Header.ServiceFrom, &d.Header.ServiceTo, &paymentDays)
 	if err != nil {
@@ -374,7 +383,7 @@ func (a *App) draftUpdate(w http.ResponseWriter, r *http.Request) {
 	res, err := a.db.Exec(`UPDATE invoice SET range_from = ?, range_to = ?, service_from = ?, service_to = ?, payment_days = ?
 		WHERE id = ? AND number IS NULL`,
 		d.Header.From, d.Header.To, d.Header.ServiceFrom, d.Header.ServiceTo, paymentDays, d.ID)
-	a.afterDraftWrite(w, r, res, err, draftPath(d.ID))
+	a.afterInvoiceWrite(w, r, res, err, draftPath(d.ID))
 }
 
 // Deleting the draft cascades to its lines, which releases their entries.
@@ -384,13 +393,13 @@ func (a *App) draftDelete(w http.ResponseWriter, r *http.Request) {
 		a.notFound(w, r)
 		return
 	}
-	res, err := a.db.Exec(`DELETE FROM invoice WHERE id = ? AND kind = 'invoice' AND number IS NULL`, id)
-	a.afterDraftWrite(w, r, res, err, "/invoices")
+	res, err := a.db.Exec(`DELETE FROM invoice WHERE id = ? AND kind = ? AND number IS NULL`, id, kindInvoice)
+	a.afterInvoiceWrite(w, r, res, err, "/invoices")
 }
 
-// afterDraftWrite redirects to done, or answers 404 when the write matched no row
-// because the draft (or line) is gone or no longer a draft.
-func (a *App) afterDraftWrite(w http.ResponseWriter, r *http.Request, res sql.Result, err error, done string) {
+// afterInvoiceWrite redirects to done, or answers 404 when the write matched no row
+// because the invoice (or line) is gone or no longer in the state the write requires.
+func (a *App) afterInvoiceWrite(w http.ResponseWriter, r *http.Request, res sql.Result, err error, done string) {
 	if err != nil {
 		a.serverError(w, r, err)
 		return

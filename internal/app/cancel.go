@@ -17,11 +17,10 @@ func init() {
 }
 
 type cancelPage struct {
-	Invoice         issuedInvoice
-	Reason          string
-	Errors          []string
-	MissingBusiness []string
-	TypstError      string
+	Invoice issuedInvoice
+	Reason  string
+	Errors  []string
+	renderFailure
 }
 
 // cancellableFromPath loads the issued invoice in the path; cancellation invoices can't be cancelled.
@@ -33,7 +32,7 @@ func (a *App) cancellableFromPath(w http.ResponseWriter, r *http.Request) (issue
 		return issuedInvoice{}, false
 	}
 	inv, err := a.loadIssued(id)
-	if errors.Is(err, sql.ErrNoRows) || err == nil && inv.Snapshot.Kind != "invoice" {
+	if errors.Is(err, sql.ErrNoRows) || err == nil && inv.Snapshot.Kind != kindInvoice {
 		a.notFound(w, r)
 		return inv, false
 	}
@@ -86,8 +85,8 @@ func (a *App) cancelLines(w http.ResponseWriter, r *http.Request) {
 	var cancellation int64
 	err = tx.QueryRow(`INSERT INTO invoice
 		(kind, customer_id, cancels_id, service_from, service_to, rounding_minutes, payment_days, currency, reason)
-		SELECT 'cancellation', customer_id, id, service_from, service_to, rounding_minutes, payment_days, currency, ?
-		FROM invoice WHERE id = ? RETURNING id`, page.Reason, inv.ID).Scan(&cancellation)
+		SELECT ?, customer_id, id, service_from, service_to, rounding_minutes, payment_days, currency, ?
+		FROM invoice WHERE id = ? RETURNING id`, kindCancellation, page.Reason, inv.ID).Scan(&cancellation)
 	if err == nil {
 		_, err = tx.Exec(`INSERT INTO invoice_line
 			(invoice_id, position, generated, description, detail, quantity, unit, unit_price, cancels_line_id)
@@ -100,18 +99,13 @@ func (a *App) cancelLines(w http.ResponseWriter, r *http.Request) {
 	if err == nil {
 		err = a.issue(r.Context(), tx, cancellation)
 	}
-	var missing *missingBusinessError
-	var failed *typstError
-	switch {
-	case err == nil:
-		http.Redirect(w, r, draftPath(cancellation), http.StatusSeeOther)
-	case errors.As(err, &missing):
-		page.MissingBusiness = missing.fields
-		a.render(w, r, http.StatusConflict, "invoice_cancel", page)
-	case errors.As(err, &failed):
-		page.TypstError = failed.message
-		a.render(w, r, http.StatusInternalServerError, "invoice_cancel", page)
-	default:
-		a.serverError(w, r, err)
+	if err != nil {
+		if status, ok := page.explain(err); ok {
+			a.render(w, r, status, "invoice_cancel", page)
+		} else {
+			a.serverError(w, r, err)
+		}
+		return
 	}
+	http.Redirect(w, r, draftPath(cancellation), http.StatusSeeOther)
 }

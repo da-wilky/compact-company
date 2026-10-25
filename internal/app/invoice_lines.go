@@ -36,10 +36,16 @@ type invoiceLine struct {
 
 // loadLines returns invoice id's lines in position order and their totals at vatPercent.
 func (a *App) loadLines(id int64, unit currency.Unit, vatPercent int64) ([]invoiceLine, invoiceTotals, error) {
-	rows, err := a.db.Query(`SELECT id, generated, description, detail, quantity, unit, unit_price
+	lines, totals, err := queryLines(a.db, id, unit)
+	return lines, totalsOf(totals, vatPercent), err
+}
+
+// queryLines returns invoice id's lines in position order and each line's total in minor units.
+func queryLines(q querier, id int64, unit currency.Unit) ([]invoiceLine, []int64, error) {
+	rows, err := q.Query(`SELECT id, generated, description, detail, quantity, unit, unit_price
 		FROM invoice_line WHERE invoice_id = ? ORDER BY position, id`, id)
 	if err != nil {
-		return nil, invoiceTotals{}, err
+		return nil, nil, err
 	}
 	defer func() { _ = rows.Close() }()
 	var lines []invoiceLine
@@ -48,17 +54,14 @@ func (a *App) loadLines(id int64, unit currency.Unit, vatPercent int64) ([]invoi
 		var l invoiceLine
 		var quantity, unitPrice int64
 		if err := rows.Scan(&l.ID, &l.Generated, &l.Description, &l.Detail, &quantity, &l.Unit, &unitPrice); err != nil {
-			return nil, invoiceTotals{}, err
+			return nil, nil, err
 		}
 		total := lineTotal(quantity, unitPrice)
 		l.Quantity, l.UnitPrice, l.Total = formatQuantity(quantity), formatAmount(unitPrice, unit), formatAmount(total, unit)
 		lines = append(lines, l)
 		totals = append(totals, total)
 	}
-	if err := rows.Err(); err != nil {
-		return nil, invoiceTotals{}, err
-	}
-	return lines, totalsOf(totals, vatPercent), nil
+	return lines, totals, rows.Err()
 }
 
 type linePage struct {
@@ -148,7 +151,7 @@ func (a *App) lineCreate(w http.ResponseWriter, r *http.Request) {
 		SELECT id, (SELECT ifnull(max(position), 0) + 1 FROM invoice_line WHERE invoice_id = ?1), 0, ?2, ?3, ?4, ?5, ?6
 		FROM invoice WHERE id = ?1 AND number IS NULL`,
 		d.ID, l.Description, l.Detail, quantity, l.Unit, unitPrice)
-	a.afterDraftWrite(w, r, res, err, draftPath(d.ID))
+	a.afterInvoiceWrite(w, r, res, err, draftPath(d.ID))
 }
 
 func (a *App) lineUpdate(w http.ResponseWriter, r *http.Request) {
@@ -165,7 +168,7 @@ func (a *App) lineUpdate(w http.ResponseWriter, r *http.Request) {
 	res, err := a.db.Exec(`UPDATE invoice_line SET description = ?, detail = ?, quantity = ?, unit = ?, unit_price = ?
 		WHERE id = ? AND invoice_id IN (SELECT id FROM invoice WHERE id = ? AND number IS NULL)`,
 		l.Description, l.Detail, quantity, l.Unit, unitPrice, l.ID, d.ID)
-	a.afterDraftWrite(w, r, res, err, draftPath(d.ID))
+	a.afterInvoiceWrite(w, r, res, err, draftPath(d.ID))
 }
 
 // Entries claimed by the line are released by the foreign key's ON DELETE SET NULL.
@@ -176,7 +179,7 @@ func (a *App) lineDelete(w http.ResponseWriter, r *http.Request) {
 	}
 	res, err := a.db.Exec(`DELETE FROM invoice_line
 		WHERE id = ? AND invoice_id IN (SELECT id FROM invoice WHERE id = ? AND number IS NULL)`, l.ID, d.ID)
-	a.afterDraftWrite(w, r, res, err, draftPath(d.ID))
+	a.afterInvoiceWrite(w, r, res, err, draftPath(d.ID))
 }
 
 // lineMove swaps the line with its neighbour in direction step (-1 up, +1 down); at the edge it does nothing.

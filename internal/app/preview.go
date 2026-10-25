@@ -22,7 +22,7 @@ func (a *App) draftPreview(w http.ResponseWriter, r *http.Request) {
 		a.serverError(w, r, err)
 		return
 	}
-	data, err := a.invoiceJSON(a.db, d.ID, nil, issueDate)
+	data, _, err := a.invoiceJSON(a.db, d.ID, nil, issueDate)
 	if err != nil {
 		a.renderDraftFailure(w, r, d, err)
 		return

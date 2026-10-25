@@ -16,8 +16,6 @@ func init() {
 	})
 }
 
-var taxModes = []string{"small_business", "standard"}
-
 type businessPage struct {
 	Business config.Business
 	VATRate  string
@@ -26,7 +24,7 @@ type businessPage struct {
 	Errors   []string
 }
 
-func (p businessPage) TaxModes() []string { return taxModes }
+func (p businessPage) TaxModes() []string { return config.TaxModes }
 
 func (p businessPage) AddressText() string { return strings.Join(p.Business.Address, "\n") }
 
@@ -109,7 +107,7 @@ func (a *App) businessSave(w http.ResponseWriter, r *http.Request) {
 		},
 		VATRate: strings.TrimSpace(r.PostFormValue("vat_rate")),
 	}
-	if !slices.Contains(taxModes, p.Business.TaxMode) {
+	if !slices.Contains(config.TaxModes, p.Business.TaxMode) {
 		p.Errors = append(p.Errors, "business.error.tax_mode")
 	}
 	rate, err := strconv.Atoi(p.VATRate)

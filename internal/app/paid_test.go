@@ -109,3 +109,14 @@ func TestAPaidInvoiceCanStillBeCancelled(t *testing.T) {
 	res.wantBody(t, "K-001 acme · Cancelled")
 	res.wantBody(t, "Paid on 2026-11-03")
 }
+
+func TestCancellationInvoicesCantBeMarkedPaid(t *testing.T) {
+	ta := newTestApp(t, devConfig)
+	c := ta.client()
+	cancellation := c.cancelLines(c.issuedWorkshopAndHosting(), "", "Workshop")
+
+	c.markPaid(cancellation, "2026-11-03").wantStatus(t, http.StatusNotFound)
+
+	c.get(cancellation).wantNoBody(t, "Paid on")
+	c.get("/invoices?status=paid").wantBody(t, "No invoices.")
+}

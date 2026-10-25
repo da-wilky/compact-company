@@ -40,6 +40,13 @@ type Business struct {
 	VATRate   int      `toml:"vat_rate"`
 }
 
+const (
+	TaxModeSmallBusiness = "small_business"
+	TaxModeStandard      = "standard"
+)
+
+var TaxModes = []string{TaxModeSmallBusiness, TaxModeStandard}
+
 type Bank struct {
 	Name string `toml:"name"`
 	IBAN string `toml:"iban"`
@@ -153,6 +160,9 @@ func (c *Config) validate() error {
 	if c.Invoice.PaymentDays <= 0 {
 		return fmt.Errorf("invoice.payment_days must be positive, got %d", c.Invoice.PaymentDays)
 	}
+	if err := c.validateNumberFormats(); err != nil {
+		return err
+	}
 	if c.BusinessManaged {
 		return c.loadBusiness()
 	}
@@ -167,10 +177,10 @@ func (c *Config) loadBusiness() error {
 		}
 	}
 	if c.Business.TaxMode == "" {
-		c.Business.TaxMode = "small_business"
+		c.Business.TaxMode = TaxModeSmallBusiness
 	}
-	if c.Business.TaxMode != "small_business" && c.Business.TaxMode != "standard" {
-		return fmt.Errorf(`business.tax_mode must be "small_business" or "standard", got %q`, c.Business.TaxMode)
+	if !slices.Contains(TaxModes, c.Business.TaxMode) {
+		return fmt.Errorf("business.tax_mode must be one of %q, got %q", TaxModes, c.Business.TaxMode)
 	}
 	if c.Business.VATRate < 0 || c.Business.VATRate > 100 {
 		return fmt.Errorf("business.vat_rate must be 0 to 100, got %d", c.Business.VATRate)

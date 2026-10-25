@@ -13,7 +13,6 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
-	"strings"
 
 	"golang.org/x/text/currency"
 )
@@ -24,27 +23,6 @@ func init() {
 		mux.HandleFunc("POST /invoices/{id}/issue", a.authed(a.issueDraft))
 		mux.HandleFunc("GET /invoices/{id}/pdf", a.authed(a.invoicePDF))
 	})
-}
-
-func formatInvoiceNumber(format string, year int, seq int64) (string, error) {
-	number, ok := substituteSeq(strings.Replace(format, "{year}", strconv.Itoa(year), 1), seq)
-	if !ok || strings.Count(format, "{year}") != 1 {
-		return "", fmt.Errorf("invoice.number_format: must contain {year} and {seq} or {seq:0N} exactly once each, got %q", format)
-	}
-	return number, nil
-}
-
-// checkInvoiceNumberFormat refuses formats whose numbers aren't safe file names under invoices/<year>/.
-// Placeholders only ever yield digits, so one sample number speaks for all of them.
-func checkInvoiceNumberFormat(format string) error {
-	number, err := formatInvoiceNumber(format, 2026, 1)
-	if err != nil {
-		return err
-	}
-	if strings.Contains(number, "/") || strings.Contains(number, "..") {
-		return fmt.Errorf(`invoice.number_format: must not yield "/" or "..", got %q`, format)
-	}
-	return nil
 }
 
 // issue gives invoice id the next number of its issue year, stores the snapshot, renders the PDF
@@ -64,11 +42,11 @@ func (a *App) issue(ctx context.Context, tx *sql.Tx, id int64) (err error) {
 		ON CONFLICT DO UPDATE SET last_value = last_value + 1 RETURNING last_value`, year).Scan(&seq); err != nil {
 		return err
 	}
-	number, err := formatInvoiceNumber(a.cfg.Invoice.NumberFormat, year, seq)
+	number, err := a.cfg.Invoice.Number(year, seq)
 	if err != nil {
 		return err
 	}
-	data, err := a.invoiceJSON(tx, id, &number, issueDate)
+	data, gross, err := a.invoiceJSON(tx, id, &number, issueDate)
 	if err != nil {
 		return err
 	}
@@ -88,8 +66,8 @@ func (a *App) issue(ctx context.Context, tx *sql.Tx, id int64) (err error) {
 	}()
 	sum := sha256.Sum256(pdf)
 	res, err := tx.Exec(`UPDATE invoice SET number = ?1, issue_date = ?2, due_date = date(?2, '+' || payment_days || ' days'),
-		snapshot = ?3, pdf_path = ?4, pdf_sha256 = ?5 WHERE id = ?6 AND number IS NULL`,
-		number, issueDate, string(data), rel, hex.EncodeToString(sum[:]), id)
+		snapshot = ?3, gross = ?4, pdf_path = ?5, pdf_sha256 = ?6 WHERE id = ?7 AND number IS NULL`,
+		number, issueDate, string(data), gross, rel, hex.EncodeToString(sum[:]), id)
 	if err != nil {
 		return err
 	}
@@ -146,16 +124,33 @@ func (a *App) issueDraft(w http.ResponseWriter, r *http.Request) {
 
 // renderDraftFailure shows why d couldn't be rendered on the draft's page.
 func (a *App) renderDraftFailure(w http.ResponseWriter, r *http.Request, d draft, err error) {
+	page := draftPage{Draft: d}
+	if status, ok := page.explain(err); ok {
+		a.render(w, r, status, "invoice", page)
+		return
+	}
+	a.serverError(w, r, err)
+}
+
+// renderFailure is why an invoice couldn't be rendered, for the page that asked.
+type renderFailure struct {
+	MissingBusiness []string
+	TypstError      string
+}
+
+// explain records err and returns the status to answer with; ok is false unless err is a render failure.
+func (f *renderFailure) explain(err error) (status int, ok bool) {
 	var missing *missingBusinessError
 	var failed *typstError
 	switch {
 	case errors.As(err, &missing):
-		a.render(w, r, http.StatusConflict, "invoice", draftPage{Draft: d, MissingBusiness: missing.fields})
+		f.MissingBusiness = missing.fields
+		return http.StatusConflict, true
 	case errors.As(err, &failed):
-		a.render(w, r, http.StatusInternalServerError, "invoice", draftPage{Draft: d, TypstError: failed.message})
-	default:
-		a.serverError(w, r, err)
+		f.TypstError = failed.message
+		return http.StatusInternalServerError, true
 	}
+	return 0, false
 }
 
 type issuedInvoice struct {
@@ -180,7 +175,7 @@ type issuedLine struct {
 }
 
 // invoiceStatus is the status of invoice i; cancellation is derived from its lines, never stored.
-const invoiceStatus = `CASE WHEN i.number IS NULL THEN 'draft' WHEN i.kind = 'cancellation' THEN 'cancellation'
+const invoiceStatus = `CASE WHEN i.number IS NULL THEN 'draft' WHEN i.kind = '` + kindCancellation + `' THEN 'cancellation'
 	ELSE (SELECT CASE WHEN count(x.id) = 0 THEN iif(i.paid_date IS NULL, 'issued', 'paid')
 		WHEN count(x.id) = count(*) THEN 'cancelled' ELSE 'partially_cancelled' END
 		FROM invoice_line l LEFT JOIN invoice_line x ON x.cancels_line_id = l.id WHERE l.invoice_id = i.id) END`
@@ -190,9 +185,11 @@ const invoiceStatus = `CASE WHEN i.number IS NULL THEN 'draft' WHEN i.kind = 'ca
 func (a *App) loadIssued(id int64) (issuedInvoice, error) {
 	inv := issuedInvoice{ID: id}
 	var snapshot string
-	err := a.db.QueryRow(`SELECT i.number, i.snapshot, i.pdf_sha256, ifnull(i.paid_date, ''), ifnull(i.cancels_id, 0), `+invoiceStatus+`
+	var due int64
+	err := a.db.QueryRow(`SELECT i.number, i.snapshot, i.pdf_sha256, ifnull(i.paid_date, ''), ifnull(i.cancels_id, 0), `+invoiceStatus+`,
+		i.gross + (SELECT ifnull(sum(c.gross), 0) FROM invoice c WHERE c.cancels_id = i.id)
 		FROM invoice i WHERE i.id = ? AND i.number IS NOT NULL`, id).
-		Scan(&inv.Number, &snapshot, &inv.SHA256, &inv.PaidDate, &inv.CancelsID, &inv.Status)
+		Scan(&inv.Number, &snapshot, &inv.SHA256, &inv.PaidDate, &inv.CancelsID, &inv.Status, &due)
 	if err != nil {
 		return inv, err
 	}
@@ -203,9 +200,9 @@ func (a *App) loadIssued(id int64) (issuedInvoice, error) {
 		return inv, err
 	}
 	if inv.Status == "cancelled" || inv.Status == "partially_cancelled" {
-		inv.AmountDue, err = a.amountDue(inv)
+		inv.AmountDue = formatAmount(due, currency.MustParseISO(inv.Snapshot.Currency))
 	}
-	return inv, err
+	return inv, nil
 }
 
 // loadIssuedLines pairs the snapshot's lines, which are in position order, with their ids and cancellations.
@@ -227,35 +224,10 @@ func (a *App) loadIssuedLines(inv *issuedInvoice) error {
 		if err := rows.Scan(&l.ID, &cancelID, &cancelNumber); err != nil {
 			return err
 		}
-		l.CancelledBy = claimedBy(cancelID, cancelNumber)
+		l.CancelledBy = invoiceRefOrNil(cancelID, cancelNumber)
 		inv.Lines = append(inv.Lines, l)
 	}
 	return rows.Err()
-}
-
-func (a *App) amountDue(inv issuedInvoice) (string, error) {
-	unit := currency.MustParseISO(inv.Snapshot.Currency)
-	due, err := parseAmount(inv.Snapshot.Totals.Gross, unit)
-	if err != nil {
-		return "", err
-	}
-	rows, err := a.db.Query(`SELECT snapshot ->> '$.totals.gross' FROM invoice WHERE cancels_id = ?`, inv.ID)
-	if err != nil {
-		return "", err
-	}
-	defer func() { _ = rows.Close() }()
-	for rows.Next() {
-		var gross string
-		if err := rows.Scan(&gross); err != nil {
-			return "", err
-		}
-		cancelled, err := parseAmount(strings.TrimPrefix(gross, "-"), unit)
-		if err != nil {
-			return "", err
-		}
-		due -= cancelled
-	}
-	return formatAmount(due, unit), rows.Err()
 }
 
 func (a *App) invoiceShow(w http.ResponseWriter, r *http.Request) {

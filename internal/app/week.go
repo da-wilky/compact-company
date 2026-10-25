@@ -104,7 +104,7 @@ func (a *App) week(w http.ResponseWriter, r *http.Request) {
 			}
 			row = &c.Projects[len(c.Projects)-1]
 		}
-		if ref := claimedBy(invoice, number); ref != nil && !slices.Contains(row.Invoices, *ref) {
+		if ref := invoiceRefOrNil(invoice, number); ref != nil && !slices.Contains(row.Invoices, *ref) {
 			row.Invoices = append(row.Invoices, *ref)
 		}
 		finish := a.now()
