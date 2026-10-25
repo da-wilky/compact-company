@@ -1,0 +1,14 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "serve (dev)",
+      "type": "go",
+      "request": "launch",
+      "mode": "debug",
+      "program": "${workspaceFolder}/cmd/compact-company",
+      "args": ["serve", "--config", "config.dev.toml"],
+      "cwd": "${workspaceFolder}"
+    }
+  ]
+}

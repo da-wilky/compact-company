@@ -9,7 +9,7 @@ Status: Phase 1 (foundation and time tracking) is in progress. See `PLAN.md`.
 With Nix:
 
 ```sh
-nix run                                   # dev mode on 127.0.0.1:8080, data in ./data
+nix run                                   # dev mode on 127.0.0.1:9440, data in ./data
 nix run . -- serve --config config.toml   # any other config
 ```
 

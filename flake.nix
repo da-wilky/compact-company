@@ -60,6 +60,7 @@
       devShells = forAll (pkgs: {
         default = pkgs.mkShell {
           packages = [
+            pkgs.delve
             pkgs.go
             pkgs.gopls
             pkgs.golangci-lint
