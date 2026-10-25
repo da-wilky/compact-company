@@ -42,3 +42,20 @@ header .user form { display: inline; margin-left: 0.5rem; }
 main { max-width: 60rem; margin: 0 auto; padding: 1rem; }
 
 a { color: var(--accent); }
+
+header nav { margin-right: auto; }
+
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: 0.4rem 0.5rem; border-bottom: 1px solid var(--line); }
+.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+.form { display: grid; gap: 0.75rem; max-width: 32rem; }
+.form label { display: grid; gap: 0.25rem; }
+.form input, .form select, .form textarea { font: inherit; padding: 0.35rem 0.5rem; }
+.form button { justify-self: start; font: inherit; padding: 0.4rem 1rem; }
+.errors { color: #b3261e; }
+
+.settings label { display: block; margin-bottom: 0.75rem; }
+.settings select, .settings input { display: block; margin-top: 0.25rem; font: inherit; }
+.hint { color: var(--muted); font-size: 0.9rem; }
+.error { color: #b3261e; }

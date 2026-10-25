@@ -1,0 +1,20 @@
+{{define "title"}}{{with .Data.Customer.Number}}{{.}}{{else}}{{t "customers.new"}}{{end}}{{end}}
+{{define "content"}}
+{{with .Data}}
+<h1>{{with .Customer.Number}}{{t "customers.edit" .}}{{else}}{{t "customers.new"}}{{end}}</h1>
+{{with .Errors}}<ul class="errors">{{range .}}<li>{{t .}}</li>{{end}}</ul>{{end}}
+<form method="post" action="/customers{{with .Customer.ID}}/{{.}}{{end}}" class="form">
+<label>{{t "customers.name"}} <input name="name" value="{{.Customer.Name}}" required></label>
+<label>{{t "customers.address"}} <textarea name="address" rows="4">{{.Customer.Address}}</textarea></label>
+<label>{{t "customers.email"}} <input type="email" name="email" value="{{.Customer.Email}}"></label>
+<label>{{t "customers.currency"}} <input name="currency" value="{{.Customer.Currency}}" required maxlength="3"></label>
+<label>{{t "customers.hourly_rate"}} <input name="hourly_rate" value="{{.Customer.HourlyRate}}" required inputmode="decimal"></label>
+<label>{{t "customers.invoice_language"}} <select name="invoice_language">
+{{$sel := .Customer.InvoiceLanguage}}{{range .Languages}}<option value="{{.}}"{{if eq . $sel}} selected{{end}}>{{.}}</option>{{end}}
+</select></label>
+<label>{{t "customers.timezone"}} <input name="timezone" value="{{.Customer.Timezone}}" required></label>
+<label>{{t "customers.note"}} <textarea name="note" rows="3">{{.Customer.Note}}</textarea></label>
+<button>{{t "customers.save"}}</button>
+</form>
+{{end}}
+{{end}}

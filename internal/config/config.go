@@ -97,7 +97,7 @@ func (c *Config) validate() error {
 	default:
 		return fmt.Errorf(`auth.mode must be "oidc" or "none", got %q`, c.Auth.Mode)
 	}
-	if _, err := time.LoadLocation(c.Defaults.Timezone); err != nil || c.Defaults.Timezone == "" {
+	if _, err := time.LoadLocation(c.Defaults.Timezone); err != nil || c.Defaults.Timezone == "" || c.Defaults.Timezone == "Local" {
 		return fmt.Errorf("defaults.timezone: unknown timezone %q", c.Defaults.Timezone)
 	}
 	if _, err := currency.ParseISO(c.Defaults.Currency); err != nil {

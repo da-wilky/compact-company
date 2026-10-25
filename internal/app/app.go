@@ -40,6 +40,9 @@ func New(cfg config.Config, now func() time.Time) (*App, error) {
 	if !supportedLanguage(cfg.Defaults.Language) {
 		return nil, fmt.Errorf("defaults.language: unsupported language %q (want one of %v)", cfg.Defaults.Language, languages)
 	}
+	if _, err := formatCustomerNumber(cfg.CustomerNumberFormat, 1); err != nil {
+		return nil, err
+	}
 	cat, err := loadCatalog()
 	if err != nil {
 		return nil, err

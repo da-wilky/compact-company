@@ -1,0 +1,15 @@
+{{define "title"}}{{t "customers.title"}}{{end}}
+{{define "content"}}
+<h1>{{t "customers.title"}}</h1>
+<p><a href="/customers/new">{{t "customers.new"}}</a></p>
+{{with .Data}}
+<table>
+<thead><tr><th>{{t "customers.number"}}</th><th>{{t "customers.name"}}</th><th class="num">{{t "customers.hourly_rate"}}</th></tr></thead>
+<tbody>
+{{range .}}<tr><td>{{.Number}}</td><td><a href="/customers/{{.ID}}">{{.Name}}</a></td><td class="num">{{.HourlyRate}} {{.Currency}}</td></tr>
+{{end}}</tbody>
+</table>
+{{else}}
+<p>{{t "customers.empty"}}</p>
+{{end}}
+{{end}}
