@@ -75,6 +75,7 @@ h1 { margin: 0 0 1rem; font-size: 1.75rem; font-weight: 650; letter-spacing: -.0
 .actions a:hover { text-decoration: none; filter: brightness(.97); }
 .error, .errors { color: var(--danger); }
 .typst-error { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 0.85rem; }
+.sha { overflow-wrap: anywhere; }
 .badge { display: inline-block; justify-self: start; padding: 0 .5rem; border-radius: 999px; color: var(--accent-fg); background: var(--danger); font-size: .72rem; font-weight: 600; }
 .tag { padding: 0 .45rem; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); font-size: .72rem; white-space: nowrap; }
 

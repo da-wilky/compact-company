@@ -1,7 +1,6 @@
 package app
 
 import (
-	"errors"
 	"net/http"
 	"strconv"
 )
@@ -24,23 +23,13 @@ func (a *App) draftPreview(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	data, err := a.invoiceJSON(a.db, d.ID, nil, issueDate)
-	var missing *missingBusinessError
-	if errors.As(err, &missing) {
-		a.render(w, r, http.StatusConflict, "invoice", draftPage{Draft: d, MissingBusiness: missing.fields})
-		return
-	}
 	if err != nil {
-		a.serverError(w, r, err)
+		a.renderDraftFailure(w, r, d, err)
 		return
 	}
 	pdf, err := a.renderPDF(r.Context(), data)
-	var failed *typstError
-	if errors.As(err, &failed) {
-		a.render(w, r, http.StatusInternalServerError, "invoice", draftPage{Draft: d, TypstError: failed.message})
-		return
-	}
 	if err != nil {
-		a.serverError(w, r, err)
+		a.renderDraftFailure(w, r, d, err)
 		return
 	}
 	w.Header().Set("Content-Type", "application/pdf")

@@ -44,6 +44,7 @@
                 runtimeInputs = [
                   pkgs.go
                   pkgs.curl
+                  pkgs.typst
                   (pkgs.python3.withPackages (p: [ p.playwright ]))
                 ];
                 text = ''

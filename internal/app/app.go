@@ -46,6 +46,9 @@ func New(cfg config.Config, now func() time.Time) (*App, error) {
 	if _, err := formatCustomerNumber(cfg.CustomerNumberFormat, 1); err != nil {
 		return nil, err
 	}
+	if err := checkInvoiceNumberFormat(cfg.Invoice.NumberFormat); err != nil {
+		return nil, err
+	}
 	cat, err := loadCatalog()
 	if err != nil {
 		return nil, err

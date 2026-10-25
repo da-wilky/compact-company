@@ -65,3 +65,10 @@
 "invoices.error.unit_price" = { en = "Unit price must be a non-negative decimal with no more decimals than the currency allows.", de = "Einzelpreis muss eine nicht negative Dezimalzahl mit höchstens so vielen Nachkommastellen sein, wie die Währung erlaubt." }
 "invoices.preview" = { en = "Preview PDF", de = "PDF-Vorschau" }
 "invoices.typst_error" = { en = "The invoice template failed to render:", de = "Die Rechnungsvorlage konnte nicht gerendert werden:" }
+"invoices.issue" = { en = "Issue invoice", de = "Rechnung stellen" }
+"invoices.issue_warning" = { en = "Issuing gives the draft the next invoice number, dated today, and renders its PDF once. An issued invoice can never be edited or deleted.", de = "Beim Stellen erhält der Entwurf die nächste Rechnungsnummer mit dem heutigen Datum, und sein PDF wird einmalig erzeugt. Eine gestellte Rechnung kann nie mehr bearbeitet oder gelöscht werden." }
+"invoices.invoice" = { en = "Invoice %s", de = "Rechnung %s" }
+"invoices.due_date" = { en = "Due date", de = "Fällig am" }
+"invoices.service_period" = { en = "Service period", de = "Leistungszeitraum" }
+"invoices.download" = { en = "Download PDF", de = "PDF herunterladen" }
+"invoices.sha256" = { en = "SHA-256 of the PDF", de = "SHA-256 des PDFs" }

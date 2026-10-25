@@ -20,7 +20,7 @@ func init() {
 		mux.HandleFunc("GET /invoices", a.authed(a.invoiceList))
 		mux.HandleFunc("GET /invoices/new", a.authed(a.draftNew))
 		mux.HandleFunc("POST /invoices", a.authed(a.draftCreate))
-		mux.HandleFunc("GET /invoices/{id}", a.authed(a.draftShow))
+		mux.HandleFunc("GET /invoices/{id}", a.authed(a.invoiceShow))
 		mux.HandleFunc("POST /invoices/{id}", a.authed(a.draftUpdate))
 		mux.HandleFunc("POST /invoices/{id}/delete", a.authed(a.draftDelete))
 	})
@@ -89,7 +89,9 @@ func (a *App) invoiceList(w http.ResponseWriter, r *http.Request) {
 		a.serverError(w, r, err)
 		return
 	}
-	rows, err := a.db.Query(`SELECT i.id, ifnull(i.number, ''), c.name, ifnull(i.issue_date, ''), ifnull(i.paid_date, ''), i.currency
+	// Issued rows show their snapshot, so later customer or business changes don't reach them.
+	rows, err := a.db.Query(`SELECT i.id, ifnull(i.number, ''), ifnull(i.snapshot ->> '$.customer.name', c.name),
+		ifnull(i.issue_date, ''), ifnull(i.paid_date, ''), i.currency, ifnull(i.snapshot ->> '$.totals.gross', '')
 		FROM invoice i JOIN customer c ON c.id = i.customer_id
 		WHERE (?1 = 0 OR i.customer_id = ?1)
 		AND (?2 = '' OR (?2 = 'draft' AND i.number IS NULL)
@@ -103,7 +105,7 @@ func (a *App) invoiceList(w http.ResponseWriter, r *http.Request) {
 	defer func() { _ = rows.Close() }()
 	for rows.Next() {
 		var row invoiceRow
-		if err := rows.Scan(&row.ID, &row.Number, &row.Customer, &row.IssueDate, &row.PaidDate, &row.Currency); err != nil {
+		if err := rows.Scan(&row.ID, &row.Number, &row.Customer, &row.IssueDate, &row.PaidDate, &row.Currency, &row.Gross); err != nil {
 			a.serverError(w, r, err)
 			return
 		}
@@ -128,6 +130,9 @@ func (a *App) invoiceList(w http.ResponseWriter, r *http.Request) {
 	}
 	for i := range page.Rows {
 		row := &page.Rows[i]
+		if row.Number != "" {
+			continue
+		}
 		unit := currency.MustParseISO(row.Currency)
 		_, totals, err := a.loadLines(row.ID, unit, vat)
 		if err != nil {
@@ -346,12 +351,6 @@ func (a *App) draftFromPath(w http.ResponseWriter, r *http.Request) (draft, bool
 		return d, false
 	}
 	return d, true
-}
-
-func (a *App) draftShow(w http.ResponseWriter, r *http.Request) {
-	if d, ok := a.draftFromPath(w, r); ok {
-		a.render(w, r, http.StatusOK, "invoice", draftPage{Draft: d})
-	}
 }
 
 func (a *App) draftUpdate(w http.ResponseWriter, r *http.Request) {

@@ -1,0 +1,24 @@
+{{define "title"}}{{t "invoices.invoice" .Data.Number}}{{end}}
+{{define "content"}}
+{{with .Data}}{{with .Snapshot}}
+<div class="page-head">
+<div class="title"><h1>{{t "invoices.invoice" $.Data.Number}}</h1>
+<a class="pill" href="/invoices/{{$.Data.ID}}/pdf">{{t "invoices.download"}}</a></div>
+</div>
+<p class="actions"><a href="/invoices">{{t "invoices.title"}}</a></p>
+<p class="hint">{{.Customer.Number}} {{.Customer.Name}} · {{t (print "invoices.status." $.Data.Status)}}</p>
+<p class="hint">{{t "invoices.issue_date"}} {{day .IssueDate}} · {{t "invoices.due_date"}} {{day .DueDate}} · {{t "invoices.service_period"}} {{day .ServicePeriod.From}} – {{day .ServicePeriod.To}}</p>
+<div class="table-wrap"><table class="invoice-lines">
+<thead><tr><th>{{t "invoices.description"}}</th><th class="num">{{t "invoices.quantity"}}</th><th>{{t "invoices.unit"}}</th><th class="num">{{t "invoices.price"}}</th><th class="num">{{t "invoices.total"}}</th><th></th></tr></thead>
+<tbody>
+{{range .Lines}}<tr><td>{{.Description}}{{with .Detail}}<br><span class="hint">{{.}}</span>{{end}}</td><td class="num">{{.Quantity}}</td><td>{{.Unit}}</td><td class="num">{{.UnitPrice}}</td><td class="num">{{.Total}}</td><td></td></tr>
+{{end}}</tbody>
+<tfoot>
+<tr><th colspan="4">{{t "invoices.net"}}</th><td class="num">{{.Totals.Net}}</td><td>{{.Currency}}</td></tr>
+{{if not .Tax.SmallBusiness}}<tr><th colspan="4">{{t "invoices.vat" .Tax.VATRate}}</th><td class="num">{{.Totals.VAT}}</td><td>{{.Currency}}</td></tr>{{end}}
+<tr><th colspan="4">{{t "invoices.gross"}}</th><td class="num">{{.Totals.Gross}}</td><td>{{.Currency}}</td></tr>
+</tfoot>
+</table></div>
+<p class="hint sha">{{t "invoices.sha256"}}: {{$.Data.SHA256}}</p>
+{{end}}{{end}}
+{{end}}
