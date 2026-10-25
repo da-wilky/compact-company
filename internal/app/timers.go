@@ -74,11 +74,11 @@ func (a *App) loadTimerBar(userID int64) (*timerBar, error) {
 	return bar, err
 }
 
-// loadPicker lists the projects that may receive new time, plus project keep, grouped by customer.
-func (a *App) loadPicker(keep int64) ([]pickerCustomer, error) {
+// loadPicker lists the projects that may receive new time, plus storedProject, grouped by customer.
+func (a *App) loadPicker(storedProject int64) ([]pickerCustomer, error) {
 	rows, err := a.db.Query(`
 		SELECT c.name, p.id, p.name FROM project p JOIN customer c ON c.id = p.customer_id
-		WHERE (p.archived = 0 AND c.archived = 0) OR p.id = ? ORDER BY c.name, c.id, p.name, p.id`, keep)
+		WHERE (p.archived = 0 AND c.archived = 0) OR p.id = ? ORDER BY c.name, c.id, p.name, p.id`, storedProject)
 	if err != nil {
 		return nil, err
 	}

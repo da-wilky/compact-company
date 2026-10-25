@@ -141,4 +141,4 @@ func TestWeekAlwaysShowsTheUnassignedRow(t *testing.T) {
 	res.wantBody(t, `<tr><th>Unassigned</th><td class="num"></td>`)
 }
 
-var editLinkWithReturn =regexp.MustCompile(`href="((/entries/\d+)\?return=[^"]+)"`)
+var editLinkWithReturn = regexp.MustCompile(`href="((/entries/\d+)\?return=[^"]+)"`)

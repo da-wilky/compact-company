@@ -15,7 +15,7 @@ func init() {
 		// Projects stay archived: some may have been archived on their own before.
 		mux.HandleFunc("POST /customers/{id}/unarchive", a.authed(a.customerWrite("", "",
 			`UPDATE customer SET archived = 0 WHERE id = ?`)))
-		// Time entries always belong to a project, so no projects means no entries.
+		// A customer's entries always belong to one of its projects, so no projects means no entries.
 		mux.HandleFunc("POST /customers/{id}/delete", a.authed(a.customerWrite(
 			`SELECT EXISTS (SELECT 1 FROM project WHERE customer_id = ?)`,
 			"customers.error.has_projects",

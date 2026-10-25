@@ -96,7 +96,7 @@ func (a *App) entryList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer func() { _ = rows.Close() }()
-	page := entriesPage{Day: from.Format(dayLayout), From: from,Prev: from.AddDate(0, 0, -1).Format(dayLayout), Next: to.Format(dayLayout), Everyone: everyone, Project: project, Self: r.URL.RequestURI()}
+	page := entriesPage{Day: from.Format(dayLayout), From: from, Prev: from.AddDate(0, 0, -1).Format(dayLayout), Next: to.Format(dayLayout), Everyone: everyone, Project: project, Self: r.URL.RequestURI()}
 	for rows.Next() {
 		var e entryRow
 		var userID, start int64
@@ -139,12 +139,12 @@ type entryPage struct {
 	Return    string
 }
 
-// renderEntry offers the stored project keep ("" = none) even when it no longer receives new time.
-func (a *App) renderEntry(w http.ResponseWriter, r *http.Request, status int, page entryPage, keep string) {
-	keepID, _ := strconv.ParseInt(keep, 10, 64)
+// renderEntry offers storedProject ("" = none) even when it no longer receives new time.
+func (a *App) renderEntry(w http.ResponseWriter, r *http.Request, status int, page entryPage, storedProject string) {
+	storedID, _ := strconv.ParseInt(storedProject, 10, 64)
 	var err error
 	page.Return = r.FormValue("return")
-	if page.Customers, err = a.loadPicker(keepID); err != nil {
+	if page.Customers, err = a.loadPicker(storedID); err != nil {
 		a.serverError(w, r, err)
 		return
 	}
@@ -155,7 +155,6 @@ func (a *App) entryNew(w http.ResponseWriter, r *http.Request) {
 	a.renderEntry(w, r, http.StatusOK, entryPage{}, "")
 }
 
-// savedEntry is a validated entry ready to be written.
 type savedEntry struct {
 	project    sql.NullInt64
 	start, end int64
@@ -163,8 +162,8 @@ type savedEntry struct {
 }
 
 // validateEntry checks f inside tx and returns what to store, or validation errors as catalog keys.
-// The stored project keep ("" = none) stays allowed after it was archived.
-func validateEntry(tx *sql.Tx, u *User, f entryForm, loc *time.Location, keep string) (savedEntry, []string, error) {
+// storedProject ("" = none) stays allowed after it was archived.
+func validateEntry(tx *sql.Tx, u *User, f entryForm, loc *time.Location, storedProject string) (savedEntry, []string, error) {
 	var s savedEntry
 	var errs []string
 	start, err := parseInput(f.Start, loc)
@@ -190,7 +189,7 @@ func validateEntry(tx *sql.Tx, u *User, f entryForm, loc *time.Location, keep st
 		errs = append(errs, "entries.error.project")
 	} else {
 		var def bool
-		if f.Project == keep {
+		if f.Project == storedProject {
 			err = tx.QueryRow(`SELECT billable FROM project WHERE id = ?`, id).Scan(&def)
 		} else {
 			def, err = activeProjectBillable(tx, id)
