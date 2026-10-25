@@ -50,7 +50,11 @@ parallel_entries = false
 number_format = "{year}-{seq:03}"  # default; {year} and {seq} once each; no "/" or ".."
 payment_days = 14                  # default; positive
 rounding_minutes = 0               # default; 0, 5, 10, 15 or 30
+template_dir = "/etc/compact-company/invoice-template"  # optional; default: bundled template
+font_paths = ["/etc/compact-company/fonts"]             # optional; extra Typst font dirs
 ```
+
+The template contract (data, invocation, fonts) is in [templates/README.md](templates/README.md).
 
 The business data printed on invoices is edited under Settings → Business. To manage it from config instead, set `[business]`, `business_file`, or both; the settings page then shows it read-only. `business_file` is a TOML file with the same keys as `[business]` (for sops secrets); its keys override the same keys in `[business]`.
 

@@ -97,11 +97,12 @@ A failing compile (a `panic`, a missing font, a syntax error) is shown to the us
 To check that a template reproduces an existing PDF (for example one built by hand before switching to compact-company), issue the same invoice in the app, download it from `/invoices/{id}/pdf`, and compare every page's pixels. The PDF bytes differ between renders (creation date), the pixels must not:
 
 ```sh
-nix shell nixpkgs#poppler-utils nixpkgs#imagemagick
+nix shell nixpkgs#poppler-utils nixpkgs#imagemagick -c sh -c '
 pdftoppm -r 150 -png reference.pdf ref
 pdftoppm -r 150 -png issued.pdf out
 ls ref-*.png out-*.png   # same page count
 for p in ref-*.png; do echo "$p $(magick compare -metric AE "$p" "out-${p#ref-}" null: 2>&1)"; done
+'
 ```
 
-`AE` is the number of differing pixels; every page must report `0`.
+Run it in the directory holding `reference.pdf` and `issued.pdf`. `AE` is the number of differing pixels; every page must report `0 (0)`.
