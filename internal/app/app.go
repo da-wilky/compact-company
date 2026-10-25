@@ -67,6 +67,10 @@ func New(cfg config.Config, now func() time.Time) (*App, error) {
 		return nil, fmt.Errorf("database: %w", err)
 	}
 	a := &App{cfg: cfg, db: database, now: now, pages: pages, catalog: cat, oidc: oidcc}
+	if err := a.purgeSessions(); err != nil {
+		_ = database.Close()
+		return nil, fmt.Errorf("purge sessions: %w", err)
+	}
 	if cfg.Auth.Mode == "none" {
 		a.devUserID, err = a.upsertUser(identity{Issuer: "none", Subject: "dev", DisplayName: "dev"})
 		if err != nil {

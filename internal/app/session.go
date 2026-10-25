@@ -53,7 +53,15 @@ func (a *App) login(w http.ResponseWriter, id identity) error {
 	return a.startSession(w, userID)
 }
 
+func (a *App) purgeSessions() error {
+	_, err := a.db.Exec(`DELETE FROM session WHERE last_seen < ?`, a.now().Unix()-int64(a.cfg.Auth.SessionIdleTimeout.Seconds()))
+	return err
+}
+
 func (a *App) startSession(w http.ResponseWriter, userID int64) error {
+	if err := a.purgeSessions(); err != nil {
+		return err
+	}
 	sid := rand.Text()
 	if _, err := a.db.Exec(`INSERT INTO session (id, user_id, last_seen) VALUES (?, ?, ?)`,
 		sid, userID, a.now().Unix()); err != nil {

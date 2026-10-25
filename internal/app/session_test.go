@@ -53,6 +53,40 @@ func TestSessionExpiresAfterIdleTimeoutButActivityKeepsItAlive(t *testing.T) {
 	res.wantBody(t, "Signed in as dev")
 }
 
+func wantSessions(t *testing.T, ta *testApp, want int) {
+	t.Helper()
+	n, err := ta.app.SessionCountForTest()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n != want {
+		t.Fatalf("sessions = %d, want %d", n, want)
+	}
+}
+
+func TestExpiredSessionsArePurgedWhenANewSessionStarts(t *testing.T) {
+	ta := newTestApp(t, devConfig+`session_idle_timeout = "1h"`+"\n")
+	ta.client().get("/")
+	ta.client().get("/")
+	ta.clock.Advance(61 * time.Minute)
+
+	ta.client().get("/")
+
+	wantSessions(t, ta, 1)
+}
+
+func TestExpiredSessionsArePurgedAtStartup(t *testing.T) {
+	ta := newTestApp(t, devConfig+`session_idle_timeout = "1h"`+"\n")
+	ta.client().get("/")
+	ta.clock.Advance(30 * time.Minute)
+	ta.client().get("/")
+	ta.clock.Advance(31 * time.Minute)
+
+	ta.restart()
+
+	wantSessions(t, ta, 1)
+}
+
 func TestNewUserStartsWithConfiguredDefaultLanguage(t *testing.T) {
 	ta := newTestApp(t, devConfig+`
 [defaults]
