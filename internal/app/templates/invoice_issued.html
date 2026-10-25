@@ -21,6 +21,16 @@
 {{with $.Data.AmountDue}}<tr><th colspan="4">{{t "invoices.amount_due"}}</th><td class="num">{{.}}</td><td>{{$.Data.Snapshot.Currency}}</td></tr>{{end}}
 </tfoot>
 </table></div>
+{{if $.Data.PaidDate}}<form method="post" action="/invoices/{{$.Data.ID}}/unpaid" class="form invoice-paid">
+<p>{{t "invoices.paid_on" (day $.Data.PaidDate)}}</p>
+<button>{{t "invoices.undo_paid"}}</button>
+</form>
+{{else if eq $.Data.Status "cancelled"}}{{with $.Data.Errors}}<ul class="errors">{{range .}}<li>{{t .}}</li>{{end}}</ul>{{end}}
+{{else}}<form method="post" action="/invoices/{{$.Data.ID}}/paid" class="form invoice-paid">
+{{with $.Data.Errors}}<ul class="errors">{{range .}}<li>{{t .}}</li>{{end}}</ul>{{end}}
+<label>{{t "invoices.paid_date"}} <input type="date" name="paid_date" value="{{$.Data.PaidForm}}" required></label>
+<button>{{t "invoices.mark_paid"}}</button>
+</form>{{end}}
 <p class="hint sha">{{t "invoices.sha256"}}: {{$.Data.SHA256}}</p>
 {{end}}{{end}}
 {{end}}

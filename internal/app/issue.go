@@ -169,6 +169,8 @@ type issuedInvoice struct {
 	Lines     []issuedLine
 	// AmountDue is the gross less every cancellation's; empty while no line is cancelled.
 	AmountDue string
+	PaidForm  string
+	Errors    []string
 }
 
 type issuedLine struct {
@@ -275,6 +277,9 @@ func (a *App) invoiceShow(w http.ResponseWriter, r *http.Request) {
 	if errors.Is(err, sql.ErrNoRows) {
 		a.notFound(w, r)
 		return
+	}
+	if err == nil {
+		inv.PaidForm, err = a.issueDate(a.db, id)
 	}
 	if err != nil {
 		a.serverError(w, r, err)

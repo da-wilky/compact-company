@@ -87,3 +87,9 @@
 "invoices.amount_due" = { en = "Amount still due", de = "Noch offener Betrag" }
 "invoices.back_to_invoice" = { en = "Back to invoice", de = "Zurück zur Rechnung" }
 "invoices.error.cancel_lines" = { en = "Tick at least one line of this invoice that isn't cancelled yet.", de = "Bitte mindestens eine noch nicht stornierte Position dieser Rechnung ankreuzen." }
+"invoices.paid_on" = { en = "Paid on %s", de = "Bezahlt am %s" }
+"invoices.paid_date" = { en = "Payment date", de = "Zahlungsdatum" }
+"invoices.mark_paid" = { en = "Mark paid", de = "Als bezahlt markieren" }
+"invoices.undo_paid" = { en = "Undo paid", de = "Bezahlt zurücknehmen" }
+"invoices.error.paid_date" = { en = "Enter a valid payment date.", de = "Bitte ein gültiges Zahlungsdatum angeben." }
+"invoices.error.paid_cancelled" = { en = "Every line of this invoice is cancelled, so it can't be marked paid.", de = "Alle Positionen dieser Rechnung sind storniert, sie kann nicht als bezahlt markiert werden." }

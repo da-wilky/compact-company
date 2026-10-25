@@ -53,6 +53,7 @@ def seed(api):
     api.post(f"{base}{issued}/issue")
     travel = re.search(r'name="line" value="(\d+)"> Travel', api.get(f"{base}{issued}/cancel").text()).group(1)
     cancellation = api.post(f"{base}{issued}/cancel", form={"line": travel, "reason": "Travel was included in the workshop price"}, max_redirects=0).headers["location"]
+    api.post(f"{base}{issued}/paid", form={"paid_date": str(today)})
     # Unset again so the draft's preview shows the missing-data page instead of a PDF download.
     api.post(f"{base}/settings/business", form=business | {"name": ""})
     return customer, projects["Website relaunch"], draft, line, entry, issued, cancellation
