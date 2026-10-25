@@ -57,8 +57,10 @@ type Auth struct {
 }
 
 type Invoice struct {
-	PaymentDays     int `toml:"payment_days"`
-	RoundingMinutes int `toml:"rounding_minutes"`
+	PaymentDays     int      `toml:"payment_days"`
+	RoundingMinutes int      `toml:"rounding_minutes"`
+	TemplateDir     string   `toml:"template_dir"`
+	FontPaths       []string `toml:"font_paths"`
 }
 
 type Defaults struct {

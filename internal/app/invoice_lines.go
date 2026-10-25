@@ -70,7 +70,7 @@ type linePage struct {
 
 // renderLine shows an existing line together with the entries it claims.
 func (a *App) renderLine(w http.ResponseWriter, r *http.Request, status int, p linePage) {
-	entries, err := a.lineEntries(p.Draft.ID)
+	entries, err := a.lineEntries(a.db, p.Draft.ID)
 	if err != nil {
 		a.serverError(w, r, err)
 		return

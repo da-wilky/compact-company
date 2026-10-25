@@ -157,10 +157,10 @@ func pullEntries(tx *sql.Tx, id int64) error {
 
 // lineEntry is an entry claimed by a line; Date is ISO in the customer's timezone.
 type lineEntry struct {
-	Date        string
-	User        string
-	Seconds     int64
-	Description string
+	Date        string `json:"date"`
+	User        string `json:"user"`
+	Seconds     int64  `json:"seconds"`
+	Description string `json:"description"`
 }
 
 func (e lineEntry) Duration() time.Duration {
@@ -168,16 +168,16 @@ func (e lineEntry) Duration() time.Duration {
 }
 
 // lineEntries returns the entries claimed by invoice id's lines, by line id, in start order.
-func (a *App) lineEntries(id int64) (map[int64][]lineEntry, error) {
+func (a *App) lineEntries(q querier, id int64) (map[int64][]lineEntry, error) {
 	var tz string
-	if err := a.db.QueryRow(`SELECT c.timezone FROM invoice i JOIN customer c ON c.id = i.customer_id WHERE i.id = ?`, id).Scan(&tz); err != nil {
+	if err := q.QueryRow(`SELECT c.timezone FROM invoice i JOIN customer c ON c.id = i.customer_id WHERE i.id = ?`, id).Scan(&tz); err != nil {
 		return nil, err
 	}
 	loc, err := time.LoadLocation(tz)
 	if err != nil {
 		return nil, err
 	}
-	rows, err := a.db.Query(`SELECT l.id, e.start_time, u.display_name, e.end_time - e.start_time, e.description
+	rows, err := q.Query(`SELECT l.id, e.start_time, u.display_name, e.end_time - e.start_time, e.description
 		FROM invoice_line l JOIN time_entry e ON e.invoice_line_id = l.id JOIN user u ON u.id = e.user_id
 		WHERE l.invoice_id = ? ORDER BY e.start_time, e.id`, id)
 	if err != nil {
