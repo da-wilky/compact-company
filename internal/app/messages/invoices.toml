@@ -72,3 +72,9 @@
 "invoices.service_period" = { en = "Service period", de = "Leistungszeitraum" }
 "invoices.download" = { en = "Download PDF", de = "PDF herunterladen" }
 "invoices.sha256" = { en = "SHA-256 of the PDF", de = "SHA-256 des PDFs" }
+"invoices.paid_on" = { en = "Paid on %s", de = "Bezahlt am %s" }
+"invoices.paid_date" = { en = "Payment date", de = "Zahlungsdatum" }
+"invoices.mark_paid" = { en = "Mark paid", de = "Als bezahlt markieren" }
+"invoices.undo_paid" = { en = "Undo paid", de = "Bezahlt zurücknehmen" }
+"invoices.error.paid_date" = { en = "Enter a valid payment date.", de = "Bitte ein gültiges Zahlungsdatum angeben." }
+"invoices.error.paid_cancelled" = { en = "Every line of this invoice is cancelled, so it can't be marked paid.", de = "Alle Positionen dieser Rechnung sind storniert, sie kann nicht als bezahlt markiert werden." }
