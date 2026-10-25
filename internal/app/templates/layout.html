@@ -6,11 +6,13 @@
 <title>{{template "title" .}} · compact-company</title>
 <link rel="stylesheet" href="/static/app.css">
 <script src="/static/htmx.min.js" defer></script>
+<meta name="htmx-config" content='{"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"422","swap":true},{"code":"[45]..","swap":false,"error":true}]}'>
 </head>
 <body>
 <header>
 <a class="brand" href="/">compact-company</a>
-{{if .User}}<nav><a href="/customers">{{t "customers.title"}}</a></nav>{{end}}
+{{if .User}}<nav><a href="/customers">{{t "customers.title"}}</a></nav>
+{{template "timers" .}}{{end}}
 {{with .User}}<span class="user">{{t "layout.signed_in_as" .DisplayName}} · <a href="/settings">{{t "layout.settings"}}</a>
 <form method="post" action="/logout"><button>{{t "layout.logout"}}</button></form></span>{{end}}
 </header>

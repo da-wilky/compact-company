@@ -1,0 +1,13 @@
+"timers.unassigned" = { en = "Unassigned", de = "Nicht zugeordnet" }
+"timers.billable" = { en = "billable", de = "abrechenbar" }
+"timers.not_billable" = { en = "not billable", de = "nicht abrechenbar" }
+"timers.since" = { en = "since %s", de = "seit %s" }
+"timers.overdue" = { en = "Running for more than 12 hours", de = "Läuft seit mehr als 12 Stunden" }
+"timers.description" = { en = "Description", de = "Beschreibung" }
+"timers.save" = { en = "Save", de = "Speichern" }
+"timers.stop" = { en = "Stop", de = "Stoppen" }
+"timers.project" = { en = "Project", de = "Projekt" }
+"timers.no_project" = { en = "No project", de = "Kein Projekt" }
+"timers.start" = { en = "Start timer", de = "Timer starten" }
+"timers.error.project" = { en = "This project can't receive new time.", de = "Auf dieses Projekt kann keine neue Zeit gebucht werden." }
+"timers.error.running" = { en = "A timer is already running. Stop it first.", de = "Es läuft bereits ein Timer. Stoppe ihn zuerst." }

@@ -1,0 +1,24 @@
+{{define "timers"}}<div id="timers" class="timers" hx-target="this" hx-swap="outerHTML">
+{{with .Timers}}{{with .Error}}<p class="error" role="alert">{{t .}}</p>{{end}}
+{{range .Running}}<div class="timer">
+<span class="project">{{if .Project}}{{.Project}}{{else}}{{t "timers.unassigned"}}{{end}}</span>
+{{if .Billable.Valid}}<span class="tag">{{if .Billable.Bool}}{{t "timers.billable"}}{{else}}{{t "timers.not_billable"}}{{end}}</span>{{end}}
+<span class="hint">{{t "timers.since" (datetime .Start)}}</span>
+{{if .Overdue}}<span class="badge" role="status">{{t "timers.overdue"}}</span>{{end}}
+<form method="post" action="/timers/{{.ID}}" hx-post="/timers/{{.ID}}">
+<input name="description" value="{{.Description}}" aria-label="{{t "timers.description"}}">
+<button>{{t "timers.save"}}</button>
+</form>
+<form method="post" action="/timers/{{.ID}}/stop" hx-post="/timers/{{.ID}}/stop"><button>{{t "timers.stop"}}</button></form>
+</div>
+{{end}}<form method="post" action="/timers" hx-post="/timers">
+<select name="project" aria-label="{{t "timers.project"}}">
+<option value="">{{t "timers.no_project"}}</option>
+{{range .Customers}}<optgroup label="{{.Name}}">
+{{range .Projects}}<option value="{{.ID}}">{{.Name}}</option>
+{{end}}</optgroup>
+{{end}}</select>
+<input name="description" placeholder="{{t "timers.description"}}" aria-label="{{t "timers.description"}}">
+<button>{{t "timers.start"}}</button>
+</form>
+{{end}}</div>{{end}}

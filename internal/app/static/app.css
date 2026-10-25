@@ -28,6 +28,7 @@ body {
 
 header {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
@@ -59,3 +60,10 @@ th, td { text-align: left; padding: 0.4rem 0.5rem; border-bottom: 1px solid var(
 .settings select, .settings input { display: block; margin-top: 0.25rem; font: inherit; }
 .hint { color: var(--muted); font-size: 0.9rem; }
 .error { color: #b3261e; }
+
+.timers { display: grid; gap: 0.35rem; font-size: 0.9rem; }
+.timers p { margin: 0; }
+.timers form, .timer { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; }
+.timers input, .timers select, .timers button { font: inherit; padding: 0.2rem 0.4rem; }
+.tag { color: var(--muted); border: 1px solid var(--line); border-radius: 0.25rem; padding: 0 0.3rem; }
+.badge { color: #fff; background: #b3261e; border-radius: 0.25rem; padding: 0 0.4rem; }

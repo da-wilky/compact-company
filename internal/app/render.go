@@ -35,9 +35,10 @@ func supportedLanguage(lang string) bool {
 }
 
 type view struct {
-	Lang string
-	User *User
-	Data any
+	Lang   string
+	User   *User
+	Timers *timerBar
+	Data   any
 }
 
 // parsePages builds one template set per page: layout.html plus templates/<page>.html.
@@ -54,7 +55,7 @@ func parsePages() (map[string]*template.Template, error) {
 		}
 		// "t" is rebound per request to the viewer's language in render.
 		t, err := template.New(name).Funcs(template.FuncMap{"t": fmt.Sprintf, "datetime": time.Time.String}).
-			ParseFS(templates, "templates/layout.html", f)
+			ParseFS(templates, "templates/layout.html", "templates/partials/*.html", f)
 		if err != nil {
 			return nil, err
 		}
@@ -112,6 +113,11 @@ func (a *App) viewerLocation(r *http.Request) (*time.Location, error) {
 
 // render writes the page in the viewer's language, or the configured default before login.
 func (a *App) render(w http.ResponseWriter, r *http.Request, status int, page string, data any) {
+	a.execute(w, r, status, page, "layout", view{Data: data})
+}
+
+// execute runs template name from page's set; v.Timers, if unset, is loaded for a logged-in user.
+func (a *App) execute(w http.ResponseWriter, r *http.Request, status int, page, name string, v view) {
 	u := currentUser(r)
 	lang := a.cfg.Defaults.Language
 	if u != nil {
@@ -121,6 +127,12 @@ func (a *App) render(w http.ResponseWriter, r *http.Request, status int, page st
 	if err != nil {
 		a.serverError(w, r, err)
 		return
+	}
+	if u != nil && v.Timers == nil {
+		if v.Timers, err = a.loadTimerBar(u.ID); err != nil {
+			a.serverError(w, r, err)
+			return
+		}
 	}
 	p := message.NewPrinter(language.Make(lang), message.Catalog(a.catalog))
 	t, err := a.pages[page].Clone()
@@ -133,7 +145,8 @@ func (a *App) render(w http.ResponseWriter, r *http.Request, status int, page st
 		"datetime": func(ts time.Time) string { return ts.In(loc).Format(datetimeLayouts[lang]) },
 	})
 	var buf bytes.Buffer
-	if err := t.ExecuteTemplate(&buf, "layout", view{Lang: lang, User: u, Data: data}); err != nil {
+	v.Lang, v.User = lang, u
+	if err := t.ExecuteTemplate(&buf, name, v); err != nil {
 		a.serverError(w, r, err)
 		return
 	}
