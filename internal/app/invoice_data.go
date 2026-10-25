@@ -76,14 +76,7 @@ type lineData struct {
 	Unit        string      `json:"unit"`
 	UnitPrice   string      `json:"unit_price"`
 	Total       string      `json:"total"`
-	Entries     []entryData `json:"entries"`
-}
-
-type entryData struct {
-	Date        string `json:"date"`
-	User        string `json:"user"`
-	Seconds     int64  `json:"seconds"`
-	Description string `json:"description"`
+	Entries     []lineEntry `json:"entries"`
 }
 
 type totalsData struct {
@@ -140,16 +133,16 @@ func (a *App) invoiceJSON(q querier, id int64, number *string, issueDate string)
 		d.Tax.VATRate = int64(b.VATRate)
 	}
 	var paymentDays int
-	var address, tz string
+	var address string
 	var cancels cancelledData
 	var isCancellation bool
 	err = q.QueryRow(`SELECT i.kind, i.service_from, i.service_to, i.payment_days, i.reason, i.currency,
-		c.number, c.name, c.address, c.invoice_language, c.timezone,
+		c.number, c.name, c.address, c.invoice_language,
 		i.cancels_id IS NOT NULL, ifnull(o.number, ''), ifnull(o.issue_date, '')
 		FROM invoice i JOIN customer c ON c.id = i.customer_id LEFT JOIN invoice o ON o.id = i.cancels_id
 		WHERE i.id = ?`, id).
 		Scan(&d.Kind, &d.ServicePeriod.From, &d.ServicePeriod.To, &paymentDays, &d.Reason, &d.Currency,
-			&d.Customer.Number, &d.Customer.Name, &address, &d.Language, &tz,
+			&d.Customer.Number, &d.Customer.Name, &address, &d.Language,
 			&isCancellation, &cancels.Number, &cancels.IssueDate)
 	if err != nil {
 		return nil, err
@@ -163,10 +156,6 @@ func (a *App) invoiceJSON(q querier, id int64, number *string, issueDate string)
 		return nil, fmt.Errorf("issue date: %w", err)
 	}
 	d.DueDate = issued.AddDate(0, 0, paymentDays).Format(time.DateOnly)
-	loc, err := time.LoadLocation(tz)
-	if err != nil {
-		return nil, err
-	}
 	unit := currency.MustParseISO(d.Currency)
 	lineIDs, totals, err := appendLines(q, id, unit, &d)
 	if err != nil {
@@ -174,10 +163,12 @@ func (a *App) invoiceJSON(q querier, id int64, number *string, issueDate string)
 	}
 	t := totalsOf(totals, d.Tax.VATRate)
 	d.Totals = totalsData{Net: formatAmount(t.Net, unit), VAT: formatAmount(t.VAT, unit), Gross: formatAmount(t.Gross, unit)}
+	entries, err := a.lineEntries(q, id)
+	if err != nil {
+		return nil, err
+	}
 	for i, lineID := range lineIDs {
-		if d.Lines[i].Entries, err = lineEntries(q, lineID, loc); err != nil {
-			return nil, err
-		}
+		d.Lines[i].Entries = append([]lineEntry{}, entries[lineID]...)
 	}
 	return json.Marshal(d)
 }
@@ -205,26 +196,4 @@ func appendLines(q querier, id int64, unit currency.Unit, d *invoiceData) ([]int
 		totals = append(totals, total)
 	}
 	return ids, totals, rows.Err()
-}
-
-// lineEntries lists the time entries claimed by line, dated in loc.
-func lineEntries(q querier, line int64, loc *time.Location) ([]entryData, error) {
-	rows, err := q.Query(`SELECT e.start_time, e.end_time - e.start_time, u.display_name, e.description
-		FROM time_entry e JOIN user u ON u.id = e.user_id
-		WHERE e.invoice_line_id = ? ORDER BY e.start_time, e.id`, line)
-	if err != nil {
-		return nil, err
-	}
-	defer func() { _ = rows.Close() }()
-	entries := []entryData{}
-	for rows.Next() {
-		var e entryData
-		var start int64
-		if err := rows.Scan(&start, &e.Seconds, &e.User, &e.Description); err != nil {
-			return nil, err
-		}
-		e.Date = time.Unix(start, 0).In(loc).Format(time.DateOnly)
-		entries = append(entries, e)
-	}
-	return entries, rows.Err()
 }

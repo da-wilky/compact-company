@@ -5,7 +5,7 @@
 <div class="title"><h1>{{t "invoices.draft_for" .CustomerName}}</h1>
 <a class="pill" href="/invoices/{{.ID}}/lines/new">{{t "invoices.add_line"}}</a></div>
 </div>
-<p class="actions"><a href="/invoices">{{t "invoices.title"}}</a> <a href="/invoices/{{.ID}}/preview">{{t "invoices.preview"}}</a></p>
+<p class="actions"><a href="/invoices">{{t "invoices.title"}}</a> <a href="/invoices/{{.ID}}/refresh">{{t "invoices.refresh"}}</a> <a href="/invoices/{{.ID}}/preview">{{t "invoices.preview"}}</a></p>
 {{with $.Data.MissingBusiness}}<p class="error">{{t "business.missing"}} {{range $i, $k := .}}{{if $i}}, {{end}}{{t $k}}{{end}}<br><a href="/settings/business">{{t "business.link"}}</a></p>{{end}}
 {{with $.Data.TypstError}}<div class="error"><p>{{t "invoices.typst_error"}}</p><pre class="typst-error">{{.}}</pre></div>{{end}}
 {{if .Lines}}

@@ -62,9 +62,21 @@ func (a *App) loadLines(id int64, unit currency.Unit, vatPercent int64) ([]invoi
 }
 
 type linePage struct {
-	Draft  draft
-	Line   invoiceLine
-	Errors []string
+	Draft   draft
+	Line    invoiceLine
+	Entries []lineEntry
+	Errors  []string
+}
+
+// renderLine shows an existing line together with the entries it claims.
+func (a *App) renderLine(w http.ResponseWriter, r *http.Request, status int, p linePage) {
+	entries, err := a.lineEntries(a.db, p.Draft.ID)
+	if err != nil {
+		a.serverError(w, r, err)
+		return
+	}
+	p.Entries = entries[p.Line.ID]
+	a.render(w, r, status, "invoice_line", p)
 }
 
 func (a *App) lineNew(w http.ResponseWriter, r *http.Request) {
@@ -93,7 +105,7 @@ func (a *App) lineFromPath(w http.ResponseWriter, r *http.Request) (draft, invoi
 
 func (a *App) lineEdit(w http.ResponseWriter, r *http.Request) {
 	if d, l, ok := a.lineFromPath(w, r); ok {
-		a.render(w, r, http.StatusOK, "invoice_line", linePage{Draft: d, Line: l})
+		a.renderLine(w, r, http.StatusOK, linePage{Draft: d, Line: l})
 	}
 }
 
@@ -147,7 +159,7 @@ func (a *App) lineUpdate(w http.ResponseWriter, r *http.Request) {
 	l, quantity, unitPrice, errs := lineFromForm(r, d.unit)
 	l.ID, l.Generated = old.ID, old.Generated
 	if errs != nil {
-		a.render(w, r, http.StatusUnprocessableEntity, "invoice_line", linePage{Draft: d, Line: l, Errors: errs})
+		a.renderLine(w, r, http.StatusUnprocessableEntity, linePage{Draft: d, Line: l, Errors: errs})
 		return
 	}
 	res, err := a.db.Exec(`UPDATE invoice_line SET description = ?, detail = ?, quantity = ?, unit = ?, unit_price = ?

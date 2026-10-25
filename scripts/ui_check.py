@@ -44,7 +44,8 @@ def seed(api):
     for line in [("Website relaunch", "Design and implementation of the new landing page", "12.5", "h", "85"), ("Hosting", "", "1", "month", "29.90")]:
         api.post(f"{base}{draft}/lines", form=dict(zip(("description", "detail", "quantity", "unit", "unit_price"), line)))
     line = re.search(rf'href="({draft}/lines/\d+)"', api.get(f"{base}{draft}").text()).group(1)
-    return customer, projects["Website relaunch"], draft, line
+    entry = re.findall(r'href="(/entries/\d+)\?', api.get(f"{base}/entries").text())[-1]  # Monday's, claimed by the draft
+    return customer, projects["Website relaunch"], draft, line, entry
 
 
 def main():
@@ -52,11 +53,11 @@ def main():
     with sync_playwright() as p:
         browser = p.chromium.launch(executable_path=chromium)
         api = browser.new_context().request
-        customer, project, draft, line = seed(api)
+        customer, project, draft, line, entry = seed(api)
         today = datetime.date.today().isoformat()
-        pages = ["/", "/week", "/week?everyone=1", "/entries", f"/entries?day={today}&project={project}", "/entries/new",
+        pages = ["/", "/week", "/week?everyone=1", "/entries", f"/entries?day={today}&project={project}", "/entries/new", entry,
                  "/customers", "/customers/new", f"/customers/{customer}", f"/customers/{customer}/projects", f"/projects/{project}",
-                 "/invoices", "/invoices/new", draft, f"{draft}/preview", f"{draft}/lines/new", line,
+                 "/invoices", "/invoices/new", draft, f"{draft}/preview", f"{draft}/lines/new", line, f"{draft}/refresh",
                  "/settings", "/settings/business", "/no-such-page"]
         for viewport, (width, height) in VIEWPORTS.items():
             for scheme in ("light", "dark"):

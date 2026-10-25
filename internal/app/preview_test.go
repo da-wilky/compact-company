@@ -99,6 +99,32 @@ func TestPreviewPassesTheContractToTheTemplate(t *testing.T) {
 	}
 }
 
+func TestEachLineCarriesItsEntriesToTheTemplate(t *testing.T) {
+	ta := newTestApp(t, dumpConfig(t))
+	alice, bob := ta.loginAs("alice"), ta.loginAs("bob")
+	website, _ := alice.acmeProjects()
+	alice.createEntry(entryForm(website, "2026-08-31T22:30", "2026-08-31T23:30", "first Berlin hour"))
+	bob.createEntry(entryForm(website, "2026-09-10T08:00", "2026-09-10T08:15", "bob's quarter"))
+	draft := alice.createDraft(pullForm(alice, "project", "15"))
+	alice.addLine(draft, lineForm("Hosting", "1", "10"))
+
+	res := alice.get(draft + "/preview")
+
+	lines := res.templateInput(t).(map[string]any)["lines"].([]any)
+	want := []any{
+		decodeJSON(t, `[
+			{"date": "2026-09-01", "user": "alice", "seconds": 3600, "description": "first Berlin hour"},
+			{"date": "2026-09-10", "user": "bob", "seconds": 900, "description": "bob's quarter"}
+		]`),
+		decodeJSON(t, `[]`),
+	}
+	for i, w := range want {
+		if got := lines[i].(map[string]any)["entries"]; !reflect.DeepEqual(got, w) {
+			t.Errorf("lines[%d].entries = %v, want %v", i, got, w)
+		}
+	}
+}
+
 func TestPreviewIsRefusedWhileBusinessDataIsMissing(t *testing.T) {
 	ta := newTestApp(t, devConfig)
 	c := ta.client()
