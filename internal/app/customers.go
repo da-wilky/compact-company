@@ -247,6 +247,18 @@ func (a *App) customerUpdate(w http.ResponseWriter, r *http.Request) {
 		a.renderCustomer(w, r, http.StatusUnprocessableEntity, c, errs)
 		return
 	}
+	if c.Currency != oldCurrency {
+		var invoiced bool
+		if err := tx.QueryRow(`SELECT EXISTS (SELECT 1 FROM invoice WHERE customer_id = ?)`, id).Scan(&invoiced); err != nil {
+			a.serverError(w, r, err)
+			return
+		}
+		if invoiced {
+			_ = tx.Rollback()
+			a.renderCustomer(w, r, http.StatusUnprocessableEntity, c, []string{"customers.error.currency_invoiced"})
+			return
+		}
+	}
 	if err := updateCustomer(tx, c, rate, prev.unit); err != nil {
 		a.serverError(w, r, err)
 		return

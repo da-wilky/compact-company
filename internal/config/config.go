@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/url"
 	"os"
+	"slices"
 	"strings"
 	"time"
 
@@ -20,6 +21,7 @@ type Config struct {
 	CustomerNumberFormat string   `toml:"customer_number_format"`
 	Auth                 Auth     `toml:"auth"`
 	Defaults             Defaults `toml:"defaults"`
+	Invoice              Invoice  `toml:"invoice"`
 	Business             Business `toml:"business"`
 	BusinessFile         string   `toml:"business_file"`
 	BusinessManaged      bool     `toml:"-"`
@@ -54,6 +56,11 @@ type Auth struct {
 	ClientSecret       string        `toml:"-"`
 }
 
+type Invoice struct {
+	PaymentDays     int `toml:"payment_days"`
+	RoundingMinutes int `toml:"rounding_minutes"`
+}
+
 type Defaults struct {
 	Currency        string `toml:"currency"`
 	Language        string `toml:"language"`
@@ -61,12 +68,15 @@ type Defaults struct {
 	ParallelEntries bool   `toml:"parallel_entries"`
 }
 
+var RoundingIncrements = []int{0, 5, 10, 15, 30}
+
 func Load(path string) (Config, error) {
 	cfg := Config{
 		Listen:               "127.0.0.1:8080",
 		CustomerNumberFormat: "K-{seq:03}",
 		Auth:                 Auth{SessionIdleTimeout: 14 * 24 * time.Hour},
 		Defaults:             Defaults{Currency: "EUR", Language: "en", Timezone: "UTC"},
+		Invoice:              Invoice{PaymentDays: 14},
 	}
 	md, err := decodeStrict(path, &cfg)
 	if err != nil {
@@ -133,6 +143,12 @@ func (c *Config) validate() error {
 	}
 	if _, err := currency.ParseISO(c.Defaults.Currency); err != nil {
 		return fmt.Errorf("defaults.currency: unknown ISO 4217 code %q", c.Defaults.Currency)
+	}
+	if !slices.Contains(RoundingIncrements, c.Invoice.RoundingMinutes) {
+		return fmt.Errorf("invoice.rounding_minutes must be one of %v, got %d", RoundingIncrements, c.Invoice.RoundingMinutes)
+	}
+	if c.Invoice.PaymentDays <= 0 {
+		return fmt.Errorf("invoice.payment_days must be positive, got %d", c.Invoice.PaymentDays)
 	}
 	if c.BusinessManaged {
 		return c.loadBusiness()

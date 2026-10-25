@@ -1,0 +1,23 @@
+{{define "title"}}{{t "invoices.new"}}{{end}}
+{{define "content"}}
+{{with .Data}}
+<h1>{{t "invoices.new"}}</h1>
+<p class="actions"><a href="/invoices">{{t "invoices.title"}}</a></p>
+{{with .Errors}}<ul class="errors">{{range .}}<li>{{t .}}</li>{{end}}</ul>{{end}}
+<form method="post" action="/invoices" class="form">
+<label>{{t "invoices.customer"}} <select name="customer" required>
+{{range .Customers}}<option value="{{.ID}}"{{if eq (print .ID) $.Data.Form.Customer}} selected{{end}}>{{.Name}}</option>{{end}}
+</select></label>
+<label>{{t "invoices.from"}} <input type="date" name="from" value="{{.Form.From}}" required></label>
+<label>{{t "invoices.to"}} <input type="date" name="to" value="{{.Form.To}}" required></label>
+<label>{{t "invoices.grouping"}} <select name="grouping">
+{{range .Groupings}}<option value="{{.}}"{{if eq . $.Data.Form.Grouping}} selected{{end}}>{{t (print "invoices.grouping." .)}}</option>{{end}}
+</select></label>
+<label>{{t "invoices.rounding"}} <select name="rounding_minutes">
+{{range .Increments}}<option value="{{.}}"{{if eq (print .) $.Data.Form.RoundingMinutes}} selected{{end}}>{{if .}}{{t "invoices.rounding.minutes" .}}{{else}}{{t "invoices.rounding.none"}}{{end}}</option>{{end}}
+</select></label>
+<label>{{t "invoices.payment_days"}} <input name="payment_days" value="{{.Form.PaymentDays}}" required inputmode="numeric"></label>
+<button>{{t "invoices.create"}}</button>
+</form>
+{{end}}
+{{end}}

@@ -135,6 +135,16 @@ h1 { margin: 0 0 1rem; font-size: 1.75rem; font-weight: 650; letter-spacing: -.0
 .entry-day .c-project { width: 30%; }
 .entry-day .c-bill { width: 7rem; }
 .entry-day td { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.filter-form { display: flex; gap: .4rem; margin: 0; }
+.filter-form select { padding: .25rem .6rem; border-radius: 999px; font-size: .85rem; }
+.filter-form button { padding: .25rem .8rem; font-size: .85rem; }
+.invoice-lines { min-width: 40rem; }
+.invoice-lines td { vertical-align: top; }
+.line-actions { width: 1%; white-space: nowrap; text-align: right; }
+.line-actions form { display: inline; margin: 0; }
+.line-actions button { width: 30px; height: 30px; padding: 0; border-radius: 8px; }
+.invoice-header { margin-top: 1.5rem; }
+.invoice-header .hint { margin: 0; }
 .more { display: block; margin: 1rem auto 0; padding: .5rem 1.2rem; width: max-content; border: 1px solid var(--field); border-radius: 999px; background: var(--surface); color: var(--fg); font-weight: 500; }
 .more:hover { border-color: var(--accent); text-decoration: none; }
 
