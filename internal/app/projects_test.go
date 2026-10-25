@@ -186,3 +186,24 @@ language = "de"
 	c.get(cust+"/projects").wantBody(t, "Noch keine Projekte.")
 	c.postForm(cust+"/projects", projectForm("website", "x")).wantBody(t, "Stundensatz muss")
 }
+
+func TestCurrencyChangeKeepsTheDecimalRateOverrides(t *testing.T) {
+	ta := newTestApp(t, devConfig)
+	c := ta.client()
+	c.createCustomer(customerForm("acme", "85"))
+	cust := c.customerPath("acme")
+	c.createProject(cust, projectForm("audit", "120.50"))
+	c.createProject(cust, projectForm("website", ""))
+	form := customerForm("acme", "90")
+	form.Set("currency", "JPY")
+
+	c.postForm(cust, form).wantStatus(t, http.StatusSeeOther)
+
+	res := c.get(cust + "/projects")
+	res.wantBody(t, "121 JPY</td>")
+	res.wantBody(t, "90 JPY <span")
+
+	form.Set("currency", "EUR")
+	c.postForm(cust, form).wantStatus(t, http.StatusSeeOther)
+	c.get(cust+"/projects").wantBody(t, "121.00 EUR</td>")
+}

@@ -59,3 +59,23 @@ func TestFormatAmount(t *testing.T) {
 		}
 	}
 }
+
+func TestRescaleAmount(t *testing.T) {
+	for _, tc := range []struct {
+		minor    int64
+		from, to string
+		want     int64
+	}{
+		{10000, "EUR", "JPY", 100},
+		{10050, "EUR", "JPY", 101},
+		{10049, "EUR", "JPY", 100},
+		{1449, "BHD", "JPY", 1},
+		{100, "JPY", "EUR", 10000},
+		{100, "JPY", "BHD", 100000},
+		{8550, "EUR", "USD", 8550},
+	} {
+		if got := rescaleAmount(tc.minor, currency.MustParseISO(tc.from), currency.MustParseISO(tc.to)); got != tc.want {
+			t.Errorf("rescaleAmount(%d, %s, %s) = %d, want %d", tc.minor, tc.from, tc.to, got, tc.want)
+		}
+	}
+}
