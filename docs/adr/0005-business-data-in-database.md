@@ -1,0 +1,3 @@
+# Business data lives in the database, config may override it
+
+The business's invoice data (name, address, contact, tax number, bank) is stored in the database and edited on a settings page. Config can supply it instead, via `[business]` and/or `business_file` (TOML, for sops; its keys override `[business]`); the settings page then shows it read-only. This revises ADR 0003, which kept it in config only: a settings page lets an instance be set up without editing files, while the override keeps declarative NixOS deployments and secrets out of the database. Issued invoices snapshot the data, so editing it never changes an issued invoice.

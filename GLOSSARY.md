@@ -40,3 +40,27 @@ A customer or project hidden from everyday use and closed to new time, but kept 
 **User**:
 A person who logs in and tracks time; all users work for the same business.
 _Avoid_: Member, account
+
+**Business**:
+The business an instance serves; it sends every invoice.
+_Avoid_: Seller, issuer, company
+
+**Invoice**:
+A bill to one customer, made of lines.
+_Avoid_: Bill
+
+**Draft**:
+An invoice still being prepared: editable, unnumbered, and deletable.
+
+**Issue**:
+To give a draft its invoice number and freeze it for good.
+
+**Issued invoice**:
+An invoice that has been issued; it can never be edited or deleted.
+
+**Cancellation invoice**:
+An issued invoice that reverses some or all lines of an earlier issued invoice.
+_Avoid_: Storno, credit note
+
+**Paid**:
+An issued invoice whose payment has been received.
