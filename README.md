@@ -45,7 +45,35 @@ currency = "EUR"                   # ISO 4217
 language = "en"                    # "en" or "de"; also used before login
 timezone = "Europe/Berlin"         # default: UTC
 parallel_entries = false
+
+[invoice]                          # defaults for new drafts
+payment_days = 14                  # default; positive
+rounding_minutes = 0               # default; 0, 5, 10, 15 or 30
 ```
+
+The business data printed on invoices is edited under Settings → Business. To manage it from config instead, set `[business]`, `business_file`, or both; the settings page then shows it read-only. `business_file` is a TOML file with the same keys as `[business]` (for sops secrets); its keys override the same keys in `[business]`.
+
+```toml
+business_file = "/run/secrets/compact-company-business"  # optional
+
+[business]
+name = "Jane Doe"
+company = "Doe Consulting"
+address = ["Main Street 1", "12345 Berlin"]
+email = "jane@example.com"
+web = "example.com"
+phone = "+49 30 123456"
+tax_number = "12/345/67890"
+tax_mode = "small_business"        # "small_business" (§ 19 UStG, default) or "standard"
+vat_rate = 19                      # integer percent, 0 to 100; used in "standard" mode
+
+[business.bank]
+name = "Example Bank"
+iban = "DE02120300000000202051"
+bic = "BYLADEM1001"
+```
+
+Invoices can't be previewed or issued while name, address or tax number is missing.
 
 `auth.mode = "none"` logs every visitor in as a fixed `dev` user. It is refused unless `listen` is a loopback address.
 

@@ -221,6 +221,36 @@ func TestLineTotalsRoundHalfUpAndSumToTheDraftTotal(t *testing.T) {
 	wantInOrder(t, res.body, "Consulting", "1.333", "85.00", "113.31", "Hosting", "2.5", "10.01", "25.03", "138.34", "138.34")
 }
 
+func TestStandardTaxModeAddsVATOnceOnTheNetTotal(t *testing.T) {
+	ta := newTestApp(t, devConfig)
+	c := ta.client()
+	c.postForm("/settings/business", businessForm()).wantStatus(t, http.StatusSeeOther)
+	draft := c.acmeDraft()
+
+	c.addLine(draft, lineForm("Alpha", "1", "0.13"))
+	c.addLine(draft, lineForm("Bravo", "1", "0.13"))
+
+	res := c.get(draft)
+	wantInOrder(t, res.body, "Net", "0.26", "VAT 19 %", "0.05", "Gross", "0.31")
+	res = c.get("/invoices")
+	res.wantBody(t, "0.31 EUR")
+}
+
+func TestSmallBusinessModeChargesNoVAT(t *testing.T) {
+	ta := newTestApp(t, devConfig)
+	c := ta.client()
+	form := businessForm()
+	form.Set("tax_mode", "small_business")
+	c.postForm("/settings/business", form).wantStatus(t, http.StatusSeeOther)
+	draft := c.acmeDraft()
+
+	c.addLine(draft, lineForm("Alpha", "1", "0.13"))
+
+	res := c.get(draft)
+	res.wantNoBody(t, "VAT")
+	wantInOrder(t, res.body, "Net", "0.13", "Gross", "0.13")
+}
+
 func TestLinesAreValidated(t *testing.T) {
 	ta := newTestApp(t, devConfig)
 	c := ta.client()

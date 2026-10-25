@@ -34,8 +34,8 @@ type invoiceLine struct {
 	Total       string
 }
 
-// loadLines returns invoice id's lines in position order and their totals.
-func (a *App) loadLines(id int64, unit currency.Unit) ([]invoiceLine, invoiceTotals, error) {
+// loadLines returns invoice id's lines in position order and their totals at vatPercent.
+func (a *App) loadLines(id int64, unit currency.Unit, vatPercent int64) ([]invoiceLine, invoiceTotals, error) {
 	rows, err := a.db.Query(`SELECT id, generated, description, detail, quantity, unit, unit_price
 		FROM invoice_line WHERE invoice_id = ? ORDER BY position, id`, id)
 	if err != nil {
@@ -58,7 +58,7 @@ func (a *App) loadLines(id int64, unit currency.Unit) ([]invoiceLine, invoiceTot
 	if err := rows.Err(); err != nil {
 		return nil, invoiceTotals{}, err
 	}
-	return lines, totalsOf(totals, a.vatPercent()), nil
+	return lines, totalsOf(totals, vatPercent), nil
 }
 
 type linePage struct {

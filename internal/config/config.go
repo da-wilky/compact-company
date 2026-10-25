@@ -22,6 +22,28 @@ type Config struct {
 	Auth                 Auth     `toml:"auth"`
 	Defaults             Defaults `toml:"defaults"`
 	Invoice              Invoice  `toml:"invoice"`
+	Business             Business `toml:"business"`
+	BusinessFile         string   `toml:"business_file"`
+	BusinessManaged      bool     `toml:"-"`
+}
+
+type Business struct {
+	Name      string   `toml:"name"`
+	Company   string   `toml:"company"`
+	Address   []string `toml:"address"`
+	Email     string   `toml:"email"`
+	Web       string   `toml:"web"`
+	Phone     string   `toml:"phone"`
+	TaxNumber string   `toml:"tax_number"`
+	Bank      Bank     `toml:"bank"`
+	TaxMode   string   `toml:"tax_mode"`
+	VATRate   int      `toml:"vat_rate"`
+}
+
+type Bank struct {
+	Name string `toml:"name"`
+	IBAN string `toml:"iban"`
+	BIC  string `toml:"bic"`
 }
 
 type Auth struct {
@@ -56,21 +78,30 @@ func Load(path string) (Config, error) {
 		Defaults:             Defaults{Currency: "EUR", Language: "en", Timezone: "UTC"},
 		Invoice:              Invoice{PaymentDays: 14},
 	}
-	md, err := toml.DecodeFile(path, &cfg)
+	md, err := decodeStrict(path, &cfg)
 	if err != nil {
 		return Config{}, fmt.Errorf("config %s: %w", path, err)
+	}
+	cfg.BusinessManaged = md.IsDefined("business") || cfg.BusinessFile != ""
+	if err := cfg.validate(); err != nil {
+		return Config{}, fmt.Errorf("config %s: %w", path, err)
+	}
+	return cfg, nil
+}
+
+func decodeStrict(path string, v any) (toml.MetaData, error) {
+	md, err := toml.DecodeFile(path, v)
+	if err != nil {
+		return md, err
 	}
 	if undecoded := md.Undecoded(); len(undecoded) > 0 {
 		keys := make([]string, len(undecoded))
 		for i, k := range undecoded {
 			keys[i] = k.String()
 		}
-		return Config{}, fmt.Errorf("config %s: unknown keys: %s", path, strings.Join(keys, ", "))
+		return md, fmt.Errorf("unknown keys: %s", strings.Join(keys, ", "))
 	}
-	if err := cfg.validate(); err != nil {
-		return Config{}, fmt.Errorf("config %s: %w", path, err)
-	}
-	return cfg, nil
+	return md, nil
 }
 
 func (c *Config) validate() error {
@@ -118,6 +149,28 @@ func (c *Config) validate() error {
 	}
 	if c.Invoice.PaymentDays <= 0 {
 		return fmt.Errorf("invoice.payment_days must be positive, got %d", c.Invoice.PaymentDays)
+	}
+	if c.BusinessManaged {
+		return c.loadBusiness()
+	}
+	return nil
+}
+
+// loadBusiness decodes business_file over [business], so the file's keys win key by key.
+func (c *Config) loadBusiness() error {
+	if c.BusinessFile != "" {
+		if _, err := decodeStrict(c.BusinessFile, &c.Business); err != nil {
+			return fmt.Errorf("business_file %s: %w", c.BusinessFile, err)
+		}
+	}
+	if c.Business.TaxMode == "" {
+		c.Business.TaxMode = "small_business"
+	}
+	if c.Business.TaxMode != "small_business" && c.Business.TaxMode != "standard" {
+		return fmt.Errorf(`business.tax_mode must be "small_business" or "standard", got %q`, c.Business.TaxMode)
+	}
+	if c.Business.VATRate < 0 || c.Business.VATRate > 100 {
+		return fmt.Errorf("business.vat_rate must be 0 to 100, got %d", c.Business.VATRate)
 	}
 	return nil
 }

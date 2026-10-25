@@ -28,9 +28,14 @@ func init() {
 
 var groupings = []string{"project", "entry"}
 
-// vatPercent is the VAT rate applied to drafts.
-// TODO(#16): read the business's tax mode and rate; 0 is small-business mode.
-func (a *App) vatPercent() int64 { return 0 }
+// draftVATPercent is the business's current VAT rate, which drafts are totalled at.
+func (a *App) draftVATPercent() (int64, error) {
+	b, err := a.loadBusiness()
+	if err != nil || b.TaxMode != "standard" {
+		return 0, err
+	}
+	return int64(b.VATRate), nil
+}
 
 type invoiceRow struct {
 	ID        int64
@@ -116,10 +121,15 @@ func (a *App) invoiceList(w http.ResponseWriter, r *http.Request) {
 		a.serverError(w, r, err)
 		return
 	}
+	vat, err := a.draftVATPercent()
+	if err != nil {
+		a.serverError(w, r, err)
+		return
+	}
 	for i := range page.Rows {
 		row := &page.Rows[i]
 		unit := currency.MustParseISO(row.Currency)
-		_, totals, err := a.loadLines(row.ID, unit)
+		_, totals, err := a.loadLines(row.ID, unit, vat)
 		if err != nil {
 			a.serverError(w, r, err)
 			return
@@ -293,8 +303,10 @@ func (a *App) loadDraft(id int64) (draft, error) {
 	}
 	d.Header.PaymentDays = strconv.Itoa(paymentDays)
 	d.unit = currency.MustParseISO(d.Currency)
-	d.VATPercent = a.vatPercent()
-	lines, totals, err := a.loadLines(id, d.unit)
+	if d.VATPercent, err = a.draftVATPercent(); err != nil {
+		return d, err
+	}
+	lines, totals, err := a.loadLines(id, d.unit, d.VATPercent)
 	if err != nil {
 		return d, err
 	}
