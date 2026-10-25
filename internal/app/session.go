@@ -97,10 +97,11 @@ func (a *App) sessionUser(w http.ResponseWriter, r *http.Request) (*User, error)
 		return nil, nil
 	}
 	var lastSeen int64
+	var subject string
 	u, err := scanUser(a.db.QueryRow(`
-		SELECT `+userColumns+`, s.last_seen
+		SELECT `+userColumns+`, s.last_seen, u.subject
 		FROM session s JOIN user u ON u.id = s.user_id
-		WHERE s.id = ?`, ck.Value), &lastSeen)
+		WHERE s.id = ?`, ck.Value), &lastSeen, &subject)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
@@ -108,7 +109,9 @@ func (a *App) sessionUser(w http.ResponseWriter, r *http.Request) (*User, error)
 		return nil, err
 	}
 	now := a.now().Unix()
-	if now-lastSeen > int64(a.cfg.Auth.SessionIdleTimeout.Seconds()) {
+	// Dev mode skips the admission check so test sessions of arbitrary users keep working.
+	revoked := a.oidc != nil && !a.oidc.allowed[subject]
+	if revoked || now-lastSeen > int64(a.cfg.Auth.SessionIdleTimeout.Seconds()) {
 		_, err := a.db.Exec(`DELETE FROM session WHERE id = ?`, ck.Value)
 		return nil, err
 	}
@@ -117,6 +120,23 @@ func (a *App) sessionUser(w http.ResponseWriter, r *http.Request) (*User, error)
 	}
 	a.setSessionCookie(w, ck.Value)
 	return u, nil
+}
+
+func init() {
+	routes = append(routes, func(a *App, mux *http.ServeMux) {
+		mux.HandleFunc("POST /logout", a.logout)
+	})
+}
+
+func (a *App) logout(w http.ResponseWriter, r *http.Request) {
+	if ck, err := r.Cookie(sessionCookie); err == nil {
+		if _, err := a.db.Exec(`DELETE FROM session WHERE id = ?`, ck.Value); err != nil {
+			a.serverError(w, r, err)
+			return
+		}
+	}
+	http.SetCookie(w, &http.Cookie{Name: sessionCookie, Path: "/", MaxAge: -1, Secure: true, HttpOnly: true, SameSite: http.SameSiteLaxMode})
+	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
 // authed puts the session's user into the request context. Without a session,

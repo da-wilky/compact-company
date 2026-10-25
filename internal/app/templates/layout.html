@@ -10,7 +10,8 @@
 <body>
 <header>
 <a class="brand" href="/">compact-company</a>
-{{with .User}}<span class="user">{{t "layout.signed_in_as" .DisplayName}}</span>{{end}}
+{{with .User}}<div class="user">{{t "layout.signed_in_as" .DisplayName}}
+<form method="post" action="/logout"><button>{{t "layout.logout"}}</button></form></div>{{end}}
 </header>
 <main>
 {{template "content" .}}

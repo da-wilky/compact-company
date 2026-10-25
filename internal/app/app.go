@@ -29,6 +29,7 @@ type App struct {
 	pages     map[string]*template.Template
 	catalog   catalog.Catalog
 	devUserID int64
+	oidc      *oidcClient
 }
 
 // routes is appended to by each feature file's init, so features register
@@ -47,6 +48,12 @@ func New(cfg config.Config, now func() time.Time) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
+	var oidcc *oidcClient
+	if cfg.Auth.Mode == "oidc" {
+		if oidcc, err = newOIDCClient(cfg, now); err != nil {
+			return nil, err
+		}
+	}
 	if err := os.MkdirAll(cfg.DataDir, 0o750); err != nil {
 		return nil, fmt.Errorf("data dir: %w", err)
 	}
@@ -54,7 +61,7 @@ func New(cfg config.Config, now func() time.Time) (*App, error) {
 	if err != nil {
 		return nil, fmt.Errorf("database: %w", err)
 	}
-	a := &App{cfg: cfg, db: database, now: now, pages: pages, catalog: cat}
+	a := &App{cfg: cfg, db: database, now: now, pages: pages, catalog: cat, oidc: oidcc}
 	if cfg.Auth.Mode == "none" {
 		a.devUserID, err = a.upsertUser(identity{Issuer: "none", Subject: "dev", DisplayName: "dev"})
 		if err != nil {

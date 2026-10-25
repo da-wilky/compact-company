@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -14,6 +15,7 @@ import (
 
 type Config struct {
 	Listen               string   `toml:"listen"`
+	PublicURL            string   `toml:"public_url"`
 	DataDir              string   `toml:"data_dir"`
 	CustomerNumberFormat string   `toml:"customer_number_format"`
 	Auth                 Auth     `toml:"auth"`
@@ -74,6 +76,10 @@ func (c *Config) validate() error {
 			return fmt.Errorf("auth.mode = \"none\" requires a loopback listen address, got %q", c.Listen)
 		}
 	case "oidc":
+		if u, err := url.Parse(c.PublicURL); err != nil || u.Scheme == "" || u.Host == "" {
+			return fmt.Errorf("public_url must be an absolute URL in oidc mode, got %q", c.PublicURL)
+		}
+		c.PublicURL = strings.TrimSuffix(c.PublicURL, "/")
 		if c.Auth.Issuer == "" {
 			return errors.New("auth.issuer is required in oidc mode")
 		}
