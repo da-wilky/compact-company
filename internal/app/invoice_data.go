@@ -112,15 +112,15 @@ func (a *App) issueDate(q querier, id int64) (string, error) {
 	return a.now().In(loc).Format(time.DateOnly), nil
 }
 
-// invoiceJSON builds the template input for invoice id; a nil number makes it a draft.
+// invoiceJSON builds the template input for invoice id, and returns its gross in minor units; a nil number makes it a draft.
 // The bytes are what a snapshot stores, so a rendering can be reproduced from it.
-func (a *App) invoiceJSON(q querier, id int64, number *string, issueDate string) ([]byte, error) {
+func (a *App) invoiceJSON(q querier, id int64, number *string, issueDate string) ([]byte, int64, error) {
 	b, err := a.loadBusiness()
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	if missing := missingBusinessFields(b); missing != nil {
-		return nil, &missingBusinessError{fields: missing}
+		return nil, 0, &missingBusinessError{fields: missing}
 	}
 	d := invoiceData{
 		Version:   1,
@@ -149,7 +149,7 @@ func (a *App) invoiceJSON(q querier, id int64, number *string, issueDate string)
 			&d.Customer.Number, &d.Customer.Name, &address, &d.Language,
 			&isCancellation, &cancels.Number, &cancels.IssueDate, &cancelledTax.SmallBusiness, &cancelledTax.VATRate)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	if isCancellation {
 		// A cancellation reverses exactly the tax that was charged, whatever the business's tax mode is now.
@@ -158,24 +158,25 @@ func (a *App) invoiceJSON(q querier, id int64, number *string, issueDate string)
 	d.Customer.Address = addressLines(address)
 	issued, err := time.Parse(time.DateOnly, issueDate)
 	if err != nil {
-		return nil, fmt.Errorf("issue date: %w", err)
+		return nil, 0, fmt.Errorf("issue date: %w", err)
 	}
 	d.DueDate = issued.AddDate(0, 0, paymentDays).Format(time.DateOnly)
 	unit := currency.MustParseISO(d.Currency)
 	lineIDs, totals, err := appendLines(q, id, unit, &d)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	t := totalsOf(totals, d.Tax.VATRate)
 	d.Totals = totalsData{Net: formatAmount(t.Net, unit), VAT: formatAmount(t.VAT, unit), Gross: formatAmount(t.Gross, unit)}
 	entries, err := a.lineEntries(q, id)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	for i, lineID := range lineIDs {
 		d.Lines[i].Entries = append([]lineEntry{}, entries[lineID]...)
 	}
-	return json.Marshal(d)
+	data, err := json.Marshal(d)
+	return data, t.Gross, err
 }
 
 // appendLines appends invoice id's lines to d and returns their ids and totals in minor units.

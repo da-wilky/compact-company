@@ -97,7 +97,7 @@ func (a *App) invoiceList(w http.ResponseWriter, r *http.Request) {
 	}
 	// Issued rows show their snapshot, so later customer or business changes don't reach them.
 	rows, err := a.db.Query(`SELECT * FROM (SELECT i.id, ifnull(i.number, '') number, ifnull(i.snapshot ->> '$.customer.name', c.name),
-		ifnull(i.issue_date, '') issue_date, ifnull(i.paid_date, '') paid_date, i.currency, ifnull(i.snapshot ->> '$.totals.gross', ''),
+		ifnull(i.issue_date, '') issue_date, ifnull(i.paid_date, '') paid_date, i.currency, i.gross,
 		`+invoiceStatus+` status
 		FROM invoice i JOIN customer c ON c.id = i.customer_id
 		WHERE (?1 = 0 OR i.customer_id = ?1))
@@ -110,9 +110,13 @@ func (a *App) invoiceList(w http.ResponseWriter, r *http.Request) {
 	defer func() { _ = rows.Close() }()
 	for rows.Next() {
 		var row invoiceRow
-		if err := rows.Scan(&row.ID, &row.Number, &row.Customer, &row.IssueDate, &row.PaidDate, &row.Currency, &row.Gross, &row.Status); err != nil {
+		var gross sql.NullInt64
+		if err := rows.Scan(&row.ID, &row.Number, &row.Customer, &row.IssueDate, &row.PaidDate, &row.Currency, &gross, &row.Status); err != nil {
 			a.serverError(w, r, err)
 			return
+		}
+		if gross.Valid {
+			row.Gross = formatAmount(gross.Int64, currency.MustParseISO(row.Currency))
 		}
 		page.Rows = append(page.Rows, row)
 	}

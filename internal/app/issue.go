@@ -13,7 +13,6 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
-	"strings"
 
 	"golang.org/x/text/currency"
 )
@@ -47,7 +46,7 @@ func (a *App) issue(ctx context.Context, tx *sql.Tx, id int64) (err error) {
 	if err != nil {
 		return err
 	}
-	data, err := a.invoiceJSON(tx, id, &number, issueDate)
+	data, gross, err := a.invoiceJSON(tx, id, &number, issueDate)
 	if err != nil {
 		return err
 	}
@@ -67,8 +66,8 @@ func (a *App) issue(ctx context.Context, tx *sql.Tx, id int64) (err error) {
 	}()
 	sum := sha256.Sum256(pdf)
 	res, err := tx.Exec(`UPDATE invoice SET number = ?1, issue_date = ?2, due_date = date(?2, '+' || payment_days || ' days'),
-		snapshot = ?3, pdf_path = ?4, pdf_sha256 = ?5 WHERE id = ?6 AND number IS NULL`,
-		number, issueDate, string(data), rel, hex.EncodeToString(sum[:]), id)
+		snapshot = ?3, gross = ?4, pdf_path = ?5, pdf_sha256 = ?6 WHERE id = ?7 AND number IS NULL`,
+		number, issueDate, string(data), gross, rel, hex.EncodeToString(sum[:]), id)
 	if err != nil {
 		return err
 	}
@@ -169,9 +168,11 @@ const invoiceStatus = `CASE WHEN i.number IS NULL THEN 'draft' WHEN i.kind = '` 
 func (a *App) loadIssued(id int64) (issuedInvoice, error) {
 	inv := issuedInvoice{ID: id}
 	var snapshot string
-	err := a.db.QueryRow(`SELECT i.number, i.snapshot, i.pdf_sha256, ifnull(i.paid_date, ''), ifnull(i.cancels_id, 0), `+invoiceStatus+`
+	var due int64
+	err := a.db.QueryRow(`SELECT i.number, i.snapshot, i.pdf_sha256, ifnull(i.paid_date, ''), ifnull(i.cancels_id, 0), `+invoiceStatus+`,
+		i.gross + (SELECT ifnull(sum(c.gross), 0) FROM invoice c WHERE c.cancels_id = i.id)
 		FROM invoice i WHERE i.id = ? AND i.number IS NOT NULL`, id).
-		Scan(&inv.Number, &snapshot, &inv.SHA256, &inv.PaidDate, &inv.CancelsID, &inv.Status)
+		Scan(&inv.Number, &snapshot, &inv.SHA256, &inv.PaidDate, &inv.CancelsID, &inv.Status, &due)
 	if err != nil {
 		return inv, err
 	}
@@ -182,9 +183,9 @@ func (a *App) loadIssued(id int64) (issuedInvoice, error) {
 		return inv, err
 	}
 	if inv.Status == "cancelled" || inv.Status == "partially_cancelled" {
-		inv.AmountDue, err = a.amountDue(inv)
+		inv.AmountDue = formatAmount(due, currency.MustParseISO(inv.Snapshot.Currency))
 	}
-	return inv, err
+	return inv, nil
 }
 
 // loadIssuedLines pairs the snapshot's lines, which are in position order, with their ids and cancellations.
@@ -210,31 +211,6 @@ func (a *App) loadIssuedLines(inv *issuedInvoice) error {
 		inv.Lines = append(inv.Lines, l)
 	}
 	return rows.Err()
-}
-
-func (a *App) amountDue(inv issuedInvoice) (string, error) {
-	unit := currency.MustParseISO(inv.Snapshot.Currency)
-	due, err := parseAmount(inv.Snapshot.Totals.Gross, unit)
-	if err != nil {
-		return "", err
-	}
-	rows, err := a.db.Query(`SELECT snapshot ->> '$.totals.gross' FROM invoice WHERE cancels_id = ?`, inv.ID)
-	if err != nil {
-		return "", err
-	}
-	defer func() { _ = rows.Close() }()
-	for rows.Next() {
-		var gross string
-		if err := rows.Scan(&gross); err != nil {
-			return "", err
-		}
-		cancelled, err := parseAmount(strings.TrimPrefix(gross, "-"), unit)
-		if err != nil {
-			return "", err
-		}
-		due -= cancelled
-	}
-	return formatAmount(due, unit), rows.Err()
 }
 
 func (a *App) invoiceShow(w http.ResponseWriter, r *http.Request) {
