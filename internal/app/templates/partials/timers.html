@@ -1,24 +1,28 @@
 {{define "timers"}}<div id="timers" class="timers" hx-target="this" hx-swap="outerHTML">
 {{with .Timers}}{{with .Error}}<p class="error" role="alert">{{t .}}</p>{{end}}
 {{range .Running}}<div class="timer">
+<div class="timer-top"><span class="pulse" aria-hidden="true"></span>
 <span class="project">{{if .Project}}{{.Project}}{{else}}{{t "timers.unassigned"}}{{end}}</span>
-{{if .Billable.Valid}}<span class="tag">{{if .Billable.Bool}}{{t "timers.billable"}}{{else}}{{t "timers.not_billable"}}{{end}}</span>{{end}}
-<span class="hint">{{t "timers.since" (datetime .Start)}}</span>
-{{if .Overdue}}<span class="badge" role="status">{{t "timers.overdue"}}</span>{{end}}
-<form method="post" action="/timers/{{.ID}}" hx-post="/timers/{{.ID}}">
-<input name="description" value="{{.Description}}" aria-label="{{t "timers.description"}}">
-<button>{{t "timers.save"}}</button>
+<time class="elapsed" data-start="{{.Start.Unix}}" title="{{t "timers.since" (datetime .Start)}}">{{t "timers.since" (clock .Start)}}</time>
+<form method="post" action="/timers/{{.ID}}/stop" hx-post="/timers/{{.ID}}/stop"><button class="icon stop" aria-label="{{t "timers.stop"}}" title="{{t "timers.stop"}}">■</button></form></div>
+<div class="timer-bottom"><form method="post" action="/timers/{{.ID}}" hx-post="/timers/{{.ID}}" hx-trigger="change from:find input, submit">
+<input name="description" value="{{.Description}}" placeholder="{{t "timers.description"}}" aria-label="{{t "timers.description"}}">
 </form>
-<form method="post" action="/timers/{{.ID}}/stop" hx-post="/timers/{{.ID}}/stop"><button>{{t "timers.stop"}}</button></form>
+{{if .Billable.Valid}}<span class="tag">{{if .Billable.Bool}}{{t "timers.billable"}}{{else}}{{t "timers.not_billable"}}{{end}}</span>{{end}}</div>
+{{if .Overdue}}<span class="badge" role="status">{{t "timers.overdue"}}</span>{{end}}
 </div>
-{{end}}<form method="post" action="/timers" hx-post="/timers">
+{{else}}{{template "timer-start" .}}
+{{end}}{{if and .Running $.User.ParallelEntries}}<details class="timer-add"><summary aria-label="{{t "timers.start"}}" title="{{t "timers.start"}}"><span aria-hidden="true">+</span></summary>
+{{template "timer-start" .}}
+</details>{{end}}{{end}}</div>{{end}}
+
+{{define "timer-start"}}<form method="post" action="/timers" hx-post="/timers" class="timer-start">
+<div class="timer-top"><input name="description" placeholder="{{t "timers.description"}}" aria-label="{{t "timers.description"}}">
+<button class="icon go" aria-label="{{t "timers.start"}}" title="{{t "timers.start"}}">▶</button></div>
 <select name="project" aria-label="{{t "timers.project"}}">
 <option value="">{{t "timers.no_project"}}</option>
 {{range .Customers}}<optgroup label="{{.Name}}">
 {{range .Projects}}<option value="{{.ID}}">{{.Name}}</option>
 {{end}}</optgroup>
 {{end}}</select>
-<input name="description" placeholder="{{t "timers.description"}}" aria-label="{{t "timers.description"}}">
-<button>{{t "timers.start"}}</button>
-</form>
-{{end}}</div>{{end}}
+</form>{{end}}

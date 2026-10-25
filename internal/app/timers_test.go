@@ -74,8 +74,18 @@ parallel_entries = true
 	c.hxPost("/timers", url.Values{"project": {strings.TrimPrefix(c.projectPath(cust, "internal"), "/projects/")}})
 	res := c.hxPost("/timers", url.Values{"project": {strings.TrimPrefix(c.projectPath(cust, "website"), "/projects/")}})
 
-	res.wantBody(t, "acme · internal</span>\n<span class=\"tag\">not billable</span>")
-	res.wantBody(t, "acme · website</span>\n<span class=\"tag\">billable</span>")
+	timers := strings.Split(res.body, `<div class="timer">`)[1:]
+	if len(timers) != 2 {
+		t.Fatalf("got %d timers:\n%s", len(timers), res.body)
+	}
+	for i, want := range []string{"acme · internal</span>", "acme · website</span>"} {
+		if !strings.Contains(timers[i], want) {
+			t.Errorf("timer %d lacks %q:\n%s", i, want, timers[i])
+		}
+	}
+	if !strings.Contains(timers[0], `<span class="tag">not billable</span>`) || !strings.Contains(timers[1], `<span class="tag">billable</span>`) {
+		t.Errorf("billable tags not inherited:\n%s", res.body)
+	}
 }
 
 func TestSecondTimerIsRefusedWithParallelEntriesOff(t *testing.T) {

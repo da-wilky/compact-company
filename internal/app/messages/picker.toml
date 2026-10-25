@@ -1,0 +1,4 @@
+"picker.prev_month" = { en = "Previous month", de = "Vorheriger Monat" }
+"picker.next_month" = { en = "Next month", de = "Nächster Monat" }
+"picker.week" = { en = "Wk", de = "KW" }
+"picker.pick_day" = { en = "Pick a day", de = "Tag wählen" }

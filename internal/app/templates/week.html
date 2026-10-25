@@ -1,16 +1,32 @@
 {{define "title"}}{{t "week.title" (date (index .Data.Days 0).Time)}}{{end}}
 {{define "content"}}
 {{with .Data}}
-<h1>{{t "week.title" (date (index .Days 0).Time)}}</h1>
-<p><a href="/week?week={{.Prev}}{{if .Everyone}}&everyone=1{{end}}">{{t "week.prev"}}</a> ·
-<a href="/week?week={{.Next}}{{if .Everyone}}&everyone=1{{end}}">{{t "week.next"}}</a> ·
-{{if .Everyone}}<a href="/week?week={{(index .Days 0).Date}}">{{t "entries.mine"}}</a>{{else}}<a href="/week?week={{(index .Days 0).Date}}&everyone=1">{{t "entries.everyone"}}</a>{{end}}</p>
-<table>
-<thead><tr><th></th>{{range .Days}}<th>{{t .Weekday}}<br>{{date .Time}}</th>{{end}}<th class="num">{{t "week.total"}}</th></tr></thead>
+<div class="page-head">
+<div><h1>{{t "week.title" (date (index .Days 0).Time)}}</h1>
+<p class="hint">{{t "week.subtitle"}}</p></div>
+<nav class="pager" aria-label="{{t "week.nav"}}">
+{{if not .Current}}<a class="pill" href="/week{{if .Everyone}}?everyone=1{{end}}">{{t "week.this"}}</a>{{end}}
+<a class="prev" href="/week?week={{.Prev}}{{if .Everyone}}&everyone=1{{end}}">{{t "week.prev"}}</a>
+<form class="jump" action="/week">{{if .Everyone}}<input type="hidden" name="everyone" value="1">{{end}}
+<input type="date" name="week" value="{{(index .Days 0).Date}}" aria-label="{{t "week.jump"}}"><noscript><button>{{t "entries.jump"}}</button></noscript></form>
+<a class="next" href="/week?week={{.Next}}{{if .Everyone}}&everyone=1{{end}}">{{t "week.next"}}</a>
+</nav>
+</div>
+<div class="filters">
+<span class="label">{{t "entries.show"}}</span>
+<span class="seg"><a href="/week?week={{(index .Days 0).Date}}"{{if not .Everyone}} aria-current="true"{{end}}>{{t "entries.mine"}}</a><a href="/week?week={{(index .Days 0).Date}}&everyone=1"{{if .Everyone}} aria-current="true"{{end}}>{{t "entries.everyone"}}</a></span>
+</div>
+<div class="table-wrap">
+<table class="week">
+<colgroup><col>{{range $i, $d := .Days}}<col{{if $d.Today}} class="today"{{else if ge $i 5}} class="weekend"{{end}}>{{end}}<col></colgroup>
+<thead><tr><th></th>{{range .Days}}<th class="num"><a href="/entries?day={{.Date}}{{if $.Data.Everyone}}&everyone=1{{end}}">{{t .Weekday}}<br>{{date .Time}}</a></th>{{end}}<th class="num">{{t "week.total"}}</th></tr></thead>
 <tbody>
-{{range $row := .Rows}}<tr><th>{{if $row.Name}}{{$row.Name}}{{else}}{{t "timers.unassigned"}}{{end}}</th>{{range $i, $d := $row.Days}}<td class="num">{{if $d}}<a href="/entries?day={{(index $.Data.Days $i).Date}}&project={{$row.Project}}{{if $.Data.Everyone}}&everyone=1{{end}}">{{duration $d}}</a>{{end}}</td>{{end}}<td class="num">{{duration $row.Total}}</td></tr>
-{{end}}</tbody>
+{{range .Customers}}<tr class="customer"><th colspan="9">{{.Name}}</th></tr>
+{{range $row := .Projects}}<tr><th>{{$row.Name}}</th>{{range $i, $d := $row.Days}}<td class="num">{{if $d}}<a href="/entries?day={{(index $.Data.Days $i).Date}}&project={{$row.Project}}{{if $.Data.Everyone}}&everyone=1{{end}}">{{duration $d}}</a>{{end}}</td>{{end}}<td class="num">{{duration $row.Total}}</td></tr>
+{{end}}{{end}}{{$row := .Unassigned}}<tr class="unassigned"><th>{{t "timers.unassigned"}}</th>{{range $i, $d := $row.Days}}<td class="num">{{if $d}}<a href="/entries?day={{(index $.Data.Days $i).Date}}&project=none{{if $.Data.Everyone}}&everyone=1{{end}}">{{duration $d}}</a>{{end}}</td>{{end}}<td class="num">{{duration $row.Total}}</td></tr>
+</tbody>
 <tfoot><tr><th>{{t "week.total"}}</th>{{range .Totals}}<td class="num">{{duration .}}</td>{{end}}<td class="num">{{duration .Total}}</td></tr></tfoot>
 </table>
+</div>
 {{end}}
 {{end}}

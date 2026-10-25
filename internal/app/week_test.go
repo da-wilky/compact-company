@@ -23,11 +23,41 @@ func TestWeekGroupsByProjectWithDailyAndWeeklyTotals(t *testing.T) {
 
 	res.wantStatus(t, http.StatusOK)
 	res.wantBody(t, "Week of 2026-10-26")
-	res.wantBody(t, "<th>Mon<br>2026-10-26</th>")
-	res.wantBody(t, "<th>Sun<br>2026-11-01</th>")
-	res.wantBody(t, `<tr><th>acme · website</th><td class="num"><a href="/entries?day=2026-10-26&project=`+project+`">1:45</a></td><td class="num"></td><td class="num"><a href="/entries?day=2026-10-28&project=`+project+`">0:30</a></td><td class="num"></td><td class="num"></td><td class="num"></td><td class="num"><a href="/entries?day=2026-11-01&project=`+project+`">1:59</a></td><td class="num">4:15</td></tr>`)
-	res.wantBody(t, `<tr><th>Unassigned</th><td class="num"></td><td class="num"></td><td class="num"><a href="/entries?day=2026-10-28&project=none">0:29</a></td>`)
+	res.wantBody(t, `<th class="num"><a href="/entries?day=2026-10-26">Mon<br>2026-10-26</a></th>`)
+	res.wantBody(t, `<th class="num"><a href="/entries?day=2026-11-01">Sun<br>2026-11-01</a></th>`)
+	res.wantBody(t, `<tr><th>website</th><td class="num"><a href="/entries?day=2026-10-26&project=`+project+`">1:45</a></td><td class="num"></td><td class="num"><a href="/entries?day=2026-10-28&project=`+project+`">0:30</a></td><td class="num"></td><td class="num"></td><td class="num"></td><td class="num"><a href="/entries?day=2026-11-01&project=`+project+`">1:59</a></td><td class="num">4:15</td></tr>`)
+	res.wantBody(t, `<tr class="unassigned"><th>Unassigned</th><td class="num"></td><td class="num"></td><td class="num"><a href="/entries?day=2026-10-28&project=none">0:29</a></td>`)
 	res.wantBody(t, `<tr><th>Total</th><td class="num">1:45</td><td class="num">0:00</td><td class="num">1:00</td><td class="num">0:00</td><td class="num">0:00</td><td class="num">0:00</td><td class="num">1:59</td><td class="num">4:45</td></tr>`)
+}
+
+func TestWeekGroupsProjectsUnderTheirCustomer(t *testing.T) {
+	ta := newTestApp(t, devConfig)
+	c := ta.client()
+	website := c.websiteProject()
+	c.createCustomer(customerForm("beta", "90"))
+	beta := c.customerPath("beta")
+	c.createProject(beta, projectForm("app", ""))
+	c.createProject(beta, projectForm("hosting", ""))
+	app := strings.TrimPrefix(c.projectPath(beta, "app"), "/projects/")
+	hosting := strings.TrimPrefix(c.projectPath(beta, "hosting"), "/projects/")
+	c.createEntry(entryForm(website, "2026-10-26T06:00", "2026-10-26T07:00", "acme"))
+	c.createEntry(entryForm(app, "2026-10-26T07:00", "2026-10-26T08:00", "beta app"))
+	c.createEntry(entryForm(hosting, "2026-10-26T08:00", "2026-10-26T09:00", "beta hosting"))
+
+	res := c.get("/week")
+
+	res.wantBody(t, "<tbody>\n"+`<tr class="customer"><th colspan="9">acme</th></tr>`+"\n<tr><th>website</th>")
+	res.wantBody(t, `<tr class="customer"><th colspan="9">beta</th></tr>`+"\n<tr><th>app</th>")
+	res.wantBody(t, "</tr>\n<tr><th>hosting</th>")
+	res.wantBody(t, "</tr>\n"+`<tr class="unassigned"><th>Unassigned</th>`)
+}
+
+func TestWeekMarksTodayAndTheWeekend(t *testing.T) {
+	ta := newTestApp(t, devConfig)
+	c := ta.client()
+
+	c.get("/week").wantBody(t, `<colgroup><col><col class="today"><col><col><col><col><col class="weekend"><col class="weekend"><col></colgroup>`)
+	c.get("/week?week=2026-11-02").wantBody(t, `<colgroup><col><col><col><col><col><col><col class="weekend"><col class="weekend"><col></colgroup>`)
 }
 
 func TestWeekIsMondayToSundayInTheViewersTimezoneAcrossDST(t *testing.T) {
@@ -44,10 +74,10 @@ timezone = "Europe/Berlin"
 	next := c.get("/week")
 
 	dst.wantBody(t, "Week of 2026-10-19")
-	dst.wantBody(t, `<tr><th>Unassigned</th><td class="num"><a href="/entries?day=2026-10-19&project=none">1:00</a></td>`)
+	dst.wantBody(t, `<tr class="unassigned"><th>Unassigned</th><td class="num"><a href="/entries?day=2026-10-19&project=none">1:00</a></td>`)
 	dst.wantBody(t, `<a href="/entries?day=2026-10-25&project=none">1:15</a></td><td class="num">2:15</td></tr>`)
 	next.wantBody(t, "Week of 2026-10-26")
-	next.wantBody(t, `<tr><th>Unassigned</th><td class="num"><a href="/entries?day=2026-10-26&project=none">0:10</a></td>`)
+	next.wantBody(t, `<tr class="unassigned"><th>Unassigned</th><td class="num"><a href="/entries?day=2026-10-26&project=none">0:10</a></td>`)
 	next.wantBody(t, `<td class="num">0:10</td></tr>`)
 }
 
@@ -70,8 +100,18 @@ func TestWeekNavigatesToPreviousAndNextWeek(t *testing.T) {
 
 	res.wantBody(t, `href="/week?week=2026-10-19">Previous week</a>`)
 	res.wantBody(t, `href="/week?week=2026-11-02">Next week</a>`)
-	c.get("/").wantBody(t, `href="/week">Week</a>`)
+	c.get("/").wantBody(t, `<a href="/week"><svg`)
+	c.get("/").wantBody(t, `</svg>Week</a>`)
 	c.get("/week?week=nope").wantStatus(t, http.StatusBadRequest)
+}
+
+func TestWeekOffersThisWeekOnlyWhenElsewhere(t *testing.T) {
+	ta := newTestApp(t, devConfig)
+	c := ta.client()
+
+	c.get("/week").wantNoBody(t, "This week</a>")
+	c.get("/week?week=2026-11-04&everyone=1").wantBody(t, `<a class="pill" href="/week?everyone=1">This week</a>`)
+	c.get("/week?week=2026-11-04").wantBody(t, `<input type="date" name="week" value="2026-11-02"`)
 }
 
 func TestWeekShowsOnlyMineUnlessEveryone(t *testing.T) {
@@ -89,7 +129,7 @@ timezone = "Europe/Berlin"
 
 	mine.wantBody(t, `<a href="/entries?day=2026-10-27&project=none">1:00</a>`)
 	mine.wantNoBody(t, "0:30")
-	mine.wantBody(t, `href="/week?week=2026-10-26&everyone=1">Everyone</a>`)
+	mine.wantBody(t, `href="/week?week=2026-10-26&everyone=1">Team</a>`)
 	everyone.wantBody(t, `<a href="/entries?day=2026-10-26&project=none&everyone=1">0:30</a>`)
 	everyone.wantBody(t, `<a href="/entries?day=2026-10-27&project=none&everyone=1">1:00</a>`)
 	everyone.wantBody(t, `href="/week?week=2026-11-02&everyone=1">Next week</a>`)
@@ -108,8 +148,9 @@ func TestEditingFromADrilledInCellReturnsToIt(t *testing.T) {
 	if len(links) != 2 {
 		t.Fatalf("edit links = %v", links)
 	}
-	c.get(links[0][1]).wantBody(t, `<input type="hidden" name="return" value="`+strings.ReplaceAll(cell, "&", "&amp;")+`">`)
-	edit, del := links[0][2], links[1][2]
+	self := "/entries?day=2026-10-26&amp;everyone=1&amp;project=" + project
+	c.get(links[0][1]).wantBody(t, `<input type="hidden" name="return" value="`+self+`">`)
+	edit, del := links[1][2], links[0][2]
 	update := entryForm(project, "2026-10-26T06:00", "2026-10-26T06:30", "first")
 	update.Set("return", cell)
 	wantRedirect(t, c.postForm(edit, update), cell)
@@ -126,7 +167,7 @@ func TestWeekAndDayDatesFollowTheLanguage(t *testing.T) {
 	day := c.get("/entries?day=2026-10-28")
 
 	week.wantBody(t, "Woche ab 26.10.2026")
-	week.wantBody(t, "<th>Mo<br>26.10.2026</th>")
+	week.wantBody(t, `<th class="num"><a href="/entries?day=2026-10-26">Mo<br>26.10.2026</a></th>`)
 	week.wantBody(t, `href="/week?week=2026-11-02">Nächste Woche</a>`)
 	day.wantBody(t, "Einträge am 28.10.2026")
 	day.wantBody(t, `href="/entries?day=2026-10-29">Nächster Tag</a>`)
@@ -138,7 +179,7 @@ func TestWeekAlwaysShowsTheUnassignedRow(t *testing.T) {
 
 	res := c.get("/week")
 
-	res.wantBody(t, `<tr><th>Unassigned</th><td class="num"></td>`)
+	res.wantBody(t, `<tr class="unassigned"><th>Unassigned</th><td class="num"></td>`)
 }
 
 var editLinkWithReturn = regexp.MustCompile(`href="((/entries/\d+)\?return=[^"]+)"`)

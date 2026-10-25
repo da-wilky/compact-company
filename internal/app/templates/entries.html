@@ -1,20 +1,38 @@
-{{define "title"}}{{t "entries.title" (date .Data.From)}}{{end}}
+{{define "title"}}{{if .Data.Day}}{{t "entries.title" (date .Data.From)}}{{else}}{{t "entries.nav"}}{{end}}{{end}}
 {{define "content"}}
 {{with .Data}}
-<h1>{{t "entries.title" (date .From)}}</h1>
-<p><a href="/entries?day={{.Prev}}{{with .Project}}&project={{.}}{{end}}{{if .Everyone}}&everyone=1{{end}}">{{t "entries.prev"}}</a> ·
-<a href="/entries?day={{.Next}}{{with .Project}}&project={{.}}{{end}}{{if .Everyone}}&everyone=1{{end}}">{{t "entries.next"}}</a> ·
-{{if .Everyone}}<a href="/entries?day={{.Day}}{{with .Project}}&project={{.}}{{end}}">{{t "entries.mine"}}</a>{{else}}<a href="/entries?day={{.Day}}{{with .Project}}&project={{.}}{{end}}&everyone=1">{{t "entries.everyone"}}</a>{{end}} ·
-<a href="/entries/new">{{t "entries.new"}}</a></p>
-{{with .Entries}}
-<table>
-<thead><tr>{{if $.Data.Everyone}}<th>{{t "entries.user"}}</th>{{end}}<th>{{t "entries.time"}}</th><th class="num">{{t "entries.duration"}}</th><th>{{t "entries.project"}}</th><th>{{t "entries.description"}}</th><th>{{t "entries.billable"}}</th></tr></thead>
-<tbody>
-{{range .}}<tr>{{if $.Data.Everyone}}<td>{{.User}}</td>{{end}}<td>{{if and .Own (not .Running)}}<a href="/entries/{{.ID}}?return={{$.Data.Self}}">{{end}}{{clock .Start}}–{{if .Running}}{{t "entries.running"}}{{else}}{{clock .End}}{{end}}{{if and .Own (not .Running)}}</a>{{end}}</td><td class="num">{{duration .Duration}}</td><td>{{if .Project}}{{.Project}}{{else}}{{t "timers.unassigned"}}{{end}}</td><td>{{.Description}}</td><td>{{if .Billable.Valid}}{{if .Billable.Bool}}{{t "projects.yes"}}{{else}}{{t "projects.no"}}{{end}}{{end}}</td></tr>
-{{end}}</tbody>
-</table>
-{{else}}
+<div class="page-head">
+<div class="title"><h1>{{if .Day}}{{t "entries.title" (date .From)}}{{else}}{{t "entries.nav"}}{{end}}</h1>
+<a class="pill" href="/entries/new">{{t "entries.new"}}</a></div>
+<nav class="pager" aria-label="{{t "entries.nav"}}">
+{{if .Day}}{{if not .IsToday}}<a class="pill" href="{{.Today}}">{{t "entries.today"}}</a>{{end}}
+<a class="pill" href="{{.All}}">{{t "entries.all"}}</a>
+<a class="prev" href="{{.Prev}}">{{t "entries.prev"}}</a>{{end}}
+<form class="jump" action="/entries">{{if .Everyone}}<input type="hidden" name="everyone" value="1">{{end}}{{with .Project}}<input type="hidden" name="project" value="{{.}}">{{end}}
+<input type="date" name="day" value="{{.Day}}" aria-label="{{t "entries.day"}}"><noscript><button>{{t "entries.jump"}}</button></noscript></form>
+{{if .Day}}<a class="next" href="{{.Next}}">{{t "entries.next"}}</a>{{end}}
+</nav>
+</div>
+<div class="filters">
+<span class="label">{{t "entries.show"}}</span>
+<span class="seg"><a href="{{.Mine}}"{{if not .Everyone}} aria-current="true"{{end}}>{{t "entries.mine"}}</a><a href="{{.Team}}"{{if .Everyone}} aria-current="true"{{end}}>{{t "entries.everyone"}}</a></span>
+{{if .Project}}<span class="chip">{{if eq .Project "none"}}{{t "timers.unassigned"}}{{else}}{{.ProjectName}}{{end}} <a href="{{.Bare}}" aria-label="{{t "entries.clear_project"}}" title="{{t "entries.clear_project"}}">×</a></span>{{end}}
+</div>
+{{if .Days}}{{template "entry-days" $}}{{else}}
 <p>{{t "entries.empty"}}</p>
 {{end}}
 {{end}}
 {{end}}
+
+{{define "entry-days"}}{{with .Data}}{{range .Days}}<section class="entry-day">
+{{if not .Continued}}<h2>{{t .Weekday}} {{date .Date}} <span class="sum">{{duration .Total}}</span></h2>
+{{end}}<div class="table-wrap"><table>
+<colgroup>{{if $.Data.Everyone}}<col class="c-user">{{end}}<col class="c-time"><col class="c-dur"><col class="c-project"><col><col class="c-bill"></colgroup>
+<thead><tr>{{if $.Data.Everyone}}<th>{{t "entries.user"}}</th>{{end}}<th>{{t "entries.time"}}</th><th class="num">{{t "entries.duration"}}</th><th>{{t "entries.project"}}</th><th>{{t "entries.description"}}</th><th>{{t "entries.billable"}}</th></tr></thead>
+<tbody>
+{{range .Entries}}<tr>{{if $.Data.Everyone}}<td>{{.User}}</td>{{end}}<td>{{if and .Own (not .Running)}}<a href="/entries/{{.ID}}?return={{$.Data.Self}}">{{end}}{{clock .Start}}–{{if .Running}}{{t "entries.running"}}{{else}}{{clock .End}}{{end}}{{if and .Own (not .Running)}}</a>{{end}}</td><td class="num">{{duration .Duration}}</td><td>{{if .Project}}{{.Project}}{{else}}{{t "timers.unassigned"}}{{end}}</td><td>{{.Description}}</td><td>{{if .Billable.Valid}}{{if .Billable.Bool}}{{t "projects.yes"}}{{else}}{{t "projects.no"}}{{end}}{{end}}</td></tr>
+{{end}}</tbody>
+</table></div>
+</section>
+{{end}}{{with .More}}<a class="more" href="{{.}}" hx-get="{{.}}" hx-target="this" hx-swap="outerHTML">{{t "entries.more"}}</a>
+{{end}}{{end}}{{end}}

@@ -4,7 +4,6 @@
 "timers.since" = { en = "since %s", de = "seit %s" }
 "timers.overdue" = { en = "Running for more than 12 hours", de = "Läuft seit mehr als 12 Stunden" }
 "timers.description" = { en = "Description", de = "Beschreibung" }
-"timers.save" = { en = "Save", de = "Speichern" }
 "timers.stop" = { en = "Stop", de = "Stoppen" }
 "timers.project" = { en = "Project", de = "Projekt" }
 "timers.no_project" = { en = "No project", de = "Kein Projekt" }
