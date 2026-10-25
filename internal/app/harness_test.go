@@ -27,23 +27,10 @@ listen = "127.0.0.1:8080"
 mode = "none"
 `
 
-// oidcConfig is a valid OIDC-mode config; append keys to its [auth] table.
+// oidcConfig is a valid OIDC-mode config against a fresh stub issuer; append keys to its [auth] table.
 func oidcConfig(t *testing.T) string {
 	t.Helper()
-	secret := filepath.Join(t.TempDir(), "client-secret")
-	if err := os.WriteFile(secret, []byte("s3cret\n"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	return `
-listen = "0.0.0.0:8080"
-
-[auth]
-mode = "oidc"
-issuer = "https://issuer.test"
-client_id = "compact-company"
-client_secret_file = ` + strconv.Quote(secret) + `
-allowed_subjects = ["alice"]
-`
+	return newIssuer(t).config(t, "alice")
 }
 
 type clock struct {

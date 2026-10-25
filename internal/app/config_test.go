@@ -32,8 +32,20 @@ func TestMissingClientSecretFileFailsStartup(t *testing.T) {
 }
 
 func TestOIDCModeRequiresIssuerAndClientID(t *testing.T) {
-	wantStartupError(t, strings.Replace(oidcConfig(t), `issuer = "https://issuer.test"`, "", 1), "auth.issuer")
-	wantStartupError(t, strings.Replace(oidcConfig(t), `client_id = "compact-company"`, "", 1), "auth.client_id")
+	wantStartupError(t, strings.Replace(oidcConfig(t), "\nissuer = ", "\n# ", 1), "auth.issuer")
+	wantStartupError(t, strings.Replace(oidcConfig(t), "\nclient_id = ", "\n# ", 1), "auth.client_id")
+}
+
+func TestOIDCModeRequiresPublicURL(t *testing.T) {
+	wantStartupError(t, strings.Replace(oidcConfig(t), "\npublic_url = ", "\n# ", 1), "public_url")
+	wantStartupError(t, strings.Replace(oidcConfig(t), `public_url = "https://compact.test"`, `public_url = "compact.test"`, 1), "public_url")
+}
+
+func TestUnreachableIssuerFailsStartup(t *testing.T) {
+	iss := newIssuer(t)
+	cfg := iss.config(t, "alice")
+	iss.Close()
+	wantStartupError(t, cfg, "auth.issuer")
 }
 
 func TestOIDCModeStartsOnAnyAddress(t *testing.T) {

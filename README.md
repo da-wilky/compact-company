@@ -28,6 +28,7 @@ One TOML file. Unknown keys are a startup error. Secrets are only read from file
 
 ```toml
 listen = "127.0.0.1:8080"          # default
+public_url = "https://time.example.com"  # required in oidc mode; redirect URI is <public_url>/auth/callback
 data_dir = "/var/lib/compact-company"  # required; holds app.db
 customer_number_format = "K-{seq:03}"  # default
 

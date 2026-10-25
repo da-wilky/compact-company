@@ -11,7 +11,8 @@
 <header>
 <a class="brand" href="/">compact-company</a>
 {{if .User}}<nav><a href="/customers">{{t "customers.title"}}</a></nav>{{end}}
-{{with .User}}<span class="user">{{t "layout.signed_in_as" .DisplayName}} · <a href="/settings">{{t "layout.settings"}}</a></span>{{end}}
+{{with .User}}<span class="user">{{t "layout.signed_in_as" .DisplayName}} · <a href="/settings">{{t "layout.settings"}}</a>
+<form method="post" action="/logout"><button>{{t "layout.logout"}}</button></form></span>{{end}}
 </header>
 <main>
 {{template "content" .}}
