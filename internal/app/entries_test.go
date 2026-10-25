@@ -30,7 +30,7 @@ func TestManualEntryShowsInTheDayListing(t *testing.T) {
 	c.get("/entries?day=2026-10-27").wantNoBody(t, "kickoff")
 }
 
-var entryLink = regexp.MustCompile(`href="(/entries/\d+)"`)
+var entryLink = regexp.MustCompile(`href="(/entries/\d+)[?"]`)
 
 // createEntry creates an entry and returns its path, scraped from its day's listing.
 func (c *client) createEntry(form url.Values) string {

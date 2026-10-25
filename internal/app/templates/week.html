@@ -1,0 +1,16 @@
+{{define "title"}}{{t "week.title" (index .Data.Days 0).Date}}{{end}}
+{{define "content"}}
+{{with .Data}}
+<h1>{{t "week.title" (index .Days 0).Date}}</h1>
+<p><a href="/week?week={{.Prev}}{{if .Everyone}}&everyone=1{{end}}">{{t "week.prev"}}</a> ·
+<a href="/week?week={{.Next}}{{if .Everyone}}&everyone=1{{end}}">{{t "week.next"}}</a> ·
+{{if .Everyone}}<a href="/week?week={{(index .Days 0).Date}}">{{t "entries.mine"}}</a>{{else}}<a href="/week?week={{(index .Days 0).Date}}&everyone=1">{{t "entries.everyone"}}</a>{{end}}</p>
+<table>
+<thead><tr><th></th>{{range .Days}}<th>{{t .Weekday}}<br>{{.Date}}</th>{{end}}<th class="num">{{t "week.total"}}</th></tr></thead>
+<tbody>
+{{range $row := .Rows}}<tr><th>{{if $row.Name}}{{$row.Name}}{{else}}{{t "timers.unassigned"}}{{end}}</th>{{range $i, $d := $row.Days}}<td class="num">{{if $d}}<a href="/entries?day={{(index $.Data.Days $i).Date}}&project={{$row.Project}}{{if $.Data.Everyone}}&everyone=1{{end}}">{{duration $d}}</a>{{end}}</td>{{end}}<td class="num">{{duration $row.Total}}</td></tr>
+{{end}}</tbody>
+<tfoot><tr><th>{{t "week.total"}}</th>{{range .Totals}}<td class="num">{{duration .}}</td>{{end}}<td class="num">{{duration .Total}}</td></tr></tfoot>
+</table>
+{{end}}
+{{end}}
