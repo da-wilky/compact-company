@@ -185,7 +185,7 @@ func (a *App) timerStop(w http.ResponseWriter, r *http.Request) {
 func (a *App) updateOwnTimer(w http.ResponseWriter, r *http.Request, set string, arg any) {
 	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil {
-		http.NotFound(w, r)
+		a.notFound(w, r)
 		return
 	}
 	res, err := a.db.Exec(set+` WHERE id = ? AND user_id = ? AND end_time IS NULL`, arg, id, currentUser(r).ID)
@@ -199,7 +199,7 @@ func (a *App) updateOwnTimer(w http.ResponseWriter, r *http.Request, set string,
 		return
 	}
 	if n == 0 {
-		http.NotFound(w, r)
+		a.notFound(w, r)
 		return
 	}
 	a.timersChanged(w, r)

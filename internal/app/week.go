@@ -42,7 +42,7 @@ func (a *App) week(w http.ResponseWriter, r *http.Request) {
 	day := a.now().In(loc)
 	if s := r.FormValue("week"); s != "" {
 		if day, err = time.ParseInLocation(dayLayout, s, loc); err != nil {
-			http.Error(w, "invalid week", http.StatusBadRequest)
+			a.errorPage(w, r, http.StatusBadRequest, "error.invalid_week")
 			return
 		}
 	}

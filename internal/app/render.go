@@ -116,8 +116,14 @@ func (a *App) render(w http.ResponseWriter, r *http.Request, status int, page st
 	a.execute(w, r, status, page, "layout", view{Data: data})
 }
 
-// execute runs template name from page's set; v.Timers, if unset, is loaded for a logged-in user.
 func (a *App) execute(w http.ResponseWriter, r *http.Request, status int, page, name string, v view) {
+	if err := a.write(w, r, status, page, name, v); err != nil {
+		a.serverError(w, r, err)
+	}
+}
+
+// write runs template name from page's set; v.Timers, if unset, is loaded for a logged-in user.
+func (a *App) write(w http.ResponseWriter, r *http.Request, status int, page, name string, v view) error {
 	u := currentUser(r)
 	lang := a.cfg.Defaults.Language
 	if u != nil {
@@ -125,20 +131,17 @@ func (a *App) execute(w http.ResponseWriter, r *http.Request, status int, page, 
 	}
 	loc, err := a.viewerLocation(r)
 	if err != nil {
-		a.serverError(w, r, err)
-		return
+		return err
 	}
 	if u != nil && v.Timers == nil {
 		if v.Timers, err = a.loadTimerBar(u.ID); err != nil {
-			a.serverError(w, r, err)
-			return
+			return err
 		}
 	}
 	p := message.NewPrinter(language.Make(lang), message.Catalog(a.catalog))
 	t, err := a.pages[page].Clone()
 	if err != nil {
-		a.serverError(w, r, err)
-		return
+		return err
 	}
 	t.Funcs(template.FuncMap{
 		"t":        p.Sprintf,
@@ -148,10 +151,10 @@ func (a *App) execute(w http.ResponseWriter, r *http.Request, status int, page, 
 	var buf bytes.Buffer
 	v.Lang, v.User = lang, u
 	if err := t.ExecuteTemplate(&buf, name, v); err != nil {
-		a.serverError(w, r, err)
-		return
+		return err
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(status)
 	_, _ = buf.WriteTo(w)
+	return nil
 }

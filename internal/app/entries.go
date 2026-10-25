@@ -60,7 +60,7 @@ func (a *App) entryList(w http.ResponseWriter, r *http.Request) {
 	day := a.now().In(loc)
 	if s := r.FormValue("day"); s != "" {
 		if day, err = time.ParseInLocation(dayLayout, s, loc); err != nil {
-			http.Error(w, "invalid day", http.StatusBadRequest)
+			a.errorPage(w, r, http.StatusBadRequest, "error.invalid_day")
 			return
 		}
 	}
@@ -78,7 +78,7 @@ func (a *App) entryList(w http.ResponseWriter, r *http.Request) {
 	default:
 		id, err := strconv.ParseInt(project, 10, 64)
 		if err != nil {
-			http.Error(w, "invalid project", http.StatusBadRequest)
+			a.errorPage(w, r, http.StatusBadRequest, "error.invalid_project")
 			return
 		}
 		filter = " AND e.project_id = ?"
@@ -282,7 +282,7 @@ func formatInput(t time.Time, loc *time.Location) string {
 func (a *App) entryFromPath(w http.ResponseWriter, r *http.Request, loc *time.Location) (f entryForm, mine, ok bool) {
 	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil {
-		http.NotFound(w, r)
+		a.notFound(w, r)
 		return f, false, false
 	}
 	f.ID = id
@@ -293,7 +293,7 @@ func (a *App) entryFromPath(w http.ResponseWriter, r *http.Request, loc *time.Lo
 		FROM time_entry WHERE id = ? AND end_time IS NOT NULL`, id).
 		Scan(&userID, &project, &start, &end, &f.Description, &billable, &invoice)
 	if errors.Is(err, sql.ErrNoRows) {
-		http.NotFound(w, r)
+		a.notFound(w, r)
 		return f, false, false
 	}
 	if err != nil {
@@ -337,7 +337,7 @@ func (a *App) entryUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !mine {
-		forbidden(w)
+		a.forbidden(w, r)
 		return
 	}
 	f := entryFromForm(r)
@@ -369,10 +369,6 @@ func (a *App) entryUpdate(w http.ResponseWriter, r *http.Request) {
 	redirectBack(w, r, time.Unix(s.start, 0).In(loc).Format(dayLayout))
 }
 
-func forbidden(w http.ResponseWriter) {
-	http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
-}
-
 func (a *App) entryDelete(w http.ResponseWriter, r *http.Request) {
 	loc, err := a.viewerLocation(r)
 	if err != nil {
@@ -384,7 +380,7 @@ func (a *App) entryDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !mine {
-		forbidden(w)
+		a.forbidden(w, r)
 		return
 	}
 	if _, err := a.db.Exec(`DELETE FROM time_entry WHERE id = ?`, f.ID); err != nil {

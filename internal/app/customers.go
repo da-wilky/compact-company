@@ -190,7 +190,7 @@ func (a *App) insertCustomer(c customer, rate int64) error {
 func (a *App) loadCustomer(w http.ResponseWriter, r *http.Request) (customer, bool) {
 	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil {
-		http.NotFound(w, r)
+		a.notFound(w, r)
 		return customer{}, false
 	}
 	c := customer{ID: id}
@@ -199,7 +199,7 @@ func (a *App) loadCustomer(w http.ResponseWriter, r *http.Request) (customer, bo
 		FROM customer WHERE id = ?`, id).
 		Scan(&c.Number, &c.Name, &c.Address, &c.Email, &c.Currency, &c.InvoiceLanguage, &c.Timezone, &rate, &c.Note, &c.Archived)
 	if errors.Is(err, sql.ErrNoRows) {
-		http.NotFound(w, r)
+		a.notFound(w, r)
 		return c, false
 	}
 	if err != nil {
@@ -219,7 +219,7 @@ func (a *App) customerEdit(w http.ResponseWriter, r *http.Request) {
 func (a *App) customerUpdate(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil {
-		http.NotFound(w, r)
+		a.notFound(w, r)
 		return
 	}
 	tx, err := a.db.Begin()
@@ -233,7 +233,7 @@ func (a *App) customerUpdate(w http.ResponseWriter, r *http.Request) {
 	var oldRate int64
 	err = tx.QueryRow(`SELECT number, currency, hourly_rate, archived FROM customer WHERE id = ?`, id).Scan(&number, &oldCurrency, &oldRate, &archived)
 	if errors.Is(err, sql.ErrNoRows) {
-		http.NotFound(w, r)
+		a.notFound(w, r)
 		return
 	}
 	if err != nil {

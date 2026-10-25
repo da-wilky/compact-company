@@ -80,29 +80,29 @@ func (a *App) loginStart(w http.ResponseWriter, r *http.Request) {
 func (a *App) loginCallback(w http.ResponseWriter, r *http.Request) {
 	ck, err := r.Cookie(loginCookie)
 	if err != nil {
-		loginFailed(w, err)
+		a.loginFailed(w, r, err)
 		return
 	}
 	http.SetCookie(w, &http.Cookie{Name: loginCookie, Path: "/auth/callback", MaxAge: -1, Secure: true, HttpOnly: true})
 	parts := strings.Split(ck.Value, ".")
 	if len(parts) != 3 || r.URL.Query().Get("state") != parts[0] {
-		loginFailed(w, fmt.Errorf("state mismatch"))
+		a.loginFailed(w, r, fmt.Errorf("state mismatch"))
 		return
 	}
 	nonce, verifier := parts[1], parts[2]
 	token, err := a.oidc.oauth.Exchange(r.Context(), r.URL.Query().Get("code"), oauth2.VerifierOption(verifier))
 	if err != nil {
-		loginFailed(w, err)
+		a.loginFailed(w, r, err)
 		return
 	}
 	raw, _ := token.Extra("id_token").(string)
 	idToken, err := a.oidc.verifier.Verify(r.Context(), raw)
 	if err != nil {
-		loginFailed(w, err)
+		a.loginFailed(w, r, err)
 		return
 	}
 	if idToken.Nonce != nonce {
-		loginFailed(w, fmt.Errorf("nonce mismatch"))
+		a.loginFailed(w, r, fmt.Errorf("nonce mismatch"))
 		return
 	}
 	var claims struct {
@@ -111,7 +111,7 @@ func (a *App) loginCallback(w http.ResponseWriter, r *http.Request) {
 		Email             string `json:"email"`
 	}
 	if err := idToken.Claims(&claims); err != nil {
-		loginFailed(w, err)
+		a.loginFailed(w, r, err)
 		return
 	}
 	if !a.oidc.allowed[idToken.Subject] {
@@ -126,7 +126,7 @@ func (a *App) loginCallback(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
-func loginFailed(w http.ResponseWriter, err error) {
+func (a *App) loginFailed(w http.ResponseWriter, r *http.Request, err error) {
 	slog.Warn("login failed", "err", err)
-	http.Error(w, "login failed", http.StatusBadRequest)
+	a.errorPage(w, r, http.StatusBadRequest, "error.login_failed")
 }

@@ -69,12 +69,12 @@ func (a *App) loadProjectCustomer(id int64) (projectCustomer, error) {
 func (a *App) customerFromPath(w http.ResponseWriter, r *http.Request) (projectCustomer, bool) {
 	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil {
-		http.NotFound(w, r)
+		a.notFound(w, r)
 		return projectCustomer{}, false
 	}
 	c, err := a.loadProjectCustomer(id)
 	if errors.Is(err, sql.ErrNoRows) {
-		http.NotFound(w, r)
+		a.notFound(w, r)
 		return c, false
 	}
 	if err != nil {
@@ -171,7 +171,7 @@ func (a *App) projectCreate(w http.ResponseWriter, r *http.Request) {
 func (a *App) projectFromPath(w http.ResponseWriter, r *http.Request) (projectCustomer, project, bool) {
 	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil {
-		http.NotFound(w, r)
+		a.notFound(w, r)
 		return projectCustomer{}, project{}, false
 	}
 	p := project{ID: id}
@@ -184,7 +184,7 @@ func (a *App) projectFromPath(w http.ResponseWriter, r *http.Request) (projectCu
 		c, err = a.loadProjectCustomer(customerID)
 	}
 	if errors.Is(err, sql.ErrNoRows) {
-		http.NotFound(w, r)
+		a.notFound(w, r)
 		return c, p, false
 	}
 	if err != nil {
