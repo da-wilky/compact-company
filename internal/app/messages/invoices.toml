@@ -46,6 +46,14 @@
 "invoices.move_up" = { en = "Move up", de = "Nach oben" }
 "invoices.move_down" = { en = "Move down", de = "Nach unten" }
 "invoices.delete_line" = { en = "Delete line", de = "Position löschen" }
+"invoices.badge.draft" = { en = "On a draft", de = "Im Entwurf" }
+"invoices.badge.issued" = { en = "Invoice %s", de = "Rechnung %s" }
+"invoices.line_entries" = { en = "Entries on this line", de = "Einträge dieser Position" }
+"invoices.entry_date" = { en = "Date", de = "Datum" }
+"invoices.entry_user" = { en = "User", de = "Benutzer" }
+"invoices.entry_duration" = { en = "Duration", de = "Dauer" }
+"invoices.refresh" = { en = "Refresh entries", de = "Einträge aktualisieren" }
+"invoices.refresh_warning" = { en = "Refreshing deletes every line generated from time and generates them again from the entries in the saved range. Changes to those lines are lost; free lines are kept.", de = "Beim Aktualisieren werden alle aus Zeiten erzeugten Positionen gelöscht und aus den Einträgen im gespeicherten Zeitraum neu erzeugt. Änderungen an diesen Positionen gehen verloren; freie Positionen bleiben erhalten." }
 "invoices.error.customer" = { en = "Choose a customer.", de = "Bitte einen Kunden wählen." }
 "invoices.error.range" = { en = "Enter a valid date range.", de = "Bitte einen gültigen Zeitraum angeben." }
 "invoices.error.service_period" = { en = "Enter a valid service period.", de = "Bitte einen gültigen Leistungszeitraum angeben." }

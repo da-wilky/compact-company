@@ -1,0 +1,1 @@
+{{define "invoice-badge"}}<a class="tag" href="/invoices/{{.ID}}">{{with .Number}}{{t "invoices.badge.issued" .}}{{else}}{{t "invoices.badge.draft"}}{{end}}</a>{{end}}

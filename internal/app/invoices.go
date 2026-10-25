@@ -242,14 +242,26 @@ func (a *App) draftCreate(w http.ResponseWriter, r *http.Request) {
 		a.renderDraftNew(w, r, http.StatusUnprocessableEntity, f, errs)
 		return
 	}
+	tx, err := a.db.Begin()
+	if err != nil {
+		a.serverError(w, r, err)
+		return
+	}
+	defer func() { _ = tx.Rollback() }()
 	var id int64
-	err = a.db.QueryRow(`INSERT INTO invoice
+	err = tx.QueryRow(`INSERT INTO invoice
 		(kind, customer_id, range_from, range_to, service_from, service_to, grouping, rounding_minutes, payment_days, currency)
 		SELECT 'invoice', id, ?1, ?2, ?1, ?2, ?3, ?4, ?5, currency FROM customer WHERE id = ?6 RETURNING id`,
 		f.From, f.To, f.Grouping, rounding, paymentDays, customerID).Scan(&id)
 	if errors.Is(err, sql.ErrNoRows) {
 		a.renderDraftNew(w, r, http.StatusUnprocessableEntity, f, []string{"invoices.error.customer"})
 		return
+	}
+	if err == nil {
+		err = pullEntries(tx, id)
+	}
+	if err == nil {
+		err = tx.Commit()
 	}
 	if err != nil {
 		a.serverError(w, r, err)
