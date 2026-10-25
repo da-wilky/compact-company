@@ -8,7 +8,8 @@
       "mode": "debug",
       "program": "${workspaceFolder}/cmd/compact-company",
       "args": ["serve", "--config", "config.dev.toml"],
-      "cwd": "${workspaceFolder}"
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal"
     }
   ]
 }
