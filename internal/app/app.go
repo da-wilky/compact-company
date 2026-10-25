@@ -24,14 +24,15 @@ import (
 var static embed.FS
 
 type App struct {
-	cfg       config.Config
-	db        *sql.DB
-	now       func() time.Time
-	handler   http.Handler
-	pages     map[string]*template.Template
-	catalog   catalog.Catalog
-	devUserID int64
-	oidc      *oidcClient
+	cfg         config.Config
+	db          *sql.DB
+	now         func() time.Time
+	handler     http.Handler
+	pages       map[string]*template.Template
+	catalog     catalog.Catalog
+	devUserID   int64
+	oidc        *oidcClient
+	templateDir string
 }
 
 // routes is appended to by each feature file's init, so features register
@@ -62,11 +63,17 @@ func New(cfg config.Config, now func() time.Time) (*App, error) {
 	if err := os.MkdirAll(cfg.DataDir, 0o750); err != nil {
 		return nil, fmt.Errorf("data dir: %w", err)
 	}
+	templateDir := cfg.Invoice.TemplateDir
+	if templateDir == "" {
+		if templateDir, err = extractDefaultTemplate(cfg.DataDir); err != nil {
+			return nil, fmt.Errorf("default template: %w", err)
+		}
+	}
 	database, err := db.Open(filepath.Join(cfg.DataDir, "app.db"))
 	if err != nil {
 		return nil, fmt.Errorf("database: %w", err)
 	}
-	a := &App{cfg: cfg, db: database, now: now, pages: pages, catalog: cat, oidc: oidcc}
+	a := &App{cfg: cfg, db: database, now: now, pages: pages, catalog: cat, oidc: oidcc, templateDir: templateDir}
 	if err := a.purgeSessions(); err != nil {
 		_ = database.Close()
 		return nil, fmt.Errorf("purge sessions: %w", err)

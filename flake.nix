@@ -21,6 +21,11 @@
           version = "0.1.0";
           src = ./.;
           vendorHash = "sha256-khaGQDBUQUDtCnPp7Y4A0ARFjXzpRnnGzRbjQY8q/GU=";
+          nativeBuildInputs = [ pkgs.makeWrapper ];
+          nativeCheckInputs = [ pkgs.typst ];
+          postInstall = ''
+            wrapProgram $out/bin/compact-company --prefix PATH : ${pkgs.lib.makeBinPath [ pkgs.typst ]}
+          '';
           meta = {
             license = pkgs.lib.licenses.agpl3Only;
             mainProgram = "compact-company";
@@ -99,6 +104,7 @@
             pkgs.gopls
             pkgs.golangci-lint
             pkgs.sqlite
+            pkgs.typst
           ];
           # Debug builds compile cgo at -O0, which Nix's _FORTIFY_SOURCE hardening turns into an error; nothing here needs cgo.
           CGO_ENABLED = "0";

@@ -1,0 +1,230 @@
+package app
+
+import (
+	"database/sql"
+	"encoding/json"
+	"fmt"
+	"strings"
+	"time"
+
+	"golang.org/x/text/currency"
+)
+
+// querier is *sql.DB or *sql.Tx, so issuing can build its snapshot inside its transaction.
+type querier interface {
+	QueryRow(query string, args ...any) *sql.Row
+	Query(query string, args ...any) (*sql.Rows, error)
+}
+
+// invoiceData is the JSON handed to the Typst template, contract version 1 (templates/README.md).
+type invoiceData struct {
+	Version       int            `json:"version"`
+	Kind          string         `json:"kind"`
+	Draft         bool           `json:"draft"`
+	Number        *string        `json:"number"`
+	IssueDate     string         `json:"issue_date"`
+	DueDate       string         `json:"due_date"`
+	ServicePeriod period         `json:"service_period"`
+	Language      string         `json:"language"`
+	Currency      string         `json:"currency"`
+	Business      businessData   `json:"business"`
+	Tax           taxData        `json:"tax"`
+	Customer      customerData   `json:"customer"`
+	Lines         []lineData     `json:"lines"`
+	Totals        totalsData     `json:"totals"`
+	Cancels       *cancelledData `json:"cancels"`
+	Reason        string         `json:"reason"`
+}
+
+type period struct {
+	From string `json:"from"`
+	To   string `json:"to"`
+}
+
+type businessData struct {
+	Name      string   `json:"name"`
+	Company   string   `json:"company"`
+	Address   []string `json:"address"`
+	Email     string   `json:"email"`
+	Web       string   `json:"web"`
+	Phone     string   `json:"phone"`
+	TaxNumber string   `json:"tax_number"`
+	Bank      bankData `json:"bank"`
+}
+
+type bankData struct {
+	Name string `json:"name"`
+	IBAN string `json:"iban"`
+	BIC  string `json:"bic"`
+}
+
+type taxData struct {
+	SmallBusiness bool  `json:"small_business"`
+	VATRate       int64 `json:"vat_rate"`
+}
+
+type customerData struct {
+	Number  string   `json:"number"`
+	Name    string   `json:"name"`
+	Address []string `json:"address"`
+}
+
+type lineData struct {
+	Description string      `json:"description"`
+	Detail      string      `json:"detail"`
+	Quantity    string      `json:"quantity"`
+	Unit        string      `json:"unit"`
+	UnitPrice   string      `json:"unit_price"`
+	Total       string      `json:"total"`
+	Entries     []entryData `json:"entries"`
+}
+
+type entryData struct {
+	Date        string `json:"date"`
+	User        string `json:"user"`
+	Seconds     int64  `json:"seconds"`
+	Description string `json:"description"`
+}
+
+type totalsData struct {
+	Net   string `json:"net"`
+	VAT   string `json:"vat"`
+	Gross string `json:"gross"`
+}
+
+type cancelledData struct {
+	Number    string `json:"number"`
+	IssueDate string `json:"issue_date"`
+}
+
+// missingBusinessError refuses a render while business data an invoice requires is unset.
+type missingBusinessError struct{ fields []string }
+
+func (e *missingBusinessError) Error() string {
+	return "missing business data: " + strings.Join(e.fields, ", ")
+}
+
+// issueDate is today in the customer's timezone of invoice id.
+func (a *App) issueDate(q querier, id int64) (string, error) {
+	var tz string
+	if err := q.QueryRow(`SELECT c.timezone FROM invoice i JOIN customer c ON c.id = i.customer_id WHERE i.id = ?`, id).Scan(&tz); err != nil {
+		return "", err
+	}
+	loc, err := time.LoadLocation(tz)
+	if err != nil {
+		return "", err
+	}
+	return a.now().In(loc).Format(time.DateOnly), nil
+}
+
+// invoiceJSON builds the template input for invoice id; a nil number makes it a draft.
+// The bytes are what a snapshot stores, so a rendering can be reproduced from it.
+func (a *App) invoiceJSON(q querier, id int64, number *string, issueDate string) ([]byte, error) {
+	b, err := a.loadBusiness()
+	if err != nil {
+		return nil, err
+	}
+	if missing := missingBusinessFields(b); missing != nil {
+		return nil, &missingBusinessError{fields: missing}
+	}
+	d := invoiceData{
+		Version:   1,
+		Draft:     number == nil,
+		Number:    number,
+		IssueDate: issueDate,
+		Business: businessData{Name: b.Name, Company: b.Company, Address: b.Address, Email: b.Email, Web: b.Web,
+			Phone: b.Phone, TaxNumber: b.TaxNumber, Bank: bankData{Name: b.Bank.Name, IBAN: b.Bank.IBAN, BIC: b.Bank.BIC}},
+		Tax: taxData{SmallBusiness: b.TaxMode != "standard"},
+	}
+	if !d.Tax.SmallBusiness {
+		d.Tax.VATRate = int64(b.VATRate)
+	}
+	var paymentDays int
+	var address, tz string
+	var cancels cancelledData
+	var isCancellation bool
+	err = q.QueryRow(`SELECT i.kind, i.service_from, i.service_to, i.payment_days, i.reason, i.currency,
+		c.number, c.name, c.address, c.invoice_language, c.timezone,
+		i.cancels_id IS NOT NULL, ifnull(o.number, ''), ifnull(o.issue_date, '')
+		FROM invoice i JOIN customer c ON c.id = i.customer_id LEFT JOIN invoice o ON o.id = i.cancels_id
+		WHERE i.id = ?`, id).
+		Scan(&d.Kind, &d.ServicePeriod.From, &d.ServicePeriod.To, &paymentDays, &d.Reason, &d.Currency,
+			&d.Customer.Number, &d.Customer.Name, &address, &d.Language, &tz,
+			&isCancellation, &cancels.Number, &cancels.IssueDate)
+	if err != nil {
+		return nil, err
+	}
+	if isCancellation {
+		d.Cancels = &cancels
+	}
+	d.Customer.Address = addressLines(address)
+	issued, err := time.Parse(time.DateOnly, issueDate)
+	if err != nil {
+		return nil, fmt.Errorf("issue date: %w", err)
+	}
+	d.DueDate = issued.AddDate(0, 0, paymentDays).Format(time.DateOnly)
+	loc, err := time.LoadLocation(tz)
+	if err != nil {
+		return nil, err
+	}
+	unit := currency.MustParseISO(d.Currency)
+	lineIDs, totals, err := appendLines(q, id, unit, &d)
+	if err != nil {
+		return nil, err
+	}
+	t := totalsOf(totals, d.Tax.VATRate)
+	d.Totals = totalsData{Net: formatAmount(t.Net, unit), VAT: formatAmount(t.VAT, unit), Gross: formatAmount(t.Gross, unit)}
+	for i, lineID := range lineIDs {
+		if d.Lines[i].Entries, err = lineEntries(q, lineID, loc); err != nil {
+			return nil, err
+		}
+	}
+	return json.Marshal(d)
+}
+
+// appendLines appends invoice id's lines to d and returns their ids and totals in minor units.
+func appendLines(q querier, id int64, unit currency.Unit, d *invoiceData) ([]int64, []int64, error) {
+	rows, err := q.Query(`SELECT id, description, detail, quantity, unit, unit_price
+		FROM invoice_line WHERE invoice_id = ? ORDER BY position, id`, id)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	var ids, totals []int64
+	d.Lines = []lineData{}
+	for rows.Next() {
+		var l lineData
+		var lineID, quantity, unitPrice int64
+		if err := rows.Scan(&lineID, &l.Description, &l.Detail, &quantity, &l.Unit, &unitPrice); err != nil {
+			return nil, nil, err
+		}
+		total := lineTotal(quantity, unitPrice)
+		l.Quantity, l.UnitPrice, l.Total = formatQuantity(quantity), formatAmount(unitPrice, unit), formatAmount(total, unit)
+		d.Lines = append(d.Lines, l)
+		ids = append(ids, lineID)
+		totals = append(totals, total)
+	}
+	return ids, totals, rows.Err()
+}
+
+// lineEntries lists the time entries claimed by line, dated in loc.
+func lineEntries(q querier, line int64, loc *time.Location) ([]entryData, error) {
+	rows, err := q.Query(`SELECT e.start_time, e.end_time - e.start_time, u.display_name, e.description
+		FROM time_entry e JOIN user u ON u.id = e.user_id
+		WHERE e.invoice_line_id = ? ORDER BY e.start_time, e.id`, line)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	entries := []entryData{}
+	for rows.Next() {
+		var e entryData
+		var start int64
+		if err := rows.Scan(&start, &e.Seconds, &e.User, &e.Description); err != nil {
+			return nil, err
+		}
+		e.Date = time.Unix(start, 0).In(loc).Format(time.DateOnly)
+		entries = append(entries, e)
+	}
+	return entries, rows.Err()
+}

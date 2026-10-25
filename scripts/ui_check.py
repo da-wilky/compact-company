@@ -56,7 +56,7 @@ def main():
         today = datetime.date.today().isoformat()
         pages = ["/", "/week", "/week?everyone=1", "/entries", f"/entries?day={today}&project={project}", "/entries/new",
                  "/customers", "/customers/new", f"/customers/{customer}", f"/customers/{customer}/projects", f"/projects/{project}",
-                 "/invoices", "/invoices/new", draft, f"{draft}/lines/new", line,
+                 "/invoices", "/invoices/new", draft, f"{draft}/preview", f"{draft}/lines/new", line,
                  "/settings", "/settings/business", "/no-such-page"]
         for viewport, (width, height) in VIEWPORTS.items():
             for scheme in ("light", "dark"):
