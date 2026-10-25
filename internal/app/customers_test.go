@@ -267,3 +267,20 @@ func TestCrossOriginCustomerCreateIsRejected(t *testing.T) {
 	c.do(req).wantStatus(t, http.StatusForbidden)
 	c.get("/customers").wantNoBody(t, "acme")
 }
+
+func TestCurrencyChangeKeepsTheDecimalRate(t *testing.T) {
+	ta := newTestApp(t, devConfig)
+	c := ta.client()
+	c.createCustomer(customerForm("acme", "100.50"))
+	path := c.customerPath("acme")
+	form := customerForm("acme", "100.50")
+	form.Set("currency", "JPY")
+
+	c.postForm(path, form).wantStatus(t, http.StatusSeeOther)
+	c.get("/customers").wantBody(t, "101 JPY")
+
+	form = customerForm("acme", "101")
+	form.Set("currency", "BHD")
+	c.postForm(path, form).wantStatus(t, http.StatusSeeOther)
+	c.get("/customers").wantBody(t, "101.000 BHD")
+}

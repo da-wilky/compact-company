@@ -96,9 +96,15 @@ func (a *App) renderCustomer(w http.ResponseWriter, r *http.Request, status int,
 	a.render(w, r, status, "customer", customerPage{Customer: c, Errors: errs, Languages: langs})
 }
 
+type storedRate struct {
+	minor int64
+	unit  currency.Unit
+}
+
 // customerFromForm returns the submitted customer, its rate in minor units and
-// any validation errors as catalog keys.
-func customerFromForm(r *http.Request) (customer, int64, []string) {
+// any validation errors as catalog keys. A rate submitted as prev displays is
+// prev rescaled into the submitted currency.
+func customerFromForm(r *http.Request, prev *storedRate) (customer, int64, []string) {
 	c := customer{
 		Name:            strings.TrimSpace(r.PostFormValue("name")),
 		Address:         strings.TrimSpace(r.PostFormValue("address")),
@@ -126,6 +132,8 @@ func customerFromForm(r *http.Request) (customer, int64, []string) {
 		errs = append(errs, "customers.error.currency")
 	case c.HourlyRate == "":
 		errs = append(errs, "customers.error.hourly_rate_required")
+	case prev != nil && c.HourlyRate == formatAmount(prev.minor, prev.unit):
+		rate = rescaleAmount(prev.minor, prev.unit, cur)
 	default:
 		if rate, err = parseAmount(c.HourlyRate, cur); err != nil {
 			errs = append(errs, "customers.error.hourly_rate")
@@ -135,7 +143,7 @@ func customerFromForm(r *http.Request) (customer, int64, []string) {
 }
 
 func (a *App) customerCreate(w http.ResponseWriter, r *http.Request) {
-	c, rate, errs := customerFromForm(r)
+	c, rate, errs := customerFromForm(r, nil)
 	if errs != nil {
 		a.renderCustomer(w, r, http.StatusUnprocessableEntity, c, errs)
 		return
@@ -201,32 +209,71 @@ func (a *App) customerUpdate(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	c, rate, errs := customerFromForm(r)
-	c.ID = id
-	if errs != nil {
-		if err := a.db.QueryRow(`SELECT number FROM customer WHERE id = ?`, id).Scan(&c.Number); errors.Is(err, sql.ErrNoRows) {
-			http.NotFound(w, r)
-			return
-		} else if err != nil {
-			a.serverError(w, r, err)
-			return
-		}
-		a.renderCustomer(w, r, http.StatusUnprocessableEntity, c, errs)
-		return
-	}
-	res, err := a.db.Exec(`UPDATE customer SET name = ?, address = ?, email = ?, currency = ?,
-		invoice_language = ?, timezone = ?, hourly_rate = ?, note = ? WHERE id = ?`,
-		c.Name, c.Address, c.Email, c.Currency, c.InvoiceLanguage, c.Timezone, rate, c.Note, id)
+	tx, err := a.db.Begin()
 	if err != nil {
 		a.serverError(w, r, err)
 		return
 	}
-	if n, err := res.RowsAffected(); err != nil {
-		a.serverError(w, r, err)
-		return
-	} else if n == 0 {
+	defer func() { _ = tx.Rollback() }()
+	var number, oldCurrency string
+	var oldRate int64
+	err = tx.QueryRow(`SELECT number, currency, hourly_rate FROM customer WHERE id = ?`, id).Scan(&number, &oldCurrency, &oldRate)
+	if errors.Is(err, sql.ErrNoRows) {
 		http.NotFound(w, r)
 		return
 	}
+	if err != nil {
+		a.serverError(w, r, err)
+		return
+	}
+	prev := storedRate{oldRate, currency.MustParseISO(oldCurrency)}
+	c, rate, errs := customerFromForm(r, &prev)
+	c.ID, c.Number = id, number
+	if errs != nil {
+		_ = tx.Rollback()
+		a.renderCustomer(w, r, http.StatusUnprocessableEntity, c, errs)
+		return
+	}
+	if err := updateCustomer(tx, c, rate, prev.unit); err != nil {
+		a.serverError(w, r, err)
+		return
+	}
 	http.Redirect(w, r, "/customers", http.StatusSeeOther)
+}
+
+// updateCustomer rescales the customer's project rate overrides when its currency changes from old.
+func updateCustomer(tx *sql.Tx, c customer, rate int64, old currency.Unit) error {
+	if _, err := tx.Exec(`UPDATE customer SET name = ?, address = ?, email = ?, currency = ?,
+		invoice_language = ?, timezone = ?, hourly_rate = ?, note = ? WHERE id = ?`,
+		c.Name, c.Address, c.Email, c.Currency, c.InvoiceLanguage, c.Timezone, rate, c.Note, c.ID); err != nil {
+		return err
+	}
+	unit := currency.MustParseISO(c.Currency)
+	if unit != old {
+		rows, err := tx.Query(`SELECT id, hourly_rate FROM project WHERE customer_id = ? AND hourly_rate IS NOT NULL`, c.ID)
+		if err != nil {
+			return err
+		}
+		rates := map[int64]int64{}
+		for rows.Next() {
+			var id, minor int64
+			if err := rows.Scan(&id, &minor); err != nil {
+				_ = rows.Close()
+				return err
+			}
+			rates[id] = minor
+		}
+		if err := rows.Close(); err != nil {
+			return err
+		}
+		if err := rows.Err(); err != nil {
+			return err
+		}
+		for id, minor := range rates {
+			if _, err := tx.Exec(`UPDATE project SET hourly_rate = ? WHERE id = ?`, rescaleAmount(minor, old, unit), id); err != nil {
+				return err
+			}
+		}
+	}
+	return tx.Commit()
 }

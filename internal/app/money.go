@@ -29,6 +29,20 @@ func parseAmount(s string, cur currency.Unit) (int64, error) {
 	return minor, nil
 }
 
+// rescaleAmount keeps the decimal value of a non-negative minor amount, rounding half up.
+func rescaleAmount(minor int64, from, to currency.Unit) int64 {
+	fromScale, _ := currency.Standard.Rounding(from)
+	toScale, _ := currency.Standard.Rounding(to)
+	p := int64(1)
+	for range max(toScale-fromScale, fromScale-toScale) {
+		p *= 10
+	}
+	if toScale > fromScale {
+		return minor * p
+	}
+	return (minor + p/2) / p
+}
+
 func formatAmount(minor int64, cur currency.Unit) string {
 	scale, _ := currency.Standard.Rounding(cur)
 	s := fmt.Sprintf("%0*d", scale+1, minor)
