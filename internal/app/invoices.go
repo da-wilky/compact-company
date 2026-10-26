@@ -187,7 +187,9 @@ func (a *App) draftNew(w http.ResponseWriter, r *http.Request) {
 	}
 	now := a.now().In(loc)
 	thisMonth := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
+	// The form selects only a customer it lists, so any other value selects nothing.
 	a.renderDraftNew(w, r, http.StatusOK, draftNewForm{
+		Customer:        r.FormValue("customer"),
 		From:            thisMonth.AddDate(0, -1, 0).Format(time.DateOnly),
 		To:              thisMonth.AddDate(0, 0, -1).Format(time.DateOnly),
 		Grouping:        "project",

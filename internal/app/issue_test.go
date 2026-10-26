@@ -21,6 +21,17 @@ func (c *client) issuableDraft() string {
 	return draft
 }
 
+// createAndIssue issues a new draft made from form with lines and returns its path.
+func (c *client) createAndIssue(form url.Values, lines ...url.Values) string {
+	c.t.Helper()
+	inv := c.createDraft(form)
+	for _, line := range lines {
+		c.addLine(inv, line)
+	}
+	wantRedirect(c.t, c.issue(inv), inv)
+	return inv
+}
+
 func (c *client) issue(draft string) *response {
 	c.t.Helper()
 	return c.postForm(draft+"/issue", url.Values{})

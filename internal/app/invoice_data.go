@@ -108,6 +108,20 @@ func customerLocation(q querier, id int64) (*time.Location, error) {
 	return time.LoadLocation(tz)
 }
 
+type locationCache map[string]*time.Location
+
+func (l locationCache) load(tz string) (*time.Location, error) {
+	if loc, ok := l[tz]; ok {
+		return loc, nil
+	}
+	loc, err := time.LoadLocation(tz)
+	if err != nil {
+		return nil, err
+	}
+	l[tz] = loc
+	return loc, nil
+}
+
 // issueDate is today in the customer's timezone of invoice id.
 func (a *App) issueDate(q querier, id int64) (string, error) {
 	loc, err := customerLocation(q, id)

@@ -210,6 +210,19 @@ func (r *response) text() string {
 	return textOf(r.body)
 }
 
+// in narrows r to the page section under the h2 that reads heading, up to the next h2.
+func (r *response) in(t *testing.T, heading string) *response {
+	t.Helper()
+	for _, part := range strings.Split(r.body, "<h2")[1:] {
+		head, rest, ok := strings.Cut(part, "</h2>")
+		if ok && textOf("<h2"+head) == heading {
+			return &response{Response: r.Response, body: rest}
+		}
+	}
+	t.Fatalf("no section headed %q:\n%s", heading, r.body)
+	return nil
+}
+
 func (r *response) rows() [][]string {
 	var rows [][]string
 	for _, row := range tableRow.FindAllString(r.body, -1) {

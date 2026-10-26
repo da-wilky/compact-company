@@ -47,6 +47,10 @@ type weekPage struct {
 	Everyone   bool
 }
 
+func mondayOf(day time.Time) time.Time {
+	return time.Date(day.Year(), day.Month(), day.Day()-(int(day.Weekday())+6)%7, 0, 0, 0, 0, day.Location())
+}
+
 func (a *App) week(w http.ResponseWriter, r *http.Request) {
 	loc, err := a.viewerLocation(r)
 	if err != nil {
@@ -61,7 +65,7 @@ func (a *App) week(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	monday := time.Date(day.Year(), day.Month(), day.Day()-(int(day.Weekday())+6)%7, 0, 0, 0, 0, loc)
+	monday := mondayOf(day)
 	var bounds [8]time.Time
 	page := weekPage{Prev: monday.AddDate(0, 0, -7).Format(dayLayout), Next: monday.AddDate(0, 0, 7).Format(dayLayout), Everyone: r.FormValue("everyone") != ""}
 	page.Unassigned.Project = "none"

@@ -1,1 +1,19 @@
-"home.title" = { en = "Home", de = "Startseite" }
+"home.title" = { en = "Overview", de = "Übersicht" }
+"home.week" = { en = "This week", de = "Diese Woche" }
+"home.month" = { en = "This month", de = "Dieser Monat" }
+"home.hours" = { en = "%s h", de = "%s h" }
+"home.billable" = { en = "%s h billable", de = "%s h abrechenbar" }
+"home.unassigned_one" = { en = "1 unassigned entry (%s h)", de = "1 nicht zugeordneter Eintrag (%s h)" }
+"home.unassigned" = { en = "%d unassigned entries (%s h)", de = "%d nicht zugeordnete Einträge (%s h)" }
+"home.unbilled" = { en = "Unbilled time", de = "Nicht abgerechnete Zeit" }
+"home.not_invoiced" = { en = "Not on any invoice", de = "Auf keiner Rechnung" }
+"home.on_draft" = { en = "On a draft", de = "Auf einem Entwurf" }
+"home.oldest" = { en = "Oldest entry", de = "Ältester Eintrag" }
+"home.drafts" = { en = "Drafts", de = "Entwürfe" }
+"home.range" = { en = "Range", de = "Zeitraum" }
+"home.empty" = { en = "Nothing to bill, nothing open.", de = "Nichts abzurechnen, nichts offen." }
+"home.open" = { en = "Open invoices", de = "Offene Rechnungen" }
+"home.amount_due" = { en = "Amount due", de = "Offener Betrag" }
+"home.overdue" = { en = "Overdue", de = "Überfällig" }
+"home.open_in" = { en = "Open in %s", de = "Offen in %s" }
+"home.overdue_total" = { en = "%s %s overdue", de = "%s %s überfällig" }
