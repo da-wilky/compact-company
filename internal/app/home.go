@@ -40,20 +40,45 @@ func (a *App) home(w http.ResponseWriter, r *http.Request) {
 		a.serverError(w, r, err)
 		return
 	}
+	userID := currentUser(r).ID
+	var page overviewPage
+	if page.Week, page.Month, err = a.loadHours(userID, loc); err != nil {
+		a.serverError(w, r, err)
+		return
+	}
+	if page.Unassigned, page.UnassignedHours, err = a.loadUnassigned(userID); err != nil {
+		a.serverError(w, r, err)
+		return
+	}
+	if page.Unbilled, err = a.loadUnbilled(); err != nil {
+		a.serverError(w, r, err)
+		return
+	}
+	if page.Drafts, err = a.loadDrafts(); err != nil {
+		a.serverError(w, r, err)
+		return
+	}
+	if page.Open, err = a.loadOpenInvoices(); err != nil {
+		a.serverError(w, r, err)
+		return
+	}
+	a.render(w, r, http.StatusOK, "home", page)
+}
+
+// loadHours attributes entries by start and counts running timers up to now.
+func (a *App) loadHours(userID int64, loc *time.Location) (week, month hoursTotal, err error) {
 	now := a.now()
 	day := now.In(loc)
-	weekStart := time.Date(day.Year(), day.Month(), day.Day()-(int(day.Weekday())+6)%7, 0, 0, 0, 0, loc)
+	weekStart := mondayOf(day)
 	weekEnd := weekStart.AddDate(0, 0, 7)
 	monthStart := time.Date(day.Year(), day.Month(), 1, 0, 0, 0, 0, loc)
 	monthEnd := monthStart.AddDate(0, 1, 0)
-	var page overviewPage
 	rows, err := a.db.Query(`
 		SELECT start_time, end_time, ifnull(billable, 0) FROM time_entry
 		WHERE user_id = ? AND start_time >= ? AND start_time < ?`,
-		currentUser(r).ID, min(weekStart.Unix(), monthStart.Unix()), max(weekEnd.Unix(), monthEnd.Unix()))
+		userID, min(weekStart.Unix(), monthStart.Unix()), max(weekEnd.Unix(), monthEnd.Unix()))
 	if err != nil {
-		a.serverError(w, r, err)
-		return
+		return week, month, err
 	}
 	defer func() { _ = rows.Close() }()
 	for rows.Next() {
@@ -61,8 +86,7 @@ func (a *App) home(w http.ResponseWriter, r *http.Request) {
 		var end sql.NullInt64
 		var billable bool
 		if err := rows.Scan(&start, &end, &billable); err != nil {
-			a.serverError(w, r, err)
-			return
+			return week, month, err
 		}
 		finish := now
 		if end.Valid {
@@ -72,7 +96,7 @@ func (a *App) home(w http.ResponseWriter, r *http.Request) {
 		for _, p := range []struct {
 			total    *hoursTotal
 			from, to time.Time
-		}{{&page.Week, weekStart, weekEnd}, {&page.Month, monthStart, monthEnd}} {
+		}{{&week, weekStart, weekEnd}, {&month, monthStart, monthEnd}} {
 			if start >= p.from.Unix() && start < p.to.Unix() {
 				p.total.Total += d
 				if billable {
@@ -81,30 +105,13 @@ func (a *App) home(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-	if err := rows.Err(); err != nil {
-		a.serverError(w, r, err)
-		return
-	}
+	return week, month, rows.Err()
+}
+
+func (a *App) loadUnassigned(userID int64) (count int, tracked time.Duration, err error) {
 	var seconds int64
-	if err := a.db.QueryRow(`
+	err = a.db.QueryRow(`
 		SELECT count(*), ifnull(sum(end_time - start_time), 0) FROM time_entry
-		WHERE user_id = ? AND project_id IS NULL AND end_time IS NOT NULL`,
-		currentUser(r).ID).Scan(&page.Unassigned, &seconds); err != nil {
-		a.serverError(w, r, err)
-		return
-	}
-	page.UnassignedHours = time.Duration(seconds) * time.Second
-	if page.Unbilled, err = a.unbilledCustomers(); err != nil {
-		a.serverError(w, r, err)
-		return
-	}
-	if page.Drafts, err = a.drafts(); err != nil {
-		a.serverError(w, r, err)
-		return
-	}
-	if page.Open, err = a.loadOpenInvoices(); err != nil {
-		a.serverError(w, r, err)
-		return
-	}
-	a.render(w, r, http.StatusOK, "home", page)
+		WHERE user_id = ? AND project_id IS NULL AND end_time IS NOT NULL`, userID).Scan(&count, &seconds)
+	return count, time.Duration(seconds) * time.Second, err
 }

@@ -12,7 +12,7 @@
 <div class="table-wrap"><table>
 <thead><tr><th>{{t "invoices.customer"}}</th><th class="num">{{t "home.not_invoiced"}}</th><th class="num">{{t "home.on_draft"}}</th><th>{{t "home.oldest"}}</th><th></th></tr></thead>
 <tbody>
-{{range .}}<tr><td>{{.Name}}</td><td class="num">{{with .NotInvoiced}}{{t "home.hours" (hours .)}}{{end}}</td><td class="num">{{range $i, $d := .OnDrafts}}{{if $i}}, {{end}}<a href="/invoices/{{.ID}}">{{t "home.hours" (hours .Hours)}}</a>{{end}}</td><td>{{day .Oldest}}</td><td>{{if .NotInvoiced}}<a href="/invoices/new?customer={{.ID}}">{{t "invoices.create"}}</a>{{end}}</td></tr>
+{{range .}}<tr><td>{{.Name}}</td><td class="num">{{with .NotInvoiced}}{{t "home.hours" (hours .)}}{{end}}</td><td class="num">{{range $i, $d := .OnDrafts}}{{if $i}}, {{end}}<a href="/invoices/{{.ID}}">{{t "home.hours" (hours .Tracked)}}</a>{{end}}</td><td>{{day .OldestDate}}</td><td>{{if .NotInvoiced}}<a href="/invoices/new?customer={{.ID}}">{{t "invoices.create"}}</a>{{end}}</td></tr>
 {{end}}</tbody>
 </table></div>
 {{end}}

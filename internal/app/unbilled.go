@@ -8,8 +8,8 @@ import (
 )
 
 type draftTime struct {
-	ID    int64
-	Hours time.Duration
+	ID      int64
+	Tracked time.Duration
 }
 
 // unbilledCustomer is a customer's ended billable time not on an issued invoice, as tracked.
@@ -18,13 +18,13 @@ type unbilledCustomer struct {
 	Name        string
 	NotInvoiced time.Duration
 	OnDrafts    []draftTime
-	Oldest      string
+	OldestDate  string
 	total       time.Duration
-	oldest      int64
+	oldestStart int64
 	timezone    string
 }
 
-func (a *App) unbilledCustomers() ([]unbilledCustomer, error) {
+func (a *App) loadUnbilled() ([]unbilledCustomer, error) {
 	rows, err := a.db.Query(`
 		SELECT c.id, c.name, c.timezone, ci.id, sum(e.end_time - e.start_time), min(e.start_time)
 		FROM time_entry e JOIN project p ON p.id = e.project_id JOIN customer c ON c.id = p.customer_id` + claimJoin + `
@@ -39,7 +39,7 @@ func (a *App) unbilledCustomers() ([]unbilledCustomer, error) {
 		var row unbilledCustomer
 		var draft sql.NullInt64
 		var seconds int64
-		if err := rows.Scan(&row.ID, &row.Name, &row.timezone, &draft, &seconds, &row.oldest); err != nil {
+		if err := rows.Scan(&row.ID, &row.Name, &row.timezone, &draft, &seconds, &row.oldestStart); err != nil {
 			return nil, err
 		}
 		i := slices.IndexFunc(customers, func(c unbilledCustomer) bool { return c.ID == row.ID })
@@ -48,7 +48,7 @@ func (a *App) unbilledCustomers() ([]unbilledCustomer, error) {
 			i = len(customers) - 1
 		}
 		c := &customers[i]
-		c.oldest = min(c.oldest, row.oldest)
+		c.oldestStart = min(c.oldestStart, row.oldestStart)
 		d := time.Duration(seconds) * time.Second
 		c.total += d
 		if draft.Valid {
@@ -60,13 +60,14 @@ func (a *App) unbilledCustomers() ([]unbilledCustomer, error) {
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
+	locs := locationCache{}
 	for i := range customers {
 		c := &customers[i]
-		loc, err := time.LoadLocation(c.timezone)
+		loc, err := locs.load(c.timezone)
 		if err != nil {
 			return nil, err
 		}
-		c.Oldest = time.Unix(c.oldest, 0).In(loc).Format(time.DateOnly)
+		c.OldestDate = time.Unix(c.oldestStart, 0).In(loc).Format(time.DateOnly)
 	}
 	slices.SortStableFunc(customers, func(x, y unbilledCustomer) int { return cmp.Compare(y.total, x.total) })
 	return customers, nil
@@ -78,7 +79,7 @@ type draftSummary struct {
 	From, To string
 }
 
-func (a *App) drafts() ([]draftSummary, error) {
+func (a *App) loadDrafts() ([]draftSummary, error) {
 	rows, err := a.db.Query(`SELECT i.id, c.name, i.range_from, i.range_to FROM invoice i JOIN customer c ON c.id = i.customer_id
 		WHERE i.number IS NULL AND i.kind = '` + kindInvoice + `' ORDER BY c.name, i.range_from, i.id`)
 	if err != nil {

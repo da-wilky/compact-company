@@ -8,7 +8,7 @@ import (
 	"golang.org/x/text/currency"
 )
 
-// amountDue is what the customer still owes on issued invoice i.
+// amountDue expects the issued invoice aliased i.
 const amountDue = `i.gross + (SELECT ifnull(sum(c.gross), 0) FROM invoice c WHERE c.cancels_id = i.id)`
 
 type openInvoice struct {
@@ -40,6 +40,7 @@ func (a *App) loadOpenInvoices() (openInvoices, error) {
 	now := a.now()
 	type sums struct{ open, overdue int64 }
 	totals := map[string]*sums{}
+	locs := locationCache{}
 	for rows.Next() {
 		var inv openInvoice
 		var tz string
@@ -47,7 +48,7 @@ func (a *App) loadOpenInvoices() (openInvoices, error) {
 		if err := rows.Scan(&inv.ID, &inv.Number, &inv.Customer, &inv.DueDate, &tz, &inv.Currency, &due); err != nil {
 			return open, err
 		}
-		loc, err := time.LoadLocation(tz)
+		loc, err := locs.load(tz)
 		if err != nil {
 			return open, err
 		}
