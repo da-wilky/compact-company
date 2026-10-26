@@ -65,6 +65,8 @@ Startup, and so every test, fails if a key is duplicated or lacks `en` or `de`. 
 
 Tables are `STRICT`, ids `INTEGER PRIMARY KEY`, timestamps INTEGER unix seconds UTC, booleans INTEGER. No down migrations.
 
+`ADD COLUMN` checks a new CHECK against existing rows, so a constraint that needs a backfill becomes a trigger (`0008_invoice_timezone.sql`). Rebuilding a table drops its triggers: recreate them.
+
 ## Invoice state
 
 Reuse these instead of re-deriving them:
