@@ -1,6 +1,7 @@
 """Render every page in English and German at desktop and phone width in light and dark, fail on layout breakage, save screenshots.
 
-Usage: ui_check.py <base-url> <screenshot-dir> <chromium>, against a fresh dev-mode instance (it seeds data).
+Usage: ui_check.py <base-url> <screenshot-dir> <chromium> [path…], against a fresh dev-mode instance (it seeds data).
+Paths render only those pages; the seed is deterministic, so e.g. /invoices/1 is the draft with lines and /invoices/4 the empty one.
 """
 
 import datetime
@@ -10,6 +11,7 @@ import sys
 from playwright.sync_api import sync_playwright
 
 base, out, chromium = sys.argv[1:4]
+only = sys.argv[4:]
 
 VIEWPORTS = {"desktop": (1280, 800), "phone": (390, 800)}
 
@@ -56,7 +58,8 @@ def seed(api):
     api.post(f"{base}{issued}/paid", form={"paid_date": str(today)})
     # Unset again so the draft's preview shows the missing-data page instead of a PDF download.
     api.post(f"{base}/settings/business", form=business | {"name": ""})
-    return customer, projects["Website relaunch"], draft, line, entry, issued, cancellation
+    empty = api.post(f"{base}/invoices", form={"customer": customer, "from": "2020-01-01", "to": "2020-01-31", "grouping": "project", "rounding_minutes": "0", "payment_days": "14"}, max_redirects=0).headers["location"]
+    return customer, projects["Website relaunch"], draft, line, entry, issued, cancellation, empty
 
 
 def main():
@@ -64,12 +67,12 @@ def main():
     with sync_playwright() as p:
         browser = p.chromium.launch(executable_path=chromium)
         api = browser.new_context().request
-        customer, project, draft, line, entry, issued, cancellation = seed(api)
+        customer, project, draft, line, entry, issued, cancellation, empty = seed(api)
         today = datetime.date.today().isoformat()
-        pages = ["/", "/week", "/week?everyone=1", "/entries", f"/entries?day={today}&project={project}", "/entries/new", entry,
+        pages = only or ["/", "/week", "/week?everyone=1", "/entries", f"/entries?day={today}&project={project}", "/entries/new", entry,
                  "/customers", "/customers/new", f"/customers/{customer}", f"/customers/{customer}/projects", f"/projects/{project}",
                  "/invoices", "/invoices/new", draft, f"{draft}/preview", f"{draft}/lines/new", line, f"{draft}/refresh",
-                 f"{draft}/issue", issued, f"{issued}/cancel", cancellation,
+                 f"{draft}/issue", issued, f"{issued}/cancel", cancellation, empty,
                  "/settings", "/settings/business", "/no-such-page"]
         for lang in ("en", "de"):
             page = browser.new_page()
@@ -85,10 +88,11 @@ def main():
                         name = re.sub(r"[^a-z0-9]+", "-", path.lower()).strip("-") or "home"
                         page.screenshot(path=f"{out}/{lang}-{viewport}-{scheme}-{name}.png", full_page=True)
                         failures += [f"{lang} {viewport} {scheme} {path}: {p}" for p in page.evaluate(FIND_BREAKAGE)]
-                    page.goto(base + "/week")
-                    page.click(".picker-trigger")
-                    page.screenshot(path=f"{out}/{lang}-{viewport}-{scheme}-week-picker.png")
-                    failures += [f"{lang} {viewport} {scheme} /week (picker open): {p}" for p in page.evaluate(FIND_BREAKAGE)]
+                    if not only:
+                        page.goto(base + "/week")
+                        page.click(".picker-trigger")
+                        page.screenshot(path=f"{out}/{lang}-{viewport}-{scheme}-week-picker.png")
+                        failures += [f"{lang} {viewport} {scheme} /week (picker open): {p}" for p in page.evaluate(FIND_BREAKAGE)]
                     page.close()
         browser.close()
     print(f"screenshots: {out}")

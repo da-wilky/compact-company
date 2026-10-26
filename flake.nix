@@ -60,7 +60,7 @@
                   server=$!
                   trap 'kill $server' EXIT
                   for _ in $(seq 50); do curl -s -o /dev/null "http://127.0.0.1:$port/" && break; sleep 0.2; done
-                  python3 -I scripts/ui_check.py "http://127.0.0.1:$port" "$work/shots" ${pkgs.lib.getExe pkgs.chromium}
+                  python3 -I scripts/ui_check.py "http://127.0.0.1:$port" "$work/shots" ${pkgs.lib.getExe pkgs.chromium} "$@"
                 '';
               }
             );
@@ -82,6 +82,7 @@
                   golangci-lint fmt --diff ./...
                   golangci-lint run ./...
                   sh scripts/markup_assertions.sh
+                  sh scripts/table_wrap.sh
                   go test ./...
                 '';
               }
@@ -118,6 +119,11 @@
         markup-assertions = pkgs.runCommand "compact-company-markup-assertions" { } ''
           cd ${./.}
           sh scripts/markup_assertions.sh
+          touch $out
+        '';
+        table-wrap = pkgs.runCommand "compact-company-table-wrap" { } ''
+          cd ${./.}
+          sh scripts/table_wrap.sh
           touch $out
         '';
       });
