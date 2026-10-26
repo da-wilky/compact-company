@@ -188,7 +188,7 @@ func (a *App) loadIssued(id int64) (issuedInvoice, error) {
 	var snapshot string
 	var due int64
 	err := a.db.QueryRow(`SELECT i.number, i.snapshot, i.pdf_sha256, ifnull(i.paid_date, ''), ifnull(i.cancels_id, 0), `+invoiceStatus+`,
-		i.gross + (SELECT ifnull(sum(c.gross), 0) FROM invoice c WHERE c.cancels_id = i.id)
+		`+amountDue+`
 		FROM invoice i WHERE i.id = ? AND i.number IS NOT NULL`, id).
 		Scan(&inv.Number, &snapshot, &inv.SHA256, &inv.PaidDate, &inv.CancelsID, &inv.Status, &due)
 	if err != nil {

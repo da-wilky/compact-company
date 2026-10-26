@@ -25,10 +25,11 @@ type overviewPage struct {
 	Week, Month     hoursTotal
 	Unassigned      int
 	UnassignedHours time.Duration
+	Open            openInvoices
 }
 
 func (p overviewPage) Empty() bool {
-	return p.Unassigned == 0
+	return p.Unassigned == 0 && len(p.Open.Rows) == 0
 }
 
 func (a *App) home(w http.ResponseWriter, r *http.Request) {
@@ -91,5 +92,9 @@ func (a *App) home(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	page.UnassignedHours = time.Duration(seconds) * time.Second
+	if page.Open, err = a.loadOpenInvoices(); err != nil {
+		a.serverError(w, r, err)
+		return
+	}
 	a.render(w, r, http.StatusOK, "home", page)
 }
