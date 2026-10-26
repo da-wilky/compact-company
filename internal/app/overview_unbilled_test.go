@@ -3,6 +3,7 @@ package app_test
 import (
 	"net/http"
 	"net/url"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -88,7 +89,11 @@ func TestOverviewListsDraftsWithCustomerAndRange(t *testing.T) {
 
 	res.wantRow(t, "acme", "2026-10-01 – 2026-10-31")
 	res.wantBody(t, `<a href="`+draft+`">`)
-	res.wantNoBody(t, `<a href="`+issued+`">`)
+	for _, row := range res.rows() {
+		if slices.Contains(row, "2026-09-01 – 2026-09-30") {
+			t.Fatalf("issued invoice listed as a draft: %q", row)
+		}
+	}
 	res.wantNoBody(t, "Nothing to bill, nothing open.")
 }
 

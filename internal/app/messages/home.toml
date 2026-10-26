@@ -12,3 +12,8 @@
 "home.drafts" = { en = "Drafts", de = "Entwürfe" }
 "home.range" = { en = "Range", de = "Zeitraum" }
 "home.empty" = { en = "Nothing to bill, nothing open.", de = "Nichts abzurechnen, nichts offen." }
+"home.open" = { en = "Open invoices", de = "Offene Rechnungen" }
+"home.amount_due" = { en = "Amount due", de = "Offener Betrag" }
+"home.overdue" = { en = "Overdue", de = "Überfällig" }
+"home.open_in" = { en = "Open in %s", de = "Offen in %s" }
+"home.overdue_total" = { en = "%s %s overdue", de = "%s %s überfällig" }

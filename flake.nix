@@ -60,7 +60,7 @@
                   server=$!
                   trap 'kill $server' EXIT
                   for _ in $(seq 50); do curl -s -o /dev/null "http://127.0.0.1:$port/" && break; sleep 0.2; done
-                  python3 -I scripts/ui_check.py "http://127.0.0.1:$port" "$work/shots" ${pkgs.lib.getExe pkgs.chromium} "$@"
+                  python3 -I scripts/ui_check.py "http://127.0.0.1:$port" "$work/data/app.db" "$work/shots" ${pkgs.lib.getExe pkgs.chromium} "$@"
                 '';
               }
             );
