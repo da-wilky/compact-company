@@ -84,6 +84,9 @@ func pullEntries(tx *sql.Tx, id int64) error {
 		Scan(&from, &to, &grouping, &rounding); err != nil {
 		return err
 	}
+	if from == "" {
+		return nil
+	}
 	loc, err := customerLocation(tx, id)
 	if err != nil {
 		return err

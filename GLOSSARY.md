@@ -53,7 +53,7 @@ A bill to one customer, made of lines.
 _Avoid_: Bill
 
 **Service period**:
-When the billed work was done. An invoice without one was supplied on its issue date.
+When the billed work was done: from the start of the invoice's first time entry to the end of its last. An invoice without time entries may have one set by hand; without one it was supplied on its issue date.
 _Avoid_: Billing period
 
 **Draft**:

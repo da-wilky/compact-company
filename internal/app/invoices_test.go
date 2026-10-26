@@ -90,8 +90,8 @@ func TestDraftKeepsWhatItWasCreatedWith(t *testing.T) {
 	res.wantBody(t, "acme")
 	res.wantBody(t, `name="from" value="2026-09-01"`)
 	res.wantBody(t, `name="to" value="2026-09-30"`)
-	res.wantBody(t, `name="service_from" value="2026-09-01"`)
-	res.wantBody(t, `name="service_to" value="2026-09-30"`)
+	res.wantBody(t, `name="service_from" value=""`)
+	res.wantBody(t, `name="service_to" value=""`)
 	res.wantBody(t, `name="payment_days" value="21"`)
 	res.wantBody(t, "One line per entry")
 	res.wantBody(t, "15 minutes")
@@ -178,7 +178,7 @@ func TestDraftHeaderUpdateIsValidated(t *testing.T) {
 	res.wantStatus(t, http.StatusUnprocessableEntity)
 	res.wantBody(t, "Enter a valid service period.")
 	res.wantBody(t, `name="service_from" value="2026-09-30"`)
-	c.get(draft).wantBody(t, `name="service_from" value="2026-09-01"`)
+	c.get(draft).wantBody(t, `name="service_from" value=""`)
 }
 
 func TestDraftServicePeriodIsEitherCompleteOrEmpty(t *testing.T) {

@@ -108,6 +108,26 @@ func customerLocation(q querier, id int64) (*time.Location, error) {
 	return time.LoadLocation(tz)
 }
 
+// entryPeriod runs from the start of the first entry claimed by invoice id to the end of its last;
+// ok is false when it claims none.
+func entryPeriod(q querier, id int64) (p period, ok bool, err error) {
+	var first, last sql.NullInt64
+	if err := q.QueryRow(`SELECT min(e.start_time), max(e.end_time)
+		FROM time_entry e JOIN invoice_line l ON l.id = e.invoice_line_id WHERE l.invoice_id = ?`, id).
+		Scan(&first, &last); err != nil || !first.Valid {
+		return p, false, err
+	}
+	loc, err := customerLocation(q, id)
+	if err != nil {
+		return p, false, err
+	}
+	// An entry ending at midnight did no work on the day that begins then.
+	return period{
+		From: time.Unix(first.Int64, 0).In(loc).Format(time.DateOnly),
+		To:   time.Unix(last.Int64-1, 0).In(loc).Format(time.DateOnly),
+	}, true, nil
+}
+
 type locationCache map[string]*time.Location
 
 func (l locationCache) load(tz string) (*time.Location, error) {
@@ -170,7 +190,13 @@ func (a *App) invoiceJSON(q querier, id int64, number *string, issueDate string)
 	if err != nil {
 		return nil, 0, err
 	}
-	if d.ServicePeriod.From == "" || d.ServicePeriod.To == "" {
+	fromEntries, ok, err := entryPeriod(q, id)
+	switch {
+	case err != nil:
+		return nil, 0, err
+	case ok:
+		d.ServicePeriod = fromEntries
+	case d.ServicePeriod.From == "" || d.ServicePeriod.To == "":
 		d.ServicePeriod = period{From: issueDate, To: issueDate}
 	}
 	if isCancellation {

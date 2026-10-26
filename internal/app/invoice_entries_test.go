@@ -187,6 +187,69 @@ func TestRefreshRegeneratesGeneratedLinesFromTheCurrentRangeAndKeepsFreeLines(t 
 	wantInOrder(t, res.body, "Flat fee", "500.00", ">hosting<", "1", "100.00", ">website<", "1.5", "85.00", "127.50")
 }
 
+func TestDraftWithoutARangePullsNoEntries(t *testing.T) {
+	ta := newTestApp(t, devConfig)
+	c := ta.client()
+	website, _ := c.acmeProjects()
+	c.createEntry(entryForm(website, "2026-09-02T08:00", "2026-09-02T09:00", "september"))
+
+	form := pullForm(c, "project", "0")
+	form.Set("from", "")
+	form.Set("to", "")
+	draft := c.createDraft(form)
+
+	res := c.get(draft)
+	res.wantBody(t, "No lines yet.")
+	res.wantBody(t, `name="from" value=""`)
+	c.linePath(c.createDraft(pullForm(c, "project", "0")), "website")
+}
+
+func TestRefreshWithoutARangeReleasesTheEntriesAndKeepsFreeLines(t *testing.T) {
+	ta := newTestApp(t, devConfig)
+	c := ta.client()
+	website, _ := c.acmeProjects()
+	c.createEntry(entryForm(website, "2026-09-02T08:00", "2026-09-02T09:00", "september"))
+	draft := c.createDraft(pullForm(c, "project", "0"))
+	c.addLine(draft, lineForm("Flat fee", "1", "500"))
+	wantRedirect(t, c.postForm(draft, url.Values{"from": {""}, "to": {""}, "payment_days": {"14"}}), draft)
+
+	wantRedirect(t, c.postForm(draft+"/refresh", nil), draft)
+
+	res := c.get(draft)
+	res.wantBody(t, "Flat fee")
+	res.wantNoBody(t, "from time")
+	c.linePath(c.createDraft(pullForm(c, "project", "0")), "website")
+}
+
+func TestDraftWithEntriesShowsTheServicePeriodFromThemAndKeepsTheOneSetByHand(t *testing.T) {
+	ta := newTestApp(t, devConfig)
+	c := ta.client()
+	website, _ := c.acmeProjects()
+	c.createEntry(entryForm(website, "2026-09-02T08:00", "2026-09-02T09:00", "design"))
+	c.createEntry(entryForm(website, "2026-09-19T08:00", "2026-09-19T09:00", "review"))
+	form := pullForm(c, "project", "0")
+	form.Set("from", "")
+	form.Set("to", "")
+	draft := c.createDraft(form)
+	byHand := url.Values{"from": {""}, "to": {""}, "service_from": {"2026-09-01"}, "service_to": {"2026-09-05"}, "payment_days": {"14"}}
+	wantRedirect(t, c.postForm(draft, byHand), draft)
+	byHand.Set("from", "2026-09-01")
+	byHand.Set("to", "2026-09-30")
+	wantRedirect(t, c.postForm(draft, byHand), draft)
+	wantRedirect(t, c.postForm(draft+"/refresh", nil), draft)
+
+	res := c.get(draft)
+	res.wantBody(t, "Service period 2026-09-02 – 2026-09-19")
+	res.wantNoBody(t, `name="service_from"`)
+	ignored := url.Values{"from": {""}, "to": {""}, "service_from": {"2026-08-01"}, "service_to": {"2026-08-31"}, "payment_days": {"14"}}
+	wantRedirect(t, c.postForm(draft, ignored), draft)
+	wantRedirect(t, c.postForm(draft+"/refresh", nil), draft)
+
+	res = c.get(draft)
+	res.wantBody(t, `name="service_from" value="2026-09-01"`)
+	res.wantBody(t, `name="service_to" value="2026-09-05"`)
+}
+
 func TestRefreshingAnotherDraftCannotTakeClaimedEntries(t *testing.T) {
 	ta := newTestApp(t, devConfig)
 	c := ta.client()

@@ -218,6 +218,24 @@ func TestWithoutServicePeriodTheIssueDateIsTheServiceDateAlsoOnItsCancellation(t
 	page.wantNoBody(t, "Service period")
 }
 
+func TestTheServicePeriodFromEntriesIsFrozenAtIssuingAlsoForItsCancellation(t *testing.T) {
+	ta := newTestApp(t, dumpCancellationConfig(t))
+	c := ta.client()
+	c.postForm("/settings/business", businessForm()).wantStatus(t, http.StatusSeeOther)
+	website, hosting := c.acmeProjects()
+	c.createEntry(entryForm(website, "2026-09-02T08:00", "2026-09-02T09:00", "design"))
+	c.createEntry(entryForm(hosting, "2026-09-19T08:00", "2026-09-19T08:30", "server"))
+	inv := c.createDraft(pullForm(c, "project", "0"))
+	wantRedirect(t, c.issue(inv), inv)
+
+	res := c.postForm(inv+"/cancel", c.cancelForm(inv, "", "website", "hosting"))
+
+	got := res.templateInput(t).(map[string]any)["service_period"]
+	if want := decodeJSON(t, `{"from": "2026-09-02", "to": "2026-09-19"}`); !reflect.DeepEqual(got, want) {
+		t.Errorf("service_period = %v, want %v", got, want)
+	}
+}
+
 func TestCancellingIsRefusedWhileBusinessDataIsMissing(t *testing.T) {
 	ta := newTestApp(t, devConfig)
 	c := ta.client()

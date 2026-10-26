@@ -8,8 +8,9 @@
 <label>{{t "invoices.customer"}} <select name="customer" required>
 {{range .Customers}}<option value="{{.ID}}"{{if eq (print .ID) $.Data.Form.Customer}} selected{{end}}>{{.Name}}</option>{{end}}
 </select></label>
-<label>{{t "invoices.from"}} <input type="date" name="from" value="{{.Form.From}}" required></label>
-<label>{{t "invoices.to"}} <input type="date" name="to" value="{{.Form.To}}" required></label>
+<label>{{t "invoices.from"}} <input type="date" name="from" value="{{.Form.From}}" aria-describedby="range-hint"></label>
+<label>{{t "invoices.to"}} <input type="date" name="to" value="{{.Form.To}}" aria-describedby="range-hint"></label>
+<p class="hint" id="range-hint">{{t "invoices.range_hint"}}</p>
 <label>{{t "invoices.grouping"}} <select name="grouping">
 {{range .Groupings}}<option value="{{.}}"{{if eq . $.Data.Form.Grouping}} selected{{end}}>{{t (print "invoices.grouping." .)}}</option>{{end}}
 </select></label>

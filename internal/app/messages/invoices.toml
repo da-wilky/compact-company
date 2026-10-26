@@ -20,7 +20,9 @@
 "invoices.service_from" = { en = "Service period from", de = "Leistungszeitraum von" }
 "invoices.service_to" = { en = "Service period to", de = "Leistungszeitraum bis" }
 "invoices.service_hint" = { en = "Leave the service period empty if the service date is the issue date.", de = "Leistungszeitraum leer lassen, wenn das Leistungsdatum dem Rechnungsdatum entspricht." }
-"invoices.payment_days" = { en = "Payment days", de = "Zahlungsziel (Tage)" }
+"invoices.range_hint" = { en = "Leave both dates empty to start without time entries.", de = "Beide Daten leer lassen, um ohne Zeiteinträge zu beginnen." }
+"invoices.service_from_entries" ={ en = "From the first to the last time entry on this draft.", de = "Vom ersten bis zum letzten Zeiteintrag dieses Entwurfs." }
+"invoices.payment_days" ={ en = "Payment days", de = "Zahlungsziel (Tage)" }
 "invoices.grouping" = { en = "Lines from time", de = "Positionen aus Zeiten" }
 "invoices.grouping.project" = { en = "One line per project", de = "Eine Position je Projekt" }
 "invoices.grouping.entry" = { en = "One line per entry", de = "Eine Position je Eintrag" }
