@@ -19,6 +19,7 @@
 "invoices.to" = { en = "Entries to", de = "Einträge bis" }
 "invoices.service_from" = { en = "Service period from", de = "Leistungszeitraum von" }
 "invoices.service_to" = { en = "Service period to", de = "Leistungszeitraum bis" }
+"invoices.service_hint" = { en = "Leave the service period empty if the service date is the issue date.", de = "Leistungszeitraum leer lassen, wenn das Leistungsdatum dem Rechnungsdatum entspricht." }
 "invoices.payment_days" = { en = "Payment days", de = "Zahlungsziel (Tage)" }
 "invoices.grouping" = { en = "Lines from time", de = "Positionen aus Zeiten" }
 "invoices.grouping.project" = { en = "One line per project", de = "Eine Position je Projekt" }
@@ -70,6 +71,7 @@
 "invoices.invoice" = { en = "Invoice %s", de = "Rechnung %s" }
 "invoices.due_date" = { en = "Due date", de = "Fällig am" }
 "invoices.service_period" = { en = "Service period", de = "Leistungszeitraum" }
+"invoices.service_date" = { en = "Service date", de = "Leistungsdatum" }
 "invoices.download" = { en = "Download PDF", de = "PDF herunterladen" }
 "invoices.sha256" = { en = "SHA-256 of the PDF", de = "SHA-256 des PDFs" }
 "invoices.cancellation" = { en = "Cancellation invoice %s", de = "Stornorechnung %s" }

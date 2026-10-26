@@ -30,8 +30,9 @@
 <p class="hint">{{.CustomerNumber}} {{.CustomerName}} · {{t (print "invoices.grouping." .Grouping)}} · {{if .RoundingMinutes}}{{t "invoices.rounding.minutes" .RoundingMinutes}}{{else}}{{t "invoices.rounding.none"}}{{end}}</p>
 <label>{{t "invoices.from"}} <input type="date" name="from" value="{{.Header.From}}" required></label>
 <label>{{t "invoices.to"}} <input type="date" name="to" value="{{.Header.To}}" required></label>
-<label>{{t "invoices.service_from"}} <input type="date" name="service_from" value="{{.Header.ServiceFrom}}" required></label>
-<label>{{t "invoices.service_to"}} <input type="date" name="service_to" value="{{.Header.ServiceTo}}" required></label>
+<label>{{t "invoices.service_from"}} <input type="date" name="service_from" value="{{.Header.ServiceFrom}}" aria-describedby="service-hint"></label>
+<label>{{t "invoices.service_to"}} <input type="date" name="service_to" value="{{.Header.ServiceTo}}" aria-describedby="service-hint"></label>
+<p class="hint" id="service-hint">{{t "invoices.service_hint"}}</p>
 <label>{{t "invoices.payment_days"}} <input name="payment_days" value="{{.Header.PaymentDays}}" required inputmode="numeric"></label>
 <button>{{t "invoices.save"}}</button>
 </form>
