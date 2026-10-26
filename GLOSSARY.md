@@ -37,6 +37,9 @@ A billable time entry not yet on an issued invoice.
 **Archived**:
 A customer or project hidden from everyday use and closed to new time, but kept with all its history.
 
+**Claimed entry**:
+A time entry on a draft or issued invoice; no other invoice can bill it.
+
 **User**:
 A person who logs in and tracks time; all users work for the same business.
 _Avoid_: Member, account
@@ -68,3 +71,13 @@ _Avoid_: Storno, credit note
 
 **Paid**:
 An issued invoice whose payment has been received.
+
+**Amount due**:
+What the customer still owes on an issued invoice: its total less whatever its cancellation invoices reverse.
+
+**Open invoice**:
+An issued invoice, not a cancellation invoice, that is neither paid nor fully cancelled.
+_Avoid_: Outstanding, unpaid
+
+**Overdue**:
+An open invoice whose due date has passed.
