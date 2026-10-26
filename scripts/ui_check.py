@@ -1,4 +1,4 @@
-"""Render every page at desktop and phone width in light and dark, fail on layout breakage, save screenshots.
+"""Render every page in English and German at desktop and phone width in light and dark, fail on layout breakage, save screenshots.
 
 Usage: ui_check.py <base-url> <screenshot-dir> <chromium>, against a fresh dev-mode instance (it seeds data).
 """
@@ -71,19 +71,25 @@ def main():
                  "/invoices", "/invoices/new", draft, f"{draft}/preview", f"{draft}/lines/new", line, f"{draft}/refresh",
                  f"{draft}/issue", issued, f"{issued}/cancel", cancellation,
                  "/settings", "/settings/business", "/no-such-page"]
-        for viewport, (width, height) in VIEWPORTS.items():
-            for scheme in ("light", "dark"):
-                page = browser.new_page(viewport={"width": width, "height": height}, color_scheme=scheme)
-                for path in pages:
-                    page.goto(base + path)
-                    name = re.sub(r"[^a-z0-9]+", "-", path.lower()).strip("-") or "home"
-                    page.screenshot(path=f"{out}/{viewport}-{scheme}-{name}.png", full_page=True)
-                    failures += [f"{viewport} {scheme} {path}: {p}" for p in page.evaluate(FIND_BREAKAGE)]
-                page.goto(base + "/week")
-                page.click(".picker-trigger")
-                page.screenshot(path=f"{out}/{viewport}-{scheme}-week-picker.png")
-                failures += [f"{viewport} {scheme} /week (picker open): {p}" for p in page.evaluate(FIND_BREAKAGE)]
-                page.close()
+        for lang in ("en", "de"):
+            page = browser.new_page()
+            page.goto(f"{base}/settings")
+            page.select_option("select[name=language]", lang)
+            page.click("form.settings button")
+            page.close()
+            for viewport, (width, height) in VIEWPORTS.items():
+                for scheme in ("light", "dark"):
+                    page = browser.new_page(viewport={"width": width, "height": height}, color_scheme=scheme)
+                    for path in pages:
+                        page.goto(base + path)
+                        name = re.sub(r"[^a-z0-9]+", "-", path.lower()).strip("-") or "home"
+                        page.screenshot(path=f"{out}/{lang}-{viewport}-{scheme}-{name}.png", full_page=True)
+                        failures += [f"{lang} {viewport} {scheme} {path}: {p}" for p in page.evaluate(FIND_BREAKAGE)]
+                    page.goto(base + "/week")
+                    page.click(".picker-trigger")
+                    page.screenshot(path=f"{out}/{lang}-{viewport}-{scheme}-week-picker.png")
+                    failures += [f"{lang} {viewport} {scheme} /week (picker open): {p}" for p in page.evaluate(FIND_BREAKAGE)]
+                    page.close()
         browser.close()
     print(f"screenshots: {out}")
     for f in failures:

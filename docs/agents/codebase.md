@@ -89,7 +89,7 @@ While working, run `nix run .#check`: formatting, lint, the markup-assertion che
 
 `nix flake check -L` is what CI runs: the same checks from git-tracked files only, so `git add` new files first.
 
-After any template or CSS change, run `nix run .#ui-check` (Linux): it seeds a throwaway instance, renders every page at 1280 and 390 px in light and dark, fails on horizontal overflow or invisible text, and prints a directory of screenshots. Look at the screenshots of the pages you touched; the check can't judge alignment or wrapping. New pages go into `pages` in `scripts/ui_check.py`.
+After any template or CSS change, run `nix run .#ui-check` (Linux): it seeds a throwaway instance, renders every page in English and German at 1280 and 390 px in light and dark, fails on horizontal overflow or invisible text, and prints a directory of screenshots. Look at the screenshots of the pages you touched; the check can't judge alignment or wrapping. New pages go into `pages` in `scripts/ui_check.py`.
 
 ## Nix
 
