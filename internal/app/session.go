@@ -6,6 +6,8 @@ import (
 	"database/sql"
 	"errors"
 	"net/http"
+	"unicode"
+	"unicode/utf8"
 )
 
 const sessionCookie = "session"
@@ -17,6 +19,11 @@ type User struct {
 	Language        string
 	Timezone        string
 	ParallelEntries bool
+}
+
+func (u *User) Initial() string {
+	r, _ := utf8.DecodeRuneInString(u.DisplayName)
+	return string(unicode.ToUpper(r))
 }
 
 type identity struct {

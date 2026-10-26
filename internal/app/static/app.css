@@ -62,7 +62,9 @@ nav svg, .me svg { width: 18px; height: 18px; fill: none; stroke: currentColor; 
 .tabs .mobile { display: none; }
 
 .me { margin-top: auto; display: flex; align-items: center; gap: .25rem; padding: .75rem .3rem 0; border-top: 1px solid var(--line); font-size: .85rem; color: var(--muted); }
-.me .who { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.me .profile { flex: 1; min-width: 0; display: flex; align-items: center; gap: .55rem; }
+.avatar { flex: none; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); font-size: .85rem; font-weight: 600; }
+.me .who { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--fg); font-weight: 500; }
 .me a, .me button { display: grid; place-items: center; width: 30px; height: 30px; padding: 0; border-radius: 8px; color: var(--muted); }
 .me a:hover, .me button:hover { background: var(--surface); color: var(--fg); }
 .me form { margin: 0; }
@@ -142,6 +144,8 @@ h1 { margin: 0 0 1rem; font-size: 1.75rem; font-weight: 650; letter-spacing: -.0
 .filter-form button { padding: .25rem .8rem; font-size: .85rem; }
 .invoice-lines { min-width: 40rem; }
 .invoice-lines td { vertical-align: top; }
+.add-line a { font-weight: 500; }
+.add-line a::before { content: "+ " / ""; }
 .line-actions { width: 1%; white-space: nowrap; text-align: right; }
 .line-actions form { display: inline; margin: 0; }
 .line-actions button { width: 30px; height: 30px; padding: 0; border-radius: 8px; }
@@ -218,6 +222,7 @@ button.icon:hover { filter: brightness(1.1); }
   .side .timers { flex: 1; min-width: 0; }
   .timer, .timer-start { padding: .35rem .45rem; }
   .me { margin: 0; padding: 0; border: 0; }
+  .me .profile { flex: none; }
   .tabs { position: fixed; left: 0; right: 0; bottom: 0; grid-auto-flow: column; grid-auto-columns: 1fr; padding: .35rem .5rem calc(.35rem + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); background: var(--surface); }
   .tabs a { flex-direction: column; gap: 0; padding: .35rem; font-size: .7rem; }
   .tabs .mobile { display: flex; }

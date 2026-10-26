@@ -308,6 +308,18 @@ func TestLinesCanBeEditedReorderedAndDeleted(t *testing.T) {
 	wantInOrder(t, res.body, "Bravo two", "Alpha", "75.00")
 }
 
+func TestAddLineLinkFollowsTheLines(t *testing.T) {
+	ta := newTestApp(t, devConfig)
+	c := ta.client()
+	draft := c.acmeDraft()
+	addLine := `href="` + draft + `/lines/new"`
+
+	c.get(draft).wantBody(t, addLine)
+
+	c.addLine(draft, lineForm("Alpha", "1", "10"))
+	wantInOrder(t, c.get(draft).body, "Alpha", addLine, "Net")
+}
+
 func TestLinesOfAnotherDraftAreNotFound(t *testing.T) {
 	ta := newTestApp(t, devConfig)
 	c := ta.client()
