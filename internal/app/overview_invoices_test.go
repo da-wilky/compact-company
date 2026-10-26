@@ -2,7 +2,6 @@ package app_test
 
 import (
 	"net/http"
-	"slices"
 	"testing"
 	"time"
 )
@@ -79,11 +78,10 @@ func TestOverviewLeavesOutPaidCancelledAndCancellationInvoicesAndShowsWhatIsStil
 	draft := c.createDraft(acme)
 	c.addLine(draft, lineForm("Draft", "1", "10"))
 
-	res := c.get("/")
+	open := c.get("/").in(t, "Open invoices")
 
-	// The drafts list has two columns, the open invoices four.
-	if rows := slices.DeleteFunc(res.rows(), func(row []string) bool { return len(row) != 4 }); len(rows) != 2 {
+	if rows := open.rows(); len(rows) != 2 {
 		t.Fatalf("want a header and 2026-001 only; rows:\n%q", rows)
 	}
-	res.wantRow(t, "2026-001", "acme", "2026-11-09", "151.73 EUR")
+	open.wantRow(t, "2026-001", "acme", "2026-11-09", "151.73 EUR")
 }

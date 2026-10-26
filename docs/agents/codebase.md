@@ -65,6 +65,16 @@ Startup, and so every test, fails if a key is duplicated or lacks `en` or `de`. 
 
 Tables are `STRICT`, ids `INTEGER PRIMARY KEY`, timestamps INTEGER unix seconds UTC, booleans INTEGER. No down migrations.
 
+## Invoice state
+
+Reuse these instead of re-deriving them:
+
+- Status is derived, never stored: `invoiceStatus` (SQL, invoice aliased `i`) in `issue.go`.
+- What's still owed: `amountDue` in `open_invoices.go`.
+- A time entry is claimed via `time_entry.invoice_line_id`; its invoice is a draft while `number IS NULL`.
+- Invoice dates are ISO dates in the customer's timezone; resolve timezones per query with `locationCache`.
+- Week and month windows: `mondayOf` in `week.go`.
+
 ## Tests
 
 Only through the `http.Handler`, via the harness:
@@ -74,6 +84,7 @@ ta := newTestApp(t, devConfig)              // or oidcConfig(t)
 alice := ta.loginAs("alice")
 res := alice.get("/path")                   // res.wantStatus, res.wantBody, res.wantNoBody
 res.wantRow(t, "website", "yes", "85.00 EUR") // a table row's cells as the user reads them
+res.in(t, "Drafts").rows()                  // only the section under that h2, so other tables don't leak in
 wantInOrder(t, res.text(), "Mon 2026-10-26 1:30", "later") // text() strips tags
 res = alice.postForm("/path", url.Values{})
 ta.clock.Advance(time.Hour)                 // starts Monday 2026-10-26 09:00 UTC

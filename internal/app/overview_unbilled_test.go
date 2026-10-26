@@ -3,7 +3,6 @@ package app_test
 import (
 	"net/http"
 	"net/url"
-	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -87,13 +86,10 @@ func TestOverviewListsDraftsWithCustomerAndRange(t *testing.T) {
 
 	res := c.get("/")
 
-	res.wantRow(t, "acme", "2026-10-01 – 2026-10-31")
-	res.wantBody(t, `<a href="`+draft+`">`)
-	for _, row := range res.rows() {
-		if slices.Contains(row, "2026-09-01 – 2026-09-30") {
-			t.Fatalf("issued invoice listed as a draft: %q", row)
-		}
-	}
+	drafts := res.in(t, "Drafts")
+	drafts.wantRow(t, "acme", "2026-10-01 – 2026-10-31")
+	drafts.wantBody(t, `<a href="`+draft+`">`)
+	drafts.wantNoBody(t, "2026-09-01 – 2026-09-30")
 	res.wantNoBody(t, "Nothing to bill, nothing open.")
 }
 
@@ -130,9 +126,5 @@ func TestOverviewListsCustomersWithUnbilledTimeArchivedOnesIncludedMostHoursFirs
 	res := c.get("/")
 
 	wantInOrder(t, res.text(), "globex 3.0 h", "acme 1.0 h")
-	for _, row := range res.rows() {
-		if row[0] == "initech" {
-			t.Fatalf("customer without unbilled time listed: %q", row)
-		}
-	}
+	res.in(t, "Unbilled time").wantNoBody(t, "initech")
 }
