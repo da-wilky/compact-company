@@ -29,7 +29,7 @@ func TestManualEntryShowsInTheDayListing(t *testing.T) {
 	list.wantBody(t, "acme · website")
 	list.wantBody(t, "kickoff")
 	list.wantBody(t, "08:00–09:45")
-	list.wantBody(t, `<td class="num">1:45</td>`)
+	list.wantRow(t, "08:00–09:45", "1:45", "acme · website", "kickoff", "yes")
 	c.get("/entries?day=2026-10-27").wantNoBody(t, "kickoff")
 }
 
@@ -43,7 +43,7 @@ func TestEntriesListsAllDaysNewestFirstGroupedByDay(t *testing.T) {
 	res := c.get("/entries")
 
 	res.wantStatus(t, http.StatusOK)
-	wantInOrder(t, res.body, `<h2>Mon 2026-10-26 <span class="sum">1:30</span></h2>`, "later", "early", `<h2>Tue 2026-10-20 <span class="sum">1:00</span></h2>`, "last week")
+	wantInOrder(t, res.text(), "Mon 2026-10-26 1:30", "later", "early", "Tue 2026-10-20 1:00", "last week")
 }
 
 func (c *client) hxGet(path string) *response {
@@ -65,7 +65,7 @@ func TestEntriesLoadTenAtATimeAndContinueTheDay(t *testing.T) {
 
 	first := c.get("/entries")
 
-	first.wantBody(t, `<h2>Mon 2026-10-26 <span class="sum">5:30</span></h2>`)
+	wantInOrder(t, first.text(), "Mon 2026-10-26 5:30")
 	wantInOrder(t, first.body, "entry 18", "entry 09")
 	first.wantNoBody(t, "entry 08")
 	m := moreLink.FindStringSubmatch(first.body)
@@ -75,9 +75,9 @@ func TestEntriesLoadTenAtATimeAndContinueTheDay(t *testing.T) {
 	more := c.hxGet(html.UnescapeString(m[1]))
 	more.wantNoBody(t, "<html")
 	more.wantNoBody(t, "entry 09")
-	more.wantNoBody(t, "<h2>Mon 2026-10-26")
-	wantInOrder(t, more.body, "entry 08", `<h2>Sun 2026-10-25 <span class="sum">1:00</span></h2>`, "sunday")
-	more.wantNoBody(t, `class="more"`)
+	more.wantNoBody(t, "Mon 2026-10-26")
+	wantInOrder(t, more.text(), "entry 08", "Sun 2026-10-25 1:00", "sunday")
+	more.wantNoBody(t, "Load more")
 	c.get("/entries?before=nope").wantStatus(t, http.StatusBadRequest)
 }
 
@@ -88,11 +88,11 @@ func TestEntryFiltersShowTheProjectAndKeepEachOther(t *testing.T) {
 
 	res := c.get("/entries?day=2026-10-26&project=" + project)
 
-	res.wantBody(t, `<span class="chip">acme · website <a href="/entries?day=2026-10-26"`)
+	res.wantBody(t, `acme · website <a href="/entries?day=2026-10-26"`)
 	res.wantBody(t, `href="/entries?day=2026-10-26&amp;everyone=1&amp;project=`+project+`">Team</a>`)
-	res.wantBody(t, `<a class="pill" href="/entries?project=`+project+`">All entries</a>`)
+	res.wantBody(t, `href="/entries?project=`+project+`">All entries</a>`)
 	res.wantNoBody(t, ">Today</a>")
-	c.get("/entries?day=2026-10-25").wantBody(t, `<a class="pill" href="/entries?day=2026-10-26">Today</a>`)
+	c.get("/entries?day=2026-10-25").wantBody(t, `href="/entries?day=2026-10-26">Today</a>`)
 	c.get("/entries?project=999").wantStatus(t, http.StatusBadRequest)
 }
 
@@ -139,7 +139,7 @@ func TestAssigningAnUnassignedEntryAppliesTheProjectDefault(t *testing.T) {
 	wantRedirect(t, res, "/entries?day=2026-10-26")
 	list := c.get("/entries?day=2026-10-26")
 	list.wantBody(t, "08:00–09:30")
-	list.wantBody(t, "<td>acme · website</td><td>adopted</td><td>yes</td>")
+	list.wantRow(t, "08:00–09:30", "1:30", "acme · website", "adopted", "yes")
 	c.get(entry).wantBody(t, `<option value="yes" selected>`)
 }
 
@@ -155,7 +155,7 @@ func TestOwnerCanFullyEditAnEntry(t *testing.T) {
 
 	wantRedirect(t, res, "/entries?day=2026-10-27")
 	c.get("/entries?day=2026-10-26").wantBody(t, "No entries.")
-	c.get("/entries?day=2026-10-27").wantBody(t, "<td class=\"num\">0:20</td><td>Unassigned</td><td>moved</td><td></td>")
+	c.get("/entries?day=2026-10-27").wantRow(t, "10:00–10:20", "0:20", "Unassigned", "moved", "")
 	clash := c.postForm(entry, entryForm("", "2026-10-27T08:30", "2026-10-27T10:20", "moved"))
 	clash.wantStatus(t, http.StatusUnprocessableEntity)
 	clash.wantBody(t, "This entry overlaps another of your entries.")
@@ -192,7 +192,7 @@ func TestColleaguesCanViewButNotChangeAnEntry(t *testing.T) {
 	alice.get("/entries?day=2026-10-26").wantBody(t, "alice work")
 	bob.get("/entries?day=2026-10-26").wantNoBody(t, "alice work")
 	everyone := bob.get("/entries?day=2026-10-26&everyone=1")
-	everyone.wantBody(t, "<td>alice</td><td>08:00–09:00</td>")
+	everyone.wantRow(t, "alice", "08:00–09:00", "1:00", "Unassigned", "alice work", "")
 	everyone.wantNoBody(t, `href="`+entry+`"`)
 	everyone.wantBody(t, `href="/entries?day=2026-10-27&amp;everyone=1"`)
 }
@@ -235,10 +235,10 @@ func TestEntryBillableInheritsTheProjectDefaultUnlessSet(t *testing.T) {
 	c.postForm("/entries", entryForm("", "2026-10-26T11:00", "2026-10-26T12:00", "orphan")).wantStatus(t, http.StatusSeeOther)
 
 	list := c.get("/entries?day=2026-10-26")
-	list.wantBody(t, "<td>acme · internal</td><td>inherited</td><td>no</td>")
-	list.wantBody(t, "<td>acme · website</td><td>explicit</td><td>no</td>")
-	list.wantBody(t, "<td>acme · website</td><td>default</td><td>yes</td>")
-	list.wantBody(t, "<td>Unassigned</td><td>orphan</td><td></td>")
+	list.wantRow(t, "08:00–09:00", "1:00", "acme · internal", "inherited", "no")
+	list.wantRow(t, "09:00–10:00", "1:00", "acme · website", "explicit", "no")
+	list.wantRow(t, "10:00–11:00", "1:00", "acme · website", "default", "yes")
+	list.wantRow(t, "11:00–12:00", "1:00", "Unassigned", "orphan", "")
 }
 
 func TestUnassignedEntryCannotBeMarkedBillable(t *testing.T) {
@@ -306,9 +306,9 @@ func TestStoppedTimerIsListedWithItsEndAndDuration(t *testing.T) {
 	c.hxPost(timer+"/stop", nil)
 
 	list := c.get("/entries")
-	list.wantBody(t, "<h2>Mon 2026-10-26 ")
+	wantInOrder(t, list.text(), "Mon 2026-10-26 1:30")
 	list.wantBody(t, "09:00–10:30")
-	list.wantBody(t, `<td class="num">1:30</td>`)
+	list.wantRow(t, "09:00–10:30", "1:30", "Unassigned", "tracked", "")
 }
 
 func TestEntriesAreEnteredAndAttributedInTheViewersTimezone(t *testing.T) {
