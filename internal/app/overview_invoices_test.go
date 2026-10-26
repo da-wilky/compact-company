@@ -85,3 +85,18 @@ func TestOverviewLeavesOutPaidCancelledAndCancellationInvoicesAndShowsWhatIsStil
 	}
 	open.wantRow(t, "2026-001", "acme", "2026-11-09", "151.73 EUR")
 }
+
+func TestOverdueKeepsTheTimezoneTheInvoiceWasIssuedIn(t *testing.T) {
+	ta := newTestApp(t, devConfig)
+	c := ta.client()
+	c.postForm("/settings/business", businessForm()).wantStatus(t, http.StatusSeeOther)
+	kiwi := customerForm("kiwi", "85")
+	kiwi.Set("timezone", "Pacific/Auckland")
+	c.createCustomer(kiwi)
+	c.createAndIssue(draftForm(c.customerPath("kiwi"), "2026-10-01", "2026-10-31"), lineForm("Work", "1", "100"))
+	ta.clock.Advance(14*24*time.Hour + 2*time.Hour) // 2026-11-10 00:00 in Auckland, still 2026-11-09 in Honolulu
+	kiwi.Set("timezone", "Pacific/Honolulu")
+	c.postForm(c.customerPath("kiwi"), kiwi).wantStatus(t, http.StatusSeeOther)
+
+	c.get("/").wantRow(t, "2026-001", "kiwi", "2026-11-09 Overdue", "119.00 EUR")
+}

@@ -28,7 +28,7 @@ type openInvoices struct {
 
 func (a *App) loadOpenInvoices() (openInvoices, error) {
 	var open openInvoices
-	rows, err := a.db.Query(`SELECT i.id, i.number, ifnull(i.snapshot ->> '$.customer.name', c.name), i.due_date, c.timezone,
+	rows, err := a.db.Query(`SELECT i.id, i.number, ifnull(i.snapshot ->> '$.customer.name', c.name), i.due_date, i.timezone,
 		i.currency, ` + amountDue + `
 		FROM invoice i JOIN customer c ON c.id = i.customer_id
 		WHERE i.paid_date IS NULL AND ` + invoiceStatus + ` IN ('issued', 'partially_cancelled')
