@@ -230,6 +230,7 @@ button.icon:hover { filter: brightness(1.1); }
   .form, .settings { padding: 1rem; }
   .page-head .pager { width: 100%; flex-wrap: wrap; }
   .pager .pill { order: 1; }
+  .seg a { padding: .2rem .6rem; }
   .jump { flex: 1 1 8rem; min-width: 0; }
   .picker-trigger { width: 100%; padding: 0 .6rem; overflow: hidden; text-overflow: ellipsis; }
 }
