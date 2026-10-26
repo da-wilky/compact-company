@@ -67,6 +67,26 @@
           };
         }
         // {
+          check = {
+            type = "app";
+            program = pkgs.lib.getExe (
+              pkgs.writeShellApplication {
+                name = "check";
+                runtimeInputs = [
+                  pkgs.go
+                  pkgs.golangci-lint
+                  pkgs.typst
+                ];
+                text = ''
+                  [ -f go.mod ] || { echo "run from the repository root" >&2; exit 1; }
+                  golangci-lint fmt --diff ./...
+                  golangci-lint run ./...
+                  sh scripts/markup_assertions.sh
+                  go test ./...
+                '';
+              }
+            );
+          };
           default = {
             type = "app";
             program = toString (
@@ -95,6 +115,11 @@
           doCheck = false;
           installPhase = "touch $out";
         });
+        markup-assertions = pkgs.runCommand "compact-company-markup-assertions" { } ''
+          cd ${./.}
+          sh scripts/markup_assertions.sh
+          touch $out
+        '';
       });
 
       devShells = forAll (pkgs: {
