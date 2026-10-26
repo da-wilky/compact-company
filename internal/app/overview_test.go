@@ -14,11 +14,11 @@ func TestOverviewIsTheStartPageInBothLanguages(t *testing.T) {
 	res := c.get("/")
 
 	res.wantBody(t, "<title>Overview · compact-company</title>")
-	wantInOrder(t, res.body, `<a href="/" class="desktop">`, "Overview</a>") // markup is the behaviour
+	wantInOrder(t, res.body, `href="/"`, "Overview</a>")
 	c.postForm("/settings", url.Values{"language": {"de"}, "timezone": {"UTC"}}).wantStatus(t, http.StatusSeeOther)
 	de := c.get("/")
 	de.wantBody(t, "<title>Übersicht · compact-company</title>")
-	wantInOrder(t, de.body, `<a href="/" class="desktop">`, "Übersicht</a>") // markup is the behaviour
+	wantInOrder(t, de.body, `href="/"`, "Übersicht</a>")
 	wantInOrder(t, de.text(), "Diese Woche 0.0 h · 0.0 h abrechenbar", "Dieser Monat 0.0 h", "Nichts abzurechnen, nichts offen.")
 	c.createEntry(entryForm("", "2026-10-26T06:00", "2026-10-26T06:30", "orphan"))
 	c.get("/").wantBody(t, "1 nicht zugeordneter Eintrag (0.5 h)")

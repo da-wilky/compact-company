@@ -2,7 +2,6 @@ package app_test
 
 import (
 	"net/http"
-	"net/url"
 	"slices"
 	"testing"
 	"time"
@@ -21,15 +20,6 @@ func TestOverviewListsAnOpenInvoiceWithItsAmountDue(t *testing.T) {
 	res.wantNoBody(t, "Nothing to bill, nothing open.")
 }
 
-// issueAcme issues a draft for acme with one line and returns its path.
-func (c *client) issueAcme(description, quantity, unitPrice string) string {
-	c.t.Helper()
-	inv := c.createDraft(draftForm(c.customerPath("acme"), "2026-10-01", "2026-10-31"))
-	c.addLine(inv, lineForm(description, quantity, unitPrice))
-	wantRedirect(c.t, c.issue(inv), inv)
-	return inv
-}
-
 func TestOverviewMarksInvoicesOverdueFromMidnightInTheCustomersTimezoneOldestDueFirst(t *testing.T) {
 	ta := newTestApp(t, devConfig)
 	c := ta.client()
@@ -40,11 +30,8 @@ func TestOverviewMarksInvoicesOverdueFromMidnightInTheCustomersTimezoneOldestDue
 	c.createCustomer(kiwi)
 	later := draftForm(c.customerPath("acme"), "2026-10-01", "2026-10-31")
 	later.Set("payment_days", "30")
-	for _, form := range []url.Values{later, draftForm(c.customerPath("kiwi"), "2026-10-01", "2026-10-31")} {
-		inv := c.createDraft(form)
-		c.addLine(inv, lineForm("Work", "1", "100"))
-		wantRedirect(t, c.issue(inv), inv)
-	}
+	c.createAndIssue(later, lineForm("Work", "1", "100"))
+	c.createAndIssue(draftForm(c.customerPath("kiwi"), "2026-10-01", "2026-10-31"), lineForm("Work", "1", "100"))
 	ta.clock.Advance(14*24*time.Hour + 1*time.Hour + 59*time.Minute) // 2026-11-09 23:59 in Auckland
 
 	before := c.get("/")
@@ -65,12 +52,11 @@ func TestOverviewTotalsOpenAndOverdueAmountsPerCurrency(t *testing.T) {
 	yen := customerForm("yenco", "8500")
 	yen.Set("currency", "JPY")
 	c.createCustomer(yen)
-	c.issueAcme("Old", "1", "100")
-	inv := c.createDraft(draftForm(c.customerPath("yenco"), "2026-10-01", "2026-10-31"))
-	c.addLine(inv, lineForm("Work", "1", "1000"))
-	wantRedirect(t, c.issue(inv), inv)
+	acme := draftForm(c.customerPath("acme"), "2026-10-01", "2026-10-31")
+	c.createAndIssue(acme, lineForm("Old", "1", "100"))
+	c.createAndIssue(draftForm(c.customerPath("yenco"), "2026-10-01", "2026-10-31"), lineForm("Work", "1", "1000"))
 	ta.clock.Advance(15 * 24 * time.Hour)
-	c.issueAcme("New", "1", "10.50")
+	c.createAndIssue(acme, lineForm("New", "1", "10.50"))
 
 	res := c.get("/")
 
@@ -82,17 +68,15 @@ func TestOverviewLeavesOutPaidCancelledAndCancellationInvoicesAndShowsWhatIsStil
 	c := ta.client()
 	partly := c.issuedWorkshopAndHosting()
 	c.cancelLines(partly, "", "Hosting")
-	paid := c.issueAcme("Paid", "1", "10")
+	acme := draftForm(c.customerPath("acme"), "2026-10-01", "2026-10-31")
+	paid := c.createAndIssue(acme, lineForm("Paid", "1", "10"))
 	wantRedirect(t, c.markPaid(paid, "2026-10-26"), paid)
-	cancelled := c.issueAcme("Cancelled", "1", "10")
+	cancelled := c.createAndIssue(acme, lineForm("Cancelled", "1", "10"))
 	c.cancelLines(cancelled, "", "Cancelled")
-	paidPartly := c.createDraft(draftForm(c.customerPath("acme"), "2026-10-01", "2026-10-31"))
-	c.addLine(paidPartly, lineForm("Kept", "1", "10"))
-	c.addLine(paidPartly, lineForm("Dropped", "1", "10"))
-	wantRedirect(t, c.issue(paidPartly), paidPartly)
+	paidPartly := c.createAndIssue(acme, lineForm("Kept", "1", "10"), lineForm("Dropped", "1", "10"))
 	c.cancelLines(paidPartly, "", "Dropped")
 	wantRedirect(t, c.markPaid(paidPartly, "2026-10-26"), paidPartly)
-	draft := c.createDraft(draftForm(c.customerPath("acme"), "2026-10-01", "2026-10-31"))
+	draft := c.createDraft(acme)
 	c.addLine(draft, lineForm("Draft", "1", "10"))
 
 	res := c.get("/")
