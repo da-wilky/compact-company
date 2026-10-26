@@ -369,7 +369,7 @@ func (a *App) draftUpdate(w http.ResponseWriter, r *http.Request) {
 	if !validRange(d.Header.From, d.Header.To) {
 		errs = append(errs, "invoices.error.range")
 	}
-	if !validRange(d.Header.ServiceFrom, d.Header.ServiceTo) {
+	if (d.Header.ServiceFrom != "" || d.Header.ServiceTo != "") && !validRange(d.Header.ServiceFrom, d.Header.ServiceTo) {
 		errs = append(errs, "invoices.error.service_period")
 	}
 	paymentDays, ok := parsePaymentDays(d.Header.PaymentDays)

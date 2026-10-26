@@ -66,6 +66,7 @@ func (a *App) issue(ctx context.Context, tx *sql.Tx, id int64) (err error) {
 	}()
 	sum := sha256.Sum256(pdf)
 	res, err := tx.Exec(`UPDATE invoice SET number = ?1, issue_date = ?2, due_date = date(?2, '+' || payment_days || ' days'),
+		service_from = ifnull(nullif(service_from, ''), ?2), service_to = ifnull(nullif(service_to, ''), ?2),
 		snapshot = ?3, gross = ?4, pdf_path = ?5, pdf_sha256 = ?6 WHERE id = ?7 AND number IS NULL`,
 		number, issueDate, string(data), gross, rel, hex.EncodeToString(sum[:]), id)
 	if err != nil {
