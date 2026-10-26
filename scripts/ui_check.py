@@ -59,6 +59,14 @@ def seed(api):
     # Unset again so the draft's preview shows the missing-data page instead of a PDF download.
     api.post(f"{base}/settings/business", form=business | {"name": ""})
     empty = api.post(f"{base}/invoices", form={"customer": customer, "from": "2020-01-01", "to": "2020-01-31", "grouping": "project", "rounding_minutes": "0", "payment_days": "14"}, max_redirects=0).headers["location"]
+    # Time after the drafts were made, so the overview shows unbilled time both on a draft and on no invoice.
+    last_friday = monday - datetime.timedelta(days=3)
+    api.post(f"{base}/entries", form={"project": projects["Website relaunch"], "start": f"{last_friday}T09:00", "end": f"{last_friday}T12:30", "description": "Content migration", "billable": ""})
+    api.post(f"{base}/customers", form={"name": "Nordlicht Logistik GmbH", "address": "Am Hafen 5\n20457 Hamburg", "email": "rechnung@nordlicht.example", "currency": "EUR", "invoice_language": "de", "timezone": "Europe/Berlin", "hourly_rate": "90"})
+    other = re.findall(r'href="/customers/(\d+)/projects"', api.get(f"{base}/customers").text())[-1]
+    api.post(f"{base}/customers/{other}/projects", form={"name": "Fleet dashboard", "hourly_rate": "", "billable": "on"})
+    fleet = re.search(r'href="/projects/(\d+)">', api.get(f"{base}/customers/{other}/projects").text()).group(1)
+    api.post(f"{base}/entries", form={"project": fleet, "start": f"{last_friday}T13:30", "end": f"{last_friday}T15:00", "description": "Dashboard review", "billable": ""})
     return customer, projects["Website relaunch"], draft, line, entry, issued, cancellation, empty
 
 

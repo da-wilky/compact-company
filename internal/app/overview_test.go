@@ -83,7 +83,9 @@ func TestOverviewWithNothingToDoSaysSo(t *testing.T) {
 	ta := newTestApp(t, devConfig)
 	c := ta.client()
 	project := c.websiteProject()
-	c.createEntry(entryForm(project, "2026-10-26T07:00", "2026-10-26T08:00", "assigned"))
+	internal := entryForm(project, "2026-10-26T07:00", "2026-10-26T08:00", "internal")
+	internal.Set("billable", "no")
+	c.createEntry(internal)
 	c.startTimer(url.Values{})
 
 	res := c.get("/")

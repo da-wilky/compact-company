@@ -25,10 +25,12 @@ type overviewPage struct {
 	Week, Month     hoursTotal
 	Unassigned      int
 	UnassignedHours time.Duration
+	Unbilled        []unbilledCustomer
+	Drafts          []draftSummary
 }
 
 func (p overviewPage) Empty() bool {
-	return p.Unassigned == 0
+	return p.Unassigned == 0 && len(p.Unbilled) == 0 && len(p.Drafts) == 0
 }
 
 func (a *App) home(w http.ResponseWriter, r *http.Request) {
@@ -91,5 +93,13 @@ func (a *App) home(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	page.UnassignedHours = time.Duration(seconds) * time.Second
+	if page.Unbilled, err = a.unbilledCustomers(); err != nil {
+		a.serverError(w, r, err)
+		return
+	}
+	if page.Drafts, err = a.drafts(); err != nil {
+		a.serverError(w, r, err)
+		return
+	}
 	a.render(w, r, http.StatusOK, "home", page)
 }
