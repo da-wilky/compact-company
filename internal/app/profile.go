@@ -14,28 +14,14 @@ func init() {
 	})
 }
 
-var languageNames = map[string]string{"en": "English", "de": "Deutsch"}
-
 type profileForm struct {
 	Language        string
 	Timezone        string
 	ParallelEntries bool
 	Error           string
 	Now             time.Time
-	Languages       []settingsOption
+	Languages       []languageOption
 	Default         config.Defaults
-}
-
-type settingsOption struct {
-	Value, Name string
-}
-
-func languageOptions() []settingsOption {
-	opts := make([]settingsOption, len(languages))
-	for i, tag := range languages {
-		opts[i] = settingsOption{tag.String(), languageNames[tag.String()]}
-	}
-	return opts
 }
 
 func (a *App) profilePage(w http.ResponseWriter, r *http.Request) {

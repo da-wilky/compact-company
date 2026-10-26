@@ -18,8 +18,8 @@ func init() {
 
 type settingsPage struct {
 	Defaults  config.Defaults
-	Managed   map[string]bool
-	Languages []settingsOption
+	Managed   config.ManagedDefaults
+	Languages []languageOption
 	Error     string
 	Business  businessPage
 }
@@ -34,28 +34,29 @@ func (a *App) storedDefaults() (config.Defaults, error) {
 // defaults returns the stored defaults with the keys config sets laid over them.
 func (a *App) defaults() (config.Defaults, error) {
 	d, err := a.storedDefaults()
-	return a.overlayManaged(d, a.cfg.Defaults), err
+	if err != nil {
+		return d, err
+	}
+	return a.overlayManaged(d, a.cfg.Defaults), nil
 }
 
-// overlayManaged returns d with the keys config sets taken from src.
 func (a *App) overlayManaged(d, src config.Defaults) config.Defaults {
 	set := a.cfg.DefaultsManaged
-	if set["language"] {
+	if set.Language {
 		d.Language = src.Language
 	}
-	if set["timezone"] {
+	if set.Timezone {
 		d.Timezone = src.Timezone
 	}
-	if set["currency"] {
+	if set.Currency {
 		d.Currency = src.Currency
 	}
-	if set["parallel_entries"] {
+	if set.ParallelEntries {
 		d.ParallelEntries = src.ParallelEntries
 	}
 	return d
 }
 
-// loadSettings returns the settings page showing what is in effect.
 func (a *App) loadSettings() (settingsPage, error) {
 	d, err := a.defaults()
 	if err != nil {

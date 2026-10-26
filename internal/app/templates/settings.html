@@ -7,21 +7,21 @@
 {{with .Error}}<p class="error" role="alert">{{t .}}</p>{{end}}
 <form method="post" action="/settings/defaults" class="settings">
 <label>{{t "settings.language"}}
-<select name="language"{{if index .Managed "language"}} disabled{{end}}>
+<select name="language"{{if .Managed.Language}} disabled{{end}}>
 {{range .Languages}}<option value="{{.Value}}"{{if eq .Value $.Data.Defaults.Language}} selected{{end}}>{{.Name}}</option>
 {{end}}</select>
 </label>
-{{if index .Managed "language"}}<p class="hint">{{t "settings.managed"}}</p>{{end}}
+{{if .Managed.Language}}<p class="hint">{{t "settings.managed"}}</p>{{end}}
 <label>{{t "settings.timezone"}}
-<input name="timezone" value="{{.Defaults.Timezone}}"{{if index .Managed "timezone"}} disabled{{end}} required spellcheck="false" autocomplete="off">
+<input name="timezone" value="{{.Defaults.Timezone}}"{{if .Managed.Timezone}} disabled{{end}} required spellcheck="false" autocomplete="off">
 </label>
-<p class="hint">{{if index .Managed "timezone"}}{{t "settings.managed"}}{{else}}{{t "settings.timezone_hint"}}{{end}}</p>
+<p class="hint">{{if .Managed.Timezone}}{{t "settings.managed"}}{{else}}{{t "settings.timezone_hint"}}{{end}}</p>
 <label>{{t "settings.currency"}}
-<input name="currency" value="{{.Defaults.Currency}}"{{if index .Managed "currency"}} disabled{{end}} required maxlength="3" spellcheck="false" autocomplete="off">
+<input name="currency" value="{{.Defaults.Currency}}"{{if .Managed.Currency}} disabled{{end}} required maxlength="3" spellcheck="false" autocomplete="off">
 </label>
-{{if index .Managed "currency"}}<p class="hint">{{t "settings.managed"}}</p>{{end}}
-<label><input type="checkbox" name="parallel_entries"{{if .Defaults.ParallelEntries}} checked{{end}}{{if index .Managed "parallel_entries"}} disabled{{end}}> {{t "settings.parallel_entries"}}</label>
-<p class="hint">{{if index .Managed "parallel_entries"}}{{t "settings.managed"}}{{else}}{{t "settings.parallel_entries_default_hint"}}{{end}}</p>
+{{if .Managed.Currency}}<p class="hint">{{t "settings.managed"}}</p>{{end}}
+<label><input type="checkbox" name="parallel_entries"{{if .Defaults.ParallelEntries}} checked{{end}}{{if .Managed.ParallelEntries}} disabled{{end}}> {{t "settings.parallel_entries"}}</label>
+<p class="hint">{{if .Managed.ParallelEntries}}{{t "settings.managed"}}{{else}}{{t "settings.parallel_entries_default_hint"}}{{end}}</p>
 <button type="submit">{{t "settings.save"}}</button>
 </form>
 {{with .Business}}

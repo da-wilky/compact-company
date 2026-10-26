@@ -40,8 +40,8 @@ func currentUser(r *http.Request) *User {
 	return u
 }
 
-// upsertUser creates the user with configured defaults on first sight and
-// otherwise refreshes the identity claims only.
+// upsertUser creates the user on first sight, following the default language and timezone and copying
+// the parallel entries default, and otherwise refreshes the identity claims only.
 func (a *App) upsertUser(id identity) (int64, error) {
 	d, err := a.defaults()
 	if err != nil {

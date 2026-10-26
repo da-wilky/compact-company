@@ -40,7 +40,7 @@ type App struct {
 var routes []func(a *App, mux *http.ServeMux)
 
 func New(cfg config.Config, now func() time.Time) (*App, error) {
-	if cfg.DefaultsManaged["language"] && !supportedLanguage(cfg.Defaults.Language) {
+	if cfg.DefaultsManaged.Language && !supportedLanguage(cfg.Defaults.Language) {
 		return nil, fmt.Errorf("defaults.language: unsupported language %q (want one of %v)", cfg.Defaults.Language, languages)
 	}
 	cat, err := loadCatalog()

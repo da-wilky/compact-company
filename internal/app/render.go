@@ -25,6 +25,20 @@ var messages embed.FS
 
 var languages = []language.Tag{language.English, language.German}
 
+var languageNames = map[string]string{"en": "English", "de": "Deutsch"}
+
+type languageOption struct {
+	Value, Name string
+}
+
+func languageOptions() []languageOption {
+	opts := make([]languageOption, len(languages))
+	for i, tag := range languages {
+		opts[i] = languageOption{tag.String(), languageNames[tag.String()]}
+	}
+	return opts
+}
+
 func supportedLanguage(lang string) bool {
 	for _, tag := range languages {
 		if tag.String() == lang {

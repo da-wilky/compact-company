@@ -69,3 +69,37 @@ timezone = "Asia/Kolkata"
 	alice.get("/customers/new").wantBody(t, `name="timezone" value="Asia/Kolkata"`)
 	alice.get("/customers/new").wantBody(t, `name="currency" value="CHF"`)
 }
+
+func TestEveryDefaultSetInConfigIgnoresPostedChanges(t *testing.T) {
+	ta := newTestApp(t, devConfig+`
+[defaults]
+language = "de"
+timezone = "Asia/Kolkata"
+currency = "CHF"
+parallel_entries = true
+`)
+	alice := ta.loginAs("alice")
+	page := alice.get("/settings").in(t, "Voreinstellungen")
+	page.wantBody(t, `<select name="language" disabled>`)
+	page.wantBody(t, `name="currency" value="CHF" disabled`)
+	page.wantBody(t, `name="parallel_entries" checked disabled`)
+
+	wantRedirect(t, alice.postForm("/settings/defaults", defaultsForm("en", "UTC", "EUR", false)), "/settings")
+
+	customer := alice.get("/customers/new")
+	customer.wantBody(t, `<option value="de" selected>`)
+	customer.wantBody(t, `name="timezone" value="Asia/Kolkata"`)
+	customer.wantBody(t, `name="currency" value="CHF"`)
+	ta.loginAs("bob").get("/profile").wantBody(t, `name="parallel_entries" checked`)
+}
+
+func TestPagesBeforeLoginUseTheStoredDefaultLanguage(t *testing.T) {
+	iss := newIssuer(t)
+	ta := newTestApp(t, iss.config(t, "alice"))
+	alice := ta.client()
+	alice.oidcLogin(iss, "alice", "Alice", "alice@example.com")
+
+	wantRedirect(t, alice.postForm("/settings/defaults", defaultsForm("de", "UTC", "EUR", false)), "/settings")
+
+	ta.client().get("/login").wantBody(t, "Anmelden")
+}
