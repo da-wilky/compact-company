@@ -75,6 +75,11 @@ h1 { margin: 0 0 1rem; font-size: 1.75rem; font-weight: 650; letter-spacing: -.0
 .actions { display: flex; flex-wrap: wrap; gap: .5rem; margin: 0 0 1.5rem; }
 .actions a { padding: .35rem .9rem; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: .9rem; font-weight: 500; }
 .actions a:hover { text-decoration: none; filter: brightness(.97); }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: .75rem; margin: 0 0 1.5rem; }
+.stats div { padding: .9rem 1.1rem; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+.stats dt { color: var(--muted); font-size: .85rem; }
+.stats dd { margin: .2rem 0 0; color: var(--muted); font-variant-numeric: tabular-nums; }
+.stats b { color: var(--fg); font-size: 1.35rem; font-weight: 650; }
 .error, .errors { color: var(--danger); }
 .typst-error { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 0.85rem; }
 .sha { overflow-wrap: anywhere; }
@@ -218,7 +223,7 @@ button.icon:hover { filter: brightness(1.1); }
 @media (max-width: 760px) {
   .shell { display: block; }
   .side { position: sticky; z-index: 10; height: auto; flex-direction: row; flex-wrap: wrap; align-items: center; gap: .6rem; padding: .6rem 1rem; border: 0; border-bottom: 1px solid var(--line); background: var(--bg); }
-  .brand .word, .me .who, .me .desktop { display: none; }
+  .brand .word, .me .who, .me .desktop, .tabs .desktop { display: none; }
   .side .timers { flex: 1; min-width: 0; }
   .timer, .timer-start { padding: .35rem .45rem; }
   .me { margin: 0; padding: 0; border: 0; }

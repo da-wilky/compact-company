@@ -1,4 +1,12 @@
 {{define "title"}}{{t "home.title"}}{{end}}
 {{define "content"}}
+{{with .Data}}
 <h1>{{t "home.title"}}</h1>
+<dl class="stats">
+<div><dt>{{t "home.week"}}</dt><dd><b>{{t "home.hours" (hours .Week.Total)}}</b> · {{t "home.billable" (hours .Week.Billable)}}</dd></div>
+<div><dt>{{t "home.month"}}</dt><dd><b>{{t "home.hours" (hours .Month.Total)}}</b> · {{t "home.billable" (hours .Month.Billable)}}</dd></div>
+</dl>
+{{if .Unassigned}}<p class="actions"><a href="/entries?project=none">{{if eq .Unassigned 1}}{{t "home.unassigned_one" (hours .UnassignedHours)}}{{else}}{{t "home.unassigned" .Unassigned (hours .UnassignedHours)}}{{end}}</a></p>{{end}}
+{{if .Empty}}<p class="hint">{{t "home.empty"}}</p>{{end}}
+{{end}}
 {{end}}

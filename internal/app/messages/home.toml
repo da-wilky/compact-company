@@ -1,1 +1,8 @@
-"home.title" = { en = "Home", de = "Startseite" }
+"home.title" = { en = "Overview", de = "Übersicht" }
+"home.week" = { en = "This week", de = "Diese Woche" }
+"home.month" = { en = "This month", de = "Dieser Monat" }
+"home.hours" = { en = "%s h", de = "%s h" }
+"home.billable" = { en = "%s h billable", de = "%s h abrechenbar" }
+"home.unassigned_one" = { en = "1 unassigned entry (%s h)", de = "1 nicht zugeordneter Eintrag (%s h)" }
+"home.unassigned" = { en = "%d unassigned entries (%s h)", de = "%d nicht zugeordnete Einträge (%s h)" }
+"home.empty" = { en = "Nothing to bill, nothing open.", de = "Nichts abzurechnen, nichts offen." }
