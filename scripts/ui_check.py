@@ -1,17 +1,19 @@
 """Render every page in English and German at desktop and phone width in light and dark, fail on layout breakage, save screenshots.
 
-Usage: ui_check.py <base-url> <screenshot-dir> <chromium> [path…], against a fresh dev-mode instance (it seeds data).
-Paths render only those pages; the seed is deterministic, so e.g. /invoices/1 is the draft with lines and /invoices/4 the empty one.
+Usage: ui_check.py <base-url> <database> <screenshot-dir> <chromium> [path…], against a fresh dev-mode instance (it seeds data).
+Paths render only those pages; the seed is deterministic, so e.g. /invoices/1 is the draft with lines, /invoices/4 the empty one
+and /invoices/5 to /invoices/8 open invoices, the even ones overdue.
 """
 
 import datetime
 import re
+import sqlite3
 import sys
 
 from playwright.sync_api import sync_playwright
 
-base, out, chromium = sys.argv[1:4]
-only = sys.argv[4:]
+base, database, out, chromium = sys.argv[1:5]
+only = sys.argv[5:]
 
 VIEWPORTS = {"desktop": (1280, 800), "phone": (390, 800)}
 
@@ -59,7 +61,26 @@ def seed(api):
     # Unset again so the draft's preview shows the missing-data page instead of a PDF download.
     api.post(f"{base}/settings/business", form=business | {"name": ""})
     empty = api.post(f"{base}/invoices", form={"customer": customer, "from": "2020-01-01", "to": "2020-01-31", "grouping": "project", "rounding_minutes": "0", "payment_days": "14"}, max_redirects=0).headers["location"]
+    seed_open_invoices(api, customer, business)
     return customer, projects["Website relaunch"], draft, line, entry, issued, cancellation, empty
+
+
+def seed_open_invoices(api, customer, business):
+    api.post(f"{base}/customers", form={"name": "Northwind Trading Ltd", "address": "1 Harbour St\nPortland, ME 04101", "email": "ap@northwind.example", "currency": "USD", "invoice_language": "en", "timezone": "America/New_York", "hourly_rate": "120"})
+    northwind = re.findall(r'href="/customers/(\d+)/projects"', api.get(f"{base}/customers").text())[-1]
+    api.post(f"{base}/settings/business", form=business)
+    today = datetime.date.today()
+    for owner, description, quantity, price, overdue_days in [(customer, "Maintenance", "6", "85", 0), (customer, "Consulting", "3.5", "85", 12),
+                                                              (northwind, "Integration", "10", "120", 0), (northwind, "Support retainer", "1", "450", 4)]:
+        invoice = api.post(f"{base}/invoices", form={"customer": owner, "from": str(today), "to": str(today), "grouping": "project", "rounding_minutes": "0", "payment_days": "14"}, max_redirects=0).headers["location"]
+        api.post(f"{base}{invoice}/lines", form={"description": description, "detail": "", "quantity": quantity, "unit": "h", "unit_price": price})
+        api.post(f"{base}{invoice}/issue")
+        if overdue_days:
+            # Issuing always dates today; only the database can make an invoice overdue now.
+            due = today - datetime.timedelta(days=overdue_days)
+            with sqlite3.connect(database) as db:
+                db.execute("UPDATE invoice SET issue_date = ?, due_date = ? WHERE id = ?", (str(due - datetime.timedelta(days=14)), str(due), invoice.rsplit("/", 1)[1]))
+    api.post(f"{base}/settings/business", form=business | {"name": ""})
 
 
 def main():
