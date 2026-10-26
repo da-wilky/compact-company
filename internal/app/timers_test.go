@@ -54,8 +54,8 @@ func TestStartTimerWithoutProjectIsUnassignedAndHasNoBillableFlag(t *testing.T) 
 	res := c.hxPost("/timers", url.Values{"project": {""}})
 
 	res.wantStatus(t, http.StatusOK)
-	res.wantBody(t, `<span class="project">Unassigned</span>`)
-	res.wantNoBody(t, `class="tag"`)
+	res.wantBody(t, "Unassigned")
+	res.wantNoBody(t, "billable")
 }
 
 func TestTimerInheritsTheProjectsBillableDefault(t *testing.T) {
@@ -156,7 +156,7 @@ func TestStoppingATimerEndsItAndFreesTheSlot(t *testing.T) {
 	res := c.hxPost(timer+"/stop", nil)
 
 	res.wantStatus(t, http.StatusOK)
-	res.wantNoBody(t, `class="timer"`)
+	res.wantNoBody(t, `aria-label="Stop"`)
 	c.get("/").wantNoBody(t, `value="first"`)
 	c.startTimer(url.Values{"description": {"second"}})
 	c.hxPost(timer+"/stop", nil).wantStatus(t, http.StatusNotFound)
@@ -252,5 +252,5 @@ func TestUnknownProjectIsRefused(t *testing.T) {
 	res := c.hxPost("/timers", url.Values{"project": {"abc"}})
 
 	res.wantStatus(t, http.StatusUnprocessableEntity)
-	res.wantNoBody(t, `class="timer"`)
+	res.wantNoBody(t, `aria-label="Stop"`)
 }

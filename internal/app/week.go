@@ -3,6 +3,7 @@ package app
 import (
 	"database/sql"
 	"net/http"
+	"slices"
 	"time"
 )
 
@@ -14,10 +15,11 @@ func init() {
 
 // weekRow is one project of the week; Project is "none" for the Unassigned row.
 type weekRow struct {
-	Project string
-	Name    string
-	Days    [7]time.Duration
-	Total   time.Duration
+	Project  string
+	Name     string
+	Days     [7]time.Duration
+	Total    time.Duration
+	Invoices []invoiceRef
 }
 
 type weekCustomer struct {
@@ -72,10 +74,10 @@ func (a *App) week(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	rows, err := a.db.Query(`
-		SELECT ifnull(e.project_id, 'none'), ifnull(c.id, 0), ifnull(c.name, ''), ifnull(p.name, ''), e.start_time, e.end_time
-		FROM time_entry e LEFT JOIN project p ON p.id = e.project_id LEFT JOIN customer c ON c.id = p.customer_id
+		SELECT ifnull(e.project_id, 'none'), ifnull(c.id, 0), ifnull(c.name, ''), ifnull(p.name, ''), e.start_time, e.end_time, ci.id, ci.number
+		FROM time_entry e LEFT JOIN project p ON p.id = e.project_id LEFT JOIN customer c ON c.id = p.customer_id`+claimJoin+`
 		WHERE (? OR e.user_id = ?) AND e.start_time >= ? AND e.start_time < ?
-		ORDER BY e.project_id IS NULL, c.name, c.id, p.name, p.id`,
+		ORDER BY e.project_id IS NULL, c.name, c.id, p.name, p.id, ci.id`,
 		page.Everyone, currentUser(r).ID, bounds[0].Unix(), bounds[7].Unix())
 	if err != nil {
 		a.serverError(w, r, err)
@@ -85,8 +87,9 @@ func (a *App) week(w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var project, customer, name string
 		var customerID, start int64
-		var end sql.NullInt64
-		if err := rows.Scan(&project, &customerID, &customer, &name, &start, &end); err != nil {
+		var end, invoice sql.NullInt64
+		var number sql.NullString
+		if err := rows.Scan(&project, &customerID, &customer, &name, &start, &end, &invoice, &number); err != nil {
 			a.serverError(w, r, err)
 			return
 		}
@@ -100,6 +103,9 @@ func (a *App) week(w http.ResponseWriter, r *http.Request) {
 				c.Projects = append(c.Projects, weekRow{Project: project, Name: name})
 			}
 			row = &c.Projects[len(c.Projects)-1]
+		}
+		if ref := invoiceRefOrNil(invoice, number); ref != nil && !slices.Contains(row.Invoices, *ref) {
+			row.Invoices = append(row.Invoices, *ref)
 		}
 		finish := a.now()
 		if end.Valid {

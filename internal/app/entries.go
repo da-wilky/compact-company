@@ -42,6 +42,7 @@ type entryRow struct {
 	Duration    time.Duration
 	Description string
 	Billable    sql.NullBool
+	Invoice     *invoiceRef
 }
 
 const entriesPerPage = 10
@@ -170,9 +171,9 @@ func (a *App) entryList(w http.ResponseWriter, r *http.Request) {
 	page.Bare = f.with(func(f *entriesFilter) { f.Project = "" })
 
 	rows, err := a.db.Query(`
-		SELECT e.id, e.user_id, u.display_name, ifnull(c.name || ' · ' || p.name, ''), e.start_time, e.end_time, e.description, e.billable
+		SELECT e.id, e.user_id, u.display_name, ifnull(c.name || ' · ' || p.name, ''), e.start_time, e.end_time, e.description, e.billable, ci.id, ci.number
 		FROM time_entry e JOIN user u ON u.id = e.user_id
-		LEFT JOIN project p ON p.id = e.project_id LEFT JOIN customer c ON c.id = p.customer_id`+where+`
+		LEFT JOIN project p ON p.id = e.project_id LEFT JOIN customer c ON c.id = p.customer_id`+claimJoin+where+`
 		ORDER BY e.start_time DESC, e.id DESC`+limit, args...)
 	if err != nil {
 		a.serverError(w, r, err)
@@ -183,11 +184,13 @@ func (a *App) entryList(w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var e entryRow
 		var userID, start int64
-		var end sql.NullInt64
-		if err := rows.Scan(&e.ID, &userID, &e.User, &e.Project, &start, &end, &e.Description, &e.Billable); err != nil {
+		var end, invoice sql.NullInt64
+		var number sql.NullString
+		if err := rows.Scan(&e.ID, &userID, &e.User, &e.Project, &start, &end, &e.Description, &e.Billable, &invoice, &number); err != nil {
 			a.serverError(w, r, err)
 			return
 		}
+		e.Invoice = invoiceRefOrNil(invoice, number)
 		e.Own = userID == u.ID
 		e.Start = time.Unix(start, 0)
 		e.Running = !end.Valid
@@ -277,6 +280,7 @@ type entryForm struct {
 	Start, End  string
 	Description string
 	Billable    string
+	Invoice     *invoiceRef
 }
 
 type entryPage struct {
@@ -426,7 +430,7 @@ func formatInput(t time.Time, loc *time.Location) string {
 	return t.Format(inputLayouts[0])
 }
 
-// entryFromPath loads an ended entry and whether the current user may change it; it writes 404 or 500 itself when ok is false.
+// entryFromPath loads an ended entry and whether the current user owns it; it writes 404 or 500 itself when ok is false.
 func (a *App) entryFromPath(w http.ResponseWriter, r *http.Request, loc *time.Location) (f entryForm, mine, ok bool) {
 	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil {
@@ -436,10 +440,11 @@ func (a *App) entryFromPath(w http.ResponseWriter, r *http.Request, loc *time.Lo
 	f.ID = id
 	var userID, start, end int64
 	var project, invoice sql.NullInt64
+	var number sql.NullString
 	var billable sql.NullBool
-	err = a.db.QueryRow(`SELECT user_id, project_id, start_time, end_time, description, billable, invoice_id
-		FROM time_entry WHERE id = ? AND end_time IS NOT NULL`, id).
-		Scan(&userID, &project, &start, &end, &f.Description, &billable, &invoice)
+	err = a.db.QueryRow(`SELECT e.user_id, e.project_id, e.start_time, e.end_time, e.description, e.billable, ci.id, ci.number
+		FROM time_entry e`+claimJoin+` WHERE e.id = ? AND e.end_time IS NOT NULL`, id).
+		Scan(&userID, &project, &start, &end, &f.Description, &billable, &invoice, &number)
 	if errors.Is(err, sql.ErrNoRows) {
 		a.notFound(w, r)
 		return f, false, false
@@ -458,7 +463,21 @@ func (a *App) entryFromPath(w http.ResponseWriter, r *http.Request, loc *time.Lo
 	case billable.Valid:
 		f.Billable = "no"
 	}
-	return f, userID == currentUser(r).ID && !invoice.Valid, true
+	f.Invoice = invoiceRefOrNil(invoice, number)
+	return f, userID == currentUser(r).ID, true
+}
+
+// changeable writes 403 or 409 itself unless the current user may change entry f.
+func (a *App) changeable(w http.ResponseWriter, r *http.Request, f entryForm, mine bool) bool {
+	switch {
+	case !mine:
+		a.forbidden(w, r)
+	case f.Invoice != nil:
+		a.errorPage(w, r, http.StatusConflict, "entries.error.claimed")
+	default:
+		return true
+	}
+	return false
 }
 
 func (a *App) entryEdit(w http.ResponseWriter, r *http.Request) {
@@ -471,7 +490,7 @@ func (a *App) entryEdit(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	a.renderEntry(w, r, http.StatusOK, entryPage{Entry: f, ReadOnly: !mine}, f.Project)
+	a.renderEntry(w, r, http.StatusOK, entryPage{Entry: f, ReadOnly: !mine || f.Invoice != nil}, f.Project)
 }
 
 func (a *App) entryUpdate(w http.ResponseWriter, r *http.Request) {
@@ -484,8 +503,7 @@ func (a *App) entryUpdate(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	if !mine {
-		a.forbidden(w, r)
+	if !a.changeable(w, r, stored, mine) {
 		return
 	}
 	f := entryFromForm(r)
@@ -505,9 +523,10 @@ func (a *App) entryUpdate(w http.ResponseWriter, r *http.Request) {
 		a.renderEntry(w, r, http.StatusUnprocessableEntity, entryPage{Entry: f, Errors: errs}, stored.Project)
 		return
 	}
-	if _, err := tx.Exec(`UPDATE time_entry SET project_id = ?, start_time = ?, end_time = ?, description = ?, billable = ? WHERE id = ?`,
-		s.project, s.start, s.end, f.Description, s.billable, f.ID); err != nil {
-		a.serverError(w, r, err)
+	res, err := tx.Exec(`UPDATE time_entry SET project_id = ?, start_time = ?, end_time = ?, description = ?, billable = ?
+		WHERE id = ? AND invoice_line_id IS NULL`,
+		s.project, s.start, s.end, f.Description, s.billable, f.ID)
+	if !a.wroteUnclaimed(w, r, res, err) {
 		return
 	}
 	if err := tx.Commit(); err != nil {
@@ -527,15 +546,33 @@ func (a *App) entryDelete(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	if !mine {
-		a.forbidden(w, r)
+	if !a.changeable(w, r, f, mine) {
 		return
 	}
-	if _, err := a.db.Exec(`DELETE FROM time_entry WHERE id = ?`, f.ID); err != nil {
-		a.serverError(w, r, err)
+	res, err := a.db.Exec(`DELETE FROM time_entry WHERE id = ? AND invoice_line_id IS NULL`, f.ID)
+	if !a.wroteUnclaimed(w, r, res, err) {
 		return
 	}
 	redirectBack(w, r, f.Start[:len(dayLayout)])
+}
+
+// wroteUnclaimed reports whether a write guarded by "invoice_line_id IS NULL" changed the entry;
+// otherwise it writes 500, or 409 when the entry was claimed after it was loaded.
+func (a *App) wroteUnclaimed(w http.ResponseWriter, r *http.Request, res sql.Result, err error) bool {
+	if err != nil {
+		a.serverError(w, r, err)
+		return false
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		a.serverError(w, r, err)
+		return false
+	}
+	if n == 0 {
+		a.errorPage(w, r, http.StatusConflict, "entries.error.claimed")
+		return false
+	}
+	return true
 }
 
 // redirectBack returns to the listing the entry was opened from, else to the given day.

@@ -40,7 +40,23 @@ def seed(api):
         d = monday + datetime.timedelta(days=day)
         api.post(f"{base}/entries", form={"project": projects.get(project, ""), "start": f"{d}T{hours[0]:02}:00", "end": f"{d}T{hours[1]:02}:00", "description": f"{project or 'Admin'} work", "billable": ""})
     api.post(f"{base}/timers", form={"project": projects["Hosting"], "description": "Server update"})
-    return customer, projects["Website relaunch"]
+    draft = api.post(f"{base}/invoices", form={"customer": customer, "from": str(monday), "to": str(today), "grouping": "project", "rounding_minutes": "15", "payment_days": "14"}, max_redirects=0).headers["location"]
+    for line in [("Website relaunch", "Design and implementation of the new landing page", "12.5", "h", "85"), ("Hosting", "", "1", "month", "29.90")]:
+        api.post(f"{base}{draft}/lines", form=dict(zip(("description", "detail", "quantity", "unit", "unit_price"), line)))
+    line = re.search(rf'href="({draft}/lines/\d+)"', api.get(f"{base}{draft}").text()).group(1)
+    entry = re.findall(r'href="(/entries/\d+)\?', api.get(f"{base}/entries").text())[-1]  # Monday's, claimed by the draft
+    issued = api.post(f"{base}/invoices", form={"customer": customer, "from": str(monday), "to": str(today), "grouping": "project", "rounding_minutes": "0", "payment_days": "14"}, max_redirects=0).headers["location"]
+    api.post(f"{base}{issued}/lines", form={"description": "Workshop", "detail": "On site, two days", "quantity": "16", "unit": "h", "unit_price": "85"})
+    business = {"name": "Samuel Wilk", "company": "swilk", "address": "Hauptstraße 1\n12345 Berlin", "tax_number": "12/345/67890", "tax_mode": "standard", "vat_rate": "19"}
+    api.post(f"{base}/settings/business", form=business)
+    api.post(f"{base}{issued}/lines", form={"description": "Travel", "detail": "", "quantity": "1", "unit": "flat", "unit_price": "120"})
+    api.post(f"{base}{issued}/issue")
+    travel = re.search(r'name="line" value="(\d+)"> Travel', api.get(f"{base}{issued}/cancel").text()).group(1)
+    cancellation = api.post(f"{base}{issued}/cancel", form={"line": travel, "reason": "Travel was included in the workshop price"}, max_redirects=0).headers["location"]
+    api.post(f"{base}{issued}/paid", form={"paid_date": str(today)})
+    # Unset again so the draft's preview shows the missing-data page instead of a PDF download.
+    api.post(f"{base}/settings/business", form=business | {"name": ""})
+    return customer, projects["Website relaunch"], draft, line, entry, issued, cancellation
 
 
 def main():
@@ -48,11 +64,13 @@ def main():
     with sync_playwright() as p:
         browser = p.chromium.launch(executable_path=chromium)
         api = browser.new_context().request
-        customer, project = seed(api)
+        customer, project, draft, line, entry, issued, cancellation = seed(api)
         today = datetime.date.today().isoformat()
-        pages = ["/", "/week", "/week?everyone=1", "/entries", f"/entries?day={today}&project={project}", "/entries/new",
+        pages = ["/", "/week", "/week?everyone=1", "/entries", f"/entries?day={today}&project={project}", "/entries/new", entry,
                  "/customers", "/customers/new", f"/customers/{customer}", f"/customers/{customer}/projects", f"/projects/{project}",
-                 "/settings", "/no-such-page"]
+                 "/invoices", "/invoices/new", draft, f"{draft}/preview", f"{draft}/lines/new", line, f"{draft}/refresh",
+                 f"{draft}/issue", issued, f"{issued}/cancel", cancellation,
+                 "/settings", "/settings/business", "/no-such-page"]
         for viewport, (width, height) in VIEWPORTS.items():
             for scheme in ("light", "dark"):
                 page = browser.new_page(viewport={"width": width, "height": height}, color_scheme=scheme)

@@ -1,0 +1,22 @@
+"business.title" = { en = "Business", de = "Unternehmen" }
+"business.link" = { en = "Business data for invoices", de = "Unternehmensdaten für Rechnungen" }
+"business.managed" = { en = "Managed by config: change it in the configuration file.", de = "Durch die Konfiguration verwaltet: Änderungen bitte in der Konfigurationsdatei vornehmen." }
+"business.missing" = { en = "Invoices can't be previewed or issued until these are set:", de = "Rechnungen können erst in der Vorschau angezeigt oder ausgestellt werden, wenn Folgendes angegeben ist:" }
+"business.name" = { en = "Name", de = "Name" }
+"business.company" = { en = "Company", de = "Firma" }
+"business.address" = { en = "Address", de = "Anschrift" }
+"business.email" = { en = "Email", de = "E-Mail" }
+"business.web" = { en = "Website", de = "Website" }
+"business.phone" = { en = "Phone", de = "Telefon" }
+"business.tax_number" = { en = "Tax number", de = "Steuernummer" }
+"business.bank_name" = { en = "Bank", de = "Bank" }
+"business.bank_iban" = { en = "IBAN", de = "IBAN" }
+"business.bank_bic" = { en = "BIC", de = "BIC" }
+"business.tax_mode" = { en = "Tax mode", de = "Besteuerung" }
+"business.tax_mode.small_business" = { en = "Small business (§ 19 UStG, no VAT)", de = "Kleinunternehmer (§ 19 UStG, ohne USt.)" }
+"business.tax_mode.standard" = { en = "Standard (VAT)", de = "Regelbesteuerung (mit USt.)" }
+"business.vat_rate" = { en = "VAT rate (%%)", de = "Umsatzsteuersatz (%%)" }
+"business.save" = { en = "Save", de = "Speichern" }
+"business.error.managed" = { en = "Business data is managed by config and can't be edited here.", de = "Die Unternehmensdaten werden durch die Konfiguration verwaltet und können hier nicht bearbeitet werden." }
+"business.error.tax_mode" = { en = "Choose a tax mode.", de = "Bitte eine Besteuerung wählen." }
+"business.error.vat_rate" = { en = "VAT rate must be a whole number from 0 to 100.", de = "Der Umsatzsteuersatz muss eine ganze Zahl von 0 bis 100 sein." }

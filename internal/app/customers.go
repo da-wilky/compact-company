@@ -3,9 +3,7 @@ package app
 import (
 	"database/sql"
 	"errors"
-	"fmt"
 	"net/http"
-	"regexp"
 	"strconv"
 	"strings"
 
@@ -20,21 +18,6 @@ func init() {
 		mux.HandleFunc("GET /customers/{id}", a.authed(a.customerEdit))
 		mux.HandleFunc("POST /customers/{id}", a.authed(a.customerUpdate))
 	})
-}
-
-var seqPattern = regexp.MustCompile(`\{seq(?::0(\d+))?\}`)
-
-func formatCustomerNumber(format string, seq int64) (string, error) {
-	locs := seqPattern.FindAllStringSubmatchIndex(format, -1)
-	if len(locs) != 1 {
-		return "", fmt.Errorf("customer_number_format: must contain {seq} or {seq:0N} exactly once, got %q", format)
-	}
-	m := locs[0]
-	width := 0
-	if m[2] >= 0 {
-		width, _ = strconv.Atoi(format[m[2]:m[3]])
-	}
-	return format[:m[0]] + fmt.Sprintf("%0*d", width, seq) + format[m[1]:], nil
 }
 
 // customer holds the hourly rate as the decimal the user sees; the database stores minor units.
@@ -172,7 +155,7 @@ func (a *App) insertCustomer(c customer, rate int64) error {
 		WHERE name = 'customer' AND year IS NULL RETURNING last_value`).Scan(&seq); err != nil {
 		return err
 	}
-	number, err := formatCustomerNumber(a.cfg.CustomerNumberFormat, seq)
+	number, err := a.cfg.CustomerNumber(seq)
 	if err != nil {
 		return err
 	}
@@ -246,6 +229,18 @@ func (a *App) customerUpdate(w http.ResponseWriter, r *http.Request) {
 		_ = tx.Rollback()
 		a.renderCustomer(w, r, http.StatusUnprocessableEntity, c, errs)
 		return
+	}
+	if c.Currency != oldCurrency {
+		var invoiced bool
+		if err := tx.QueryRow(`SELECT EXISTS (SELECT 1 FROM invoice WHERE customer_id = ?)`, id).Scan(&invoiced); err != nil {
+			a.serverError(w, r, err)
+			return
+		}
+		if invoiced {
+			_ = tx.Rollback()
+			a.renderCustomer(w, r, http.StatusUnprocessableEntity, c, []string{"customers.error.currency_invoiced"})
+			return
+		}
 	}
 	if err := updateCustomer(tx, c, rate, prev.unit); err != nil {
 		a.serverError(w, r, err)

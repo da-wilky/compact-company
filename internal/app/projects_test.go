@@ -45,8 +45,8 @@ func TestEffectiveRateFollowsTheCustomersRateUnlessOverridden(t *testing.T) {
 	c.postForm(cust, customerForm("acme", "95")).wantStatus(t, http.StatusSeeOther)
 
 	res := c.get(cust + "/projects")
-	res.wantBody(t, "95.00 EUR <span")
-	res.wantBody(t, "120.00 EUR</td>")
+	res.wantRow(t, "website", "yes", "95.00 EUR (customer default)")
+	res.wantRow(t, "audit", "yes", "120.00 EUR")
 	res.wantNoBody(t, "85.00")
 }
 
@@ -94,8 +94,8 @@ func TestProjectCanBeNonBillable(t *testing.T) {
 	c.createProject(cust, projectForm("website", ""))
 
 	res := c.get(cust + "/projects")
-	res.wantBody(t, "internal</a></td><td>no<")
-	res.wantBody(t, "website</a></td><td>yes<")
+	res.wantRow(t, "internal", "no", "85.00 EUR (customer default)")
+	res.wantRow(t, "website", "yes", "85.00 EUR (customer default)")
 }
 
 var projectLink = regexp.MustCompile(`<a href="(/projects/\d+)">([^<]*)</a>`)
@@ -134,7 +134,7 @@ func TestAnyUserCanEditAnyProject(t *testing.T) {
 		t.Fatalf("Location = %q, want %s/projects", loc, cust)
 	}
 	list := alice.get(cust + "/projects")
-	list.wantBody(t, "relaunch</a></td><td>no<")
+	list.wantRow(t, "relaunch", "no", "85.00 EUR (customer default)")
 	list.wantBody(t, "85.00 EUR")
 	list.wantNoBody(t, "website")
 }
@@ -200,10 +200,10 @@ func TestCurrencyChangeKeepsTheDecimalRateOverrides(t *testing.T) {
 	c.postForm(cust, form).wantStatus(t, http.StatusSeeOther)
 
 	res := c.get(cust + "/projects")
-	res.wantBody(t, "121 JPY</td>")
-	res.wantBody(t, "90 JPY <span")
+	res.wantRow(t, "audit", "yes", "121 JPY")
+	res.wantRow(t, "website", "yes", "90 JPY (customer default)")
 
 	form.Set("currency", "EUR")
 	c.postForm(cust, form).wantStatus(t, http.StatusSeeOther)
-	c.get(cust+"/projects").wantBody(t, "121.00 EUR</td>")
+	c.get(cust+"/projects").wantRow(t, "audit", "yes", "121.00 EUR")
 }

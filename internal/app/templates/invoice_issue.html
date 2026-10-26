@@ -1,0 +1,12 @@
+{{define "title"}}{{t "invoices.issue"}}{{end}}
+{{define "content"}}
+{{with .Data.Draft}}
+<h1>{{t "invoices.issue"}}</h1>
+<p class="actions"><a href="/invoices/{{.ID}}">{{t "invoices.back"}}</a></p>
+<form method="post" action="/invoices/{{.ID}}/issue" class="form">
+<p>{{t "invoices.issue_warning"}}</p>
+<p class="hint">{{.CustomerNumber}} {{.CustomerName}} · {{t "invoices.gross"}} {{.Gross}} {{.Currency}}</p>
+<button>{{t "invoices.issue"}}</button>
+</form>
+{{end}}
+{{end}}

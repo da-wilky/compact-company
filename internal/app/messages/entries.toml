@@ -21,6 +21,8 @@
 "entries.error.project" = { en = "This project can't receive new time.", de = "Auf dieses Projekt kann keine neue Zeit gebucht werden." }
 "entries.error.unassigned_billable" = { en = "An entry without a project can't be billable or not billable.", de = "Ein Eintrag ohne Projekt kann nicht als abrechenbar oder nicht abrechenbar markiert werden." }
 "entries.error.overlap" = { en = "This entry overlaps another of your entries.", de = "Dieser Eintrag überschneidet sich mit einem anderen deiner Einträge." }
+"entries.claimed" = { en = "This entry is on an invoice and can't change.", de = "Dieser Eintrag steht auf einer Rechnung und kann nicht geändert werden." }
+"entries.error.claimed" = { en = "This entry is on an invoice: remove it from the draft or cancel the line first.", de = "Dieser Eintrag steht auf einer Rechnung: Entferne ihn aus dem Entwurf oder storniere zuerst die Position." }
 "entries.delete" = { en = "Delete", de = "Löschen" }
 "entries.user" = { en = "User", de = "Benutzer" }
 "entries.mine" = { en = "Mine", de = "Meine" }

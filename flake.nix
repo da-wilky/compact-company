@@ -21,6 +21,11 @@
           version = "0.1.0";
           src = ./.;
           vendorHash = "sha256-khaGQDBUQUDtCnPp7Y4A0ARFjXzpRnnGzRbjQY8q/GU=";
+          nativeBuildInputs = [ pkgs.makeWrapper ];
+          nativeCheckInputs = [ pkgs.typst ];
+          postInstall = ''
+            wrapProgram $out/bin/compact-company --prefix PATH : ${pkgs.lib.makeBinPath [ pkgs.typst ]}
+          '';
           meta = {
             license = pkgs.lib.licenses.agpl3Only;
             mainProgram = "compact-company";
@@ -39,6 +44,7 @@
                 runtimeInputs = [
                   pkgs.go
                   pkgs.curl
+                  pkgs.typst
                   (pkgs.python3.withPackages (p: [ p.playwright ]))
                 ];
                 text = ''
@@ -61,6 +67,26 @@
           };
         }
         // {
+          check = {
+            type = "app";
+            program = pkgs.lib.getExe (
+              pkgs.writeShellApplication {
+                name = "check";
+                runtimeInputs = [
+                  pkgs.go
+                  pkgs.golangci-lint
+                  pkgs.typst
+                ];
+                text = ''
+                  [ -f go.mod ] || { echo "run from the repository root" >&2; exit 1; }
+                  golangci-lint fmt --diff ./...
+                  golangci-lint run ./...
+                  sh scripts/markup_assertions.sh
+                  go test ./...
+                '';
+              }
+            );
+          };
           default = {
             type = "app";
             program = toString (
@@ -89,6 +115,11 @@
           doCheck = false;
           installPhase = "touch $out";
         });
+        markup-assertions = pkgs.runCommand "compact-company-markup-assertions" { } ''
+          cd ${./.}
+          sh scripts/markup_assertions.sh
+          touch $out
+        '';
       });
 
       devShells = forAll (pkgs: {
@@ -99,6 +130,7 @@
             pkgs.gopls
             pkgs.golangci-lint
             pkgs.sqlite
+            pkgs.typst
           ];
           # Debug builds compile cgo at -O0, which Nix's _FORTIFY_SOURCE hardening turns into an error; nothing here needs cgo.
           CGO_ENABLED = "0";

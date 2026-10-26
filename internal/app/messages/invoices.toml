@@ -1,0 +1,95 @@
+"invoices.title" = { en = "Invoices", de = "Rechnungen" }
+"invoices.new" = { en = "New draft", de = "Neuer Entwurf" }
+"invoices.empty" = { en = "No invoices.", de = "Keine Rechnungen." }
+"invoices.number" = { en = "Number", de = "Nummer" }
+"invoices.customer" = { en = "Customer", de = "Kunde" }
+"invoices.issue_date" = { en = "Issue date", de = "Rechnungsdatum" }
+"invoices.gross" = { en = "Gross", de = "Brutto" }
+"invoices.status" = { en = "Status", de = "Status" }
+"invoices.paid" = { en = "Paid", de = "Bezahlt" }
+"invoices.show" = { en = "Show", de = "Anzeigen" }
+"invoices.all" = { en = "All", de = "Alle" }
+"invoices.all_customers" = { en = "All customers", de = "Alle Kunden" }
+"invoices.filter" = { en = "Filter", de = "Filtern" }
+"invoices.status.draft" = { en = "Draft", de = "Entwurf" }
+"invoices.status.issued" = { en = "Issued", de = "Gestellt" }
+"invoices.status.paid" = { en = "Paid", de = "Bezahlt" }
+"invoices.draft_for" = { en = "Draft for %s", de = "Entwurf für %s" }
+"invoices.from" = { en = "Entries from", de = "Einträge von" }
+"invoices.to" = { en = "Entries to", de = "Einträge bis" }
+"invoices.service_from" = { en = "Service period from", de = "Leistungszeitraum von" }
+"invoices.service_to" = { en = "Service period to", de = "Leistungszeitraum bis" }
+"invoices.payment_days" = { en = "Payment days", de = "Zahlungsziel (Tage)" }
+"invoices.grouping" = { en = "Lines from time", de = "Positionen aus Zeiten" }
+"invoices.grouping.project" = { en = "One line per project", de = "Eine Position je Projekt" }
+"invoices.grouping.entry" = { en = "One line per entry", de = "Eine Position je Eintrag" }
+"invoices.rounding" = { en = "Round time to", de = "Zeit runden auf" }
+"invoices.rounding.none" = { en = "No rounding", de = "Nicht runden" }
+"invoices.rounding.minutes" = { en = "%d minutes", de = "%d Minuten" }
+"invoices.create" = { en = "Create draft", de = "Entwurf anlegen" }
+"invoices.save" = { en = "Save", de = "Speichern" }
+"invoices.delete" = { en = "Delete draft", de = "Entwurf löschen" }
+"invoices.no_lines" = { en = "No lines yet.", de = "Noch keine Positionen." }
+"invoices.add_line" = { en = "Add line", de = "Position hinzufügen" }
+"invoices.edit_line" = { en = "Edit line", de = "Position bearbeiten" }
+"invoices.back" = { en = "Back to draft", de = "Zurück zum Entwurf" }
+"invoices.generated" = { en = "from time", de = "aus Zeiten" }
+"invoices.description" = { en = "Description", de = "Beschreibung" }
+"invoices.detail" = { en = "Detail", de = "Detail" }
+"invoices.quantity" = { en = "Quantity", de = "Menge" }
+"invoices.unit" = { en = "Unit", de = "Einheit" }
+"invoices.unit_price" = { en = "Unit price (%s)", de = "Einzelpreis (%s)" }
+"invoices.price" = { en = "Unit price", de = "Einzelpreis" }
+"invoices.total" = { en = "Total", de = "Summe" }
+"invoices.net" = { en = "Net", de = "Netto" }
+"invoices.vat" = { en = "VAT %d %%", de = "USt. %d %%" }
+"invoices.move_up" = { en = "Move up", de = "Nach oben" }
+"invoices.move_down" = { en = "Move down", de = "Nach unten" }
+"invoices.delete_line" = { en = "Delete line", de = "Position löschen" }
+"invoices.badge.draft" = { en = "On a draft", de = "Im Entwurf" }
+"invoices.badge.issued" = { en = "Invoice %s", de = "Rechnung %s" }
+"invoices.line_entries" = { en = "Entries on this line", de = "Einträge dieser Position" }
+"invoices.entry_date" = { en = "Date", de = "Datum" }
+"invoices.entry_user" = { en = "User", de = "Benutzer" }
+"invoices.entry_duration" = { en = "Duration", de = "Dauer" }
+"invoices.refresh" = { en = "Refresh entries", de = "Einträge aktualisieren" }
+"invoices.refresh_warning" = { en = "Refreshing deletes every line generated from time and generates them again from the entries in the saved range. Changes to those lines are lost; free lines are kept.", de = "Beim Aktualisieren werden alle aus Zeiten erzeugten Positionen gelöscht und aus den Einträgen im gespeicherten Zeitraum neu erzeugt. Änderungen an diesen Positionen gehen verloren; freie Positionen bleiben erhalten." }
+"invoices.error.customer" = { en = "Choose a customer.", de = "Bitte einen Kunden wählen." }
+"invoices.error.range" = { en = "Enter a valid date range.", de = "Bitte einen gültigen Zeitraum angeben." }
+"invoices.error.service_period" = { en = "Enter a valid service period.", de = "Bitte einen gültigen Leistungszeitraum angeben." }
+"invoices.error.grouping" = { en = "Choose how lines are grouped.", de = "Bitte wählen, wie Positionen gebildet werden." }
+"invoices.error.rounding" = { en = "Choose a rounding increment.", de = "Bitte eine Rundung wählen." }
+"invoices.error.payment_days" = { en = "Payment days must be a positive whole number.", de = "Das Zahlungsziel muss eine positive ganze Zahl sein." }
+"invoices.error.description" = { en = "Description is required.", de = "Beschreibung ist erforderlich." }
+"invoices.error.quantity" = { en = "Quantity must be a non-negative decimal with at most 3 decimals.", de = "Menge muss eine nicht negative Dezimalzahl mit höchstens 3 Nachkommastellen sein." }
+"invoices.error.unit_price" = { en = "Unit price must be a non-negative decimal with no more decimals than the currency allows.", de = "Einzelpreis muss eine nicht negative Dezimalzahl mit höchstens so vielen Nachkommastellen sein, wie die Währung erlaubt." }
+"invoices.preview" = { en = "Preview PDF", de = "PDF-Vorschau" }
+"invoices.typst_error" = { en = "The invoice template failed to render:", de = "Die Rechnungsvorlage konnte nicht gerendert werden:" }
+"invoices.issue" = { en = "Issue invoice", de = "Rechnung stellen" }
+"invoices.issue_warning" = { en = "Issuing gives the draft the next invoice number, dated today, and renders its PDF once. An issued invoice can never be edited or deleted.", de = "Beim Stellen erhält der Entwurf die nächste Rechnungsnummer mit dem heutigen Datum, und sein PDF wird einmalig erzeugt. Eine gestellte Rechnung kann nie mehr bearbeitet oder gelöscht werden." }
+"invoices.invoice" = { en = "Invoice %s", de = "Rechnung %s" }
+"invoices.due_date" = { en = "Due date", de = "Fällig am" }
+"invoices.service_period" = { en = "Service period", de = "Leistungszeitraum" }
+"invoices.download" = { en = "Download PDF", de = "PDF herunterladen" }
+"invoices.sha256" = { en = "SHA-256 of the PDF", de = "SHA-256 des PDFs" }
+"invoices.cancellation" = { en = "Cancellation invoice %s", de = "Stornorechnung %s" }
+"invoices.status.cancellation" = { en = "Cancellation invoice", de = "Stornorechnung" }
+"invoices.status.cancelled" = { en = "Cancelled", de = "Storniert" }
+"invoices.status.partially_cancelled" = { en = "Partially cancelled", de = "Teilweise storniert" }
+"invoices.cancel" = { en = "Cancel lines", de = "Positionen stornieren" }
+"invoices.cancel_title" = { en = "Cancel lines of invoice %s", de = "Positionen der Rechnung %s stornieren" }
+"invoices.cancel_lines" = { en = "Lines to cancel", de = "Zu stornierende Positionen" }
+"invoices.cancel_warning" = { en = "Cancelling issues a cancellation invoice right away, with the next invoice number, reversing the ticked lines. Their time entries can be billed again. A cancelled line can't be restored.", de = "Beim Stornieren wird sofort eine Stornorechnung mit der nächsten Rechnungsnummer gestellt, die die angekreuzten Positionen aufhebt. Ihre Zeiteinträge können erneut abgerechnet werden. Eine stornierte Position lässt sich nicht wiederherstellen." }
+"invoices.cancel_issue" = { en = "Issue cancellation invoice", de = "Stornorechnung stellen" }
+"invoices.cancelled_by" = { en = "Cancelled by %s", de = "Storniert durch %s" }
+"invoices.cancels" = { en = "Cancels invoice", de = "Storniert Rechnung" }
+"invoices.reason" = { en = "Reason", de = "Grund" }
+"invoices.amount_due" = { en = "Amount still due", de = "Noch offener Betrag" }
+"invoices.back_to_invoice" = { en = "Back to invoice", de = "Zurück zur Rechnung" }
+"invoices.error.cancel_lines" = { en = "Tick at least one line of this invoice that isn't cancelled yet.", de = "Bitte mindestens eine noch nicht stornierte Position dieser Rechnung ankreuzen." }
+"invoices.paid_on" = { en = "Paid on %s", de = "Bezahlt am %s" }
+"invoices.paid_date" = { en = "Payment date", de = "Zahlungsdatum" }
+"invoices.mark_paid" = { en = "Mark paid", de = "Als bezahlt markieren" }
+"invoices.undo_paid" = { en = "Undo paid", de = "Bezahlt zurücknehmen" }
+"invoices.error.paid_date" = { en = "Enter a valid payment date.", de = "Bitte ein gültiges Zahlungsdatum angeben." }
+"invoices.error.paid_cancelled" = { en = "Every line of this invoice is cancelled, so it can't be marked paid.", de = "Alle Positionen dieser Rechnung sind storniert, sie kann nicht als bezahlt markiert werden." }

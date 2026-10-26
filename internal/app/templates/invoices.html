@@ -1,0 +1,26 @@
+{{define "title"}}{{t "invoices.title"}}{{end}}
+{{define "content"}}
+{{with .Data}}
+<div class="page-head">
+<div class="title"><h1>{{t "invoices.title"}}</h1>
+<a class="pill" href="/invoices/new">{{t "invoices.new"}}</a></div>
+</div>
+<div class="filters">
+<span class="label">{{t "invoices.show"}}</span>
+<span class="seg"><a href="{{.StatusLink ""}}"{{if not .Status}} aria-current="true"{{end}}>{{t "invoices.all"}}</a>{{range .Statuses}}<a href="{{$.Data.StatusLink .}}"{{if eq . $.Data.Status}} aria-current="true"{{end}}>{{t (print "invoices.status." .)}}</a>{{end}}</span>
+<form class="filter-form" action="/invoices">{{with .Status}}<input type="hidden" name="status" value="{{.}}">{{end}}
+<select name="customer" aria-label="{{t "invoices.customer"}}"><option value="">{{t "invoices.all_customers"}}</option>{{range .Customers}}<option value="{{.ID}}"{{if eq .ID $.Data.Customer}} selected{{end}}>{{.Name}}</option>{{end}}</select>
+<button>{{t "invoices.filter"}}</button></form>
+</div>
+{{with .Rows}}
+<div class="table-wrap"><table>
+<thead><tr><th>{{t "invoices.number"}}</th><th>{{t "invoices.customer"}}</th><th>{{t "invoices.issue_date"}}</th><th class="num">{{t "invoices.gross"}}</th><th>{{t "invoices.status"}}</th><th>{{t "invoices.paid"}}</th></tr></thead>
+<tbody>
+{{range .}}<tr><td><a href="/invoices/{{.ID}}">{{or .Number (t "invoices.status.draft")}}</a></td><td>{{.Customer}}</td><td>{{with .IssueDate}}{{day .}}{{end}}</td><td class="num">{{.Gross}} {{.Currency}}</td><td>{{t (print "invoices.status." .Status)}}</td><td>{{with .PaidDate}}{{day .}}{{end}}</td></tr>
+{{end}}</tbody>
+</table></div>
+{{else}}
+<p>{{t "invoices.empty"}}</p>
+{{end}}
+{{end}}
+{{end}}
