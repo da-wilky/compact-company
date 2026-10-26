@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 )
 
 var cancelCheckbox = regexp.MustCompile(`name="line" value="(\d+)">\s*([^<]*)<`)
@@ -196,6 +197,25 @@ func TestCancellationPassesTheContractWithTheOriginalTaxToTheTemplate(t *testing
 	page.wantBody(t, "K-001 acme · Issued")
 	c.cancelForm(inv, "", "Workshop")
 	c.get("/invoices").wantNoBody(t, "2026-002")
+}
+
+func TestWithoutServicePeriodTheIssueDateIsTheServiceDateAlsoOnItsCancellation(t *testing.T) {
+	ta := newTestApp(t, dumpCancellationConfig(t))
+	c := ta.client()
+	inv := c.issuableDraft()
+	wantRedirect(t, c.postForm(inv, url.Values{"from": {"2026-09-01"}, "to": {"2026-09-30"}, "payment_days": {"14"}}), inv)
+	wantRedirect(t, c.issue(inv), inv)
+	ta.clock.Advance(10 * 24 * time.Hour)
+
+	res := c.postForm(inv+"/cancel", c.cancelForm(inv, "", "Workshop"))
+
+	got := res.templateInput(t).(map[string]any)["service_period"]
+	if want := decodeJSON(t, `{"from": "2026-10-26", "to": "2026-10-26"}`); !reflect.DeepEqual(got, want) {
+		t.Errorf("service_period = %v, want %v", got, want)
+	}
+	page := c.get(inv)
+	page.wantBody(t, "Service date")
+	page.wantNoBody(t, "Service period")
 }
 
 func TestCancellingIsRefusedWhileBusinessDataIsMissing(t *testing.T) {

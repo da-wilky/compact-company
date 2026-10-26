@@ -49,6 +49,10 @@ _Avoid_: Seller, issuer, company
 A bill to one customer, made of lines.
 _Avoid_: Bill
 
+**Service period**:
+When the billed work was done. An invoice without one was supplied on its issue date.
+_Avoid_: Billing period
+
 **Draft**:
 An invoice still being prepared: editable, unnumbered, and deletable.
 

@@ -181,6 +181,21 @@ func TestDraftHeaderUpdateIsValidated(t *testing.T) {
 	c.get(draft).wantBody(t, `name="service_from" value="2026-09-01"`)
 }
 
+func TestDraftServicePeriodIsEitherCompleteOrEmpty(t *testing.T) {
+	ta := newTestApp(t, devConfig)
+	c := ta.client()
+	draft := c.acmeDraft()
+	header := url.Values{"from": {"2026-09-01"}, "to": {"2026-09-30"}, "service_from": {"2026-09-01"}, "service_to": {""}, "payment_days": {"14"}}
+
+	c.postForm(draft, header).wantStatus(t, http.StatusUnprocessableEntity)
+	header.Set("service_from", "")
+	wantRedirect(t, c.postForm(draft, header), draft)
+
+	page := c.get(draft)
+	page.wantBody(t, `name="service_from" value=""`)
+	page.wantBody(t, `name="service_to" value=""`)
+}
+
 func TestDraftCanBeDeleted(t *testing.T) {
 	ta := newTestApp(t, devConfig)
 	c := ta.client()

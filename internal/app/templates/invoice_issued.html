@@ -8,7 +8,7 @@
 <p class="actions"><a href="/invoices">{{t "invoices.title"}}</a>{{if and (not $.Data.CancelsID) (ne $.Data.Status "cancelled")}} <a href="/invoices/{{$.Data.ID}}/cancel">{{t "invoices.cancel"}}</a>{{end}}</p>
 <p class="hint">{{.Customer.Number}} {{.Customer.Name}} · {{t (print "invoices.status." $.Data.Status)}}</p>
 {{with .Cancels}}<p>{{t "invoices.cancels"}} <a href="/invoices/{{$.Data.CancelsID}}">{{.Number}}</a> · {{day .IssueDate}}{{with $.Data.Snapshot.Reason}} · {{t "invoices.reason"}}: {{.}}{{end}}</p>{{end}}
-<p class="hint">{{t "invoices.issue_date"}} {{day .IssueDate}}{{if not $.Data.CancelsID}} · {{t "invoices.due_date"}} {{day .DueDate}}{{end}} · {{t "invoices.service_period"}} {{day .ServicePeriod.From}} – {{day .ServicePeriod.To}}</p>
+<p class="hint">{{t "invoices.issue_date"}} {{day .IssueDate}}{{if not $.Data.CancelsID}} · {{t "invoices.due_date"}} {{day .DueDate}}{{end}} · {{if eq .ServicePeriod.From .ServicePeriod.To}}{{t "invoices.service_date"}} {{day .ServicePeriod.From}}{{else}}{{t "invoices.service_period"}} {{day .ServicePeriod.From}} – {{day .ServicePeriod.To}}{{end}}</p>
 <div class="table-wrap"><table class="invoice-lines">
 <thead><tr><th>{{t "invoices.description"}}</th><th class="num">{{t "invoices.quantity"}}</th><th>{{t "invoices.unit"}}</th><th class="num">{{t "invoices.price"}}</th><th class="num">{{t "invoices.total"}}</th><th></th></tr></thead>
 <tbody>

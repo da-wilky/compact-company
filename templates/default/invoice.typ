@@ -88,7 +88,11 @@
     (tr("Number", "Rechnungsnummer"), if data.number == none { tr("(draft)", "(Entwurf)") } else { data.number }),
     (tr("Date", "Rechnungsdatum"), date(data.issue_date)),
     (tr("Customer number", "Kundennummer"), data.customer.number),
-    (tr("Service period", "Leistungszeitraum"), date(data.service_period.from) + " – " + date(data.service_period.to)),
+    if data.service_period.from == data.service_period.to {
+      (tr("Service date", "Leistungsdatum"), date(data.service_period.from))
+    } else {
+      (tr("Service period", "Leistungszeitraum"), date(data.service_period.from) + " – " + date(data.service_period.to))
+    },
   )
   if not cancellation { rows.push((tr("Due date", "Fällig am"), date(data.due_date))) }
   grid(columns: (auto, auto), column-gutter: 1.5em, row-gutter: 0.5em, ..rows.flatten())

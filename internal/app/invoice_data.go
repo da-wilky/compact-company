@@ -156,6 +156,9 @@ func (a *App) invoiceJSON(q querier, id int64, number *string, issueDate string)
 	if err != nil {
 		return nil, 0, err
 	}
+	if d.ServicePeriod.From == "" || d.ServicePeriod.To == "" {
+		d.ServicePeriod = period{From: issueDate, To: issueDate}
+	}
 	if isCancellation {
 		// A cancellation reverses exactly the tax that was charged, whatever the business's tax mode is now.
 		d.Cancels, d.Tax = &cancels, cancelledTax
