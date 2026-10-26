@@ -73,6 +73,8 @@ Only through the `http.Handler`, via the harness:
 ta := newTestApp(t, devConfig)              // or oidcConfig(t)
 alice := ta.loginAs("alice")
 res := alice.get("/path")                   // res.wantStatus, res.wantBody, res.wantNoBody
+res.wantRow(t, "website", "yes", "85.00 EUR") // a table row's cells as the user reads them
+wantInOrder(t, res.text(), "Mon 2026-10-26 1:30", "later") // text() strips tags
 res = alice.postForm("/path", url.Values{})
 ta.clock.Advance(time.Hour)                 // starts Monday 2026-10-26 09:00 UTC
 ta.restart()                                // reopen the same data dir
@@ -83,7 +85,9 @@ The harness injects `data_dir`; test configs leave it out. OIDC tests use the st
 
 ## Checks
 
-`nix flake check -L` is what CI runs: tests, lint and formatting. Flakes see only git-tracked files, so `git add` new files first.
+While working, run `nix run .#check`: formatting, lint, the markup-assertion check and tests, on the working tree. Run it as its own Bash call and write files with Write/Edit: worktree-isolated agents get chained shell (`&&`, `;`, `sh -c`, heredocs) refused.
+
+`nix flake check -L` is what CI runs: the same checks from git-tracked files only, so `git add` new files first.
 
 After any template or CSS change, run `nix run .#ui-check` (Linux): it seeds a throwaway instance, renders every page at 1280 and 390 px in light and dark, fails on horizontal overflow or invisible text, and prints a directory of screenshots. Look at the screenshots of the pages you touched; the check can't judge alignment or wrapping. New pages go into `pages` in `scripts/ui_check.py`.
 

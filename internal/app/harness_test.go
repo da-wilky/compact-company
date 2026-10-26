@@ -1,6 +1,7 @@
 package app_test
 
 import (
+	"html"
 	"io"
 	"net/http"
 	"net/http/cookiejar"
@@ -8,6 +9,8 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -189,5 +192,40 @@ func (r *response) wantNoBody(t *testing.T, substr string) {
 	t.Helper()
 	if strings.Contains(r.body, substr) {
 		t.Fatalf("body unexpectedly contains %q:\n%s", substr, r.body)
+	}
+}
+
+var (
+	tableRow  = regexp.MustCompile(`(?s)<tr[ >].*?</tr>`)
+	tableCell = regexp.MustCompile(`(?s)<t[dh][ >].*?</t[dh]>`)
+	markupTag = regexp.MustCompile(`<[^>]*>`)
+)
+
+// textOf reads markup as a user does: tags gone, whitespace collapsed.
+func textOf(markup string) string {
+	return strings.Join(strings.Fields(html.UnescapeString(markupTag.ReplaceAllString(markup, " "))), " ")
+}
+
+func (r *response) text() string {
+	return textOf(r.body)
+}
+
+func (r *response) rows() [][]string {
+	var rows [][]string
+	for _, row := range tableRow.FindAllString(r.body, -1) {
+		var cells []string
+		for _, cell := range tableCell.FindAllString(row, -1) {
+			cells = append(cells, textOf(cell))
+		}
+		rows = append(rows, cells)
+	}
+	return rows
+}
+
+func (r *response) wantRow(t *testing.T, cells ...string) {
+	t.Helper()
+	rows := r.rows()
+	if !slices.ContainsFunc(rows, func(row []string) bool { return slices.Equal(row, cells) }) {
+		t.Fatalf("no table row reads %q; rows:\n%q", cells, rows)
 	}
 }

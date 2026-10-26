@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -23,11 +24,16 @@ func TestWeekGroupsByProjectWithDailyAndWeeklyTotals(t *testing.T) {
 
 	res.wantStatus(t, http.StatusOK)
 	res.wantBody(t, "Week of 2026-10-26")
-	res.wantBody(t, `<th class="num"><a href="/entries?day=2026-10-26">Mon<br>2026-10-26</a></th>`)
-	res.wantBody(t, `<th class="num"><a href="/entries?day=2026-11-01">Sun<br>2026-11-01</a></th>`)
-	res.wantBody(t, `<tr><th>website</th><td class="num"><a href="/entries?day=2026-10-26&project=`+project+`">1:45</a></td><td class="num"></td><td class="num"><a href="/entries?day=2026-10-28&project=`+project+`">0:30</a></td><td class="num"></td><td class="num"></td><td class="num"></td><td class="num"><a href="/entries?day=2026-11-01&project=`+project+`">1:59</a></td><td class="num">4:15</td></tr>`)
-	res.wantBody(t, `<tr class="unassigned"><th>Unassigned</th><td class="num"></td><td class="num"></td><td class="num"><a href="/entries?day=2026-10-28&project=none">0:29</a></td>`)
-	res.wantBody(t, `<tr><th>Total</th><td class="num">1:45</td><td class="num">0:00</td><td class="num">1:00</td><td class="num">0:00</td><td class="num">0:00</td><td class="num">0:00</td><td class="num">1:59</td><td class="num">4:45</td></tr>`)
+	res.wantRow(t, "", "Mon 2026-10-26", "Tue 2026-10-27", "Wed 2026-10-28", "Thu 2026-10-29", "Fri 2026-10-30", "Sat 2026-10-31", "Sun 2026-11-01", "Total")
+	res.wantBody(t, `href="/entries?day=2026-10-26">`)
+	res.wantBody(t, `href="/entries?day=2026-11-01">`)
+	res.wantRow(t, "website", "1:45", "", "0:30", "", "", "", "1:59", "4:15")
+	res.wantBody(t, `href="/entries?day=2026-10-26&project=`+project+`">1:45</a>`)
+	res.wantBody(t, `href="/entries?day=2026-10-28&project=`+project+`">0:30</a>`)
+	res.wantBody(t, `href="/entries?day=2026-11-01&project=`+project+`">1:59</a>`)
+	res.wantRow(t, "Unassigned", "", "", "0:29", "", "", "", "", "0:29")
+	res.wantBody(t, `href="/entries?day=2026-10-28&project=none">0:29</a>`)
+	res.wantRow(t, "Total", "1:45", "0:00", "1:00", "0:00", "0:00", "0:00", "1:59", "4:45")
 }
 
 func TestWeekGroupsProjectsUnderTheirCustomer(t *testing.T) {
@@ -46,18 +52,21 @@ func TestWeekGroupsProjectsUnderTheirCustomer(t *testing.T) {
 
 	res := c.get("/week")
 
-	res.wantBody(t, "<tbody>\n"+`<tr class="customer"><th colspan="9">acme</th></tr>`+"\n<tr><th>website</th>")
-	res.wantBody(t, `<tr class="customer"><th colspan="9">beta</th></tr>`+"\n<tr><th>app</th>")
-	res.wantBody(t, "</tr>\n<tr><th>hosting</th>")
-	res.wantBody(t, "</tr>\n"+`<tr class="unassigned"><th>Unassigned</th>`)
+	var firstCells []string
+	for _, row := range res.rows() {
+		firstCells = append(firstCells, row[0])
+	}
+	if want := []string{"", "acme", "website", "beta", "app", "hosting", "Unassigned", "Total"}; !slices.Equal(firstCells, want) {
+		t.Fatalf("rows start with %q, want %q", firstCells, want)
+	}
 }
 
 func TestWeekMarksTodayAndTheWeekend(t *testing.T) {
 	ta := newTestApp(t, devConfig)
 	c := ta.client()
 
-	c.get("/week").wantBody(t, `<colgroup><col><col class="today"><col><col><col><col><col class="weekend"><col class="weekend"><col></colgroup>`)
-	c.get("/week?week=2026-11-02").wantBody(t, `<colgroup><col><col><col><col><col><col><col class="weekend"><col class="weekend"><col></colgroup>`)
+	c.get("/week").wantBody(t, `<colgroup><col><col class="today"><col><col><col><col><col class="weekend"><col class="weekend"><col></colgroup>`)   // markup is the behaviour
+	c.get("/week?week=2026-11-02").wantBody(t, `<colgroup><col><col><col><col><col><col><col class="weekend"><col class="weekend"><col></colgroup>`) // markup is the behaviour
 }
 
 func TestWeekIsMondayToSundayInTheViewersTimezoneAcrossDST(t *testing.T) {
@@ -74,11 +83,12 @@ timezone = "Europe/Berlin"
 	next := c.get("/week")
 
 	dst.wantBody(t, "Week of 2026-10-19")
-	dst.wantBody(t, `<tr class="unassigned"><th>Unassigned</th><td class="num"><a href="/entries?day=2026-10-19&project=none">1:00</a></td>`)
-	dst.wantBody(t, `<a href="/entries?day=2026-10-25&project=none">1:15</a></td><td class="num">2:15</td></tr>`)
+	dst.wantRow(t, "Unassigned", "1:00", "", "", "", "", "", "1:15", "2:15")
+	dst.wantBody(t, `href="/entries?day=2026-10-19&project=none">1:00</a>`)
+	dst.wantBody(t, `href="/entries?day=2026-10-25&project=none">1:15</a>`)
 	next.wantBody(t, "Week of 2026-10-26")
-	next.wantBody(t, `<tr class="unassigned"><th>Unassigned</th><td class="num"><a href="/entries?day=2026-10-26&project=none">0:10</a></td>`)
-	next.wantBody(t, `<td class="num">0:10</td></tr>`)
+	next.wantRow(t, "Unassigned", "0:10", "", "", "", "", "", "", "0:10")
+	next.wantBody(t, `href="/entries?day=2026-10-26&project=none">0:10</a>`)
 }
 
 func TestWeekCountsRunningTimersUpToNow(t *testing.T) {
@@ -100,8 +110,7 @@ func TestWeekNavigatesToPreviousAndNextWeek(t *testing.T) {
 
 	res.wantBody(t, `href="/week?week=2026-10-19">Previous week</a>`)
 	res.wantBody(t, `href="/week?week=2026-11-02">Next week</a>`)
-	c.get("/").wantBody(t, `<a href="/week"><svg`)
-	c.get("/").wantBody(t, `</svg>Week</a>`)
+	wantInOrder(t, c.get("/").body, `href="/week"`, "Week</a>")
 	c.get("/week?week=nope").wantStatus(t, http.StatusBadRequest)
 }
 
@@ -110,7 +119,7 @@ func TestWeekOffersThisWeekOnlyWhenElsewhere(t *testing.T) {
 	c := ta.client()
 
 	c.get("/week").wantNoBody(t, "This week</a>")
-	c.get("/week?week=2026-11-04&everyone=1").wantBody(t, `<a class="pill" href="/week?everyone=1">This week</a>`)
+	c.get("/week?week=2026-11-04&everyone=1").wantBody(t, `href="/week?everyone=1">This week</a>`)
 	c.get("/week?week=2026-11-04").wantBody(t, `<input type="date" name="week" value="2026-11-02"`)
 }
 
@@ -167,7 +176,7 @@ func TestWeekAndDayDatesFollowTheLanguage(t *testing.T) {
 	day := c.get("/entries?day=2026-10-28")
 
 	week.wantBody(t, "Woche ab 26.10.2026")
-	week.wantBody(t, `<th class="num"><a href="/entries?day=2026-10-26">Mo<br>26.10.2026</a></th>`)
+	week.wantRow(t, "", "Mo 26.10.2026", "Di 27.10.2026", "Mi 28.10.2026", "Do 29.10.2026", "Fr 30.10.2026", "Sa 31.10.2026", "So 01.11.2026", "Summe")
 	week.wantBody(t, `href="/week?week=2026-11-02">Nächste Woche</a>`)
 	day.wantBody(t, "Einträge am 28.10.2026")
 	day.wantBody(t, `href="/entries?day=2026-10-29">Nächster Tag</a>`)
@@ -179,7 +188,7 @@ func TestWeekAlwaysShowsTheUnassignedRow(t *testing.T) {
 
 	res := c.get("/week")
 
-	res.wantBody(t, `<tr class="unassigned"><th>Unassigned</th><td class="num"></td>`)
+	res.wantRow(t, "Unassigned", "", "", "", "", "", "", "", "0:00")
 }
 
 var editLinkWithReturn = regexp.MustCompile(`href="((/entries/\d+)\?return=[^"]+)"`)

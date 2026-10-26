@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -119,7 +120,11 @@ func TestDraftCreationIsValidated(t *testing.T) {
 			res.wantBody(t, tc.message)
 		})
 	}
-	c.get("/invoices").wantNoBody(t, "acme</td>")
+	for _, row := range c.get("/invoices").rows() {
+		if slices.Contains(row, "acme") {
+			t.Fatalf("refused draft listed: %q", row)
+		}
+	}
 }
 
 func TestArchivedCustomersCanBeInvoiced(t *testing.T) {
