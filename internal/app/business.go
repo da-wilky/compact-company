@@ -11,7 +11,6 @@ import (
 
 func init() {
 	routes = append(routes, func(a *App, mux *http.ServeMux) {
-		mux.HandleFunc("GET /settings/business", a.authed(a.businessPage))
 		mux.HandleFunc("POST /settings/business", a.authed(a.businessSave))
 	})
 }
@@ -68,19 +67,20 @@ func addressLines(s string) []string {
 	return lines
 }
 
-func (a *App) businessPage(w http.ResponseWriter, r *http.Request) {
-	b, err := a.loadBusiness()
+func (a *App) renderBusiness(w http.ResponseWriter, r *http.Request, status int, b businessPage) {
+	p, err := a.loadSettings()
 	if err != nil {
 		a.serverError(w, r, err)
 		return
 	}
-	a.renderBusiness(w, r, http.StatusOK, businessPage{Business: b, VATRate: strconv.Itoa(b.VATRate)})
+	p.Business = a.businessSection(b)
+	a.render(w, r, status, "settings", p)
 }
 
-func (a *App) renderBusiness(w http.ResponseWriter, r *http.Request, status int, p businessPage) {
+func (a *App) businessSection(p businessPage) businessPage {
 	p.Managed = a.cfg.BusinessManaged
 	p.Missing = missingBusinessFields(p.Business)
-	a.render(w, r, status, "business", p)
+	return p
 }
 
 func (a *App) businessSave(w http.ResponseWriter, r *http.Request) {
@@ -126,5 +126,5 @@ func (a *App) businessSave(w http.ResponseWriter, r *http.Request) {
 		a.serverError(w, r, err)
 		return
 	}
-	http.Redirect(w, r, "/settings/business", http.StatusSeeOther)
+	http.Redirect(w, r, "/settings", http.StatusSeeOther)
 }

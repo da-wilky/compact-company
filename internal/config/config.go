@@ -25,6 +25,8 @@ type Config struct {
 	Business             Business `toml:"business"`
 	BusinessFile         string   `toml:"business_file"`
 	BusinessManaged      bool     `toml:"-"`
+	// DefaultsManaged holds the [defaults] keys config sets; the others come from the database.
+	DefaultsManaged map[string]bool `toml:"-"`
 }
 
 type Business struct {
@@ -85,7 +87,6 @@ func Load(path string) (Config, error) {
 		Listen:               "127.0.0.1:8080",
 		CustomerNumberFormat: "K-{seq:03}",
 		Auth:                 Auth{SessionIdleTimeout: 14 * 24 * time.Hour},
-		Defaults:             Defaults{Currency: "EUR", Language: "en", Timezone: "UTC"},
 		Invoice:              Invoice{NumberFormat: "{year}-{seq:03}", PaymentDays: 14},
 	}
 	md, err := decodeStrict(path, &cfg)
@@ -93,6 +94,10 @@ func Load(path string) (Config, error) {
 		return Config{}, fmt.Errorf("config %s: %w", path, err)
 	}
 	cfg.BusinessManaged = md.IsDefined("business") || cfg.BusinessFile != ""
+	cfg.DefaultsManaged = map[string]bool{}
+	for _, key := range []string{"language", "timezone", "currency", "parallel_entries"} {
+		cfg.DefaultsManaged[key] = md.IsDefined("defaults", key)
+	}
 	if err := cfg.validate(); err != nil {
 		return Config{}, fmt.Errorf("config %s: %w", path, err)
 	}
@@ -148,10 +153,10 @@ func (c *Config) validate() error {
 	default:
 		return fmt.Errorf(`auth.mode must be "oidc" or "none", got %q`, c.Auth.Mode)
 	}
-	if _, err := time.LoadLocation(c.Defaults.Timezone); err != nil || c.Defaults.Timezone == "" || c.Defaults.Timezone == "Local" {
+	if _, err := time.LoadLocation(c.Defaults.Timezone); c.DefaultsManaged["timezone"] && (err != nil || c.Defaults.Timezone == "" || c.Defaults.Timezone == "Local") {
 		return fmt.Errorf("defaults.timezone: unknown timezone %q", c.Defaults.Timezone)
 	}
-	if _, err := currency.ParseISO(c.Defaults.Currency); err != nil {
+	if _, err := currency.ParseISO(c.Defaults.Currency); c.DefaultsManaged["currency"] && err != nil {
 		return fmt.Errorf("defaults.currency: unknown ISO 4217 code %q", c.Defaults.Currency)
 	}
 	if !slices.Contains(RoundingIncrements, c.Invoice.RoundingMinutes) {

@@ -138,7 +138,9 @@ function timezoneSelects() {
     const select = document.createElement("select");
     select.name = input.name;
     select.required = input.required;
-    if (!input.value) select.add(new Option("", ""));
+    select.disabled = input.disabled;
+    if (input.placeholder) select.add(new Option(input.placeholder, "", false, !input.value));
+    else if (!input.value) select.add(new Option("", ""));
     for (const zone of zones.includes(input.value) || !input.value ? zones : [input.value, ...zones]) {
       select.add(new Option(zone.replaceAll("_", " "), zone, false, zone === input.value));
     }

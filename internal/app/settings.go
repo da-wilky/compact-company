@@ -2,97 +2,119 @@ package app
 
 import (
 	"net/http"
-	"time"
+	"strconv"
+
+	"golang.org/x/text/currency"
+
+	"github.com/da-wilky/compact-company/internal/config"
 )
 
 func init() {
 	routes = append(routes, func(a *App, mux *http.ServeMux) {
 		mux.HandleFunc("GET /settings", a.authed(a.settingsPage))
-		mux.HandleFunc("POST /settings", a.authed(a.settingsSave))
+		mux.HandleFunc("POST /settings/defaults", a.authed(a.defaultsSave))
 	})
 }
 
-var languageNames = map[string]string{"en": "English", "de": "Deutsch"}
-
-type settingsForm struct {
-	Language        string
-	Timezone        string
-	ParallelEntries bool
-	Error           string
-	Now             time.Time
+type settingsPage struct {
+	Defaults  config.Defaults
+	Managed   map[string]bool
+	Languages []settingsOption
+	Error     string
+	Business  businessPage
 }
 
-type settingsOption struct {
-	Value, Name string
+func (a *App) storedDefaults() (config.Defaults, error) {
+	var d config.Defaults
+	err := a.db.QueryRow(`SELECT language, timezone, currency, parallel_entries FROM defaults`).
+		Scan(&d.Language, &d.Timezone, &d.Currency, &d.ParallelEntries)
+	return d, err
 }
 
-func (f settingsForm) Languages() []settingsOption {
-	opts := make([]settingsOption, len(languages))
-	for i, tag := range languages {
-		opts[i] = settingsOption{tag.String(), languageNames[tag.String()]}
+// defaults returns the stored defaults with the keys config sets laid over them.
+func (a *App) defaults() (config.Defaults, error) {
+	d, err := a.storedDefaults()
+	return a.overlayManaged(d, a.cfg.Defaults), err
+}
+
+// overlayManaged returns d with the keys config sets taken from src.
+func (a *App) overlayManaged(d, src config.Defaults) config.Defaults {
+	set := a.cfg.DefaultsManaged
+	if set["language"] {
+		d.Language = src.Language
 	}
-	return opts
+	if set["timezone"] {
+		d.Timezone = src.Timezone
+	}
+	if set["currency"] {
+		d.Currency = src.Currency
+	}
+	if set["parallel_entries"] {
+		d.ParallelEntries = src.ParallelEntries
+	}
+	return d
+}
+
+// loadSettings returns the settings page showing what is in effect.
+func (a *App) loadSettings() (settingsPage, error) {
+	d, err := a.defaults()
+	if err != nil {
+		return settingsPage{}, err
+	}
+	b, err := a.loadBusiness()
+	if err != nil {
+		return settingsPage{}, err
+	}
+	return settingsPage{Defaults: d, Managed: a.cfg.DefaultsManaged, Languages: languageOptions(),
+		Business: a.businessSection(businessPage{Business: b, VATRate: strconv.Itoa(b.VATRate)})}, nil
 }
 
 func (a *App) settingsPage(w http.ResponseWriter, r *http.Request) {
-	u := currentUser(r)
-	a.render(w, r, http.StatusOK, "settings", settingsForm{Language: u.Language, Timezone: u.Timezone, ParallelEntries: u.ParallelEntries, Now: a.now()})
-}
-
-func (a *App) settingsSave(w http.ResponseWriter, r *http.Request) {
-	u := currentUser(r)
-	f := settingsForm{
-		Language:        r.PostFormValue("language"),
-		Timezone:        r.PostFormValue("timezone"),
-		ParallelEntries: r.PostFormValue("parallel_entries") != "",
-		Now:             a.now(),
-	}
-	switch {
-	case !supportedLanguage(f.Language):
-		f.Error = "settings.error.language"
-	case !validTimezone(f.Timezone):
-		f.Error = "settings.error.timezone"
-	}
-	if f.Error != "" {
-		a.render(w, r, http.StatusUnprocessableEntity, "settings", f)
-		return
-	}
-	tx, err := a.db.Begin()
+	p, err := a.loadSettings()
 	if err != nil {
 		a.serverError(w, r, err)
 		return
 	}
-	defer func() { _ = tx.Rollback() }()
-	if !f.ParallelEntries {
-		var timers int
-		if err := tx.QueryRow(`SELECT count(*) FROM time_entry WHERE user_id = ? AND end_time IS NULL`, u.ID).Scan(&timers); err != nil {
-			a.serverError(w, r, err)
-			return
-		}
-		if timers > 1 {
-			f.ParallelEntries = true
-			f.Error = "settings.error.parallel_entries"
-			a.render(w, r, http.StatusUnprocessableEntity, "settings", f)
-			return
-		}
-	}
-	if _, err := tx.Exec(`UPDATE user SET language = ?, timezone = ?, parallel_entries = ? WHERE id = ?`,
-		f.Language, f.Timezone, f.ParallelEntries, u.ID); err != nil {
+	a.render(w, r, http.StatusOK, "settings", p)
+}
+
+// defaultsSave keeps the stored value of every key config sets, so posting one changes nothing.
+func (a *App) defaultsSave(w http.ResponseWriter, r *http.Request) {
+	stored, err := a.storedDefaults()
+	if err != nil {
 		a.serverError(w, r, err)
 		return
 	}
-	if err := tx.Commit(); err != nil {
+	d := a.overlayManaged(config.Defaults{
+		Language:        r.PostFormValue("language"),
+		Timezone:        r.PostFormValue("timezone"),
+		Currency:        r.PostFormValue("currency"),
+		ParallelEntries: r.PostFormValue("parallel_entries") != "",
+	}, stored)
+	cur, curErr := currency.ParseISO(d.Currency)
+	var errKey string
+	switch {
+	case !supportedLanguage(d.Language):
+		errKey = "settings.error.language"
+	case !validTimezone(d.Timezone):
+		errKey = "settings.error.timezone"
+	case curErr != nil:
+		errKey = "settings.error.currency"
+	}
+	if errKey != "" {
+		p, err := a.loadSettings()
+		if err != nil {
+			a.serverError(w, r, err)
+			return
+		}
+		p.Defaults, p.Error = a.overlayManaged(d, a.cfg.Defaults), errKey
+		a.render(w, r, http.StatusUnprocessableEntity, "settings", p)
+		return
+	}
+	if _, err := a.db.Exec(`UPDATE defaults SET language = ?, timezone = ?, currency = ?, parallel_entries = ?`,
+		d.Language, d.Timezone, cur.String(), d.ParallelEntries); err != nil {
 		a.serverError(w, r, err)
 		return
 	}
 	http.Redirect(w, r, "/settings", http.StatusSeeOther)
-}
-
-// validTimezone accepts IANA names only; LoadLocation also takes "" and "Local".
-func validTimezone(name string) bool {
-	if name == "" || name == "Local" {
-		return false
-	}
-	_, err := time.LoadLocation(name)
-	return err == nil
 }

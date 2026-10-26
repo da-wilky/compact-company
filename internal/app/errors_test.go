@@ -57,7 +57,7 @@ func TestCrossOriginRejectionIsTranslated(t *testing.T) {
 func TestUnknownRouteIsTranslatedInTheUsersLanguage(t *testing.T) {
 	ta := newTestApp(t, devConfig)
 	alice := ta.loginAs("alice")
-	alice.postForm("/settings", url.Values{"language": {"de"}, "timezone": {"UTC"}}).wantStatus(t, http.StatusSeeOther)
+	alice.postForm("/profile", url.Values{"language": {"de"}, "timezone": {"UTC"}}).wantStatus(t, http.StatusSeeOther)
 
 	missing := alice.get("/nope")
 	method := alice.postForm("/week", nil)

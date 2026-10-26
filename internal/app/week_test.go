@@ -131,7 +131,7 @@ timezone = "Europe/Berlin"
 	alice, bob := ta.loginAs("alice"), ta.loginAs("bob")
 	alice.createEntry(entryForm("", "2026-10-27T00:30", "2026-10-27T01:00", "alice"))
 	bob.createEntry(entryForm("", "2026-10-27T08:00", "2026-10-27T09:00", "bob"))
-	bob.postForm("/settings", url.Values{"language": {"en"}, "timezone": {"UTC"}}).wantStatus(t, http.StatusSeeOther)
+	bob.postForm("/profile", url.Values{"language": {"en"}, "timezone": {"UTC"}}).wantStatus(t, http.StatusSeeOther)
 
 	mine := bob.get("/week")
 	everyone := bob.get("/week?everyone=1")

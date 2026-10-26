@@ -15,7 +15,7 @@ func TestOverviewIsTheStartPageInBothLanguages(t *testing.T) {
 
 	res.wantBody(t, "<title>Overview · compact-company</title>")
 	wantInOrder(t, res.body, `href="/"`, "Overview</a>")
-	c.postForm("/settings", url.Values{"language": {"de"}, "timezone": {"UTC"}}).wantStatus(t, http.StatusSeeOther)
+	c.postForm("/profile", url.Values{"language": {"de"}, "timezone": {"UTC"}}).wantStatus(t, http.StatusSeeOther)
 	de := c.get("/")
 	de.wantBody(t, "<title>Übersicht · compact-company</title>")
 	wantInOrder(t, de.body, `href="/"`, "Übersicht</a>")

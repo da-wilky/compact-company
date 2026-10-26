@@ -1,6 +1,7 @@
 package app
 
 import (
+	"cmp"
 	"context"
 	"crypto/rand"
 	"database/sql"
@@ -19,6 +20,8 @@ type User struct {
 	Language        string
 	Timezone        string
 	ParallelEntries bool
+	// OwnLanguage and OwnTimezone are the user's choices; empty follows the default.
+	OwnLanguage, OwnTimezone string
 }
 
 func (u *User) Initial() string {
@@ -40,14 +43,17 @@ func currentUser(r *http.Request) *User {
 // upsertUser creates the user with configured defaults on first sight and
 // otherwise refreshes the identity claims only.
 func (a *App) upsertUser(id identity) (int64, error) {
-	d := a.cfg.Defaults
+	d, err := a.defaults()
+	if err != nil {
+		return 0, err
+	}
 	var userID int64
-	err := a.db.QueryRow(`
+	err = a.db.QueryRow(`
 		INSERT INTO user (issuer, subject, display_name, email, language, timezone, parallel_entries)
 		VALUES (?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT (issuer, subject) DO UPDATE SET display_name = excluded.display_name, email = excluded.email
 		RETURNING id`,
-		id.Issuer, id.Subject, id.DisplayName, id.Email, d.Language, d.Timezone, d.ParallelEntries,
+		id.Issuer, id.Subject, id.DisplayName, id.Email, "", "", d.ParallelEntries,
 	).Scan(&userID)
 	return userID, err
 }
@@ -92,17 +98,23 @@ func (a *App) setSessionCookie(w http.ResponseWriter, sid string) {
 
 const userColumns = `u.id, u.display_name, u.email, u.language, u.timezone, u.parallel_entries`
 
-func scanUser(row *sql.Row, extra ...any) (*User, error) {
+// scanUser resolves the language and timezone the user follows from the defaults.
+func (a *App) scanUser(row *sql.Row, extra ...any) (*User, error) {
 	var u User
-	dest := append([]any{&u.ID, &u.DisplayName, &u.Email, &u.Language, &u.Timezone, &u.ParallelEntries}, extra...)
+	dest := append([]any{&u.ID, &u.DisplayName, &u.Email, &u.OwnLanguage, &u.OwnTimezone, &u.ParallelEntries}, extra...)
 	if err := row.Scan(dest...); err != nil {
 		return nil, err
 	}
+	d, err := a.defaults()
+	if err != nil {
+		return nil, err
+	}
+	u.Language, u.Timezone = cmp.Or(u.OwnLanguage, d.Language), cmp.Or(u.OwnTimezone, d.Timezone)
 	return &u, nil
 }
 
 func (a *App) userByID(id int64) (*User, error) {
-	return scanUser(a.db.QueryRow(`SELECT `+userColumns+` FROM user u WHERE u.id = ?`, id))
+	return a.scanUser(a.db.QueryRow(`SELECT `+userColumns+` FROM user u WHERE u.id = ?`, id))
 }
 
 // sessionUser returns the user of a live session and touches it; idle sessions are deleted.
@@ -113,7 +125,7 @@ func (a *App) sessionUser(w http.ResponseWriter, r *http.Request) (*User, error)
 	}
 	var lastSeen int64
 	var subject string
-	u, err := scanUser(a.db.QueryRow(`
+	u, err := a.scanUser(a.db.QueryRow(`
 		SELECT `+userColumns+`, s.last_seen, u.subject
 		FROM session s JOIN user u ON u.id = s.user_id
 		WHERE s.id = ?`, ck.Value), &lastSeen, &subject)

@@ -42,7 +42,7 @@ func TestStartTimerOnAProjectFromTheHeader(t *testing.T) {
 	res.wantNoBody(t, "<html")
 	res.wantBody(t, "acme · website")
 	res.wantBody(t, `value="homepage"`)
-	page := c.get("/settings")
+	page := c.get("/profile")
 	page.wantBody(t, "acme · website")
 	page.wantBody(t, "2026-10-26 09:00")
 }

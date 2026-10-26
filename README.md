@@ -40,7 +40,7 @@ client_id = "compact-company"
 client_secret_file = "/run/secrets/compact-company-oidc"
 allowed_subjects = ["8c1f…"]       # OIDC subjects admitted to log in
 
-[defaults]                         # applied to new users and customers
+[defaults]                         # optional; each key set here overrides the settings page and shows read-only there
 currency = "EUR"                   # ISO 4217
 language = "en"                    # "en" or "de"; also used before login
 timezone = "Europe/Berlin"         # default: UTC

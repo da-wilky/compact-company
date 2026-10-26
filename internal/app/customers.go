@@ -72,7 +72,11 @@ func (a *App) customerList(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) customerNew(w http.ResponseWriter, r *http.Request) {
-	d := a.cfg.Defaults
+	d, err := a.defaults()
+	if err != nil {
+		a.serverError(w, r, err)
+		return
+	}
 	a.renderCustomer(w, r, http.StatusOK, customer{Currency: d.Currency, InvoiceLanguage: d.Language, Timezone: d.Timezone}, nil)
 }
 

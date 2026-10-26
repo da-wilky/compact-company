@@ -62,7 +62,8 @@ nav svg, .me svg { width: 18px; height: 18px; fill: none; stroke: currentColor; 
 .tabs .mobile { display: none; }
 
 .me { margin-top: auto; display: flex; align-items: center; gap: .25rem; padding: .75rem .3rem 0; border-top: 1px solid var(--line); font-size: .85rem; color: var(--muted); }
-.me .profile { flex: 1; min-width: 0; display: flex; align-items: center; gap: .55rem; }
+.me .profile { flex: 1; min-width: 0; display: flex; align-items: center; gap: .55rem; width: auto; height: auto; padding: .2rem; }
+.me .profile:hover { text-decoration: none; }
 .avatar { flex: none; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); font-size: .85rem; font-weight: 600; }
 .me .who { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--fg); font-weight: 500; }
 .me a, .me button { display: grid; place-items: center; width: 30px; height: 30px; padding: 0; border-radius: 8px; color: var(--muted); }

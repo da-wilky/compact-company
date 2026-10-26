@@ -44,6 +44,10 @@ A time entry on a draft or issued invoice; no other invoice can bill it.
 A person who logs in and tracks time; all users work for the same business.
 _Avoid_: Member, account
 
+**Default**:
+A business-wide setting that new users and new customers start with; a user's language and timezone follow it until the user chooses their own.
+_Avoid_: System default, preset
+
 **Business**:
 The business an instance serves; it sends every invoice.
 _Avoid_: Seller, issuer, company
