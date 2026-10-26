@@ -201,6 +201,8 @@ func TestDraftWithoutARangePullsNoEntries(t *testing.T) {
 	res := c.get(draft)
 	res.wantBody(t, "No lines yet.")
 	res.wantBody(t, `name="from" value=""`)
+	c.get("/").in(t, "Drafts").wantRow(t, "acme", "Without time entries")
+	c.get(draft+"/refresh").wantBody(t, "Without time entries")
 	c.linePath(c.createDraft(pullForm(c, "project", "0")), "website")
 }
 

@@ -209,7 +209,7 @@ func TestWithoutServicePeriodTheIssueDateIsTheServiceDateAlsoOnItsCancellation(t
 
 	res := c.postForm(inv+"/cancel", c.cancelForm(inv, "", "Workshop"))
 
-	got := res.templateInput(t).(map[string]any)["service_period"]
+	got := res.servicePeriod(t)
 	if want := decodeJSON(t, `{"from": "2026-10-26", "to": "2026-10-26"}`); !reflect.DeepEqual(got, want) {
 		t.Errorf("service_period = %v, want %v", got, want)
 	}
@@ -230,7 +230,7 @@ func TestTheServicePeriodFromEntriesIsFrozenAtIssuingAlsoForItsCancellation(t *t
 
 	res := c.postForm(inv+"/cancel", c.cancelForm(inv, "", "website", "hosting"))
 
-	got := res.templateInput(t).(map[string]any)["service_period"]
+	got := res.servicePeriod(t)
 	if want := decodeJSON(t, `{"from": "2026-09-02", "to": "2026-09-19"}`); !reflect.DeepEqual(got, want) {
 		t.Errorf("service_period = %v, want %v", got, want)
 	}
