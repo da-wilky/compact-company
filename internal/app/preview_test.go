@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"html"
 	"net/http"
+	"net/url"
 	"path/filepath"
 	"reflect"
 	"strconv"
@@ -71,6 +72,7 @@ func TestPreviewPassesTheContractToTheTemplate(t *testing.T) {
 	workshop.Set("detail", "on site")
 	c.addLine(draft, workshop)
 	c.addLine(draft, lineForm("Hosting", "2", "10.01"))
+	wantRedirect(t, c.postForm(draft, url.Values{"from": {""}, "to": {""}, "service_from": {"2026-09-01"}, "service_to": {"2026-09-30"}, "payment_days": {"14"}}), draft)
 	ta.clock.Advance(14*time.Hour + 30*time.Minute) // 00:30 on the 27th in Berlin
 
 	res := c.get(draft + "/preview")
@@ -122,6 +124,36 @@ func TestEachLineCarriesItsEntriesToTheTemplate(t *testing.T) {
 		if got := lines[i].(map[string]any)["entries"]; !reflect.DeepEqual(got, w) {
 			t.Errorf("lines[%d].entries = %v, want %v", i, got, w)
 		}
+	}
+}
+
+func (r *response) servicePeriod(t *testing.T) any {
+	t.Helper()
+	return r.templateInput(t).(map[string]any)["service_period"]
+}
+
+func TestServicePeriodRunsFromTheFirstEntrysStartToTheLastEntrysEnd(t *testing.T) {
+	// Users enter UTC; acme is billed in Europe/Berlin, two hours ahead in September.
+	for name, tc := range map[string]struct{ lastStart, lastEnd, wantTo string }{
+		"past midnight":          {"2026-09-19T21:00", "2026-09-19T22:30", "2026-09-20"},
+		"ending at midnight":     {"2026-09-19T20:00", "2026-09-19T22:00", "2026-09-19"},
+		"ending before midnight": {"2026-09-19T08:00", "2026-09-19T09:00", "2026-09-19"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			ta := newTestApp(t, dumpConfig(t))
+			c := ta.client()
+			website, hosting := c.acmeProjects()
+			c.createEntry(entryForm(hosting, tc.lastStart, tc.lastEnd, "last"))
+			c.createEntry(entryForm(website, "2026-08-31T22:30", "2026-08-31T23:30", "first Berlin hour"))
+			draft := c.createDraft(pullForm(c, "project", "15"))
+			c.addLine(draft, lineForm("Hosting", "1", "10"))
+
+			got := c.get(draft + "/preview").servicePeriod(t)
+
+			if want := decodeJSON(t, `{"from": "2026-09-01", "to": "`+tc.wantTo+`"}`); !reflect.DeepEqual(got, want) {
+				t.Fatalf("service_period = %v, want %v", got, want)
+			}
+		})
 	}
 }
 

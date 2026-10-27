@@ -75,7 +75,7 @@ type pulledLine struct {
 }
 
 // pullEntries generates lines on draft id from its customer's billable, assigned, ended and unclaimed
-// entries starting in its range, and claims those entries. It returns sql.ErrNoRows unless id is a draft.
+// entries starting in its range, none without one, and claims those entries. It returns sql.ErrNoRows unless id is a draft.
 func pullEntries(tx *sql.Tx, id int64) error {
 	var from, to, grouping string
 	var rounding int64
@@ -83,6 +83,9 @@ func pullEntries(tx *sql.Tx, id int64) error {
 		FROM invoice WHERE id = ? AND kind = ? AND number IS NULL`, id, kindInvoice).
 		Scan(&from, &to, &grouping, &rounding); err != nil {
 		return err
+	}
+	if from == "" {
+		return nil
 	}
 	loc, err := customerLocation(tx, id)
 	if err != nil {

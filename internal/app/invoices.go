@@ -207,7 +207,10 @@ func (a *App) renderDraftNew(w http.ResponseWriter, r *http.Request, status int,
 	a.render(w, r, status, "invoice_new", draftNewPage{Form: f, Customers: customers, Groupings: groupings, Increments: config.RoundingIncrements, Errors: errs})
 }
 
-func validRange(from, to string) bool {
+func validOptionalRange(from, to string) bool {
+	if from == "" && to == "" {
+		return true
+	}
 	f, errF := time.Parse(time.DateOnly, from)
 	t, errT := time.Parse(time.DateOnly, to)
 	return errF == nil && errT == nil && !t.Before(f)
@@ -232,7 +235,7 @@ func (a *App) draftCreate(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		errs = append(errs, "invoices.error.customer")
 	}
-	if !validRange(f.From, f.To) {
+	if !validOptionalRange(f.From, f.To) {
 		errs = append(errs, "invoices.error.range")
 	}
 	if !slices.Contains(groupings, f.Grouping) {
@@ -259,7 +262,7 @@ func (a *App) draftCreate(w http.ResponseWriter, r *http.Request) {
 	var id int64
 	err = tx.QueryRow(`INSERT INTO invoice
 		(kind, customer_id, range_from, range_to, service_from, service_to, grouping, rounding_minutes, payment_days, currency)
-		SELECT ?7, id, ?1, ?2, ?1, ?2, ?3, ?4, ?5, currency FROM customer WHERE id = ?6 RETURNING id`,
+		SELECT ?7, id, ?1, ?2, '', '', ?3, ?4, ?5, currency FROM customer WHERE id = ?6 RETURNING id`,
 		f.From, f.To, f.Grouping, rounding, paymentDays, customerID, kindInvoice).Scan(&id)
 	if errors.Is(err, sql.ErrNoRows) {
 		a.renderDraftNew(w, r, http.StatusUnprocessableEntity, f, []string{"invoices.error.customer"})
@@ -297,6 +300,8 @@ type draft struct {
 	Grouping        string
 	RoundingMinutes int
 	Header          draftHeader
+	// ServicePeriod is set while the draft claims entries, which then decide it.
+	ServicePeriod   *period
 	Lines           []invoiceLine
 	Net, VAT, Gross string
 	VATPercent      int64
@@ -323,6 +328,11 @@ func (a *App) loadDraft(id int64) (draft, error) {
 		return d, err
 	}
 	d.Header.PaymentDays = strconv.Itoa(paymentDays)
+	if p, ok, err := entryPeriod(a.db, id); err != nil {
+		return d, err
+	} else if ok {
+		d.ServicePeriod = &p
+	}
 	d.unit = currency.MustParseISO(d.Currency)
 	if d.VATPercent, err = a.draftVATPercent(); err != nil {
 		return d, err
@@ -360,18 +370,18 @@ func (a *App) draftUpdate(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	d.Header = draftHeader{
-		From:        strings.TrimSpace(r.PostFormValue("from")),
-		To:          strings.TrimSpace(r.PostFormValue("to")),
-		ServiceFrom: strings.TrimSpace(r.PostFormValue("service_from")),
-		ServiceTo:   strings.TrimSpace(r.PostFormValue("service_to")),
-		PaymentDays: strings.TrimSpace(r.PostFormValue("payment_days")),
+	d.Header.From = strings.TrimSpace(r.PostFormValue("from"))
+	d.Header.To = strings.TrimSpace(r.PostFormValue("to"))
+	d.Header.PaymentDays = strings.TrimSpace(r.PostFormValue("payment_days"))
+	if d.ServicePeriod == nil {
+		d.Header.ServiceFrom = strings.TrimSpace(r.PostFormValue("service_from"))
+		d.Header.ServiceTo = strings.TrimSpace(r.PostFormValue("service_to"))
 	}
 	var errs []string
-	if !validRange(d.Header.From, d.Header.To) {
+	if !validOptionalRange(d.Header.From, d.Header.To) {
 		errs = append(errs, "invoices.error.range")
 	}
-	if (d.Header.ServiceFrom != "" || d.Header.ServiceTo != "") && !validRange(d.Header.ServiceFrom, d.Header.ServiceTo) {
+	if !validOptionalRange(d.Header.ServiceFrom, d.Header.ServiceTo) {
 		errs = append(errs, "invoices.error.service_period")
 	}
 	paymentDays, ok := parsePaymentDays(d.Header.PaymentDays)

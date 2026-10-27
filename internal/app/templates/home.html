@@ -21,7 +21,7 @@
 <div class="table-wrap"><table>
 <thead><tr><th>{{t "invoices.customer"}}</th><th>{{t "home.range"}}</th></tr></thead>
 <tbody>
-{{range .}}<tr><td>{{.Customer}}</td><td><a href="/invoices/{{.ID}}">{{day .From}} – {{day .To}}</a></td></tr>
+{{range .}}<tr><td>{{.Customer}}</td><td><a href="/invoices/{{.ID}}">{{if .From}}{{day .From}} – {{day .To}}{{else}}{{t "invoices.no_range"}}{{end}}</a></td></tr>
 {{end}}</tbody>
 </table></div>
 {{end}}

@@ -75,7 +75,7 @@ A failing compile (a `panic`, a missing font, a syntax error) is shown to the us
 | `draft` | `true` for a preview: show a draft watermark. |
 | `number` | Invoice number; `null` while `draft`. |
 | `issue_date`, `due_date` | Issue date (today for a preview) and issue date plus the payment days. |
-| `service_period` | When the work was done. An invoice without one gets its `issue_date` as `from` and `to`; a cancellation of it gets the cancelled invoice's `issue_date`. |
+| `service_period` | When the work was done: from the start date of the first time entry on the invoice to the end date of the last. Without time entries it is set by hand, or else `from` and `to` are the `issue_date`. A cancellation carries the cancelled invoice's. |
 | `language` | The customer's invoice language: `en` or `de`. |
 | `currency` | ISO 4217 code of every amount. |
 | `business` | The sender. Empty strings for unset optional fields; `name`, `address` and `tax_number` are always set. |
