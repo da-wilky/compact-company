@@ -1,14 +1,113 @@
+{{/* PROTOTYPE #51: five page-head variants of the issued invoice, switchable via ?variant=A..E and the floating bar. Throwaway; lives only on prototype/issued-invoice-actions. */}}
 {{define "title"}}{{if .Data.CancelsID}}{{t "invoices.cancellation" .Data.Number}}{{else}}{{t "invoices.invoice" .Data.Number}}{{end}}{{end}}
+{{define "icon-download"}}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>{{end}}
+{{define "icon-cancel"}}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="m14.5 12.5-5 5"/><path d="m9.5 12.5 5 5"/></svg>{{end}}
+{{define "icon-back"}}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>{{end}}
+{{define "icon-more"}}<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>{{end}}
+{{define "icon-paid"}}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>{{end}}
+
+{{define "proto-style"}}<style>
+.proto svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.proto .ibtn { display: inline-flex; align-items: center; gap: .45rem; }
+.proto .ibtn.danger { color: var(--danger); }
+.proto .ibtn.danger:hover { border-color: var(--danger); }
+.proto .crumb { display: inline-flex; align-items: center; gap: .35rem; margin-bottom: .35rem; color: var(--muted); font-size: .85rem; font-weight: 500; }
+.proto .crumb:hover { color: var(--accent); text-decoration: none; }
+.proto .toolbar { display: flex; flex-wrap: wrap; gap: .5rem; }
+.proto .round { display: grid; place-items: center; width: 36px; height: 36px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--muted); }
+.proto .round svg { width: 18px; height: 18px; }
+.proto .round:hover { border-color: var(--accent); color: var(--accent); text-decoration: none; }
+.proto .round.danger:hover { border-color: var(--danger); color: var(--danger); }
+.proto .title.with-back { gap: .6rem; }
+.proto .primary { display: inline-flex; align-items: center; gap: .45rem; padding: .45rem 1.1rem; border-radius: 999px; background: var(--accent); color: var(--accent-fg); font-size: .9rem; font-weight: 500; }
+.proto .primary:hover { text-decoration: none; filter: brightness(1.05); }
+.proto details.menu { position: relative; }
+.proto details.menu summary { list-style: none; cursor: pointer; }
+.proto details.menu summary::-webkit-details-marker { display: none; }
+.proto details.menu .items { position: absolute; z-index: 20; right: 0; top: calc(100% + 6px); display: grid; min-width: 14rem; padding: .35rem; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); box-shadow: 0 16px 40px rgba(42, 37, 32, .18); }
+.proto details.menu .items a { display: flex; align-items: center; gap: .6rem; padding: .5rem .65rem; border-radius: 8px; color: var(--fg); font-size: .9rem; }
+.proto details.menu .items a:hover { background: var(--accent-soft); text-decoration: none; }
+.proto details.menu .items a.danger { color: var(--danger); }
+.proto .split { display: grid; grid-template-columns: minmax(0, 1fr) 17rem; gap: 1.25rem; align-items: start; }
+.proto .card { display: grid; gap: .6rem; padding: 1.1rem; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+.proto .card .status { color: var(--muted); font-size: .75rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
+.proto .card .due { font-size: 1.35rem; font-weight: 650; font-variant-numeric: tabular-nums; }
+.proto .card .primary { justify-content: center; }
+.proto .card form { display: grid; gap: .5rem; padding-top: .6rem; border-top: 1px solid var(--line); }
+.proto .card form label { display: grid; gap: .3rem; color: var(--muted); font-size: .85rem; }
+.proto .card .quiet { display: inline-flex; align-items: center; gap: .45rem; justify-self: start; padding-top: .6rem; color: var(--danger); font-size: .85rem; font-weight: 500; }
+@media (max-width: 760px) {
+  .proto .split { grid-template-columns: minmax(0, 1fr); }
+  .proto .split .card { order: -1; }
+}
+.proto-switch { position: fixed; z-index: 100; left: 50%; bottom: 1rem; transform: translateX(-50%); display: flex; align-items: center; gap: .25rem; padding: .3rem; border-radius: 999px; background: #111; color: #fff; box-shadow: 0 8px 24px rgba(0, 0, 0, .35); font: 600 .8rem system-ui, sans-serif; white-space: nowrap; }
+.proto-switch a { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; color: #fff; }
+.proto-switch a:hover { background: #333; text-decoration: none; }
+.proto-switch span { padding: 0 .5rem; }
+@media (max-width: 760px) { .proto-switch { bottom: 5rem; } }
+</style>{{end}}
+
 {{define "content"}}
+{{template "proto-style"}}
+{{$v := or .Data.Variant "A"}}
+{{$canCancel := and (not .Data.CancelsID) (ne .Data.Status "cancelled")}}
+<div class="proto">
 {{with .Data}}{{with .Snapshot}}
+
+{{if eq $v "B"}}
+<a class="crumb" href="/invoices">{{template "icon-back"}}{{t "invoices.title"}}</a>
+<div class="page-head">
+<div><h1>{{template "title" $}}</h1>
+<p class="hint">{{.Customer.Number}} {{.Customer.Name}} · {{t (print "invoices.status." $.Data.Status)}}</p></div>
+<div class="toolbar">
+<a class="pill ibtn" href="/invoices/{{$.Data.ID}}/pdf">{{template "icon-download"}}{{t "invoices.download"}}</a>
+{{if $canCancel}}<a class="pill ibtn danger" href="/invoices/{{$.Data.ID}}/cancel">{{template "icon-cancel"}}{{t "invoices.cancel"}}</a>{{end}}
+</div>
+</div>
+
+{{else if eq $v "C"}}
+<div class="page-head">
+<div class="title with-back"><a class="round" href="/invoices" aria-label="{{t "invoices.title"}}" title="{{t "invoices.title"}}">{{template "icon-back"}}</a><h1>{{template "title" $}}</h1></div>
+<div class="toolbar">
+<a class="round" href="/invoices/{{$.Data.ID}}/pdf" aria-label="{{t "invoices.download"}}" title="{{t "invoices.download"}}">{{template "icon-download"}}</a>
+{{if $canCancel}}<a class="round danger" href="/invoices/{{$.Data.ID}}/cancel" aria-label="{{t "invoices.cancel"}}" title="{{t "invoices.cancel"}}">{{template "icon-cancel"}}</a>{{end}}
+</div>
+</div>
+<p class="hint">{{.Customer.Number}} {{.Customer.Name}} · {{t (print "invoices.status." $.Data.Status)}}</p>
+
+{{else if eq $v "D"}}
+<div class="page-head">
+<div><h1>{{template "title" $}}</h1>
+<p class="hint">{{.Customer.Number}} {{.Customer.Name}}</p></div>
+</div>
+
+{{else if eq $v "E"}}
+<div class="page-head">
+<div><h1>{{template "title" $}}</h1>
+<p class="hint">{{.Customer.Number}} {{.Customer.Name}} · {{t (print "invoices.status." $.Data.Status)}}</p></div>
+<div class="toolbar">
+<a class="primary" href="/invoices/{{$.Data.ID}}/pdf">{{template "icon-download"}}{{t "invoices.download"}}</a>
+<details class="menu"><summary class="round" aria-label="…" title="…">{{template "icon-more"}}</summary>
+<div class="items">
+{{if $canCancel}}<a class="danger" href="/invoices/{{$.Data.ID}}/cancel">{{template "icon-cancel"}}{{t "invoices.cancel"}}</a>{{end}}
+<a href="/invoices">{{template "icon-back"}}{{t "invoices.title"}}</a>
+</div></details>
+</div>
+</div>
+
+{{else}}
 <div class="page-head">
 <div class="title"><h1>{{template "title" $}}</h1>
 <a class="pill" href="/invoices/{{$.Data.ID}}/pdf">{{t "invoices.download"}}</a></div>
 </div>
-<p class="actions"><a href="/invoices">{{t "invoices.title"}}</a>{{if and (not $.Data.CancelsID) (ne $.Data.Status "cancelled")}} <a href="/invoices/{{$.Data.ID}}/cancel">{{t "invoices.cancel"}}</a>{{end}}</p>
+<p class="actions"><a href="/invoices">{{t "invoices.title"}}</a>{{if $canCancel}} <a href="/invoices/{{$.Data.ID}}/cancel">{{t "invoices.cancel"}}</a>{{end}}</p>
 <p class="hint">{{.Customer.Number}} {{.Customer.Name}} · {{t (print "invoices.status." $.Data.Status)}}</p>
+{{end}}
+
 {{with .Cancels}}<p>{{t "invoices.cancels"}} <a href="/invoices/{{$.Data.CancelsID}}">{{.Number}}</a> · {{day .IssueDate}}{{with $.Data.Snapshot.Reason}} · {{t "invoices.reason"}}: {{.}}{{end}}</p>{{end}}
 <p class="hint">{{t "invoices.issue_date"}} {{day .IssueDate}}{{if not $.Data.CancelsID}} · {{t "invoices.due_date"}} {{day .DueDate}}{{end}} · {{if eq .ServicePeriod.From .ServicePeriod.To}}{{t "invoices.service_date"}} {{day .ServicePeriod.From}}{{else}}{{t "invoices.service_period"}} {{day .ServicePeriod.From}} – {{day .ServicePeriod.To}}{{end}}</p>
+
+{{if eq $v "D"}}<div class="split"><div>{{end}}
 <div class="table-wrap"><table class="invoice-lines">
 <thead><tr><th>{{t "invoices.description"}}</th><th class="num">{{t "invoices.quantity"}}</th><th>{{t "invoices.unit"}}</th><th class="num">{{t "invoices.price"}}</th><th class="num">{{t "invoices.total"}}</th><th></th></tr></thead>
 <tbody>
@@ -21,7 +120,26 @@
 {{with $.Data.AmountDue}}<tr><th colspan="4">{{t "invoices.amount_due"}}</th><td class="num">{{.}}</td><td>{{$.Data.Snapshot.Currency}}</td></tr>{{end}}
 </tfoot>
 </table></div>
-{{if $.Data.PaidDate}}<form method="post" action="/invoices/{{$.Data.ID}}/unpaid" class="form invoice-paid">
+
+{{if eq $v "D"}}</div>
+<aside class="card">
+<span class="status">{{t (print "invoices.status." $.Data.Status)}}</span>
+<span class="due">{{or $.Data.AmountDue .Totals.Gross}} {{.Currency}}</span>
+<a class="primary" href="/invoices/{{$.Data.ID}}/pdf">{{template "icon-download"}}{{t "invoices.download"}}</a>
+{{if $.Data.PaidDate}}<form method="post" action="/invoices/{{$.Data.ID}}/unpaid">
+<p class="hint">{{t "invoices.paid_on" (day $.Data.PaidDate)}}</p>
+<button>{{t "invoices.undo_paid"}}</button>
+</form>
+{{else if $canCancel}}<form method="post" action="/invoices/{{$.Data.ID}}/paid">
+{{with $.Data.Errors}}<ul class="errors">{{range .}}<li>{{t .}}</li>{{end}}</ul>{{end}}
+<label>{{t "invoices.paid_date"}} <input type="date" name="paid_date" value="{{$.Data.PaidForm}}" required></label>
+<button class="ibtn">{{template "icon-paid"}}{{t "invoices.mark_paid"}}</button>
+</form>{{end}}
+{{if $canCancel}}<a class="quiet" href="/invoices/{{$.Data.ID}}/cancel">{{template "icon-cancel"}}{{t "invoices.cancel"}}</a>{{end}}
+</aside>
+</div>
+
+{{else if $.Data.PaidDate}}<form method="post" action="/invoices/{{$.Data.ID}}/unpaid" class="form invoice-paid">
 <p>{{t "invoices.paid_on" (day $.Data.PaidDate)}}</p>
 <button>{{t "invoices.undo_paid"}}</button>
 </form>
@@ -33,4 +151,29 @@
 </form>{{end}}
 <p class="hint sha">{{t "invoices.sha256"}}: {{$.Data.SHA256}}</p>
 {{end}}{{end}}
+</div>
+
+<nav class="proto-switch" data-variants="A B C D E" data-current="{{$v}}">
+<a href="#" data-step="-1" aria-label="previous variant">‹</a>
+<span>{{$v}} · {{if eq $v "B"}}Breadcrumb + labelled toolbar{{else if eq $v "C"}}Icon-only buttons{{else if eq $v "D"}}Side status card{{else if eq $v "E"}}Primary + overflow menu{{else}}Current{{end}}</span>
+<a href="#" data-step="1" aria-label="next variant">›</a>
+</nav>
+<script>
+(() => {
+  const bar = document.querySelector(".proto-switch");
+  const keys = bar.dataset.variants.split(" ");
+  const go = (step) => {
+    const i = (keys.indexOf(bar.dataset.current) + step + keys.length) % keys.length;
+    const url = new URL(location.href);
+    url.searchParams.set("variant", keys[i]);
+    location.replace(url);
+  };
+  bar.addEventListener("click", (e) => { const a = e.target.closest("[data-step]"); if (a) { e.preventDefault(); go(+a.dataset.step); } });
+  addEventListener("keydown", (e) => {
+    if (e.target.closest("input, textarea, select, [contenteditable]")) return;
+    if (e.key === "ArrowLeft") go(-1);
+    if (e.key === "ArrowRight") go(1);
+  });
+})();
+</script>
 {{end}}

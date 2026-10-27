@@ -168,6 +168,8 @@ type issuedInvoice struct {
 	AmountDue string
 	PaidForm  string
 	Errors    []string
+	// PROTOTYPE #51: page-head variant from ?variant=.
+	Variant string
 }
 
 type issuedLine struct {
@@ -254,6 +256,7 @@ func (a *App) invoiceShow(w http.ResponseWriter, r *http.Request) {
 	}
 	if err == nil {
 		inv.PaidForm, err = a.issueDate(a.db, id)
+		inv.Variant = r.URL.Query().Get("variant")
 	}
 	if err != nil {
 		a.serverError(w, r, err)
