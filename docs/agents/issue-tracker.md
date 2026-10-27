@@ -26,6 +26,10 @@ When set to `yes`, PRs run through the same labels and states as issues, using t
 
 GitHub shares one number space across issues and PRs, so a bare `#42` may be either: resolve with `gh pr view 42` and fall back to `gh issue view 42`.
 
+## Stacked PRs
+
+Merge bottom-up. Before merging a parent with `--delete-branch`, retarget each PR based on it (`gh pr edit <child> --base main`): deleting the base branch closes the child instead. Branch protection requires PRs up to date with `main`, so after the parent merges run `gh pr update-branch <child>` and wait for CI before merging it.
+
 ## When a skill says "publish to the issue tracker"
 
 Create a GitHub issue.

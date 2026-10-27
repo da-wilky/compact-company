@@ -1,7 +1,7 @@
 """Render every page in English and German at desktop and phone width in light and dark, fail on layout breakage, save screenshots.
 
 Usage: ui_check.py <base-url> <database> <screenshot-dir> <chromium> [path…], against a fresh dev-mode instance (it seeds data).
-Paths render only those pages; the seed is deterministic, so e.g. /invoices/1 is the draft with lines, /invoices/4 the empty one
+Paths render only those pages; the seed is deterministic, so e.g. /invoices/1 is the draft with lines, /invoices/4 the empty one without a range
 and /invoices/5 to /invoices/8 open invoices, the even ones overdue.
 """
 
@@ -60,7 +60,7 @@ def seed(api):
     api.post(f"{base}{issued}/paid", form={"paid_date": str(today)})
     # Unset again so the draft's preview shows the missing-data page instead of a PDF download.
     api.post(f"{base}/settings/business", form=business | {"name": ""})
-    empty = api.post(f"{base}/invoices", form={"customer": customer, "from": "2020-01-01", "to": "2020-01-31", "grouping": "project", "rounding_minutes": "0", "payment_days": "14"}, max_redirects=0).headers["location"]
+    empty = api.post(f"{base}/invoices", form={"customer": customer, "from": "", "to": "", "grouping": "project", "rounding_minutes": "0", "payment_days": "14"}, max_redirects=0).headers["location"]
     seed_open_invoices(api, customer, business)
     # Time after the drafts were made, so the overview shows unbilled time both on a draft and on no invoice.
     last_friday = monday - datetime.timedelta(days=3)
@@ -101,11 +101,11 @@ def main():
         pages = only or ["/", "/week", "/week?everyone=1", "/entries", f"/entries?day={today}&project={project}", "/entries/new", entry,
                  "/customers", "/customers/new", f"/customers/{customer}", f"/customers/{customer}/projects", f"/projects/{project}",
                  "/invoices", "/invoices/new", draft, f"{draft}/preview", f"{draft}/lines/new", line, f"{draft}/refresh",
-                 f"{draft}/issue", issued, f"{issued}/cancel", cancellation, empty,
+                 f"{draft}/issue", issued, f"{issued}/cancel", cancellation, empty, f"{empty}/refresh",
                  "/settings", "/profile", "/no-such-page"]
         for lang in ("en", "de"):
             page = browser.new_page()
-            page.goto(f"{base}/settings")
+            page.goto(f"{base}/profile")
             page.select_option("select[name=language]", lang)
             page.click("form.settings button")
             page.close()
@@ -113,7 +113,8 @@ def main():
                 for scheme in ("light", "dark"):
                     page = browser.new_page(viewport={"width": width, "height": height}, color_scheme=scheme)
                     for path in pages:
-                        page.goto(base + path)
+                        if (status := page.goto(base + path).status) >= 500:
+                            failures.append(f"{lang} {viewport} {scheme} {path}: HTTP {status}")
                         name = re.sub(r"[^a-z0-9]+", "-", path.lower()).strip("-") or "home"
                         page.screenshot(path=f"{out}/{lang}-{viewport}-{scheme}-{name}.png", full_page=True)
                         failures += [f"{lang} {viewport} {scheme} {path}: {p}" for p in page.evaluate(FIND_BREAKAGE)]
