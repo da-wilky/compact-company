@@ -30,11 +30,11 @@ func TestBusinessDataIsEditedOnItsSettingsPage(t *testing.T) {
 	ta := newTestApp(t, devConfig)
 	alice, bob := ta.loginAs("alice"), ta.loginAs("bob")
 
-	alice.get("/settings").wantBody(t, `href="/settings/business"`)
+	alice.get("/settings/business").wantStatus(t, http.StatusMethodNotAllowed)
 	alice.postForm("/settings/business", businessForm()).wantStatus(t, http.StatusSeeOther)
 	ta.restart()
 
-	res := bob.get("/settings/business")
+	res := bob.get("/settings")
 	res.wantStatus(t, http.StatusOK)
 	for _, want := range []string{`value="Samuel Wilk"`, `value="swilk"`, "Hauptstraße 1\n12345 Berlin</textarea>",
 		`value="mail@swilk.example"`, `value="swilk.example"`, `value="030 123"`, `value="12/345/67890"`,
@@ -55,7 +55,7 @@ func TestBusinessTaxModeAndVATRateAreValidated(t *testing.T) {
 			res := alice.postForm("/settings/business", form)
 
 			res.wantStatus(t, http.StatusUnprocessableEntity)
-			alice.get("/settings/business").wantNoBody(t, `value="Samuel Wilk"`)
+			alice.get("/settings").wantNoBody(t, `value="Samuel Wilk"`)
 		})
 	}
 }
@@ -64,15 +64,15 @@ func TestBusinessPageNamesMissingRequiredFields(t *testing.T) {
 	ta := newTestApp(t, devConfig)
 	alice := ta.loginAs("alice")
 
-	alice.get("/settings/business").wantBody(t, "Invoices can&#39;t be previewed or issued until these are set: Name, Address, Tax number")
+	alice.get("/settings").wantBody(t, "Invoices can&#39;t be previewed or issued until these are set: Name, Address, Tax number")
 
 	form := businessForm()
 	form.Set("address", "  \n ")
 	alice.postForm("/settings/business", form).wantStatus(t, http.StatusSeeOther)
-	alice.get("/settings/business").wantBody(t, "until these are set: Address<")
+	alice.get("/settings").wantBody(t, "until these are set: Address<")
 
 	alice.postForm("/settings/business", businessForm()).wantStatus(t, http.StatusSeeOther)
-	alice.get("/settings/business").wantNoBody(t, "until these are set")
+	alice.get("/settings").wantNoBody(t, "until these are set")
 }
 
 func writeBusinessFile(t *testing.T, content string) string {
@@ -101,7 +101,7 @@ func TestConfigManagedBusinessIsReadOnly(t *testing.T) {
 	ta := newTestApp(t, devConfig+inlineBusiness)
 	alice := ta.loginAs("alice")
 
-	res := alice.get("/settings/business")
+	res := alice.get("/settings")
 	res.wantBody(t, "Managed by config")
 	res.wantBody(t, "<fieldset disabled>")
 	res.wantBody(t, `value="Samuel Wilk"`)
@@ -113,7 +113,7 @@ func TestConfigManagedBusinessIsReadOnly(t *testing.T) {
 	res = alice.postForm("/settings/business", form)
 	res.wantStatus(t, http.StatusConflict)
 	res.wantBody(t, "managed by config and can&#39;t be edited here")
-	alice.get("/settings/business").wantNoBody(t, "Mallory")
+	alice.get("/settings").wantNoBody(t, "Mallory")
 }
 
 func TestBusinessFileKeysOverrideInlineBusinessKeys(t *testing.T) {
@@ -125,7 +125,7 @@ iban = "DE00SECRET"
 `)
 	ta := newTestApp(t, "business_file = "+strconv.Quote(path)+"\n"+devConfig+inlineBusiness)
 
-	res := ta.loginAs("alice").get("/settings/business")
+	res := ta.loginAs("alice").get("/settings")
 	res.wantBody(t, `value="Samuel Wilk"`)
 	res.wantBody(t, `value="99/999/99999"`)
 	res.wantBody(t, `value="GLS Bank"`)
@@ -137,7 +137,7 @@ func TestBusinessFileAloneMakesBusinessConfigManaged(t *testing.T) {
 	path := writeBusinessFile(t, `name = "Samuel Wilk"`+"\n")
 	ta := newTestApp(t, "business_file = "+strconv.Quote(path)+"\n"+devConfig)
 
-	res := ta.loginAs("alice").get("/settings/business")
+	res := ta.loginAs("alice").get("/settings")
 	res.wantBody(t, "Managed by config")
 	res.wantBody(t, `value="Samuel Wilk"`)
 	res.wantBody(t, "until these are set: Address, Tax number")

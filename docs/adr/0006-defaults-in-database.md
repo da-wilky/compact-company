@@ -1,0 +1,3 @@
+# Defaults live in the database, config may override them key by key
+
+The defaults (language, timezone, currency, parallel entries) are stored in the database and edited on the settings page by any user. Each key written under `[defaults]` in config overrides its stored value and shows read-only. Users follow the default language and timezone until they choose their own; parallel entries is copied once when a user is created, since following it could switch it off under running timers. This extends ADR 0005, but overrides per key rather than per section: business data is one block of invoice data, while a deployment typically pins a single default, such as the timezone, and leaves the rest editable.

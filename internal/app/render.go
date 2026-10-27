@@ -25,6 +25,20 @@ var messages embed.FS
 
 var languages = []language.Tag{language.English, language.German}
 
+var languageNames = map[string]string{"en": "English", "de": "Deutsch"}
+
+type languageOption struct {
+	Value, Name string
+}
+
+func languageOptions() []languageOption {
+	opts := make([]languageOption, len(languages))
+	for i, tag := range languages {
+		opts[i] = languageOption{tag.String(), languageNames[tag.String()]}
+	}
+	return opts
+}
+
 func supportedLanguage(lang string) bool {
 	for _, tag := range languages {
 		if tag.String() == lang {
@@ -106,11 +120,14 @@ var dateLayouts = map[string]string{"en": "2006-01-02", "de": "02.01.2006"}
 // viewerLocation is the zone all times are shown and attributed to days in:
 // the user's timezone, or the configured default before login.
 func (a *App) viewerLocation(r *http.Request) (*time.Location, error) {
-	name := a.cfg.Defaults.Timezone
 	if u := currentUser(r); u != nil {
-		name = u.Timezone
+		return time.LoadLocation(u.Timezone)
 	}
-	return time.LoadLocation(name)
+	d, err := a.defaults()
+	if err != nil {
+		return nil, err
+	}
+	return time.LoadLocation(d.Timezone)
 }
 
 // render writes the page in the viewer's language, or the configured default before login.
@@ -127,9 +144,15 @@ func (a *App) execute(w http.ResponseWriter, r *http.Request, status int, page, 
 // write runs template name from page's set; v.Timers, if unset, is loaded for a logged-in user.
 func (a *App) write(w http.ResponseWriter, r *http.Request, status int, page, name string, v view) error {
 	u := currentUser(r)
-	lang := a.cfg.Defaults.Language
+	var lang string
 	if u != nil {
 		lang = u.Language
+	} else {
+		d, err := a.defaults()
+		if err != nil {
+			return err
+		}
+		lang = d.Language
 	}
 	loc, err := a.viewerLocation(r)
 	if err != nil {

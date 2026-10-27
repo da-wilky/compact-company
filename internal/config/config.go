@@ -25,6 +25,8 @@ type Config struct {
 	Business             Business `toml:"business"`
 	BusinessFile         string   `toml:"business_file"`
 	BusinessManaged      bool     `toml:"-"`
+	// DefaultsManaged marks the [defaults] keys config sets; the others come from the database.
+	DefaultsManaged ManagedDefaults `toml:"-"`
 }
 
 type Business struct {
@@ -78,6 +80,10 @@ type Defaults struct {
 	ParallelEntries bool   `toml:"parallel_entries"`
 }
 
+type ManagedDefaults struct {
+	Language, Timezone, Currency, ParallelEntries bool
+}
+
 var RoundingIncrements = []int{0, 5, 10, 15, 30}
 
 func Load(path string) (Config, error) {
@@ -85,7 +91,6 @@ func Load(path string) (Config, error) {
 		Listen:               "127.0.0.1:8080",
 		CustomerNumberFormat: "K-{seq:03}",
 		Auth:                 Auth{SessionIdleTimeout: 14 * 24 * time.Hour},
-		Defaults:             Defaults{Currency: "EUR", Language: "en", Timezone: "UTC"},
 		Invoice:              Invoice{NumberFormat: "{year}-{seq:03}", PaymentDays: 14},
 	}
 	md, err := decodeStrict(path, &cfg)
@@ -93,6 +98,12 @@ func Load(path string) (Config, error) {
 		return Config{}, fmt.Errorf("config %s: %w", path, err)
 	}
 	cfg.BusinessManaged = md.IsDefined("business") || cfg.BusinessFile != ""
+	cfg.DefaultsManaged = ManagedDefaults{
+		Language:        md.IsDefined("defaults", "language"),
+		Timezone:        md.IsDefined("defaults", "timezone"),
+		Currency:        md.IsDefined("defaults", "currency"),
+		ParallelEntries: md.IsDefined("defaults", "parallel_entries"),
+	}
 	if err := cfg.validate(); err != nil {
 		return Config{}, fmt.Errorf("config %s: %w", path, err)
 	}
@@ -148,10 +159,10 @@ func (c *Config) validate() error {
 	default:
 		return fmt.Errorf(`auth.mode must be "oidc" or "none", got %q`, c.Auth.Mode)
 	}
-	if _, err := time.LoadLocation(c.Defaults.Timezone); err != nil || c.Defaults.Timezone == "" || c.Defaults.Timezone == "Local" {
+	if _, err := time.LoadLocation(c.Defaults.Timezone); c.DefaultsManaged.Timezone && (err != nil || c.Defaults.Timezone == "" || c.Defaults.Timezone == "Local") {
 		return fmt.Errorf("defaults.timezone: unknown timezone %q", c.Defaults.Timezone)
 	}
-	if _, err := currency.ParseISO(c.Defaults.Currency); err != nil {
+	if _, err := currency.ParseISO(c.Defaults.Currency); c.DefaultsManaged.Currency && err != nil {
 		return fmt.Errorf("defaults.currency: unknown ISO 4217 code %q", c.Defaults.Currency)
 	}
 	if !slices.Contains(RoundingIncrements, c.Invoice.RoundingMinutes) {

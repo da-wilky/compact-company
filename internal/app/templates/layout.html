@@ -24,7 +24,7 @@
 <a href="/settings" class="mobile">{{template "icon-settings"}}{{t "layout.settings"}}</a>
 </nav>{{end}}
 {{with .User}}<div class="me">
-<span class="profile"><span class="avatar" role="img" aria-label="{{t "layout.signed_in_as" .DisplayName}}" title="{{t "layout.signed_in_as" .DisplayName}}">{{.Initial}}</span><span class="who">{{.DisplayName}}</span></span>
+<a class="profile" href="/profile"><span class="avatar" role="img" aria-label="{{t "layout.signed_in_as" .DisplayName}}" title="{{t "layout.signed_in_as" .DisplayName}}">{{.Initial}}</span><span class="who">{{.DisplayName}}</span></a>
 <a href="/settings" class="desktop" aria-label="{{t "layout.settings"}}" title="{{t "layout.settings"}}">{{template "icon-settings"}}</a>
 <form method="post" action="/logout"><button class="ghost" aria-label="{{t "layout.logout"}}" title="{{t "layout.logout"}}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h4.5a1.5 1.5 0 0 1 1.5 1.5v13a1.5 1.5 0 0 1-1.5 1.5H14M10 16l-4-4 4-4M6 12h10"/></svg></button></form>
 </div>{{end}}

@@ -57,7 +57,7 @@ To preview while tests are red (`nix run` builds with tests and fails), use `go 
 "customers.title" = { en = "Customers", de = "Kunden" }
 ```
 
-Startup, and so every test, fails if a key is duplicated or lacks `en` or `de`. Language is the user's setting, else `defaults.language`; `Accept-Language` is never read.
+Startup, and so every test, fails if a key is duplicated or lacks `en` or `de`. Language is the user's own, else the default (`a.defaults()`: the stored row with config's `[defaults]` keys laid over it); `Accept-Language` is never read.
 
 ## Add a migration
 

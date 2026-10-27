@@ -102,7 +102,7 @@ def main():
                  "/customers", "/customers/new", f"/customers/{customer}", f"/customers/{customer}/projects", f"/projects/{project}",
                  "/invoices", "/invoices/new", draft, f"{draft}/preview", f"{draft}/lines/new", line, f"{draft}/refresh",
                  f"{draft}/issue", issued, f"{issued}/cancel", cancellation, empty,
-                 "/settings", "/settings/business", "/no-such-page"]
+                 "/settings", "/profile", "/no-such-page"]
         for lang in ("en", "de"):
             page = browser.new_page()
             page.goto(f"{base}/settings")

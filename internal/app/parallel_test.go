@@ -17,14 +17,14 @@ func parallelSetting(on bool) url.Values {
 func TestEnablingParallelEntriesAllowsSeveralTimersForThatUserOnly(t *testing.T) {
 	ta := newTestApp(t, devConfig)
 	alice, bob := ta.loginAs("alice"), ta.loginAs("bob")
-	alice.get("/settings").wantBody(t, `<input type="checkbox" name="parallel_entries">`)
+	alice.get("/profile").wantBody(t, `<input type="checkbox" name="parallel_entries">`)
 
-	alice.postForm("/settings", parallelSetting(true)).wantStatus(t, http.StatusSeeOther)
+	alice.postForm("/profile", parallelSetting(true)).wantStatus(t, http.StatusSeeOther)
 
-	alice.get("/settings").wantBody(t, `<input type="checkbox" name="parallel_entries" checked>`)
+	alice.get("/profile").wantBody(t, `<input type="checkbox" name="parallel_entries" checked>`)
 	alice.hxPost("/timers", url.Values{"description": {"one"}}).wantStatus(t, http.StatusOK)
 	alice.hxPost("/timers", url.Values{"description": {"two"}}).wantStatus(t, http.StatusOK)
-	bob.get("/settings").wantBody(t, `<input type="checkbox" name="parallel_entries">`)
+	bob.get("/profile").wantBody(t, `<input type="checkbox" name="parallel_entries">`)
 	bob.hxPost("/timers", url.Values{"description": {"one"}}).wantStatus(t, http.StatusOK)
 	bob.hxPost("/timers", url.Values{"description": {"two"}}).wantStatus(t, http.StatusUnprocessableEntity)
 }
@@ -32,11 +32,11 @@ func TestEnablingParallelEntriesAllowsSeveralTimersForThatUserOnly(t *testing.T)
 func TestOverlapsRemainAfterSwitchingOffAndAreCheckedOnNextSave(t *testing.T) {
 	ta := newTestApp(t, devConfig)
 	alice := ta.loginAs("alice")
-	alice.postForm("/settings", parallelSetting(true)).wantStatus(t, http.StatusSeeOther)
+	alice.postForm("/profile", parallelSetting(true)).wantStatus(t, http.StatusSeeOther)
 	alice.createEntry(entryForm("", "2026-10-26T06:00", "2026-10-26T07:00", "one"))
 	two := alice.createEntry(entryForm("", "2026-10-26T06:30", "2026-10-26T07:30", "two"))
 
-	alice.postForm("/settings", parallelSetting(false)).wantStatus(t, http.StatusSeeOther)
+	alice.postForm("/profile", parallelSetting(false)).wantStatus(t, http.StatusSeeOther)
 
 	list := alice.get("/entries?day=2026-10-26")
 	list.wantBody(t, "06:00–07:00")
@@ -53,23 +53,23 @@ func TestNewUserStartsWithConfiguredParallelEntriesDefault(t *testing.T) {
 parallel_entries = true
 `)
 
-	ta.loginAs("alice").get("/settings").wantBody(t, `<input type="checkbox" name="parallel_entries" checked>`)
+	ta.loginAs("alice").get("/profile").wantBody(t, `<input type="checkbox" name="parallel_entries" checked>`)
 }
 
 func TestSwitchingParallelEntriesOffIsRefusedWhileSeveralTimersRun(t *testing.T) {
 	ta := newTestApp(t, devConfig)
 	alice := ta.loginAs("alice")
-	alice.postForm("/settings", parallelSetting(true)).wantStatus(t, http.StatusSeeOther)
+	alice.postForm("/profile", parallelSetting(true)).wantStatus(t, http.StatusSeeOther)
 	first := alice.startTimer(url.Values{"description": {"one"}})
 	alice.startTimer(url.Values{"description": {"two"}})
 
-	res := alice.postForm("/settings", parallelSetting(false))
+	res := alice.postForm("/profile", parallelSetting(false))
 
 	res.wantStatus(t, http.StatusUnprocessableEntity)
 	res.wantBody(t, "Stop all but one of your timers before switching parallel entries off.")
 	res.wantBody(t, `<input type="checkbox" name="parallel_entries" checked>`)
-	alice.get("/settings").wantBody(t, `<input type="checkbox" name="parallel_entries" checked>`)
+	alice.get("/profile").wantBody(t, `<input type="checkbox" name="parallel_entries" checked>`)
 	alice.hxPost(first+"/stop", nil).wantStatus(t, http.StatusOK)
-	alice.postForm("/settings", parallelSetting(false)).wantStatus(t, http.StatusSeeOther)
+	alice.postForm("/profile", parallelSetting(false)).wantStatus(t, http.StatusSeeOther)
 	alice.hxPost("/timers", url.Values{"description": {"three"}}).wantStatus(t, http.StatusUnprocessableEntity)
 }

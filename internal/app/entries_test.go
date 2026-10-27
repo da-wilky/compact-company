@@ -322,7 +322,7 @@ timezone = "Europe/Berlin"
 
 	wantRedirect(t, res, "/entries?day=2026-10-27")
 	c.get("/entries?day=2026-10-27").wantBody(t, "00:30–01:30")
-	c.postForm("/settings", url.Values{"language": {"en"}, "timezone": {"UTC"}}).wantStatus(t, http.StatusSeeOther)
+	c.postForm("/profile", url.Values{"language": {"en"}, "timezone": {"UTC"}}).wantStatus(t, http.StatusSeeOther)
 	utc := c.get("/entries?day=2026-10-26")
 	utc.wantBody(t, "23:30–00:30")
 	utc.wantBody(t, "night shift")
