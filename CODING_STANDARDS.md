@@ -11,3 +11,4 @@ Judgement calls for review. Mechanical rules live in `.golangci.yml` and `nix fl
 - Comments explain a non-obvious why; names carry the rest.
 - UI meets WCAG AA: text 4.5:1, form-field and control borders 3:1, visible focus on every interactive element. Colours come from the `:root` tokens in `app.css`, in both light and dark.
 - New pages reuse the shared CSS components (see `docs/agents/codebase.md`); new styles hang off a class the markup opts into.
+- A behaviour a second place needs goes through the one mechanism that already does it (mass actions, confirmation, invoice state: see `docs/agents/codebase.md`); a new shared mechanism is documented there in the same change.

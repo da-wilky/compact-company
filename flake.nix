@@ -51,7 +51,8 @@
                   [ -f go.mod ] || { echo "run from the repository root" >&2; exit 1; }
                   # A host LD_LIBRARY_PATH pointing at newer libraries breaks Chromium's glibc.
                   unset LD_LIBRARY_PATH
-                  port=''${UI_CHECK_PORT:-9450}
+                  # A free port by default, so parallel runs don't collide.
+                  port=''${UI_CHECK_PORT:-$(python3 -I -c 'import socket; s = socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1])')}
                   work=$(mktemp -d)
                   mkdir "$work/shots"
                   printf 'listen = "127.0.0.1:%s"\ndata_dir = "%s/data"\n\n[auth]\nmode = "none"\n' "$port" "$work" > "$work/config.toml"
@@ -83,6 +84,7 @@
                   golangci-lint run ./...
                   sh scripts/markup_assertions.sh
                   sh scripts/table_wrap.sh
+                  sh scripts/css_rules.sh
                   go test ./...
                 '';
               }
@@ -124,6 +126,11 @@
         table-wrap = pkgs.runCommand "compact-company-table-wrap" { } ''
           cd ${./.}
           sh scripts/table_wrap.sh
+          touch $out
+        '';
+        css-rules = pkgs.runCommand "compact-company-css-rules" { } ''
+          cd ${./.}
+          sh scripts/css_rules.sh
           touch $out
         '';
       });

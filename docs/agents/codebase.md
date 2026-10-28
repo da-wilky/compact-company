@@ -79,9 +79,17 @@ Reuse these instead of re-deriving them:
 - Invoice dates are ISO dates in the customer's timezone; resolve timezones per query with `locationCache`.
 - Week and month windows: `mondayOf` in `week.go`.
 
+## Mass actions and confirmation
+
+Selecting rows and acting on all of them (entries, invoices, customers, projects) is one mechanism; a new list or action plugs into it.
+
+- **Server:** `massWrite` in `selection.go` takes a `massAction` (row loader, blocking rule, write, list renderer). It writes all rows or none: unknown id → 404; a blocked row or refused write → 422 with the list re-rendered, the selection kept and `selectionRefusal.Blocked` named. The page embeds `selectionRefusal[T]`; action URLs are built in Go and carry the list's query.
+- **Markup** (`customers.html` is the smallest example): a hidden `form.selection` with `hx-post`, `hx-target`/`hx-select` on the list wrapper; `input[data-select-all]`; `.selection-actions` holding `[data-count]` and one button per action (`formaction`, `data-confirm-one`/`data-confirm-many` with `{n}`, `data-confirm-ok`, optional `data-only-state`). Row checkboxes: `name="id"`, `form=` the selection's id, `data-state` when actions depend on it. Only actionable rows get a checkbox; the table carries `class="selectable"`, refusals render as `.errors.selection-blocked`.
+- **Confirmation:** any form or submit button with `data-confirm` opens the `dialog.confirm` in `layout.html` (`confirmForms` in `app.js`); `data-confirm-ok` names the button, `data-confirm-neutral` makes it accent instead of danger.
+
 ## Tests
 
-Only through the `http.Handler`, via the harness:
+Only through the `http.Handler`, via the harness. That is the seam for `/tdd` too, so start each slice with a red test through it:
 
 ```go
 ta := newTestApp(t, devConfig)              // or oidcConfig(t)
@@ -100,11 +108,11 @@ The harness injects `data_dir`; test configs leave it out. OIDC tests use the st
 
 ## Checks
 
-While working, run `nix run .#check`: formatting, lint, the markup-assertion and table-wrap checks and tests, on the working tree. Run it as its own Bash call and write files with Write/Edit: worktree-isolated agents get chained shell (`&&`, `;`, `sh -c`, heredocs) refused.
+While working, run `nix run .#check`: formatting, lint, the markup-assertion, table-wrap and CSS-rule checks and tests, on the working tree. Run it as its own Bash call and write files with Write/Edit: worktree-isolated agents get chained shell (`&&`, `;`, `sh -c`, heredocs) refused.
 
 `nix flake check -L` is what CI runs: the same checks from git-tracked files only, so `git add` new files first.
 
-After any template or CSS change, run `nix run .#ui-check` (Linux): it seeds a throwaway instance, renders every page in English and German at 1280 and 390 px in light and dark, fails on horizontal overflow or invisible text, and prints a directory of screenshots. Look at the screenshots of the pages you touched; the check can't judge alignment or wrapping. New pages go into `pages` in `scripts/ui_check.py`. To iterate on a few pages, pass their paths: `nix run .#ui-check -- /invoices/1` (seeded ids are listed in the script's docstring).
+After any template or CSS change, run `nix run .#ui-check` (Linux): it seeds a throwaway instance, renders every page in English and German at 1280 and 390 px in light and dark, fails on horizontal overflow, invisible or cut-off text, and prints a directory of screenshots. Each run takes a free port, so parallel runs are fine. Look at the screenshots of the pages you touched; the check can't judge alignment or wrapping. New pages go into `pages` in `scripts/ui_check.py`. To iterate on a few pages, pass their paths: `nix run .#ui-check -- /invoices/1` (seeded ids are listed in the script's docstring).
 
 ## Nix
 

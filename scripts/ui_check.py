@@ -18,15 +18,24 @@ only = sys.argv[5:]
 VIEWPORTS = {"desktop": (1280, 800), "phone": (390, 800)}
 
 # Elements whose text is font-size 0 are invisible; icon buttons that draw a ::before keep their text as the accessible name.
+# Text is cut off when it is wider than its box (unless the box shows an ellipsis or scrolls), or when it sits past the
+# viewport's edge outside a horizontal scroller: fixed elements, like the phone tab bar, don't widen the page.
 FIND_BREAKAGE = """() => {
   const problems = [];
+  const scrolls = (el) => ["auto", "scroll"].includes(getComputedStyle(el).overflowX);
+  const inScroller = (el) => { for (let a = el.parentElement; a; a = a.parentElement) if (scrolls(a) && a.scrollWidth > a.clientWidth) return true; return false; };
   if (document.documentElement.scrollWidth > innerWidth + 1)
     problems.push(`horizontal overflow: ${document.documentElement.scrollWidth}px > ${innerWidth}px`);
   for (const el of document.body.querySelectorAll("*")) {
     const text = [...el.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent.trim()).join("");
     if (!text || !el.getClientRects().length) continue;
-    if (getComputedStyle(el).fontSize === "0px" && getComputedStyle(el, "::before").content === "none")
+    const style = getComputedStyle(el);
+    if (style.fontSize === "0px" && getComputedStyle(el, "::before").content === "none")
       problems.push(`invisible text (font-size 0): ${JSON.stringify(text.slice(0, 40))}`);
+    const rect = el.getBoundingClientRect();
+    if ((style.display !== "inline" && el.scrollWidth > el.clientWidth + 1 && style.textOverflow !== "ellipsis" && !scrolls(el))
+        || ((rect.right > innerWidth + 1 || rect.left < -1) && !inScroller(el)))
+      problems.push(`cut-off text: ${JSON.stringify(text.slice(0, 40))}`);
   }
   return problems;
 }"""
