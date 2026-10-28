@@ -2,7 +2,7 @@
 {{define "content"}}
 {{with .Data}}
 <h1>{{with .Project.ID}}{{t "projects.edit" $.Data.Project.Name}}{{else}}{{t "projects.new"}}{{end}}</h1>
-<p class="actions"><a href="/customers/{{.Customer.ID}}/projects">{{t "projects.title" .Customer.Name}}</a></p>
+<p class="actions"><a href="/customers/{{.Customer.ID}}/projects">{{template "icon-arrow-left"}}{{t "projects.title" .Customer.Name}}</a></p>
 {{with .Errors}}<ul class="errors">{{range .}}<li>{{t .}}</li>{{end}}</ul>{{end}}
 <form method="post" action="{{with .Project.ID}}/projects/{{.}}{{else}}/customers/{{$.Data.Customer.ID}}/projects{{end}}" class="form">
 <label>{{t "projects.name"}} <input name="name" value="{{.Project.Name}}" required></label>
@@ -11,7 +11,7 @@
 <label><input type="checkbox" name="billable"{{if .Project.Billable}} checked{{end}}> {{t "projects.billable_default"}}</label>
 <button>{{t "projects.save"}}</button>
 </form>
-{{with .Project.ID}}<form method="post" action="/projects/{{.}}/{{if $.Data.Project.Archived}}unarchive{{else}}archive{{end}}"><button>{{if $.Data.Project.Archived}}{{t "archive.unarchive"}}{{else}}{{t "archive.archive"}}{{end}}</button></form>
-<form method="post" action="/projects/{{.}}/delete"><button>{{t "archive.delete"}}</button></form>{{end}}
+{{with .Project.ID}}<form method="post" action="/projects/{{.}}/{{if $.Data.Project.Archived}}unarchive{{else}}archive{{end}}"><button>{{if $.Data.Project.Archived}}{{template "icon-archive-restore"}}{{t "archive.unarchive"}}{{else}}{{template "icon-archive"}}{{t "archive.archive"}}{{end}}</button></form>
+<form method="post" action="/projects/{{.}}/delete"><button>{{template "icon-trash"}}{{t "archive.delete"}}</button></form>{{end}}
 {{end}}
 {{end}}

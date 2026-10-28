@@ -2,7 +2,7 @@
 {{define "content"}}
 {{with .Data}}
 <h1>{{t "projects.title" .Customer.Name}}</h1>
-<p class="actions"><a href="/customers/{{.Customer.ID}}">{{t "projects.customer" .Customer.Number}}</a><a href="/customers/{{.Customer.ID}}/projects/new">{{t "projects.new"}}</a>{{if .ShowArchived}}<a href="/customers/{{.Customer.ID}}/projects">{{t "archive.hide"}}</a>{{else}}<a href="/customers/{{.Customer.ID}}/projects?archived=1">{{t "archive.show"}}</a>{{end}}</p>
+<p class="actions"><a href="/customers/{{.Customer.ID}}">{{template "icon-arrow-left"}}{{t "projects.customer" .Customer.Number}}</a><a href="/customers/{{.Customer.ID}}/projects/new">{{template "icon-plus"}}{{t "projects.new"}}</a>{{if .ShowArchived}}<a href="/customers/{{.Customer.ID}}/projects">{{template "icon-eye-off"}}{{t "archive.hide"}}</a>{{else}}<a href="/customers/{{.Customer.ID}}/projects?archived=1">{{template "icon-eye"}}{{t "archive.show"}}</a>{{end}}</p>
 {{with .Projects}}
 <div class="table-wrap"><table>
 <thead><tr><th>{{t "projects.name"}}</th><th>{{t "projects.billable"}}</th><th class="num">{{t "projects.effective_rate"}}</th></tr></thead>

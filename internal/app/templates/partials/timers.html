@@ -4,7 +4,7 @@
 <div class="timer-top"><span class="pulse" aria-hidden="true"></span>
 <span class="project">{{if .Project}}{{.Project}}{{else}}{{t "timers.unassigned"}}{{end}}</span>
 <time class="elapsed" data-start="{{.Start.Unix}}" title="{{t "timers.since" (datetime .Start)}}">{{t "timers.since" (clock .Start)}}</time>
-<form method="post" action="/timers/{{.ID}}/stop" hx-post="/timers/{{.ID}}/stop"><button class="icon stop" aria-label="{{t "timers.stop"}}" title="{{t "timers.stop"}}">■</button></form></div>
+<form method="post" action="/timers/{{.ID}}/stop" hx-post="/timers/{{.ID}}/stop"><button class="icon stop" aria-label="{{t "timers.stop"}}" title="{{t "timers.stop"}}">{{template "icon-square"}}</button></form></div>
 <div class="timer-bottom"><form method="post" action="/timers/{{.ID}}" hx-post="/timers/{{.ID}}" hx-trigger="change from:find input, submit">
 <input name="description" value="{{.Description}}" placeholder="{{t "timers.description"}}" aria-label="{{t "timers.description"}}">
 </form>
@@ -18,7 +18,7 @@
 
 {{define "timer-start"}}<form method="post" action="/timers" hx-post="/timers" class="timer-start">
 <div class="timer-top"><input name="description" placeholder="{{t "timers.description"}}" aria-label="{{t "timers.description"}}">
-<button class="icon go" aria-label="{{t "timers.start"}}" title="{{t "timers.start"}}">▶</button></div>
+<button class="icon go" aria-label="{{t "timers.start"}}" title="{{t "timers.start"}}">{{template "icon-play"}}</button></div>
 <select name="project" aria-label="{{t "timers.project"}}">
 <option value="">{{t "timers.no_project"}}</option>
 {{range .Customers}}<optgroup label="{{.Name}}">

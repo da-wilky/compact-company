@@ -2,7 +2,7 @@
 {{define "content"}}
 {{with .Data}}
 <h1>{{t "invoices.new"}}</h1>
-<p class="actions"><a href="/invoices">{{t "invoices.title"}}</a></p>
+<p class="actions"><a href="/invoices">{{template "icon-arrow-left"}}{{t "invoices.title"}}</a></p>
 {{with .Errors}}<ul class="errors">{{range .}}<li>{{t .}}</li>{{end}}</ul>{{end}}
 <form method="post" action="/invoices" class="form">
 <label>{{t "invoices.customer"}} <select name="customer" required>
@@ -18,7 +18,7 @@
 {{range .Increments}}<option value="{{.}}"{{if eq (print .) $.Data.Form.RoundingMinutes}} selected{{end}}>{{if .}}{{t "invoices.rounding.minutes" .}}{{else}}{{t "invoices.rounding.none"}}{{end}}</option>{{end}}
 </select></label>
 <label>{{t "invoices.payment_days"}} <input name="payment_days" value="{{.Form.PaymentDays}}" required inputmode="numeric"></label>
-<button>{{t "invoices.create"}}</button>
+<button>{{template "icon-plus"}}{{t "invoices.create"}}</button>
 </form>
 {{end}}
 {{end}}

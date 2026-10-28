@@ -152,13 +152,15 @@ h1 { margin: 0 0 1rem; font-size: 1.75rem; font-weight: 650; letter-spacing: -.0
 .invoice-lines td { vertical-align: top; }
 .open-invoices { white-space: nowrap; }
 .add-line a { font-weight: 500; }
-.add-line a::before { content: "+ " / ""; }
 .line-actions { width: 1%; white-space: nowrap; text-align: right; }
 .line-actions form { display: inline; margin: 0; }
 .line-actions button { width: 30px; height: 30px; padding: 0; border-radius: 8px; }
 .invoice-header { margin-top: 1.5rem; }
 .invoice-header .hint { margin: 0; }
 svg.icon { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+:is(a, button):has(> svg.icon) { display: inline-flex; align-items: center; justify-content: center; gap: .4rem; }
+.chip svg.icon { width: 14px; height: 14px; }
+button.icon svg.icon { width: 12px; height: 12px; fill: currentColor; }
 .crumb { display: inline-flex; align-items: center; gap: .35rem; margin-bottom: .35rem; color: var(--muted); font-size: .85rem; font-weight: 500; }
 .crumb:hover { color: var(--accent); text-decoration: none; }
 .invoice-body { display: grid; grid-template-columns: minmax(0, 1fr) 17rem; gap: 1.25rem; align-items: start; }
@@ -173,7 +175,6 @@ svg.icon { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-w
 .status-card form { display: grid; gap: .5rem; margin: 0; padding-top: .6rem; border-top: 1px solid var(--line); }
 .status-card label { display: grid; gap: .3rem; color: var(--muted); font-size: .85rem; font-weight: 550; }
 .status-card input { color: var(--fg); }
-.status-card button { display: inline-flex; align-items: center; justify-content: center; gap: .45rem; }
 .status-card .danger { display: inline-flex; align-items: center; gap: .45rem; justify-self: start; color: var(--danger); font-size: .85rem; font-weight: 500; }
 .more { display: block; margin: 1rem auto 0; padding: .5rem 1.2rem; width: max-content; border: 1px solid var(--field); border-radius: 999px; background: var(--surface); color: var(--fg); font-weight: 500; }
 .more:hover { border-color: var(--accent); text-decoration: none; }

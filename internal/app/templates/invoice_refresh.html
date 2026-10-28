@@ -2,11 +2,11 @@
 {{define "content"}}
 {{with .Data.Draft}}
 <h1>{{t "invoices.refresh"}}</h1>
-<p class="actions"><a href="/invoices/{{.ID}}">{{t "invoices.back"}}</a></p>
+<p class="actions"><a href="/invoices/{{.ID}}">{{template "icon-arrow-left"}}{{t "invoices.back"}}</a></p>
 <form method="post" action="/invoices/{{.ID}}/refresh" class="form">
 <p>{{t "invoices.refresh_warning"}}</p>
 <p class="hint">{{if .Header.From}}{{t "invoices.from"}} {{day .Header.From}} · {{t "invoices.to"}} {{day .Header.To}}{{else}}{{t "invoices.no_range"}}{{end}}</p>
-<button>{{t "invoices.refresh"}}</button>
+<button>{{template "icon-refresh-cw"}}{{t "invoices.refresh"}}</button>
 </form>
 {{end}}
 {{end}}

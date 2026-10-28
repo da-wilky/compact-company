@@ -16,7 +16,7 @@
 <label>{{t "customers.note"}} <textarea name="note" rows="3">{{.Customer.Note}}</textarea></label>
 <button>{{t "customers.save"}}</button>
 </form>
-{{with .Customer.ID}}<form method="post" action="/customers/{{.}}/{{if $.Data.Customer.Archived}}unarchive{{else}}archive{{end}}"><button>{{if $.Data.Customer.Archived}}{{t "archive.unarchive"}}{{else}}{{t "archive.archive"}}{{end}}</button></form>
-<form method="post" action="/customers/{{.}}/delete"><button>{{t "archive.delete"}}</button></form>{{end}}
+{{with .Customer.ID}}<form method="post" action="/customers/{{.}}/{{if $.Data.Customer.Archived}}unarchive{{else}}archive{{end}}"><button>{{if $.Data.Customer.Archived}}{{template "icon-archive-restore"}}{{t "archive.unarchive"}}{{else}}{{template "icon-archive"}}{{t "archive.archive"}}{{end}}</button></form>
+<form method="post" action="/customers/{{.}}/delete"><button>{{template "icon-trash"}}{{t "archive.delete"}}</button></form>{{end}}
 {{end}}
 {{end}}

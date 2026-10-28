@@ -24,6 +24,6 @@
 </fieldset>
 {{if not .ReadOnly}}<button>{{t "entries.save"}}</button>{{end}}
 </form>
-{{if and .Entry.ID (not .ReadOnly)}}<form method="post" action="/entries/{{.Entry.ID}}/delete"><input type="hidden" name="return" value="{{.Return}}"><button>{{t "entries.delete"}}</button></form>{{end}}
+{{if and .Entry.ID (not .ReadOnly)}}<form method="post" action="/entries/{{.Entry.ID}}/delete"><input type="hidden" name="return" value="{{.Return}}"><button>{{template "icon-trash"}}{{t "entries.delete"}}</button></form>{{end}}
 {{end}}
 {{end}}
