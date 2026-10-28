@@ -48,6 +48,8 @@
 "invoices.quantity" = { en = "Quantity", de = "Menge" }
 "invoices.unit" = { en = "Unit", de = "Einheit" }
 "invoices.unit_price" = { en = "Unit price (%s)", de = "Einzelpreis (%s)" }
+"invoices.line_project" = { en = "Project", de = "Projekt" }
+"invoices.line_no_project" = { en = "No project", de = "Kein Projekt" }
 "invoices.price" = { en = "Unit price", de = "Einzelpreis" }
 "invoices.total" = { en = "Total", de = "Summe" }
 "invoices.net" = { en = "Net", de = "Netto" }
@@ -73,6 +75,7 @@
 "invoices.error.description" = { en = "Description is required.", de = "Beschreibung ist erforderlich." }
 "invoices.error.quantity" = { en = "Quantity must be a non-negative decimal with at most 3 decimals.", de = "Menge muss eine nicht negative Dezimalzahl mit höchstens 3 Nachkommastellen sein." }
 "invoices.error.unit_price" = { en = "Unit price must be a non-negative decimal with no more decimals than the currency allows.", de = "Einzelpreis muss eine nicht negative Dezimalzahl mit höchstens so vielen Nachkommastellen sein, wie die Währung erlaubt." }
+"invoices.error.line_project" = { en = "Choose one of the projects this invoice bills.", de = "Bitte eines der Projekte wählen, die diese Rechnung abrechnet." }
 "invoices.preview" = { en = "Preview PDF", de = "PDF-Vorschau" }
 "invoices.typst_error" = { en = "The invoice template failed to render:", de = "Die Rechnungsvorlage konnte nicht gerendert werden:" }
 "invoices.issue" = { en = "Issue invoice", de = "Rechnung stellen" }

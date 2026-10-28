@@ -33,7 +33,10 @@ func init() {
 		mux.HandleFunc("POST /projects/{id}/unarchive", a.authed(a.projectWrite(nil,
 			`UPDATE project SET archived = 0 WHERE id = ?`)))
 		mux.HandleFunc("POST /projects/{id}/delete", a.authed(a.projectWrite(
-			[]guard{{`SELECT EXISTS (SELECT 1 FROM time_entry WHERE project_id = ?)`, "projects.error.has_entries"}},
+			[]guard{
+				{`SELECT EXISTS (SELECT 1 FROM time_entry WHERE project_id = ?)`, "projects.error.has_entries"},
+				{`SELECT EXISTS (SELECT 1 FROM invoice_line WHERE project_id = ?)`, "projects.error.on_invoice"},
+			},
 			`DELETE FROM project WHERE id = ?`)))
 	})
 }

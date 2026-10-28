@@ -45,8 +45,8 @@ def seed(api):
         api.post(f"{base}/entries", form={"project": projects.get(project, ""), "start": f"{d}T{hours[0]:02}:00", "end": f"{d}T{hours[1]:02}:00", "description": f"{project or 'Admin'} work", "billable": ""})
     api.post(f"{base}/timers", form={"project": projects["Hosting"], "description": "Server update"})
     draft = api.post(f"{base}/invoices", form={"customer": customer, "from": str(monday), "to": str(today), "grouping": "project", "rounding_minutes": "15", "payment_days": "14", "all_projects": "1"}, max_redirects=0).headers["location"]
-    for line in [("Website relaunch", "Design and implementation of the new landing page", "12.5", "h", "85"), ("Hosting", "", "1", "month", "29.90")]:
-        api.post(f"{base}{draft}/lines", form=dict(zip(("description", "detail", "quantity", "unit", "unit_price"), line)))
+    for line in [("Website relaunch", "Design and implementation of the new landing page", "12.5", "h", "85", ""), ("Hosting", "", "1", "month", "29.90", projects["Hosting"])]:
+        api.post(f"{base}{draft}/lines", form=dict(zip(("description", "detail", "quantity", "unit", "unit_price", "project"), line)))
     line = re.search(rf'href="({draft}/lines/\d+)"', api.get(f"{base}{draft}").text()).group(1)
     entry = re.findall(r'href="(/entries/\d+)\?', api.get(f"{base}/entries").text())[-1]  # Monday's, claimed by the draft
     # Last week's time, so the issued invoice has project sections next to its free lines.
@@ -54,7 +54,7 @@ def seed(api):
         d = monday + datetime.timedelta(days=day)
         api.post(f"{base}/entries", form={"project": projects[project], "start": f"{d}T09:00", "end": f"{d}T11:00", "description": f"{project} work", "billable": ""})
     issued = api.post(f"{base}/invoices", form={"customer": customer, "from": str(monday - datetime.timedelta(days=7)), "to": str(today), "grouping": "project", "rounding_minutes": "0", "payment_days": "14", "all_projects": "1"}, max_redirects=0).headers["location"]
-    api.post(f"{base}{issued}/lines", form={"description": "Workshop", "detail": "On site, two days", "quantity": "16", "unit": "h", "unit_price": "85"})
+    api.post(f"{base}{issued}/lines", form={"description": "Workshop", "detail": "On site, two days", "quantity": "16", "unit": "h", "unit_price": "85", "project": projects["Website relaunch"]})
     business = {"name": "Samuel Wilk", "company": "swilk", "address": "Hauptstraße 1\n12345 Berlin", "tax_number": "12/345/67890", "tax_mode": "standard", "vat_rate": "19"}
     api.post(f"{base}/settings/business", form=business)
     api.post(f"{base}{issued}/lines", form={"description": "Travel", "detail": "", "quantity": "1", "unit": "flat", "unit_price": "120"})

@@ -10,6 +10,10 @@
 <label>{{t "invoices.quantity"}} <input name="quantity" value="{{.Line.Quantity}}" required inputmode="decimal"></label>
 <label>{{t "invoices.unit"}} <input name="unit" value="{{.Line.Unit}}"></label>
 <label>{{t "invoices.unit_price" .Draft.Currency}} <input name="unit_price" value="{{.Line.UnitPrice}}" required inputmode="decimal"></label>
+{{if not .Line.Generated}}<label>{{t "invoices.line_project"}} <select name="project">
+<option value="">{{t "invoices.line_no_project"}}</option>
+{{range .Projects}}<option value="{{.ID}}"{{if eq .ID $.Data.Line.ProjectID}} selected{{end}}>{{.Name}}{{if .Archived}} ({{t "archive.archived"}}){{end}}</option>
+{{end}}</select></label>{{end}}
 <button>{{t "invoices.save"}}</button>
 </form>
 {{with .Entries}}<h2>{{t "invoices.line_entries"}}</h2>

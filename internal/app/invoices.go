@@ -193,9 +193,9 @@ type projectOption struct {
 	Archived bool
 }
 
-// projectOptions lists the customer's projects, archived ones included: their finished work can still be billed.
-func (a *App) projectOptions(customerID string) ([]projectOption, error) {
-	rows, err := a.db.Query(`SELECT id, name, archived FROM project WHERE customer_id = ? ORDER BY name, id`, customerID)
+// projectOptions lists the projects p meeting cond, archived ones included: their finished work can still be billed.
+func (a *App) projectOptions(cond string, arg any) ([]projectOption, error) {
+	rows, err := a.db.Query(`SELECT p.id, p.name, p.archived FROM project p WHERE `+cond+` ORDER BY p.name, p.id`, arg)
 	if err != nil {
 		return nil, err
 	}
@@ -241,7 +241,7 @@ func (a *App) renderDraftNew(w http.ResponseWriter, r *http.Request, status int,
 	if len(customers) > 0 && !slices.ContainsFunc(customers, func(c customerOption) bool { return strconv.FormatInt(c.ID, 10) == f.Customer }) {
 		f.Customer = strconv.FormatInt(customers[0].ID, 10)
 	}
-	projects, err := a.projectOptions(f.Customer)
+	projects, err := a.projectOptions("p.customer_id = ?", f.Customer)
 	if err != nil {
 		a.serverError(w, r, err)
 		return
