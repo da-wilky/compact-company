@@ -124,7 +124,7 @@ func TestDeletingAGeneratedLineReleasesItsEntries(t *testing.T) {
 	entry := c.createEntry(entryForm(website, "2026-09-02T08:00", "2026-09-02T09:00", "billed"))
 	draft := c.createDraft(pullForm(c, "project", "0"))
 
-	wantRedirect(t, c.postForm(c.linePath(draft, "website")+"/delete", nil), draft)
+	wantRedirect(t, c.postForm(c.linePath(draft, "Working time")+"/delete", nil), draft)
 
 	c.get("/entries?day=2026-09-02").wantNoBody(t, `href="`+draft+`"`)
 	wantRedirect(t, c.postForm(entry, entryForm(website, "2026-09-02T08:00", "2026-09-02T10:00", "more")), "/entries?day=2026-09-02")
@@ -150,9 +150,9 @@ func TestGeneratedLinesAreEditableAndListTheirEntries(t *testing.T) {
 	alice.createEntry(entryForm(website, "2026-09-02T08:00", "2026-09-02T09:00", "design"))
 	bob.createEntry(entryForm(website, "2026-09-03T08:00", "2026-09-03T08:30", "review"))
 	draft := alice.createDraft(pullForm(alice, "project", "0"))
-	line := alice.linePath(draft, "website")
+	line := alice.linePath(draft, "Working time")
 
-	wantInOrder(t, alice.get(line).body, `value="website"`, "2026-09-02", "alice", "1:00", "design", "2026-09-03", "bob", "0:30", "review")
+	wantInOrder(t, alice.get(line).body, `value="Working time"`, "2026-09-02", "alice", "1:00", "design", "2026-09-03", "bob", "0:30", "review")
 	form := lineForm("Website relaunch", "2", "90")
 	form.Set("detail", "September")
 	wantRedirect(t, alice.postForm(line, form), draft)
@@ -167,7 +167,7 @@ func TestRefreshRegeneratesGeneratedLinesFromTheCurrentRangeAndKeepsFreeLines(t 
 	c.createEntry(entryForm(website, "2026-09-02T08:00", "2026-09-02T09:00", "september"))
 	draft := c.createDraft(pullForm(c, "project", "0"))
 	c.addLine(draft, lineForm("Flat fee", "1", "500"))
-	wantRedirect(t, c.postForm(c.linePath(draft, "website"), lineForm("Edited", "9", "1")), draft)
+	wantRedirect(t, c.postForm(c.linePath(draft, "Working time"), lineForm("Edited", "9", "1")), draft)
 	c.createEntry(entryForm(website, "2026-09-03T08:00", "2026-09-03T08:30", "late september"))
 	c.createEntry(entryForm(hosting, "2026-10-01T08:00", "2026-10-01T09:00", "october"))
 	wantRedirect(t, c.postForm(draft, url.Values{
@@ -184,7 +184,7 @@ func TestRefreshRegeneratesGeneratedLinesFromTheCurrentRangeAndKeepsFreeLines(t 
 
 	res := c.get(draft)
 	res.wantNoBody(t, "Edited")
-	wantInOrder(t, res.body, "Flat fee", "500.00", ">hosting<", "1", "100.00", ">website<", "1.5", "85.00", "127.50")
+	wantInOrder(t, res.body, ">hosting<", "1", "100.00", ">website<", "1.5", "85.00", "127.50", "Flat fee", "500.00")
 }
 
 func TestDraftWithoutARangePullsNoEntries(t *testing.T) {
@@ -203,7 +203,7 @@ func TestDraftWithoutARangePullsNoEntries(t *testing.T) {
 	res.wantBody(t, `name="from" value=""`)
 	c.get("/").in(t, "Drafts").wantRow(t, "acme", "Without time entries")
 	c.get(draft+"/refresh").wantBody(t, "Without time entries")
-	c.linePath(c.createDraft(pullForm(c, "project", "0")), "website")
+	c.linePath(c.createDraft(pullForm(c, "project", "0")), "Working time")
 }
 
 func TestRefreshWithoutARangeReleasesTheEntriesAndKeepsFreeLines(t *testing.T) {
@@ -220,7 +220,7 @@ func TestRefreshWithoutARangeReleasesTheEntriesAndKeepsFreeLines(t *testing.T) {
 	res := c.get(draft)
 	res.wantBody(t, "Flat fee")
 	res.wantNoBody(t, "from time")
-	c.linePath(c.createDraft(pullForm(c, "project", "0")), "website")
+	c.linePath(c.createDraft(pullForm(c, "project", "0")), "Working time")
 }
 
 func TestDraftWithEntriesShowsTheServicePeriodFromThemAndKeepsTheOneSetByHand(t *testing.T) {

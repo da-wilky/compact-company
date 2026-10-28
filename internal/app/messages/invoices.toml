@@ -24,6 +24,10 @@
 "invoices.range_hint" = { en = "Leave both dates empty to start without time entries.", de = "Beide Daten leer lassen, um ohne Zeiteinträge zu beginnen." }
 "invoices.service_from_entries" = { en = "From the first to the last time entry on this draft.", de = "Vom ersten bis zum letzten Zeiteintrag dieses Entwurfs." }
 "invoices.payment_days" = { en = "Payment days", de = "Zahlungsziel (Tage)" }
+"invoices.projects" = { en = "Projects", de = "Projekte" }
+"invoices.all_projects" = { en = "All projects", de = "Alle Projekte" }
+"invoices.no_projects" = { en = "This customer has no projects.", de = "Dieser Kunde hat keine Projekte." }
+"invoices.projects_none" = { en = "none", de = "keine" }
 "invoices.grouping" = { en = "Lines from time", de = "Positionen aus Zeiten" }
 "invoices.grouping.project" = { en = "One line per project", de = "Eine Position je Projekt" }
 "invoices.grouping.entry" = { en = "One line per entry", de = "Eine Position je Eintrag" }
@@ -38,6 +42,7 @@
 "invoices.edit_line" = { en = "Edit line", de = "Position bearbeiten" }
 "invoices.back" = { en = "Back to draft", de = "Zurück zum Entwurf" }
 "invoices.generated" = { en = "from time", de = "aus Zeiten" }
+"invoices.working_time" = { en = "Working time", de = "Arbeitszeit" }
 "invoices.description" = { en = "Description", de = "Beschreibung" }
 "invoices.detail" = { en = "Detail", de = "Detail" }
 "invoices.quantity" = { en = "Quantity", de = "Menge" }
@@ -64,6 +69,7 @@
 "invoices.error.grouping" = { en = "Choose how lines are grouped.", de = "Bitte wählen, wie Positionen gebildet werden." }
 "invoices.error.rounding" = { en = "Choose a rounding increment.", de = "Bitte eine Rundung wählen." }
 "invoices.error.payment_days" = { en = "Payment days must be a positive whole number.", de = "Das Zahlungsziel muss eine positive ganze Zahl sein." }
+"invoices.error.projects" = { en = "Tick at least one of the customer's projects, or bill all projects.", de = "Bitte mindestens ein Projekt des Kunden ankreuzen oder alle Projekte abrechnen." }
 "invoices.error.description" = { en = "Description is required.", de = "Beschreibung ist erforderlich." }
 "invoices.error.quantity" = { en = "Quantity must be a non-negative decimal with at most 3 decimals.", de = "Menge muss eine nicht negative Dezimalzahl mit höchstens 3 Nachkommastellen sein." }
 "invoices.error.unit_price" = { en = "Unit price must be a non-negative decimal with no more decimals than the currency allows.", de = "Einzelpreis muss eine nicht negative Dezimalzahl mit höchstens so vielen Nachkommastellen sein, wie die Währung erlaubt." }

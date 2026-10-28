@@ -167,6 +167,8 @@ h1 { margin: 0 0 1rem; font-size: 1.75rem; font-weight: 650; letter-spacing: -.0
 .filter-form button { padding: .25rem .8rem; font-size: .85rem; }
 .invoice-lines { min-width: 40rem; }
 .invoice-lines td { vertical-align: top; }
+.invoice-lines tr.section th { padding-top: .9rem; font-weight: 650; }
+.invoice-lines tr.in-section td:first-child { padding-left: 1.75rem; }
 .open-invoices { white-space: nowrap; }
 .add-line a { font-weight: 500; }
 .line-actions { width: 1%; white-space: nowrap; text-align: right; }
@@ -220,6 +222,9 @@ tfoot > tr > * { border-top: 1px solid var(--line); border-bottom: 0; font-weigh
 .form label > :not(.hint), .settings label > :not(.hint) { color: var(--fg); font-size: .95rem; font-weight: 400; }
 .form label:has(input[type=checkbox]), .settings label:has(input[type=checkbox]) { display: flex; align-items: center; gap: .5rem; color: var(--fg); }
 .settings .hint { margin: -.5rem 0 0; }
+.invoice-projects legend { margin-bottom: .5rem; padding: 0; color: var(--muted); font-size: .85rem; font-weight: 550; }
+.project-choice { display: grid; gap: .6rem; padding-left: 1.6rem; }
+.invoice-projects:has([name=all_projects]:checked) .project-choice { display: none; }
 main > form:not(.form, .settings) { display: inline-block; margin: 1rem .5rem 0 0; }
 
 .timers { display: grid; gap: .5rem; }

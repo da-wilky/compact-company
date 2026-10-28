@@ -177,6 +177,17 @@ type issuedLine struct {
 	CancelledBy *invoiceRef
 }
 
+func (l issuedLine) project() string {
+	if l.Project == nil {
+		return ""
+	}
+	return *l.Project
+}
+
+func (inv issuedInvoice) Sections() []lineSection[issuedLine] {
+	return sections(inv.Lines, issuedLine.project)
+}
+
 // invoiceStatus is the status of invoice i; cancellation is derived from its lines, never stored.
 const invoiceStatus = `CASE WHEN i.number IS NULL THEN 'draft' WHEN i.kind = '` + kindCancellation + `' THEN 'cancellation'
 	ELSE (SELECT CASE WHEN count(x.id) = 0 THEN iif(i.paid_date IS NULL, 'issued', 'paid')
@@ -209,11 +220,11 @@ func (a *App) loadIssued(id int64) (issuedInvoice, error) {
 	return inv, nil
 }
 
-// loadIssuedLines pairs the snapshot's lines, which are in position order, with their ids and cancellations.
+// loadIssuedLines pairs the snapshot's lines, which are in section order, with their ids and cancellations.
 func (a *App) loadIssuedLines(inv *issuedInvoice) error {
 	rows, err := a.db.Query(`SELECT l.id, c.id, c.number FROM invoice_line l
 		LEFT JOIN invoice_line x ON x.cancels_line_id = l.id LEFT JOIN invoice c ON c.id = x.invoice_id
-		WHERE l.invoice_id = ? ORDER BY l.position, l.id`, inv.ID)
+		WHERE l.invoice_id = ?`+sectionOrder, inv.ID)
 	if err != nil {
 		return err
 	}
