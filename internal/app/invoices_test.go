@@ -17,6 +17,7 @@ func draftForm(customerPath, from, to string) url.Values {
 		"grouping":         {"project"},
 		"rounding_minutes": {"15"},
 		"payment_days":     {"14"},
+		"all_projects":     {"1"},
 	}
 }
 

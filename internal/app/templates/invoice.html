@@ -27,7 +27,7 @@
 {{end}}
 {{with $.Data.Errors}}<ul class="errors">{{range .}}<li>{{t .}}</li>{{end}}</ul>{{end}}
 <form method="post" action="/invoices/{{.ID}}" class="form invoice-header">
-<p class="hint">{{.CustomerNumber}} {{.CustomerName}} · {{t (print "invoices.grouping." .Grouping)}} · {{if .RoundingMinutes}}{{t "invoices.rounding.minutes" .RoundingMinutes}}{{else}}{{t "invoices.rounding.none"}}{{end}}</p>
+<p class="hint">{{.CustomerNumber}} {{.CustomerName}} · {{t (print "invoices.grouping." .Grouping)}} · {{if .RoundingMinutes}}{{t "invoices.rounding.minutes" .RoundingMinutes}}{{else}}{{t "invoices.rounding.none"}}{{end}}<br>{{t "invoices.projects"}}: {{if .AllProjects}}{{t "invoices.all_projects"}}{{else}}{{range $i, $p := .Projects}}{{if $i}}, {{end}}{{$p}}{{else}}{{t "invoices.projects_none"}}{{end}}{{end}}</p>
 <label>{{t "invoices.from"}} <input type="date" name="from" value="{{.Header.From}}"></label>
 <label>{{t "invoices.to"}} <input type="date" name="to" value="{{.Header.To}}"></label>
 {{with .ServicePeriod}}<p>{{t "invoices.service_period"}} {{day .From}} – {{day .To}}<br><span class="hint">{{t "invoices.service_from_entries"}}</span></p>
