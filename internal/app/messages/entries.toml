@@ -37,3 +37,8 @@
 "entries.confirm_delete" = { en = "Delete the entry of %s %s?", de = "Eintrag vom %s %s löschen?" }
 "entries.confirm_delete_described" = { en = "Delete the entry of %s %s “%s”?", de = "Eintrag vom %s %s „%s“ löschen?" }
 "entries.per_page" = { en = "Per page", de = "Pro Seite" }
+"entries.select" = { en = "Select the entry of %s %s", de = "Eintrag vom %s %s auswählen" }
+"entries.confirm_delete_one" = { en = "Delete 1 entry?", de = "1 Eintrag löschen?" }
+"entries.confirm_delete_many" = { en = "Delete %s entries?", de = "%s Einträge löschen?" }
+"entries.error.delete_blocked" = { en = "Nothing was deleted. These entries can't be deleted:", de = "Nichts wurde gelöscht. Diese Einträge können nicht gelöscht werden:" }
+"entries.blocked.other" = { en = "entry of %s", de = "Eintrag von %s" }

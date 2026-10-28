@@ -29,7 +29,7 @@ func TestManualEntryShowsInTheDayListing(t *testing.T) {
 	list.wantBody(t, "acme · website")
 	list.wantBody(t, "kickoff")
 	list.wantBody(t, "08:00–09:45")
-	list.wantRow(t, "08:00–09:45", "1:45", "acme · website", "kickoff", "yes")
+	list.wantRow(t, "", "08:00–09:45", "1:45", "acme · website", "kickoff", "yes")
 	c.get("/entries?day=2026-10-27").wantNoBody(t, "kickoff")
 }
 
@@ -197,7 +197,7 @@ func TestAssigningAnUnassignedEntryAppliesTheProjectDefault(t *testing.T) {
 	wantRedirect(t, res, "/entries?day=2026-10-26")
 	list := c.get("/entries?day=2026-10-26")
 	list.wantBody(t, "08:00–09:30")
-	list.wantRow(t, "08:00–09:30", "1:30", "acme · website", "adopted", "yes")
+	list.wantRow(t, "", "08:00–09:30", "1:30", "acme · website", "adopted", "yes")
 	c.get(entry).wantBody(t, `<option value="yes" selected>`)
 }
 
@@ -213,7 +213,7 @@ func TestOwnerCanFullyEditAnEntry(t *testing.T) {
 
 	wantRedirect(t, res, "/entries?day=2026-10-27")
 	c.get("/entries?day=2026-10-26").wantBody(t, "No entries.")
-	c.get("/entries?day=2026-10-27").wantRow(t, "10:00–10:20", "0:20", "Unassigned", "moved", "")
+	c.get("/entries?day=2026-10-27").wantRow(t, "", "10:00–10:20", "0:20", "Unassigned", "moved", "")
 	clash := c.postForm(entry, entryForm("", "2026-10-27T08:30", "2026-10-27T10:20", "moved"))
 	clash.wantStatus(t, http.StatusUnprocessableEntity)
 	clash.wantBody(t, "This entry overlaps another of your entries.")
@@ -250,7 +250,7 @@ func TestColleaguesCanViewButNotChangeAnEntry(t *testing.T) {
 	alice.get("/entries?day=2026-10-26").wantBody(t, "alice work")
 	bob.get("/entries?day=2026-10-26").wantNoBody(t, "alice work")
 	everyone := bob.get("/entries?day=2026-10-26&everyone=1")
-	everyone.wantRow(t, "alice", "08:00–09:00", "1:00", "Unassigned", "alice work", "")
+	everyone.wantRow(t, "", "alice", "08:00–09:00", "1:00", "Unassigned", "alice work", "")
 	everyone.wantNoBody(t, `href="`+entry+`"`)
 	everyone.wantBody(t, `href="/entries?day=2026-10-27&amp;everyone=1"`)
 }
@@ -293,10 +293,10 @@ func TestEntryBillableInheritsTheProjectDefaultUnlessSet(t *testing.T) {
 	c.postForm("/entries", entryForm("", "2026-10-26T11:00", "2026-10-26T12:00", "orphan")).wantStatus(t, http.StatusSeeOther)
 
 	list := c.get("/entries?day=2026-10-26")
-	list.wantRow(t, "08:00–09:00", "1:00", "acme · internal", "inherited", "no")
-	list.wantRow(t, "09:00–10:00", "1:00", "acme · website", "explicit", "no")
-	list.wantRow(t, "10:00–11:00", "1:00", "acme · website", "default", "yes")
-	list.wantRow(t, "11:00–12:00", "1:00", "Unassigned", "orphan", "")
+	list.wantRow(t, "", "08:00–09:00", "1:00", "acme · internal", "inherited", "no")
+	list.wantRow(t, "", "09:00–10:00", "1:00", "acme · website", "explicit", "no")
+	list.wantRow(t, "", "10:00–11:00", "1:00", "acme · website", "default", "yes")
+	list.wantRow(t, "", "11:00–12:00", "1:00", "Unassigned", "orphan", "")
 }
 
 func TestUnassignedEntryCannotBeMarkedBillable(t *testing.T) {
@@ -366,7 +366,7 @@ func TestStoppedTimerIsListedWithItsEndAndDuration(t *testing.T) {
 	list := c.get("/entries")
 	wantInOrder(t, list.text(), "Mon 2026-10-26 1:30")
 	list.wantBody(t, "09:00–10:30")
-	list.wantRow(t, "09:00–10:30", "1:30", "Unassigned", "tracked", "")
+	list.wantRow(t, "", "09:00–10:30", "1:30", "Unassigned", "tracked", "")
 }
 
 func TestEntriesAreEnteredAndAttributedInTheViewersTimezone(t *testing.T) {
