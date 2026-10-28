@@ -190,7 +190,8 @@ function confirmForms() {
 
 // A form.selection gathers the row checkboxes that name it (form="<its id>") and shows once there are any.
 // [data-select-all] toggles them all; .selection-actions shows while some are checked;
-// [data-count] and each button's data-confirm-one / data-confirm-many follow the count, "{n}" standing for it.
+// [data-count] and each button's data-confirm-one / data-confirm-many follow the count, "{n}" standing for it;
+// a button with data-only-state shows only while every checked box has that data-state.
 function selections() {
   const boxes = (form) => [...form.elements].filter((el) => el.type === "checkbox" && el.name);
   function update(form) {
@@ -202,6 +203,7 @@ function selections() {
     form.querySelector(".selection-actions").hidden = n === 0;
     for (const el of form.querySelectorAll("[data-count]")) el.textContent = el.dataset.count.replace("{n}", n);
     for (const b of form.querySelectorAll("[data-confirm-many]")) b.dataset.confirm = (n === 1 ? b.dataset.confirmOne : b.dataset.confirmMany).replace("{n}", n);
+    for (const b of form.querySelectorAll("[data-only-state]")) b.hidden = !all.every((box) => !box.checked || box.dataset.state === b.dataset.onlyState);
   }
   const updateAll = () => document.querySelectorAll("form.selection").forEach(update);
   document.addEventListener("change", (e) => {

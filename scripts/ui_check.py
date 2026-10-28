@@ -152,6 +152,20 @@ def main():
                         page.click(".selection-actions button")
                         page.screenshot(path=f"{out}/{lang}-{viewport}-{scheme}-invoices-selected-confirm.png")
                         failures += [f"{lang} {viewport} {scheme} /invoices (delete confirm open): {p}" for p in page.evaluate(FIND_BREAKAGE)]
+                    # Every seeded customer and project is still in use, so the delete is refused and nothing goes.
+                    for path in ("/customers", f"/customers/{customer}/projects"):
+                        if path not in pages:
+                            continue
+                        name = re.sub(r"[^a-z0-9]+", "-", path.lower()).strip("-")
+                        page.goto(base + path)
+                        page.check("form.selection [data-select-all]")
+                        page.screenshot(path=f"{out}/{lang}-{viewport}-{scheme}-{name}-selected.png", full_page=True)
+                        failures += [f"{lang} {viewport} {scheme} {path} (rows selected): {p}" for p in page.evaluate(FIND_BREAKAGE)]
+                        page.click(".selection-actions button.danger")
+                        page.click("dialog.confirm button[value=ok]")
+                        page.wait_for_selector(".selection-blocked")
+                        page.screenshot(path=f"{out}/{lang}-{viewport}-{scheme}-{name}-blocked.png", full_page=True)
+                        failures += [f"{lang} {viewport} {scheme} {path} (delete refused): {p}" for p in page.evaluate(FIND_BREAKAGE)]
                     if not only or "/invoices/new" in only:
                         page.goto(base + "/invoices/new")
                         page.uncheck("input[name=all_projects]")

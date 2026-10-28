@@ -161,6 +161,11 @@ h1 { margin: 0 0 1rem; font-size: 1.75rem; font-weight: 650; letter-spacing: -.0
 .selection-actions button { padding: .3rem .9rem; font-size: .85rem; }
 .selection-actions .group { display: inline-flex; gap: .4rem; min-width: 0; }
 .selection-actions select { min-width: 0; max-width: 14rem; padding: .3rem .6rem; font-size: .85rem; }
+.selection-actions > [hidden] { display: none; }
+td.c-select { width: 2.6rem; padding-right: 0; }
+.selection-blocked { margin: 0 0 1rem; }
+.selection-blocked p { margin: 0 0 .25rem; font-weight: 600; }
+.selection-blocked ul { margin: 0; padding-left: 1.1rem; }
 #entry-list > .errors { margin: 0 0 1rem; }
 #entry-list > .errors p { margin: 0 0 .25rem; font-weight: 600; }
 #entry-list > .errors ul { margin: 0; padding-left: 1.1rem; }
