@@ -23,7 +23,7 @@ type cancelPage struct {
 	renderFailure
 }
 
-// cancellableFromPath loads the issued invoice in the path; cancellation invoices can't be cancelled.
+// cancellableFromPath loads the issued invoice in the path, if it is Cancellable.
 // It writes 404 or 500 itself when ok is false.
 func (a *App) cancellableFromPath(w http.ResponseWriter, r *http.Request) (issuedInvoice, bool) {
 	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
@@ -32,7 +32,7 @@ func (a *App) cancellableFromPath(w http.ResponseWriter, r *http.Request) (issue
 		return issuedInvoice{}, false
 	}
 	inv, err := a.loadIssued(id)
-	if errors.Is(err, sql.ErrNoRows) || err == nil && inv.Snapshot.Kind != kindInvoice {
+	if errors.Is(err, sql.ErrNoRows) || err == nil && !inv.Cancellable {
 		a.notFound(w, r)
 		return inv, false
 	}

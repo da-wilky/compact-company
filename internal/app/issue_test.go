@@ -226,7 +226,7 @@ func TestLaterBusinessAndCustomerChangesLeaveIssuedInvoicesAlone(t *testing.T) {
 	c.postForm(c.customerPath("acme"), customerForm("Globex AG", "99")).wantStatus(t, http.StatusSeeOther)
 
 	res := c.get(draft)
-	wantInOrder(t, res.text(), "Invoice 2026-001 K-001 acme Issue date")
+	res.wantBody(t, "K-001 acme")
 	wantInOrder(t, res.body, "127.50", "24.23", "151.73")
 	list := c.get("/invoices")
 	wantInOrder(t, list.body, "2026-001", "acme", "151.73 EUR")

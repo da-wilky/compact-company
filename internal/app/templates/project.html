@@ -11,7 +11,7 @@
 <label><input type="checkbox" name="billable"{{if .Project.Billable}} checked{{end}}> {{t "projects.billable_default"}}</label>
 <button>{{t "projects.save"}}</button>
 </form>
-{{with .Project.ID}}<form method="post" action="/projects/{{.}}/{{if $.Data.Project.Archived}}unarchive{{else}}archive{{end}}"><button>{{if $.Data.Project.Archived}}{{template "icon-archive-restore"}}{{t "archive.unarchive"}}{{else}}{{template "icon-archive"}}{{t "archive.archive"}}{{end}}</button></form>
+{{with .Project.ID}}{{if $.Data.Project.Archived}}<form method="post" action="/projects/{{.}}/unarchive"><button>{{template "icon-archive-restore"}}{{t "archive.unarchive"}}</button></form>{{else}}<form method="post" action="/projects/{{.}}/archive"><button>{{template "icon-archive"}}{{t "archive.archive"}}</button></form>{{end}}
 <form method="post" action="/projects/{{.}}/delete"><button>{{template "icon-trash"}}{{t "archive.delete"}}</button></form>{{end}}
 {{end}}
 {{end}}

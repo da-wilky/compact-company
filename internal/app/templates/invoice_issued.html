@@ -1,6 +1,6 @@
 {{define "title"}}{{if .Data.CancelsID}}{{t "invoices.cancellation" .Data.Number}}{{else}}{{t "invoices.invoice" .Data.Number}}{{end}}{{end}}
 {{define "content"}}
-{{with .Data}}{{$cancellable := and (not .CancelsID) (ne .Status "cancelled")}}{{with .Snapshot}}
+{{with .Data}}{{with .Snapshot}}
 <a class="crumb" href="/invoices">{{template "icon-arrow-left"}}{{t "invoices.title"}}</a>
 <div class="page-head">
 <div><h1>{{template "title" $}}</h1>
@@ -12,17 +12,17 @@
 <aside class="status-card">
 <p class="status">{{t (print "invoices.status." $.Data.Status)}}</p>
 <p class="due">{{or $.Data.AmountDue .Totals.Gross}} {{.Currency}}</p>
-<a class="primary" href="/invoices/{{$.Data.ID}}/pdf">{{template "icon-download"}}{{t "invoices.download"}}</a>
+<a class="pill primary" href="/invoices/{{$.Data.ID}}/pdf">{{template "icon-download"}}{{t "invoices.download"}}</a>
 {{with $.Data.Errors}}<ul class="errors">{{range .}}<li>{{t .}}</li>{{end}}</ul>{{end}}
 {{if $.Data.PaidDate}}<form method="post" action="/invoices/{{$.Data.ID}}/unpaid">
 <p>{{t "invoices.paid_on" (day $.Data.PaidDate)}}</p>
-<button>{{t "invoices.undo_paid"}}</button>
+<button>{{template "icon-undo-2"}}{{t "invoices.undo_paid"}}</button>
 </form>
-{{else if $cancellable}}<form method="post" action="/invoices/{{$.Data.ID}}/paid">
+{{else if $.Data.Cancellable}}<form method="post" action="/invoices/{{$.Data.ID}}/paid">
 <label>{{t "invoices.paid_date"}} <input type="date" name="paid_date" value="{{$.Data.PaidForm}}" required></label>
 <button>{{template "icon-check"}}{{t "invoices.mark_paid"}}</button>
 </form>{{end}}
-{{if $cancellable}}<a class="danger" href="/invoices/{{$.Data.ID}}/cancel">{{template "icon-file-x"}}{{t "invoices.cancel"}}</a>{{end}}
+{{if $.Data.Cancellable}}<a class="danger" href="/invoices/{{$.Data.ID}}/cancel">{{template "icon-file-x"}}{{t "invoices.cancel"}}</a>{{end}}
 </aside>
 <div class="table-wrap"><table class="invoice-lines">
 <thead><tr><th>{{t "invoices.description"}}</th><th class="num">{{t "invoices.quantity"}}</th><th>{{t "invoices.unit"}}</th><th class="num">{{t "invoices.price"}}</th><th class="num">{{t "invoices.total"}}</th><th></th></tr></thead>

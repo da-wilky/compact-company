@@ -39,10 +39,12 @@ Build the page from the shared components in `app.css`:
 
 | Class | For |
 |---|---|
+| `.crumb` | back link above the `h1`, with `icon-arrow-left` |
 | `.page-head` | title row: `h1` (plus `.hint` subtitle or a `.pill` action) left, `.pager` right |
 | `.pager` | navigation: `.prev` / `.next` links, a `form.jump` with a date input (`app.js` turns it into the calendar picker), `.pill` shortcuts before `.prev` |
 | `.filters` | filter row under `.page-head`: `.label`, `.seg` toggle (`aria-current` marks the active option), removable `.chip` |
 | `.actions` | row of pill links |
+| `.status-card` | `aside` beside the table in `.invoice-body`: `.status`, `.due` amount, a `.pill.primary` action, forms, a `.danger` link |
 | `.form`, `.settings` | form cards; a `.hint` inside a label stays muted |
 
 Strings that `app.js` needs come from the catalog as `data-*` attributes on `<body>` in `layout.html`.
