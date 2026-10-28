@@ -82,6 +82,7 @@ h1 { margin: 0 0 1rem; font-size: 1.75rem; font-weight: 650; letter-spacing: -.0
 .stats dd { margin: .2rem 0 0; color: var(--muted); font-variant-numeric: tabular-nums; }
 .stats b { color: var(--fg); font-size: 1.35rem; font-weight: 650; }
 .error, .errors { color: var(--danger); }
+.banner { padding: .75rem 1rem; border-radius: 10px; background: var(--accent-soft); color: var(--fg); }
 .typst-error { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 0.85rem; }
 .sha { overflow-wrap: anywhere; }
 .badge { display: inline-block; justify-self: start; padding: 0 .5rem; border-radius: 999px; color: var(--accent-fg); background: var(--danger); font-size: .72rem; font-weight: 600; }
@@ -127,7 +128,8 @@ h1 { margin: 0 0 1rem; font-size: 1.75rem; font-weight: 650; letter-spacing: -.0
 .weeks .picker-row.chosen button.today { box-shadow: inset 0 0 0 1.5px var(--accent-fg); }
 
 .filters { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; margin: 0 0 1.25rem; padding: .5rem .75rem; border-radius: 12px; background: var(--side); }
-.filters .label { color: var(--muted); font-size: .75rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
+.filters .group { display: inline-flex; align-items: center; gap: .6rem; }
+.filters .label {color: var(--muted); font-size: .75rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
 .seg { display: inline-flex; padding: 2px; border: 1px solid var(--field); border-radius: 999px; background: var(--surface); }
 .seg a { padding: .2rem .8rem; border-radius: 999px; color: var(--muted); font-size: .85rem; font-weight: 500; }
 .seg a:hover { color: var(--fg); text-decoration: none; }
@@ -182,6 +184,11 @@ button { padding: .45rem 1.1rem; border: 1px solid var(--line); border-radius: 9
 button:hover { border-color: var(--accent); }
 .form > button, .settings button { justify-self: start; border-color: var(--accent); background: var(--accent); color: var(--accent-fg); }
 button.ghost { border-color: transparent; background: transparent; }
+button.danger { border-color: var(--danger); background: var(--danger); color: var(--accent-fg); }
+dialog.confirm { width: min(26rem, calc(100vw - 2rem)); padding: 1.4rem; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); color: var(--fg); box-shadow: 0 16px 40px rgba(42, 37, 32, .18); }
+dialog.confirm::backdrop { background: rgba(27, 25, 22, .5); }
+dialog.confirm p { margin: 0 0 1.25rem; font-weight: 550; overflow-wrap: anywhere; }
+.confirm-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .5rem; }
 input, select, textarea { min-width: 0; padding: .45rem .65rem; border: 1px solid var(--field); border-radius: 10px; background: var(--surface); color: var(--fg); font: inherit; }
 input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 fieldset { display: grid; gap: .9rem; margin: 0; padding: 0; border: 0; }

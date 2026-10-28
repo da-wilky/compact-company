@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -45,7 +46,22 @@ type entryRow struct {
 	Invoice     *invoiceRef
 }
 
-const entriesPerPage = 10
+var entryPageSizes = []int{10, 25, 50, 100}
+
+// entryPageSize reads the requested page size; anything not offered falls back to the first.
+func entryPageSize(s string) int {
+	n, _ := strconv.Atoi(s)
+	if slices.Contains(entryPageSizes, n) {
+		return n
+	}
+	return entryPageSizes[0]
+}
+
+type entryPageSizeLink struct {
+	Size    int
+	URL     string
+	Current bool
+}
 
 type entryDay struct {
 	Weekday   string
@@ -56,11 +72,12 @@ type entryDay struct {
 }
 
 // entriesFilter is what /entries shows: one Day ("" = every day), only the viewer's
-// entries unless Everyone, and an optional Project ("none" = unassigned).
+// entries unless Everyone, an optional Project ("none" = unassigned), and PerPage entries at a time.
 type entriesFilter struct {
 	Day      string
 	Everyone bool
 	Project  string
+	PerPage  int
 }
 
 func (f entriesFilter) url(before string) string {
@@ -73,6 +90,9 @@ func (f entriesFilter) url(before string) string {
 	}
 	if f.Project != "" {
 		q.Set("project", f.Project)
+	}
+	if f.PerPage != entryPageSizes[0] {
+		q.Set("per_page", strconv.Itoa(f.PerPage))
 	}
 	if before != "" {
 		q.Set("before", before)
@@ -97,6 +117,7 @@ type entriesPage struct {
 	Prev, Next, Today     string
 	All, Mine, Team, Bare string
 	More                  string
+	PageSizes             []entryPageSizeLink
 	Days                  []entryDay
 }
 
@@ -107,7 +128,7 @@ func (a *App) entryList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	u := currentUser(r)
-	f := entriesFilter{Everyone: r.FormValue("everyone") != "", Project: r.FormValue("project")}
+	f := entriesFilter{Everyone: r.FormValue("everyone") != "", Project: r.FormValue("project"), PerPage: entryPageSize(r.FormValue("per_page"))}
 	where, args := " WHERE (? OR e.user_id = ?)", []any{f.Everyone, u.ID}
 	page := entriesPage{}
 	switch f.Project {
@@ -162,7 +183,10 @@ func (a *App) entryList(w http.ResponseWriter, r *http.Request) {
 			where += " AND (e.start_time, e.id) < (?, ?)"
 			args = append(args, start, id)
 		}
-		limit = fmt.Sprintf(" LIMIT %d", entriesPerPage+1)
+		limit = fmt.Sprintf(" LIMIT %d", f.PerPage+1)
+		for _, n := range entryPageSizes {
+			page.PageSizes = append(page.PageSizes, entryPageSizeLink{Size: n, URL: f.with(func(f *entriesFilter) { f.PerPage = n }), Current: n == f.PerPage})
+		}
 	}
 	page.entriesFilter = f
 	page.Self = f.url("")
@@ -205,8 +229,8 @@ func (a *App) entryList(w http.ResponseWriter, r *http.Request) {
 		a.serverError(w, r, err)
 		return
 	}
-	if limit != "" && len(entries) > entriesPerPage {
-		entries = entries[:entriesPerPage]
+	if limit != "" && len(entries) > f.PerPage {
+		entries = entries[:f.PerPage]
 		last := entries[len(entries)-1]
 		page.More = f.url(fmt.Sprintf("%d-%d", last.Start.Unix(), last.ID))
 	}
