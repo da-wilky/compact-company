@@ -1,4 +1,5 @@
-"settings.title" = { en = "Settings", de = "Einstellungen" }
+"settings.title" = { en = "Business settings", de = "Unternehmenseinstellungen" }
+"settings.business_wide" = { en = "These settings apply to every user of this business.", de = "Diese Einstellungen gelten für alle Benutzer dieses Unternehmens." }
 "settings.language" = { en = "Language", de = "Sprache" }
 "settings.timezone" = { en = "Timezone", de = "Zeitzone" }
 "settings.timezone_hint" = { en = "IANA name, e.g. Europe/Berlin", de = "IANA-Name, z. B. Europe/Berlin" }

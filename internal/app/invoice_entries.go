@@ -77,7 +77,7 @@ type pulledLine struct {
 	entries                     []int64
 }
 
-// pullEntries generates lines on draft id from its customer's billable, assigned, ended and unclaimed
+// pullEntries generates lines on draft id from its billed projects' billable, ended and unclaimed
 // entries starting in its range, none without one, and claims those entries. It returns sql.ErrNoRows unless id is a draft.
 func (a *App) pullEntries(tx *sql.Tx, id int64) error {
 	var from, to, grouping, invoiceLanguage string
@@ -108,6 +108,7 @@ func (a *App) pullEntries(tx *sql.Tx, id int64) error {
 		JOIN invoice i ON i.customer_id = c.id
 		WHERE i.id = ? AND e.billable = 1 AND e.end_time IS NOT NULL AND e.invoice_line_id IS NULL
 		AND e.start_time >= ? AND e.start_time < ?
+		AND (i.all_projects = 1 OR p.id IN (SELECT project_id FROM invoice_project WHERE invoice_id = i.id))
 		ORDER BY p.name, p.id, e.start_time, e.id`, id, start.Unix(), end.AddDate(0, 0, 1).Unix())
 	if err != nil {
 		return err

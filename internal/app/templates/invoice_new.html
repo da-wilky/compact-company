@@ -5,9 +5,15 @@
 <p class="actions"><a href="/invoices">{{template "icon-arrow-left"}}{{t "invoices.title"}}</a></p>
 {{with .Errors}}<ul class="errors">{{range .}}<li>{{t .}}</li>{{end}}</ul>{{end}}
 <form method="post" action="/invoices" class="form">
-<label>{{t "invoices.customer"}} <select name="customer" required>
+<label>{{t "invoices.customer"}} <select name="customer" required hx-get="/invoices/new" hx-target="#project-choice" hx-select="#project-choice" hx-swap="outerHTML">
 {{range .Customers}}<option value="{{.ID}}"{{if eq (print .ID) $.Data.Form.Customer}} selected{{end}}>{{.Name}}</option>{{end}}
 </select></label>
+<fieldset class="invoice-projects"><legend>{{t "invoices.projects"}}</legend>
+<label><input type="checkbox" name="all_projects" value="1"{{if .Form.AllProjects}} checked{{end}}> {{t "invoices.all_projects"}}</label>
+<div id="project-choice" class="project-choice">
+{{range .Projects}}<label><input type="checkbox" name="project" value="{{.ID}}"{{if $.Data.Form.Picked .ID}} checked{{end}}> {{.Name}}{{if .Archived}} <span class="hint">({{t "archive.archived"}})</span>{{end}}</label>
+{{else}}<p class="hint">{{t "invoices.no_projects"}}</p>{{end}}</div>
+</fieldset>
 <label>{{t "invoices.from"}} <input type="date" name="from" value="{{.Form.From}}" aria-describedby="range-hint"></label>
 <label>{{t "invoices.to"}} <input type="date" name="to" value="{{.Form.To}}" aria-describedby="range-hint"></label>
 <p class="hint" id="range-hint">{{t "invoices.range_hint"}}</p>
