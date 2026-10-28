@@ -48,6 +48,8 @@
 "invoices.quantity" = { en = "Quantity", de = "Menge" }
 "invoices.unit" = { en = "Unit", de = "Einheit" }
 "invoices.unit_price" = { en = "Unit price (%s)", de = "Einzelpreis (%s)" }
+"invoices.line_project" = { en = "Project", de = "Projekt" }
+"invoices.line_no_project" = { en = "No project", de = "Kein Projekt" }
 "invoices.price" = { en = "Unit price", de = "Einzelpreis" }
 "invoices.total" = { en = "Total", de = "Summe" }
 "invoices.net" = { en = "Net", de = "Netto" }
@@ -73,6 +75,7 @@
 "invoices.error.description" = { en = "Description is required.", de = "Beschreibung ist erforderlich." }
 "invoices.error.quantity" = { en = "Quantity must be a non-negative decimal with at most 3 decimals.", de = "Menge muss eine nicht negative Dezimalzahl mit höchstens 3 Nachkommastellen sein." }
 "invoices.error.unit_price" = { en = "Unit price must be a non-negative decimal with no more decimals than the currency allows.", de = "Einzelpreis muss eine nicht negative Dezimalzahl mit höchstens so vielen Nachkommastellen sein, wie die Währung erlaubt." }
+"invoices.error.line_project" = { en = "Choose one of the projects this invoice bills.", de = "Bitte eines der Projekte wählen, die diese Rechnung abrechnet." }
 "invoices.preview" = { en = "Preview PDF", de = "PDF-Vorschau" }
 "invoices.typst_error" = { en = "The invoice template failed to render:", de = "Die Rechnungsvorlage konnte nicht gerendert werden:" }
 "invoices.issue" = { en = "Issue invoice", de = "Rechnung stellen" }
@@ -106,3 +109,8 @@
 "invoices.error.paid_cancelled" = { en = "Every line of this invoice is cancelled, so it can't be marked paid.", de = "Alle Positionen dieser Rechnung sind storniert, sie kann nicht als bezahlt markiert werden." }
 "invoices.confirm_delete" = { en = "Delete the draft for %s %s?", de = "Entwurf für %s %s löschen?" }
 "invoices.confirm_delete_line" = { en = "Delete the line “%s”?", de = "Position „%s“ löschen?" }
+"invoices.select" = { en = "Select the draft for %s", de = "Entwurf für %s auswählen" }
+"invoices.delete_selected" = { en = "Delete", de = "Löschen" }
+"invoices.confirm_delete_one" = { en = "Delete 1 draft?", de = "1 Entwurf löschen?" }
+"invoices.confirm_delete_many" = { en = "Delete %s drafts?", de = "%s Entwürfe löschen?" }
+"invoices.error.delete_blocked" = { en = "Nothing was deleted. Only drafts can be deleted, not:", de = "Nichts wurde gelöscht. Nur Entwürfe können gelöscht werden, nicht:" }

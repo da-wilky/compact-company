@@ -43,6 +43,11 @@ func (a *App) refresh(w http.ResponseWriter, r *http.Request) {
 		err = a.pullEntries(tx, id)
 	}
 	if err == nil {
+		// The new generated lines come last; assigned manual lines go back behind them, keeping their order.
+		_, err = tx.Exec(`UPDATE invoice_line SET position = position + (SELECT max(position) FROM invoice_line WHERE invoice_id = ?1)
+			WHERE invoice_id = ?1 AND generated = 0 AND project_id IS NOT NULL`, id)
+	}
+	if err == nil {
 		err = tx.Commit()
 	}
 	switch {
@@ -108,7 +113,7 @@ func (a *App) pullEntries(tx *sql.Tx, id int64) error {
 		JOIN invoice i ON i.customer_id = c.id
 		WHERE i.id = ? AND e.billable = 1 AND e.end_time IS NOT NULL AND e.invoice_line_id IS NULL
 		AND e.start_time >= ? AND e.start_time < ?
-		AND (i.all_projects = 1 OR p.id IN (SELECT project_id FROM invoice_project WHERE invoice_id = i.id))
+		AND `+billsProject+`
 		ORDER BY p.name, p.id, e.start_time, e.id`, id, start.Unix(), end.AddDate(0, 0, 1).Unix())
 	if err != nil {
 		return err
