@@ -106,3 +106,8 @@
 "invoices.error.paid_cancelled" = { en = "Every line of this invoice is cancelled, so it can't be marked paid.", de = "Alle Positionen dieser Rechnung sind storniert, sie kann nicht als bezahlt markiert werden." }
 "invoices.confirm_delete" = { en = "Delete the draft for %s %s?", de = "Entwurf für %s %s löschen?" }
 "invoices.confirm_delete_line" = { en = "Delete the line “%s”?", de = "Position „%s“ löschen?" }
+"invoices.select" = { en = "Select the draft for %s", de = "Entwurf für %s auswählen" }
+"invoices.delete_selected" = { en = "Delete", de = "Löschen" }
+"invoices.confirm_delete_one" = { en = "Delete 1 draft?", de = "1 Entwurf löschen?" }
+"invoices.confirm_delete_many" = { en = "Delete %s drafts?", de = "%s Entwürfe löschen?" }
+"invoices.error.delete_blocked" = { en = "Nothing was deleted. Only drafts can be deleted, not:", de = "Nichts wurde gelöscht. Nur Entwürfe können gelöscht werden, nicht:" }

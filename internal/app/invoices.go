@@ -21,6 +21,7 @@ func init() {
 		mux.HandleFunc("GET /invoices", a.authed(a.invoiceList))
 		mux.HandleFunc("GET /invoices/new", a.authed(a.draftNew))
 		mux.HandleFunc("POST /invoices", a.authed(a.draftCreate))
+		mux.HandleFunc("POST /invoices/delete", a.authed(a.draftDeleteSelected))
 		mux.HandleFunc("GET /invoices/{id}", a.authed(a.invoiceShow))
 		mux.HandleFunc("POST /invoices/{id}", a.authed(a.draftUpdate))
 		mux.HandleFunc("POST /invoices/{id}/delete", a.authed(a.draftDelete))
@@ -55,12 +56,20 @@ type invoiceRow struct {
 	Status    string
 }
 
+// Selectable reports whether r may be selected for a mass action: only drafts can be deleted.
+func (r invoiceRow) Selectable() bool {
+	return r.Status == "draft"
+}
+
 type invoicesPage struct {
 	Rows      []invoiceRow
 	Customers []customerOption
 	Customer  int64
 	Status    string
 	Statuses  []string
+	DeleteURL string
+	Selected  map[int64]bool
+	Blocked   []invoiceRow
 }
 
 type customerOption struct {
@@ -86,11 +95,17 @@ func (p invoicesPage) StatusLink(status string) string {
 }
 
 func (a *App) invoiceList(w http.ResponseWriter, r *http.Request) {
-	page := invoicesPage{Statuses: invoiceStatuses}
+	a.listInvoices(w, r, http.StatusOK, nil, nil)
+}
+
+// listInvoices renders the listing r asks for, with the selection a refused mass action leaves behind.
+func (a *App) listInvoices(w http.ResponseWriter, r *http.Request, status int, selected map[int64]bool, blocked []invoiceRow) {
+	page := invoicesPage{Statuses: invoiceStatuses, Selected: selected, Blocked: blocked}
 	page.Customer, _ = strconv.ParseInt(r.FormValue("customer"), 10, 64)
 	if s := r.FormValue("status"); slices.Contains(invoiceStatuses, s) {
 		page.Status = s
 	}
+	page.DeleteURL = "/invoices/delete" + strings.TrimPrefix(page.StatusLink(page.Status), "/invoices")
 	var err error
 	if page.Customers, err = a.customerOptions(); err != nil {
 		a.serverError(w, r, err)
@@ -143,7 +158,7 @@ func (a *App) invoiceList(w http.ResponseWriter, r *http.Request) {
 		}
 		row.Gross = formatAmount(totals.Gross, unit)
 	}
-	a.render(w, r, http.StatusOK, "invoices", page)
+	a.render(w, r, status, "invoices", page)
 }
 
 // customerOptions lists every customer, archived ones included: finished work can still be billed.
@@ -513,8 +528,83 @@ func (a *App) draftDelete(w http.ResponseWriter, r *http.Request) {
 		a.notFound(w, r)
 		return
 	}
-	res, err := a.db.Exec(`DELETE FROM invoice WHERE id = ? AND kind = ? AND number IS NULL`, id, kindInvoice)
+	res, err := deleteDraft(a.db, id)
 	a.afterInvoiceWrite(w, r, res, err, "/invoices")
+}
+
+// deleteDraft deletes invoice id if it is a draft; cascades drop its lines and chosen projects and release its entries.
+func deleteDraft(db interface {
+	Exec(query string, args ...any) (sql.Result, error)
+}, id int64) (sql.Result, error) {
+	return db.Exec(`DELETE FROM invoice WHERE id = ? AND kind = ? AND number IS NULL`, id, kindInvoice)
+}
+
+// draftDeleteSelected deletes all selected drafts, or none when any of them is not a draft,
+// and answers with the listing its query names.
+func (a *App) draftDeleteSelected(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseForm(); err != nil {
+		a.errorPage(w, r, http.StatusBadRequest, "error.invalid_page")
+		return
+	}
+	selected := map[int64]bool{}
+	var ids []any
+	for _, s := range r.PostForm["id"] {
+		id, err := strconv.ParseInt(s, 10, 64)
+		if err != nil {
+			a.notFound(w, r)
+			return
+		}
+		selected[id] = true
+		ids = append(ids, id)
+	}
+	if len(ids) == 0 {
+		a.listInvoices(w, r, http.StatusOK, nil, nil)
+		return
+	}
+	tx, err := a.db.Begin()
+	if err != nil {
+		a.serverError(w, r, err)
+		return
+	}
+	defer func() { _ = tx.Rollback() }()
+	rows, err := tx.Query(`SELECT i.id, ifnull(i.number, ''), ifnull(i.snapshot ->> '$.customer.name', c.name), `+invoiceStatus+`
+		FROM invoice i JOIN customer c ON c.id = i.customer_id
+		WHERE i.id IN (?`+strings.Repeat(", ?", len(ids)-1)+`) ORDER BY i.number, i.id`, ids...)
+	if err != nil {
+		a.serverError(w, r, err)
+		return
+	}
+	defer func() { _ = rows.Close() }()
+	var blocked []invoiceRow
+	for rows.Next() {
+		var row invoiceRow
+		if err := rows.Scan(&row.ID, &row.Number, &row.Customer, &row.Status); err != nil {
+			a.serverError(w, r, err)
+			return
+		}
+		if !row.Selectable() {
+			blocked = append(blocked, row)
+		}
+	}
+	if err := rows.Err(); err != nil {
+		a.serverError(w, r, err)
+		return
+	}
+	if blocked != nil {
+		a.listInvoices(w, r, http.StatusUnprocessableEntity, selected, blocked)
+		return
+	}
+	for id := range selected {
+		if _, err := deleteDraft(tx, id); err != nil {
+			a.serverError(w, r, err)
+			return
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		a.serverError(w, r, err)
+		return
+	}
+	a.listInvoices(w, r, http.StatusOK, nil, nil)
 }
 
 // afterInvoiceWrite redirects to done, or answers 404 when the write matched no row
