@@ -17,6 +17,7 @@ func init() {
 		mux.HandleFunc("GET /entries", a.authed(a.entryList))
 		mux.HandleFunc("GET /entries/new", a.authed(a.entryNew))
 		mux.HandleFunc("POST /entries", a.authed(a.entryCreate))
+		mux.HandleFunc("POST /entries/delete", a.authed(a.entryDeleteSelected))
 		mux.HandleFunc("GET /entries/{id}", a.authed(a.entryEdit))
 		mux.HandleFunc("POST /entries/{id}", a.authed(a.entryUpdate))
 		mux.HandleFunc("POST /entries/{id}/delete", a.authed(a.entryDelete))
@@ -44,6 +45,11 @@ type entryRow struct {
 	Description string
 	Billable    sql.NullBool
 	Invoice     *invoiceRef
+}
+
+// Selectable reports whether the viewer may select e for a mass action.
+func (e entryRow) Selectable() bool {
+	return e.Own && !e.Running && e.Invoice == nil
 }
 
 var entryPageSizes = []int{10, 25, 50, 100}
@@ -117,11 +123,19 @@ type entriesPage struct {
 	Prev, Next, Today     string
 	All, Mine, Team, Bare string
 	More                  string
+	DeleteURL             string
 	PageSizes             []entryPageSizeLink
 	Days                  []entryDay
+	Selected              map[int64]bool
+	Blocked               []entryRow
 }
 
 func (a *App) entryList(w http.ResponseWriter, r *http.Request) {
+	a.listEntries(w, r, http.StatusOK, nil, nil)
+}
+
+// listEntries renders the listing r asks for, with the selection a refused mass action leaves behind.
+func (a *App) listEntries(w http.ResponseWriter, r *http.Request, status int, selected map[int64]bool, blocked []entryRow) {
 	loc, err := a.viewerLocation(r)
 	if err != nil {
 		a.serverError(w, r, err)
@@ -130,7 +144,7 @@ func (a *App) entryList(w http.ResponseWriter, r *http.Request) {
 	u := currentUser(r)
 	f := entriesFilter{Everyone: r.FormValue("everyone") != "", Project: r.FormValue("project"), PerPage: entryPageSize(r.FormValue("per_page"))}
 	where, args := " WHERE (? OR e.user_id = ?)", []any{f.Everyone, u.ID}
-	page := entriesPage{}
+	page := entriesPage{Selected: selected, Blocked: blocked}
 	switch f.Project {
 	case "":
 	case "none":
@@ -156,7 +170,7 @@ func (a *App) entryList(w http.ResponseWriter, r *http.Request) {
 	totalsWhere, totalsArgs := where, args
 	today := a.now().In(loc).Format(dayLayout)
 	limit := ""
-	var cursorDay string
+	var before, cursorDay string
 	if s := r.FormValue("day"); s != "" {
 		day, err := time.ParseInLocation(dayLayout, s, loc)
 		if err != nil {
@@ -179,6 +193,7 @@ func (a *App) entryList(w http.ResponseWriter, r *http.Request) {
 				a.errorPage(w, r, http.StatusBadRequest, "error.invalid_page")
 				return
 			}
+			before = s
 			cursorDay = time.Unix(start, 0).In(loc).Format(dayLayout)
 			where += " AND (e.start_time, e.id) < (?, ?)"
 			args = append(args, start, id)
@@ -190,6 +205,7 @@ func (a *App) entryList(w http.ResponseWriter, r *http.Request) {
 	}
 	page.entriesFilter = f
 	page.Self = f.url("")
+	page.DeleteURL = "/entries/delete" + strings.TrimPrefix(f.url(before), "/entries")
 	page.Mine = f.with(func(f *entriesFilter) { f.Everyone = false })
 	page.Team = f.with(func(f *entriesFilter) { f.Everyone = true })
 	page.Bare = f.with(func(f *entriesFilter) { f.Project = "" })
@@ -247,11 +263,11 @@ func (a *App) entryList(w http.ResponseWriter, r *http.Request) {
 		a.serverError(w, r, err)
 		return
 	}
-	if r.Header.Get("HX-Request") != "" && r.FormValue("before") != "" {
+	if r.Method == http.MethodGet && r.Header.Get("HX-Request") != "" && r.FormValue("before") != "" {
 		a.execute(w, r, http.StatusOK, "entries", "entry-days", view{Data: page})
 		return
 	}
-	a.render(w, r, http.StatusOK, "entries", page)
+	a.render(w, r, status, "entries", page)
 }
 
 // sumEntryDays totals each day over all its matching entries, not only the ones on this page.
@@ -578,6 +594,77 @@ func (a *App) entryDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	redirectBack(w, r, f.Start[:len(dayLayout)])
+}
+
+// entryDeleteSelected deletes all selected entries, or none when any of them may not be deleted,
+// and answers with the listing its query names.
+func (a *App) entryDeleteSelected(w http.ResponseWriter, r *http.Request) {
+	u := currentUser(r)
+	if err := r.ParseForm(); err != nil {
+		a.errorPage(w, r, http.StatusBadRequest, "error.invalid_page")
+		return
+	}
+	selected := map[int64]bool{}
+	var ids []any
+	for _, s := range r.PostForm["id"] {
+		id, err := strconv.ParseInt(s, 10, 64)
+		if err != nil {
+			a.notFound(w, r)
+			return
+		}
+		selected[id] = true
+		ids = append(ids, id)
+	}
+	if len(ids) == 0 {
+		a.listEntries(w, r, http.StatusOK, nil, nil)
+		return
+	}
+	in := " IN (?" + strings.Repeat(", ?", len(ids)-1) + ")"
+	tx, err := a.db.Begin()
+	if err != nil {
+		a.serverError(w, r, err)
+		return
+	}
+	defer func() { _ = tx.Rollback() }()
+	rows, err := tx.Query(`SELECT e.user_id, u.display_name, e.start_time, e.end_time IS NULL, e.description, ci.id, ci.number
+		FROM time_entry e JOIN user u ON u.id = e.user_id`+claimJoin+` WHERE e.id`+in+` ORDER BY e.start_time, e.id`, ids...)
+	if err != nil {
+		a.serverError(w, r, err)
+		return
+	}
+	defer func() { _ = rows.Close() }()
+	var blocked []entryRow
+	for rows.Next() {
+		var e entryRow
+		var userID, start int64
+		var invoice sql.NullInt64
+		var number sql.NullString
+		if err := rows.Scan(&userID, &e.User, &start, &e.Running, &e.Description, &invoice, &number); err != nil {
+			a.serverError(w, r, err)
+			return
+		}
+		e.Own, e.Start, e.Invoice = userID == u.ID, time.Unix(start, 0), invoiceRefOrNil(invoice, number)
+		if !e.Selectable() {
+			blocked = append(blocked, e)
+		}
+	}
+	if err := rows.Err(); err != nil {
+		a.serverError(w, r, err)
+		return
+	}
+	if blocked != nil {
+		a.listEntries(w, r, http.StatusUnprocessableEntity, selected, blocked)
+		return
+	}
+	if _, err := tx.Exec(`DELETE FROM time_entry WHERE id`+in, ids...); err != nil {
+		a.serverError(w, r, err)
+		return
+	}
+	if err := tx.Commit(); err != nil {
+		a.serverError(w, r, err)
+		return
+	}
+	a.listEntries(w, r, http.StatusOK, nil, nil)
 }
 
 // wroteUnclaimed reports whether a write guarded by "invoice_line_id IS NULL" changed the entry;
