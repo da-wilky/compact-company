@@ -66,6 +66,8 @@ func TestCancellingLinesIssuesACancellationInvoiceFromTheSameSequence(t *testing
 	res.wantBody(t, `href="`+inv+`">2026-001<`)
 	wantInOrder(t, res.body, "Workshop", "-1.5", "85.00", "-127.50", "-127.50", "-24.23", "-151.73")
 	res.wantNoBody(t, "Hosting")
+	res.wantBody(t, "-151.73 EUR")
+	res.wantBody(t, `href="`+cancellation+`/pdf"`)
 	res.wantNoBody(t, `href="`+cancellation+`/cancel"`)
 	res.wantNoBody(t, "Mark paid")
 	c.get(cancellation+"/pdf").wantStatus(t, http.StatusOK)
@@ -84,6 +86,7 @@ func TestInvoiceIsPartiallyCancelledWithTheAmountStillDueThenCancelled(t *testin
 
 	res := c.get(inv)
 	res.wantBody(t, "Partially cancelled")
+	res.wantBody(t, `action="`+inv+`/paid"`)
 	res.wantBody(t, `href="`+first+`">Cancelled by 2026-002<`)
 	wantInOrder(t, res.body, "147.50", "28.03", "175.53", "Amount still due", "151.73")
 	res.wantBody(t, `href="`+inv+`/cancel"`)
@@ -91,9 +94,10 @@ func TestInvoiceIsPartiallyCancelledWithTheAmountStillDueThenCancelled(t *testin
 	c.cancelLines(inv, "", "Workshop")
 
 	res = c.get(inv)
-	res.wantBody(t, "K-001 acme · Cancelled")
+	res.wantBody(t, ">Cancelled<")
 	wantInOrder(t, res.body, "Amount still due", "0.00")
 	res.wantNoBody(t, `href="`+inv+`/cancel"`)
+	c.get(inv+"/cancel").wantStatus(t, http.StatusNotFound)
 }
 
 func TestALineIsCancelledAtMostOnce(t *testing.T) {
@@ -194,7 +198,7 @@ func TestCancellationPassesTheContractWithTheOriginalTaxToTheTemplate(t *testing
 		}
 	}
 	page := c.get(inv)
-	page.wantBody(t, "K-001 acme · Issued")
+	page.wantBody(t, ">Issued<")
 	c.cancelForm(inv, "", "Workshop")
 	c.get("/invoices").wantNoBody(t, "2026-002")
 }
@@ -248,7 +252,7 @@ func TestCancellingIsRefusedWhileBusinessDataIsMissing(t *testing.T) {
 
 	res.wantStatus(t, http.StatusConflict)
 	res.wantBody(t, "Invoices can&#39;t be previewed or issued until these are set: Name")
-	c.get(inv).wantBody(t, "K-001 acme · Issued")
+	c.get(inv).wantBody(t, ">Issued<")
 }
 
 func TestDefaultTemplateRendersACancellationInvoice(t *testing.T) {

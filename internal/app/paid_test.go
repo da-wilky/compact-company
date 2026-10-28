@@ -106,7 +106,7 @@ func TestAPaidInvoiceCanStillBeCancelled(t *testing.T) {
 
 	c.get(cancellation).wantBody(t, "Cancellation invoice 2026-002")
 	res := c.get(invoice)
-	res.wantBody(t, "K-001 acme · Cancelled")
+	res.wantBody(t, ">Cancelled<")
 	res.wantBody(t, "Paid on 2026-11-03")
 }
 

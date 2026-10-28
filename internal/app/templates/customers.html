@@ -1,7 +1,7 @@
 {{define "title"}}{{t "customers.title"}}{{end}}
 {{define "content"}}
 <h1>{{t "customers.title"}}</h1>
-<p class="actions"><a href="/customers/new">{{t "customers.new"}}</a>{{if .Data.ShowArchived}}<a href="/customers">{{t "archive.hide"}}</a>{{else}}<a href="/customers?archived=1">{{t "archive.show"}}</a>{{end}}</p>
+<p class="actions"><a href="/customers/new">{{template "icon-plus"}}{{t "customers.new"}}</a>{{if .Data.ShowArchived}}<a href="/customers">{{template "icon-eye-off"}}{{t "archive.hide"}}</a>{{else}}<a href="/customers?archived=1">{{template "icon-eye"}}{{t "archive.show"}}</a>{{end}}</p>
 {{with .Data.Customers}}
 <div class="table-wrap"><table>
 <thead><tr><th>{{t "customers.number"}}</th><th>{{t "customers.name"}}</th><th class="num">{{t "customers.hourly_rate"}}</th><th>{{t "customers.projects"}}</th></tr></thead>

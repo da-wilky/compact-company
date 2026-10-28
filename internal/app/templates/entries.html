@@ -3,7 +3,7 @@
 {{with .Data}}
 <div class="page-head">
 <div class="title"><h1>{{if .Day}}{{t "entries.title" (date .From)}}{{else}}{{t "entries.nav"}}{{end}}</h1>
-<a class="pill" href="/entries/new">{{t "entries.new"}}</a></div>
+<a class="pill" href="/entries/new">{{template "icon-plus"}}{{t "entries.new"}}</a></div>
 <nav class="pager" aria-label="{{t "entries.nav"}}">
 {{if .Day}}{{if not .IsToday}}<a class="pill" href="{{.Today}}">{{t "entries.today"}}</a>{{end}}
 <a class="pill" href="{{.All}}">{{t "entries.all"}}</a>
@@ -16,7 +16,7 @@
 <div class="filters">
 <span class="label">{{t "entries.show"}}</span>
 <span class="seg"><a href="{{.Mine}}"{{if not .Everyone}} aria-current="true"{{end}}>{{t "entries.mine"}}</a><a href="{{.Team}}"{{if .Everyone}} aria-current="true"{{end}}>{{t "entries.everyone"}}</a></span>
-{{if .Project}}<span class="chip">{{if eq .Project "none"}}{{t "timers.unassigned"}}{{else}}{{.ProjectName}}{{end}} <a href="{{.Bare}}" aria-label="{{t "entries.clear_project"}}" title="{{t "entries.clear_project"}}">×</a></span>{{end}}
+{{if .Project}}<span class="chip">{{if eq .Project "none"}}{{t "timers.unassigned"}}{{else}}{{.ProjectName}}{{end}} <a href="{{.Bare}}" aria-label="{{t "entries.clear_project"}}" title="{{t "entries.clear_project"}}">{{template "icon-x"}}</a></span>{{end}}
 </div>
 {{if .Days}}{{template "entry-days" $}}{{else}}
 <p>{{t "entries.empty"}}</p>

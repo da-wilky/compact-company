@@ -323,6 +323,21 @@ func TestLinesCanBeEditedReorderedAndDeleted(t *testing.T) {
 	wantInOrder(t, res.body, "Bravo two", "Alpha", "75.00")
 }
 
+func TestLineControlsAreNamedForScreenReaders(t *testing.T) {
+	ta := newTestApp(t, devConfig)
+	c := ta.client()
+	draft := c.acmeDraft()
+	for _, d := range []string{"Alpha", "Bravo", "Charlie"} {
+		c.addLine(draft, lineForm(d, "1", "10"))
+	}
+	bravo := c.linePath(draft, "Bravo")
+
+	wantInOrder(t, c.get(draft).body,
+		`action="`+bravo+`/up"`, `aria-label="Move up"`,
+		`action="`+bravo+`/down"`, `aria-label="Move down"`,
+		`action="`+bravo+`/delete"`, `aria-label="Delete line"`)
+}
+
 func TestAddLineLinkFollowsTheLines(t *testing.T) {
 	ta := newTestApp(t, devConfig)
 	c := ta.client()

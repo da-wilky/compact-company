@@ -156,14 +156,15 @@ func (f *renderFailure) explain(err error) (status int, ok bool) {
 }
 
 type issuedInvoice struct {
-	ID        int64
-	Number    string
-	Status    string
-	PaidDate  string
-	SHA256    string
-	CancelsID int64
-	Snapshot  invoiceData
-	Lines     []issuedLine
+	ID          int64
+	Number      string
+	Status      string
+	PaidDate    string
+	SHA256      string
+	CancelsID   int64
+	Cancellable bool
+	Snapshot    invoiceData
+	Lines       []issuedLine
 	// AmountDue is the gross less every cancellation's; empty while no line is cancelled.
 	AmountDue string
 	PaidForm  string
@@ -201,6 +202,7 @@ func (a *App) loadIssued(id int64) (issuedInvoice, error) {
 	if err := a.loadIssuedLines(&inv); err != nil {
 		return inv, err
 	}
+	inv.Cancellable = inv.Snapshot.Kind == kindInvoice && inv.Status != "cancelled"
 	if inv.Status == "cancelled" || inv.Status == "partially_cancelled" {
 		inv.AmountDue = formatAmount(due, currency.MustParseISO(inv.Snapshot.Currency))
 	}
