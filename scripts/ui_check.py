@@ -136,7 +136,12 @@ def main():
                         page.check("form.selection [data-select-all]")
                         page.screenshot(path=f"{out}/{lang}-{viewport}-{scheme}-entries-selected.png", full_page=True)
                         failures += [f"{lang} {viewport} {scheme} /entries (rows selected): {p}" for p in page.evaluate(FIND_BREAKAGE)]
-                        page.click(".selection-actions button")
+                        page.select_option(".selection-actions select[name=project]", index=1)
+                        page.click(".selection-actions select[name=project] + button")
+                        page.screenshot(path=f"{out}/{lang}-{viewport}-{scheme}-entries-selected-assign-confirm.png")
+                        failures += [f"{lang} {viewport} {scheme} /entries (assign confirm open): {p}" for p in page.evaluate(FIND_BREAKAGE)]
+                        page.click("dialog.confirm button[value=cancel]")
+                        page.click(".selection-actions button.danger")
                         page.screenshot(path=f"{out}/{lang}-{viewport}-{scheme}-entries-selected-confirm.png")
                         failures += [f"{lang} {viewport} {scheme} /entries (delete confirm open): {p}" for p in page.evaluate(FIND_BREAKAGE)]
                     if not only or "/invoices/new" in only:

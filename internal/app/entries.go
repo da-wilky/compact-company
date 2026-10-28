@@ -18,6 +18,8 @@ func init() {
 		mux.HandleFunc("GET /entries/new", a.authed(a.entryNew))
 		mux.HandleFunc("POST /entries", a.authed(a.entryCreate))
 		mux.HandleFunc("POST /entries/delete", a.authed(a.entryDeleteSelected))
+		mux.HandleFunc("POST /entries/assign", a.authed(a.entryAssignSelected))
+		mux.HandleFunc("POST /entries/billable", a.authed(a.entryBillableSelected))
 		mux.HandleFunc("GET /entries/{id}", a.authed(a.entryEdit))
 		mux.HandleFunc("POST /entries/{id}", a.authed(a.entryUpdate))
 		mux.HandleFunc("POST /entries/{id}/delete", a.authed(a.entryDelete))
@@ -123,28 +125,41 @@ type entriesPage struct {
 	Prev, Next, Today     string
 	All, Mine, Team, Bare string
 	More                  string
-	DeleteURL             string
+	DeleteURL, AssignURL  string
+	BillableURL           string
 	PageSizes             []entryPageSizeLink
 	Days                  []entryDay
-	Selected              map[int64]bool
-	Blocked               []entryRow
+	Customers             []pickerCustomer
+	refusal
+}
+
+// refusal is what a refused mass action leaves behind: the selection, why (a catalog key) and the entries that blocked it.
+type refusal struct {
+	Selected map[int64]bool
+	Refused  string
+	Blocked  []entryRow
 }
 
 func (a *App) entryList(w http.ResponseWriter, r *http.Request) {
-	a.listEntries(w, r, http.StatusOK, nil, nil)
+	a.listEntries(w, r, http.StatusOK, refusal{})
 }
 
-// listEntries renders the listing r asks for, with the selection a refused mass action leaves behind.
-func (a *App) listEntries(w http.ResponseWriter, r *http.Request, status int, selected map[int64]bool, blocked []entryRow) {
+// listEntries renders the listing r's query asks for; mass actions post fields that must not filter it.
+func (a *App) listEntries(w http.ResponseWriter, r *http.Request, status int, refused refusal) {
 	loc, err := a.viewerLocation(r)
 	if err != nil {
 		a.serverError(w, r, err)
 		return
 	}
 	u := currentUser(r)
-	f := entriesFilter{Everyone: r.FormValue("everyone") != "", Project: r.FormValue("project"), PerPage: entryPageSize(r.FormValue("per_page"))}
+	q := r.URL.Query()
+	f := entriesFilter{Everyone: q.Get("everyone") != "", Project: q.Get("project"), PerPage: entryPageSize(q.Get("per_page"))}
 	where, args := " WHERE (? OR e.user_id = ?)", []any{f.Everyone, u.ID}
-	page := entriesPage{Selected: selected, Blocked: blocked}
+	page := entriesPage{refusal: refused}
+	if page.Customers, err = a.loadPicker(0); err != nil {
+		a.serverError(w, r, err)
+		return
+	}
 	switch f.Project {
 	case "":
 	case "none":
@@ -171,7 +186,7 @@ func (a *App) listEntries(w http.ResponseWriter, r *http.Request, status int, se
 	today := a.now().In(loc).Format(dayLayout)
 	limit := ""
 	var before, cursorDay string
-	if s := r.FormValue("day"); s != "" {
+	if s := q.Get("day"); s != "" {
 		day, err := time.ParseInLocation(dayLayout, s, loc)
 		if err != nil {
 			a.errorPage(w, r, http.StatusBadRequest, "error.invalid_day")
@@ -187,7 +202,7 @@ func (a *App) listEntries(w http.ResponseWriter, r *http.Request, status int, se
 		where += " AND e.start_time >= ? AND e.start_time < ?"
 		args = append(args, day.Unix(), day.AddDate(0, 0, 1).Unix())
 	} else {
-		if s := r.FormValue("before"); s != "" {
+		if s := q.Get("before"); s != "" {
 			start, id, err := parseCursor(s)
 			if err != nil {
 				a.errorPage(w, r, http.StatusBadRequest, "error.invalid_page")
@@ -205,7 +220,8 @@ func (a *App) listEntries(w http.ResponseWriter, r *http.Request, status int, se
 	}
 	page.entriesFilter = f
 	page.Self = f.url("")
-	page.DeleteURL = "/entries/delete" + strings.TrimPrefix(f.url(before), "/entries")
+	query := strings.TrimPrefix(f.url(before), "/entries")
+	page.DeleteURL, page.AssignURL, page.BillableURL = "/entries/delete"+query, "/entries/assign"+query, "/entries/billable"+query
 	page.Mine = f.with(func(f *entriesFilter) { f.Everyone = false })
 	page.Team = f.with(func(f *entriesFilter) { f.Everyone = true })
 	page.Bare = f.with(func(f *entriesFilter) { f.Project = "" })
@@ -263,7 +279,7 @@ func (a *App) listEntries(w http.ResponseWriter, r *http.Request, status int, se
 		a.serverError(w, r, err)
 		return
 	}
-	if r.Method == http.MethodGet && r.Header.Get("HX-Request") != "" && r.FormValue("before") != "" {
+	if r.Method == http.MethodGet && r.Header.Get("HX-Request") != "" && q.Get("before") != "" {
 		a.execute(w, r, http.StatusOK, "entries", "entry-days", view{Data: page})
 		return
 	}
@@ -596,9 +612,51 @@ func (a *App) entryDelete(w http.ResponseWriter, r *http.Request) {
 	redirectBack(w, r, f.Start[:len(dayLayout)])
 }
 
-// entryDeleteSelected deletes all selected entries, or none when any of them may not be deleted,
-// and answers with the listing its query names.
 func (a *App) entryDeleteSelected(w http.ResponseWriter, r *http.Request) {
+	a.editSelected(w, r, "entries.error.delete_blocked", func(e entryRow) bool { return !e.Selectable() },
+		func(tx *sql.Tx, in string, ids []any) (string, error) {
+			_, err := tx.Exec(`DELETE FROM time_entry WHERE id`+in, ids...)
+			return "", err
+		})
+}
+
+// entryAssignSelected attaches the selected entries to an active project; those without a billable flag take its default.
+func (a *App) entryAssignSelected(w http.ResponseWriter, r *http.Request) {
+	a.editSelected(w, r, "entries.error.edit_blocked", func(e entryRow) bool { return !e.Selectable() },
+		func(tx *sql.Tx, in string, ids []any) (string, error) {
+			project, err := strconv.ParseInt(r.PostFormValue("project"), 10, 64)
+			if err != nil {
+				return "entries.error.project", nil
+			}
+			def, err := activeProjectBillable(tx, project)
+			if errors.Is(err, sql.ErrNoRows) {
+				return "entries.error.project", nil
+			} else if err != nil {
+				return "", err
+			}
+			_, err = tx.Exec(`UPDATE time_entry SET project_id = ?, billable = ifnull(billable, ?) WHERE id`+in, append([]any{project, def}, ids...)...)
+			return "", err
+		})
+}
+
+// entryBillableSelected marks the selected entries billable ("yes") or not ("no"); unassigned ones block it.
+func (a *App) entryBillableSelected(w http.ResponseWriter, r *http.Request) {
+	billable := r.PostFormValue("billable")
+	if billable != "yes" && billable != "no" {
+		a.errorPage(w, r, http.StatusBadRequest, "error.invalid_page")
+		return
+	}
+	a.editSelected(w, r, "entries.error.edit_blocked", func(e entryRow) bool { return !e.Selectable() || e.Project == "" },
+		func(tx *sql.Tx, in string, ids []any) (string, error) {
+			_, err := tx.Exec(`UPDATE time_entry SET billable = ? WHERE id`+in, append([]any{billable == "yes"}, ids...)...)
+			return "", err
+		})
+}
+
+// editSelected runs change on all entries r selects, or on none when blocks holds for any of them (refused
+// names why) or change refuses with a catalog key; it answers with the listing r's query names.
+func (a *App) editSelected(w http.ResponseWriter, r *http.Request, refused string, blocks func(entryRow) bool,
+	change func(tx *sql.Tx, in string, ids []any) (string, error)) {
 	u := currentUser(r)
 	if err := r.ParseForm(); err != nil {
 		a.errorPage(w, r, http.StatusBadRequest, "error.invalid_page")
@@ -616,7 +674,7 @@ func (a *App) entryDeleteSelected(w http.ResponseWriter, r *http.Request) {
 		ids = append(ids, id)
 	}
 	if len(ids) == 0 {
-		a.listEntries(w, r, http.StatusOK, nil, nil)
+		a.listEntries(w, r, http.StatusOK, refusal{})
 		return
 	}
 	in := " IN (?" + strings.Repeat(", ?", len(ids)-1) + ")"
@@ -626,8 +684,9 @@ func (a *App) entryDeleteSelected(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer func() { _ = tx.Rollback() }()
-	rows, err := tx.Query(`SELECT e.user_id, u.display_name, e.start_time, e.end_time IS NULL, e.description, ci.id, ci.number
-		FROM time_entry e JOIN user u ON u.id = e.user_id`+claimJoin+` WHERE e.id`+in+` ORDER BY e.start_time, e.id`, ids...)
+	rows, err := tx.Query(`SELECT e.user_id, u.display_name, ifnull(c.name || ' · ' || p.name, ''), e.start_time, e.end_time IS NULL, e.description, ci.id, ci.number
+		FROM time_entry e JOIN user u ON u.id = e.user_id LEFT JOIN project p ON p.id = e.project_id LEFT JOIN customer c ON c.id = p.customer_id`+claimJoin+`
+		WHERE e.id`+in+` ORDER BY e.start_time, e.id`, ids...)
 	if err != nil {
 		a.serverError(w, r, err)
 		return
@@ -639,12 +698,12 @@ func (a *App) entryDeleteSelected(w http.ResponseWriter, r *http.Request) {
 		var userID, start int64
 		var invoice sql.NullInt64
 		var number sql.NullString
-		if err := rows.Scan(&userID, &e.User, &start, &e.Running, &e.Description, &invoice, &number); err != nil {
+		if err := rows.Scan(&userID, &e.User, &e.Project, &start, &e.Running, &e.Description, &invoice, &number); err != nil {
 			a.serverError(w, r, err)
 			return
 		}
 		e.Own, e.Start, e.Invoice = userID == u.ID, time.Unix(start, 0), invoiceRefOrNil(invoice, number)
-		if !e.Selectable() {
+		if blocks(e) {
 			blocked = append(blocked, e)
 		}
 	}
@@ -653,18 +712,21 @@ func (a *App) entryDeleteSelected(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if blocked != nil {
-		a.listEntries(w, r, http.StatusUnprocessableEntity, selected, blocked)
+		a.listEntries(w, r, http.StatusUnprocessableEntity, refusal{selected, refused, blocked})
 		return
 	}
-	if _, err := tx.Exec(`DELETE FROM time_entry WHERE id`+in, ids...); err != nil {
+	if key, err := change(tx, in, ids); err != nil {
 		a.serverError(w, r, err)
+		return
+	} else if key != "" {
+		a.listEntries(w, r, http.StatusUnprocessableEntity, refusal{Selected: selected, Refused: key})
 		return
 	}
 	if err := tx.Commit(); err != nil {
 		a.serverError(w, r, err)
 		return
 	}
-	a.listEntries(w, r, http.StatusOK, nil, nil)
+	a.listEntries(w, r, http.StatusOK, refusal{})
 }
 
 // wroteUnclaimed reports whether a write guarded by "invoice_line_id IS NULL" changed the entry;

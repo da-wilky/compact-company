@@ -21,12 +21,17 @@
 <span class="seg">{{range .}}<a href="{{.URL}}"{{if .Current}} aria-current="true"{{end}}>{{.Size}}</a>{{end}}</span></span>{{end}}
 </div>
 <div id="entry-list">
-{{with .Blocked}}<div class="errors" role="alert"><p>{{t "entries.error.delete_blocked"}}</p>
-<ul>{{range .}}<li>{{date .Start}} {{clock .Start}}{{with .Description}} “{{.}}”{{end}} · {{if .Invoice}}{{template "invoice-badge" .Invoice}}{{else if .Running}}{{t "entries.running"}}{{else}}{{t "entries.blocked.other" .User}}{{end}}</li>{{end}}</ul></div>{{end}}
+{{with .Refused}}<div class="errors" role="alert"><p>{{t .}}</p>
+{{with $.Data.Blocked}}<ul>{{range .}}<li>{{date .Start}} {{clock .Start}}{{with .Description}} “{{.}}”{{end}} · {{if .Invoice}}{{template "invoice-badge" .Invoice}}{{else if .Running}}{{t "entries.running"}}{{else if not .Own}}{{t "entries.blocked.other" .User}}{{else}}{{t "entries.blocked.unassigned"}}{{end}}</li>{{end}}</ul>{{end}}</div>{{end}}
 {{if .Days}}<form id="entry-selection" class="selection" method="post" action="{{.DeleteURL}}" hx-post="{{.DeleteURL}}" hx-target="#entry-list" hx-select="#entry-list" hx-swap="outerHTML" hidden>
 <label><input type="checkbox" data-select-all>{{t "selection.all"}}</label>
 <span class="selection-actions"><span data-count="{{t "selection.count" "{n}"}}"></span>
-<button class="danger" data-confirm-one="{{t "entries.confirm_delete_one"}}" data-confirm-many="{{t "entries.confirm_delete_many" "{n}"}}" data-confirm-ok="{{t "entries.delete"}}">{{template "icon-trash"}}{{t "entries.delete"}}</button></span>
+<span class="group"><select name="project" required aria-label="{{t "entries.assign_project"}}"><option value="">{{t "entries.assign_project"}}</option>
+{{range .Customers}}<optgroup label="{{.Name}}">{{range .Projects}}<option value="{{.ID}}">{{.Name}}</option>{{end}}</optgroup>{{end}}</select>
+<button formaction="{{.AssignURL}}" data-confirm-neutral data-confirm-one="{{t "entries.confirm_assign_one"}}" data-confirm-many="{{t "entries.confirm_assign_many" "{n}"}}" data-confirm-ok="{{t "entries.assign"}}">{{template "icon-folder-input"}}{{t "entries.assign"}}</button></span>
+<button formaction="{{.BillableURL}}" formnovalidate name="billable" value="yes" data-confirm-neutral data-confirm-one="{{t "entries.confirm_billable_one"}}" data-confirm-many="{{t "entries.confirm_billable_many" "{n}"}}" data-confirm-ok="{{t "entries.mark_billable"}}">{{template "icon-check"}}{{t "entries.mark_billable"}}</button>
+<button formaction="{{.BillableURL}}" formnovalidate name="billable" value="no" data-confirm-neutral data-confirm-one="{{t "entries.confirm_not_billable_one"}}" data-confirm-many="{{t "entries.confirm_not_billable_many" "{n}"}}" data-confirm-ok="{{t "entries.mark_not_billable"}}">{{template "icon-x"}}{{t "entries.mark_not_billable"}}</button>
+<button class="danger" formnovalidate data-confirm-one="{{t "entries.confirm_delete_one"}}" data-confirm-many="{{t "entries.confirm_delete_many" "{n}"}}" data-confirm-ok="{{t "entries.delete"}}">{{template "icon-trash"}}{{t "entries.delete"}}</button></span>
 </form>
 {{template "entry-days" $}}{{else}}
 <p>{{t "entries.empty"}}</p>
