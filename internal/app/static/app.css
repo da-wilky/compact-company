@@ -82,6 +82,7 @@ h1 { margin: 0 0 1rem; font-size: 1.75rem; font-weight: 650; letter-spacing: -.0
 .stats dd { margin: .2rem 0 0; color: var(--muted); font-variant-numeric: tabular-nums; }
 .stats b { color: var(--fg); font-size: 1.35rem; font-weight: 650; }
 .error, .errors { color: var(--danger); }
+.banner { padding: .75rem 1rem; border-radius: 10px; background: var(--accent-soft); color: var(--fg); }
 .typst-error { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 0.85rem; }
 .sha { overflow-wrap: anywhere; }
 .badge { display: inline-block; justify-self: start; padding: 0 .5rem; border-radius: 999px; color: var(--accent-fg); background: var(--danger); font-size: .72rem; font-weight: 600; }
