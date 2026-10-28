@@ -6,6 +6,9 @@ import (
 	"net/http"
 	"strconv"
 	"time"
+
+	"golang.org/x/text/language"
+	"golang.org/x/text/message"
 )
 
 func init() {
@@ -37,7 +40,7 @@ func (a *App) refresh(w http.ResponseWriter, r *http.Request) {
 	_, err = tx.Exec(`DELETE FROM invoice_line WHERE generated = 1
 		AND invoice_id IN (SELECT id FROM invoice WHERE id = ? AND number IS NULL)`, id)
 	if err == nil {
-		err = pullEntries(tx, id)
+		err = a.pullEntries(tx, id)
 	}
 	if err == nil {
 		err = tx.Commit()
@@ -69,21 +72,22 @@ func invoiceRefOrNil(id sql.NullInt64, number sql.NullString) *invoiceRef {
 }
 
 type pulledLine struct {
-	description, detail string
-	seconds, unitPrice  int64
-	entries             []int64
+	description, detail         string
+	project, seconds, unitPrice int64
+	entries                     []int64
 }
 
 // pullEntries generates lines on draft id from its customer's billable, assigned, ended and unclaimed
 // entries starting in its range, none without one, and claims those entries. It returns sql.ErrNoRows unless id is a draft.
-func pullEntries(tx *sql.Tx, id int64) error {
-	var from, to, grouping string
+func (a *App) pullEntries(tx *sql.Tx, id int64) error {
+	var from, to, grouping, invoiceLanguage string
 	var rounding int64
-	if err := tx.QueryRow(`SELECT range_from, range_to, grouping, rounding_minutes
-		FROM invoice WHERE id = ? AND kind = ? AND number IS NULL`, id, kindInvoice).
-		Scan(&from, &to, &grouping, &rounding); err != nil {
+	if err := tx.QueryRow(`SELECT i.range_from, i.range_to, i.grouping, i.rounding_minutes, c.invoice_language
+		FROM invoice i JOIN customer c ON c.id = i.customer_id WHERE i.id = ? AND i.kind = ? AND i.number IS NULL`, id, kindInvoice).
+		Scan(&from, &to, &grouping, &rounding, &invoiceLanguage); err != nil {
 		return err
 	}
+	workingTime := message.NewPrinter(language.Make(invoiceLanguage), message.Catalog(a.catalog)).Sprintf("invoices.working_time")
 	if from == "" {
 		return nil
 	}
@@ -99,16 +103,12 @@ func pullEntries(tx *sql.Tx, id int64) error {
 	if err != nil {
 		return err
 	}
-	order := `p.name, p.id, e.start_time, e.id`
-	if grouping == "entry" {
-		order = `e.start_time, e.id`
-	}
 	rows, err := tx.Query(`SELECT e.id, p.id, p.name, ifnull(p.hourly_rate, c.hourly_rate), e.start_time, e.end_time - e.start_time, e.description
 		FROM time_entry e JOIN project p ON p.id = e.project_id JOIN customer c ON c.id = p.customer_id
 		JOIN invoice i ON i.customer_id = c.id
 		WHERE i.id = ? AND e.billable = 1 AND e.end_time IS NOT NULL AND e.invoice_line_id IS NULL
 		AND e.start_time >= ? AND e.start_time < ?
-		ORDER BY `+order, id, start.Unix(), end.AddDate(0, 0, 1).Unix())
+		ORDER BY p.name, p.id, e.start_time, e.id`, id, start.Unix(), end.AddDate(0, 0, 1).Unix())
 	if err != nil {
 		return err
 	}
@@ -126,9 +126,10 @@ func pullEntries(tx *sql.Tx, id int64) error {
 			if description == "" {
 				description = project
 			}
-			lines = append(lines, pulledLine{description: description, detail: time.Unix(startTime, 0).In(loc).Format(time.DateOnly), unitPrice: rate})
+			lines = append(lines, pulledLine{description: description, detail: time.Unix(startTime, 0).In(loc).Format(time.DateOnly),
+				project: projectID, unitPrice: rate})
 		case projectID != lastProject:
-			lines = append(lines, pulledLine{description: project, unitPrice: rate})
+			lines = append(lines, pulledLine{description: workingTime, project: projectID, unitPrice: rate})
 		}
 		lastProject = projectID
 		l := &lines[len(lines)-1]
@@ -143,9 +144,9 @@ func pullEntries(tx *sql.Tx, id int64) error {
 	}
 	for _, l := range lines {
 		var lineID int64
-		if err := tx.QueryRow(`INSERT INTO invoice_line (invoice_id, position, generated, description, detail, quantity, unit, unit_price)
-			VALUES (?1, (SELECT ifnull(max(position), 0) + 1 FROM invoice_line WHERE invoice_id = ?1), 1, ?2, ?3, ?4, 'h', ?5) RETURNING id`,
-			id, l.description, l.detail, generatedQuantity(l.seconds, rounding), l.unitPrice).Scan(&lineID); err != nil {
+		if err := tx.QueryRow(`INSERT INTO invoice_line (invoice_id, position, generated, description, detail, quantity, unit, unit_price, project_id)
+			VALUES (?1, (SELECT ifnull(max(position), 0) + 1 FROM invoice_line WHERE invoice_id = ?1), 1, ?2, ?3, ?4, 'h', ?5, ?6) RETURNING id`,
+			id, l.description, l.detail, generatedQuantity(l.seconds, rounding), l.unitPrice, l.project).Scan(&lineID); err != nil {
 			return err
 		}
 		for _, e := range l.entries {

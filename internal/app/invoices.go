@@ -269,7 +269,7 @@ func (a *App) draftCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err == nil {
-		err = pullEntries(tx, id)
+		err = a.pullEntries(tx, id)
 	}
 	if err == nil {
 		err = tx.Commit()
@@ -307,6 +307,8 @@ type draft struct {
 	VATPercent      int64
 	unit            currency.Unit
 }
+
+func (d draft) Sections() []lineSection[invoiceLine] { return sections(d.Lines, invoiceLine.project) }
 
 type draftPage struct {
 	Draft  draft

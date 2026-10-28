@@ -9,9 +9,10 @@
 <form method="post" action="/invoices/{{.Invoice.ID}}/cancel" class="form">
 <p>{{t "invoices.cancel_warning"}}</p>
 <fieldset><legend>{{t "invoices.cancel_lines"}}</legend>
-{{range .Invoice.Lines}}{{if .CancelledBy}}<p class="hint">{{.Description}} · {{t "invoices.cancelled_by" .CancelledBy.Number}}</p>
+{{range .Invoice.Sections}}{{with .Project}}<p><strong>{{.}}</strong></p>
+{{end}}{{range .Lines}}{{if .CancelledBy}}<p class="hint">{{.Description}} · {{t "invoices.cancelled_by" .CancelledBy.Number}}</p>
 {{else}}<label><input type="checkbox" name="line" value="{{.ID}}"> {{.Description}}<span class="hint"> · {{.Quantity}} {{.Unit}} · {{.Total}} {{$.Data.Invoice.Snapshot.Currency}}</span></label>
-{{end}}{{end}}</fieldset>
+{{end}}{{end}}{{end}}</fieldset>
 <label>{{t "invoices.reason"}} <textarea name="reason" rows="2">{{.Reason}}</textarea></label>
 <button>{{template "icon-file-x"}}{{t "invoices.cancel_issue"}}</button>
 </form>

@@ -32,18 +32,44 @@ type invoiceLine struct {
 	Unit        string
 	UnitPrice   string
 	Total       string
+	// Project is "" for a line without one.
+	Project string
 }
 
-// loadLines returns invoice id's lines in position order and their totals at vatPercent.
+func (l invoiceLine) project() string { return l.Project }
+
+// lineSection is a project section; Project is "" for the lines without one, which come last.
+type lineSection[L any] struct {
+	Project string
+	Lines   []L
+}
+
+// sections splits lines, which are in section order, into their project sections.
+func sections[L any](lines []L, project func(L) string) []lineSection[L] {
+	var s []lineSection[L]
+	for i, l := range lines {
+		if i == 0 || project(l) != project(lines[i-1]) {
+			s = append(s, lineSection[L]{Project: project(l)})
+		}
+		s[len(s)-1].Lines = append(s[len(s)-1].Lines, l)
+	}
+	return s
+}
+
+// sectionOrder orders invoice_line l by project section, each placed where its first line is, then by position.
+const sectionOrder = ` ORDER BY l.project_id IS NULL,
+	(SELECT min(m.position) FROM invoice_line m WHERE m.invoice_id = l.invoice_id AND m.project_id = l.project_id), l.position, l.id`
+
+// loadLines returns invoice id's lines in section order and their totals at vatPercent.
 func (a *App) loadLines(id int64, unit currency.Unit, vatPercent int64) ([]invoiceLine, invoiceTotals, error) {
 	lines, totals, err := queryLines(a.db, id, unit)
 	return lines, totalsOf(totals, vatPercent), err
 }
 
-// queryLines returns invoice id's lines in position order and each line's total in minor units.
+// queryLines returns invoice id's lines in section order and each line's total in minor units.
 func queryLines(q querier, id int64, unit currency.Unit) ([]invoiceLine, []int64, error) {
-	rows, err := q.Query(`SELECT id, generated, description, detail, quantity, unit, unit_price
-		FROM invoice_line WHERE invoice_id = ? ORDER BY position, id`, id)
+	rows, err := q.Query(`SELECT l.id, l.generated, l.description, l.detail, l.quantity, l.unit, l.unit_price, ifnull(p.name, '')
+		FROM invoice_line l LEFT JOIN project p ON p.id = l.project_id WHERE l.invoice_id = ?`+sectionOrder, id)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -53,7 +79,7 @@ func queryLines(q querier, id int64, unit currency.Unit) ([]invoiceLine, []int64
 	for rows.Next() {
 		var l invoiceLine
 		var quantity, unitPrice int64
-		if err := rows.Scan(&l.ID, &l.Generated, &l.Description, &l.Detail, &quantity, &l.Unit, &unitPrice); err != nil {
+		if err := rows.Scan(&l.ID, &l.Generated, &l.Description, &l.Detail, &quantity, &l.Unit, &unitPrice, &l.Project); err != nil {
 			return nil, nil, err
 		}
 		total := lineTotal(quantity, unitPrice)
@@ -207,16 +233,18 @@ func (a *App) swapLines(invoiceID, lineID int64, step int) error {
 	}
 	defer func() { _ = tx.Rollback() }()
 	var pos int64
-	if err := tx.QueryRow(`SELECT l.position FROM invoice_line l JOIN invoice i ON i.id = l.invoice_id
-		WHERE l.id = ? AND i.id = ? AND i.number IS NULL`, lineID, invoiceID).Scan(&pos); err != nil {
+	var project sql.NullInt64
+	if err := tx.QueryRow(`SELECT l.position, l.project_id FROM invoice_line l JOIN invoice i ON i.id = l.invoice_id
+		WHERE l.id = ? AND i.id = ? AND i.number IS NULL`, lineID, invoiceID).Scan(&pos, &project); err != nil {
 		return err
 	}
-	neighbour := `SELECT id, position FROM invoice_line WHERE invoice_id = ? AND position > ? ORDER BY position LIMIT 1`
+	// The neighbour is in the same project section, so sections keep their order.
+	neighbour := `SELECT id, position FROM invoice_line WHERE invoice_id = ? AND project_id IS ? AND position > ? ORDER BY position LIMIT 1`
 	if step < 0 {
-		neighbour = `SELECT id, position FROM invoice_line WHERE invoice_id = ? AND position < ? ORDER BY position DESC LIMIT 1`
+		neighbour = `SELECT id, position FROM invoice_line WHERE invoice_id = ? AND project_id IS ? AND position < ? ORDER BY position DESC LIMIT 1`
 	}
 	var otherID, otherPos int64
-	err = tx.QueryRow(neighbour, invoiceID, pos).Scan(&otherID, &otherPos)
+	err = tx.QueryRow(neighbour, invoiceID, project, pos).Scan(&otherID, &otherPos)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil
 	}

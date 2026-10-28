@@ -38,6 +38,7 @@
 "invoices.edit_line" = { en = "Edit line", de = "Position bearbeiten" }
 "invoices.back" = { en = "Back to draft", de = "Zurück zum Entwurf" }
 "invoices.generated" = { en = "from time", de = "aus Zeiten" }
+"invoices.working_time" = { en = "Working time", de = "Arbeitszeit" }
 "invoices.description" = { en = "Description", de = "Beschreibung" }
 "invoices.detail" = { en = "Detail", de = "Detail" }
 "invoices.quantity" = { en = "Quantity", de = "Menge" }

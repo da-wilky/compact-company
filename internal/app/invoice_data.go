@@ -79,6 +79,7 @@ type lineData struct {
 	UnitPrice   string      `json:"unit_price"`
 	Total       string      `json:"total"`
 	Entries     []lineEntry `json:"entries"`
+	Project     *string     `json:"project"`
 }
 
 type totalsData struct {
@@ -222,8 +223,12 @@ func (a *App) invoiceJSON(q querier, id int64, number *string, issueDate string)
 	}
 	d.Lines = []lineData{}
 	for _, l := range lines {
-		d.Lines = append(d.Lines, lineData{Description: l.Description, Detail: l.Detail, Quantity: l.Quantity, Unit: l.Unit,
-			UnitPrice: l.UnitPrice, Total: l.Total, Entries: append([]lineEntry{}, entries[l.ID]...)})
+		line := lineData{Description: l.Description, Detail: l.Detail, Quantity: l.Quantity, Unit: l.Unit,
+			UnitPrice: l.UnitPrice, Total: l.Total, Entries: append([]lineEntry{}, entries[l.ID]...)}
+		if l.Project != "" {
+			line.Project = &l.Project
+		}
+		d.Lines = append(d.Lines, line)
 	}
 	data, err := json.Marshal(d)
 	return data, t.Gross, err

@@ -49,14 +49,18 @@ def seed(api):
         api.post(f"{base}{draft}/lines", form=dict(zip(("description", "detail", "quantity", "unit", "unit_price"), line)))
     line = re.search(rf'href="({draft}/lines/\d+)"', api.get(f"{base}{draft}").text()).group(1)
     entry = re.findall(r'href="(/entries/\d+)\?', api.get(f"{base}/entries").text())[-1]  # Monday's, claimed by the draft
-    issued = api.post(f"{base}/invoices", form={"customer": customer, "from": str(monday), "to": str(today), "grouping": "project", "rounding_minutes": "0", "payment_days": "14"}, max_redirects=0).headers["location"]
+    # Last week's time, so the issued invoice has project sections next to its free lines.
+    for day, project in [(-7, "Website relaunch"), (-6, "Hosting")]:
+        d = monday + datetime.timedelta(days=day)
+        api.post(f"{base}/entries", form={"project": projects[project], "start": f"{d}T09:00", "end": f"{d}T11:00", "description": f"{project} work", "billable": ""})
+    issued = api.post(f"{base}/invoices", form={"customer": customer, "from": str(monday - datetime.timedelta(days=7)), "to": str(today), "grouping": "project", "rounding_minutes": "0", "payment_days": "14"}, max_redirects=0).headers["location"]
     api.post(f"{base}{issued}/lines", form={"description": "Workshop", "detail": "On site, two days", "quantity": "16", "unit": "h", "unit_price": "85"})
     business = {"name": "Samuel Wilk", "company": "swilk", "address": "Hauptstraße 1\n12345 Berlin", "tax_number": "12/345/67890", "tax_mode": "standard", "vat_rate": "19"}
     api.post(f"{base}/settings/business", form=business)
     api.post(f"{base}{issued}/lines", form={"description": "Travel", "detail": "", "quantity": "1", "unit": "flat", "unit_price": "120"})
     api.post(f"{base}{issued}/issue")
-    travel = re.search(r'name="line" value="(\d+)"> Travel', api.get(f"{base}{issued}/cancel").text()).group(1)
-    cancellation = api.post(f"{base}{issued}/cancel", form={"line": travel, "reason": "Travel was included in the workshop price"}, max_redirects=0).headers["location"]
+    hosting = re.findall(r'name="line" value="(\d+)"> Arbeitszeit', api.get(f"{base}{issued}/cancel").text())[0]
+    cancellation = api.post(f"{base}{issued}/cancel", form={"line": hosting, "reason": "Hosting is billed yearly"}, max_redirects=0).headers["location"]
     api.post(f"{base}{issued}/paid", form={"paid_date": str(today)})
     # Unset again so the draft's preview shows the missing-data page instead of a PDF download.
     api.post(f"{base}/settings/business", form=business | {"name": ""})
