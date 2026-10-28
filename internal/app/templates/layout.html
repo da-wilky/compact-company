@@ -33,6 +33,12 @@
 {{template "content" .}}
 </main>
 </div>
+{{if .User}}<dialog class="confirm" aria-labelledby="confirm-text">
+<form method="dialog">
+<p id="confirm-text"></p>
+<div class="confirm-actions"><button value="cancel" autofocus>{{t "layout.cancel"}}</button><button value="ok" class="danger" data-label="{{t "layout.delete"}}">{{t "layout.delete"}}</button></div>
+</form>
+</dialog>{{end}}
 </body>
 </html>
 {{end}}

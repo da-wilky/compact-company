@@ -123,6 +123,10 @@ def main():
                         page.click(".picker-trigger")
                         page.screenshot(path=f"{out}/{lang}-{viewport}-{scheme}-week-picker.png")
                         failures += [f"{lang} {viewport} {scheme} /week (picker open): {p}" for p in page.evaluate(FIND_BREAKAGE)]
+                        page.goto(base + draft)
+                        page.click(f'form[action="{draft}/delete"] button')
+                        page.screenshot(path=f"{out}/{lang}-{viewport}-{scheme}-confirm-dialog.png")
+                        failures += [f"{lang} {viewport} {scheme} {draft} (confirm dialog open): {p}" for p in page.evaluate(FIND_BREAKAGE)]
                     page.close()
         browser.close()
     print(f"screenshots: {out}")

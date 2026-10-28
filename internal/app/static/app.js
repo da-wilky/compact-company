@@ -148,9 +148,35 @@ function timezoneSelects() {
   }
 }
 
+// A form with data-confirm submits only once the dialog is confirmed; data-confirm-ok relabels the confirm button.
+function confirmForms() {
+  const dialog = document.querySelector("dialog.confirm");
+  if (!dialog) return;
+  const text = dialog.querySelector("#confirm-text");
+  const ok = dialog.querySelector("button[value=ok]");
+  let form = null, submitter = null, confirmed = false;
+  document.addEventListener("submit", (e) => {
+    if (!e.target.dataset.confirm || confirmed) return;
+    e.preventDefault();
+    form = e.target;
+    submitter = e.submitter;
+    text.textContent = form.dataset.confirm;
+    ok.textContent = form.dataset.confirmOk || ok.dataset.label;
+    dialog.returnValue = "";
+    dialog.showModal();
+  });
+  dialog.addEventListener("close", () => {
+    if (dialog.returnValue !== "ok") return;
+    confirmed = true;
+    form.requestSubmit(submitter);
+    confirmed = false;
+  });
+}
+
 tickTimers();
 setInterval(tickTimers, 1000);
 document.addEventListener("htmx:afterSwap", tickTimers);
 markCurrentNav();
 document.querySelectorAll(".jump input[type=date]").forEach(datePicker);
 timezoneSelects();
+confirmForms();

@@ -23,3 +23,4 @@
 "customers.error.has_projects" = { en = "This customer has projects.", de = "Dieser Kunde hat Projekte." }
 "customers.error.has_invoices" = { en = "This customer has invoices.", de = "Dieser Kunde hat Rechnungen." }
 "customers.error.currency_invoiced" = { en = "The currency of a customer with invoices can't change.", de = "Die Währung eines Kunden mit Rechnungen kann nicht geändert werden." }
+"customers.confirm_delete" = { en = "Delete customer %s %s?", de = "Kunde %s %s löschen?" }
