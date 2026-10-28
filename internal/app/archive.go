@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"net/http"
 	"strconv"
-	"strings"
 )
 
 // guard refuses a write with the catalog key refusal while the EXISTS query holds for the id.
@@ -137,131 +136,78 @@ func (rw rowWrite) run(tx *sql.Tx, id int64) error {
 	return nil
 }
 
-// blockedRow names a selected row and the catalog key of what stops a mass write on it.
+// blockedRow is a selected customer or project as a refusal names it, with the catalog key of what blocks it.
 type blockedRow struct {
+	ID           int64
 	Name, Reason string
 }
 
-// refusedSelection is what a refused mass write leaves on its list: the rows still selected,
-// the catalog key introducing the refusal and the rows that caused it.
-type refusedSelection struct {
-	Selected map[int64]bool
-	Refusal  string
-	Blocked  []blockedRow
+// archiveActions are the URLs a customer or project list's selection posts to, keeping its archived filter.
+type archiveActions struct {
+	ArchiveURL, UnarchiveURL, DeleteURL string
 }
 
-// listQuery keeps a list's archived filter across a mass write.
-func listQuery(r *http.Request) string {
-	if r.FormValue("archived") != "" {
-		return "?archived=1"
+func newArchiveActions(base string, showArchived bool) archiveActions {
+	q := ""
+	if showArchived {
+		q = "?archived=1"
 	}
-	return ""
+	return archiveActions{base + "/archive" + q, base + "/unarchive" + q, base + "/delete" + q}
 }
 
-func (a *App) customersWrite(rw rowWrite, refusal string) http.HandlerFunc {
+func (a *App) customersWrite(rw rowWrite, blocked string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		refuse := func(s refusedSelection) { a.listCustomers(w, r, http.StatusUnprocessableEntity, s) }
-		a.massWrite(w, r, `SELECT id, number || ' ' || name FROM customer WHERE id`, nil, rw, refusal, refuse, "/customers"+listQuery(r))
+		list := func(status int, s selectionRefusal[blockedRow]) { a.listCustomers(w, r, status, s) }
+		a.rowsWrite(w, r, `SELECT id, number || ' ' || name FROM customer WHERE id`, nil, rw, blocked, list)
 	}
 }
 
-func (a *App) projectsWrite(rw rowWrite, refusal string) http.HandlerFunc {
+func (a *App) projectsWrite(rw rowWrite, blocked string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		c, ok := a.customerFromPath(w, r)
 		if !ok {
 			return
 		}
-		refuse := func(s refusedSelection) { a.listProjects(w, r, http.StatusUnprocessableEntity, c, s) }
-		a.massWrite(w, r, `SELECT id, name FROM project WHERE customer_id = ? AND id`, []any{c.ID}, rw, refusal, refuse,
-			"/customers/"+strconv.FormatInt(c.ID, 10)+"/projects"+listQuery(r))
+		list := func(status int, s selectionRefusal[blockedRow]) { a.listProjects(w, r, status, c, s) }
+		a.rowsWrite(w, r, `SELECT id, name FROM project WHERE customer_id = ? AND id`, []any{c.ID}, rw, blocked, list)
 	}
 }
 
-// massWrite runs rw on every selected id in one transaction, or on none when a guard holds for any of them;
-// then refuse gets every blocked row named by the names query, which must select (id, name) for the ids
-// it is completed with. An id that query doesn't find is 404.
-func (a *App) massWrite(w http.ResponseWriter, r *http.Request, names string, args []any, rw rowWrite, refusal string, refuse func(refusedSelection), done string) {
-	if err := r.ParseForm(); err != nil {
-		a.errorPage(w, r, http.StatusBadRequest, "error.invalid_page")
-		return
-	}
-	selected := map[int64]bool{}
-	for _, s := range r.PostForm["id"] {
-		id, err := strconv.ParseInt(s, 10, 64)
-		if err != nil {
-			a.notFound(w, r)
-			return
-		}
-		if !selected[id] {
-			selected[id] = true
-			args = append(args, id)
-		}
-	}
-	if len(selected) == 0 {
-		http.Redirect(w, r, done, http.StatusSeeOther)
-		return
-	}
-	tx, err := a.db.Begin()
-	if err != nil {
-		a.serverError(w, r, err)
-		return
-	}
-	defer func() { _ = tx.Rollback() }()
-	rows, err := tx.Query(names+` IN (?`+strings.Repeat(", ?", len(selected)-1)+`) ORDER BY id`, args...)
-	if err != nil {
-		a.serverError(w, r, err)
-		return
-	}
-	var ids []int64
-	var rowNames []string
-	for rows.Next() {
-		var id int64
-		var name string
-		if err := rows.Scan(&id, &name); err != nil {
-			_ = rows.Close()
-			a.serverError(w, r, err)
-			return
-		}
-		ids = append(ids, id)
-		rowNames = append(rowNames, name)
-	}
-	if err := rows.Close(); err != nil {
-		a.serverError(w, r, err)
-		return
-	}
-	if err := rows.Err(); err != nil {
-		a.serverError(w, r, err)
-		return
-	}
-	if len(ids) != len(selected) {
-		a.notFound(w, r)
-		return
-	}
-	var blocked []blockedRow
-	for i, id := range ids {
-		reason, err := rw.refusal(tx, id)
-		if err != nil {
-			a.serverError(w, r, err)
-			return
-		}
-		if reason != "" {
-			blocked = append(blocked, blockedRow{rowNames[i], reason})
-		}
-	}
-	if blocked != nil {
-		_ = tx.Rollback()
-		refuse(refusedSelection{Selected: selected, Refusal: refusal, Blocked: blocked})
-		return
-	}
-	for _, id := range ids {
-		if err := rw.run(tx, id); err != nil {
-			a.serverError(w, r, err)
-			return
-		}
-	}
-	if err := tx.Commit(); err != nil {
-		a.serverError(w, r, err)
-		return
-	}
-	http.Redirect(w, r, done, http.StatusSeeOther)
+// rowsWrite runs rw on every selected row; names selects (id, name) of the rows whose ids complete it, args first.
+func (a *App) rowsWrite(w http.ResponseWriter, r *http.Request, names string, args []any, rw rowWrite, blocked string,
+	list func(int, selectionRefusal[blockedRow])) {
+	massWrite(a, w, r, massAction[blockedRow]{
+		load: func(tx *sql.Tx, ids []int64) ([]blockedRow, error) {
+			in, idArgs := inList(ids)
+			rows, err := tx.Query(names+in+` ORDER BY id`, append(args, idArgs...)...)
+			if err != nil {
+				return nil, err
+			}
+			defer func() { _ = rows.Close() }()
+			var found []blockedRow
+			for rows.Next() {
+				var b blockedRow
+				if err := rows.Scan(&b.ID, &b.Name); err != nil {
+					return nil, err
+				}
+				found = append(found, b)
+			}
+			return found, rows.Err()
+		},
+		blocks: func(tx *sql.Tx, b *blockedRow) (bool, error) {
+			var err error
+			b.Reason, err = rw.refusal(tx, b.ID)
+			return b.Reason != "", err
+		},
+		blocked: blocked,
+		apply: func(tx *sql.Tx, ids []int64) (string, error) {
+			for _, id := range ids {
+				if err := rw.run(tx, id); err != nil {
+					return "", err
+				}
+			}
+			return "", nil
+		},
+		list: list,
+	})
 }

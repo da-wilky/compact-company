@@ -3,24 +3,25 @@
 {{with .Data}}
 <h1>{{t "projects.title" .Customer.Name}}</h1>
 <p class="actions"><a href="/customers/{{.Customer.ID}}">{{template "icon-arrow-left"}}{{t "projects.customer" .Customer.Number}}</a><a href="/customers/{{.Customer.ID}}/projects/new">{{template "icon-plus"}}{{t "projects.new"}}</a>{{if .ShowArchived}}<a href="/customers/{{.Customer.ID}}/projects">{{template "icon-eye-off"}}{{t "archive.hide"}}</a>{{else}}<a href="/customers/{{.Customer.ID}}/projects?archived=1">{{template "icon-eye"}}{{t "archive.show"}}</a>{{end}}</p>
+<div id="project-list">
 {{with .Blocked}}<div class="errors selection-blocked" role="alert"><p>{{t $.Data.Refusal}}</p>
 <ul>{{range .}}<li>{{.Name}} · {{t .Reason}}</li>{{end}}</ul></div>{{end}}
-{{with .Projects}}{{$base := printf "/customers/%d/projects" $.Data.Customer.ID}}{{$q := ""}}{{if $.Data.ShowArchived}}{{$q = "?archived=1"}}{{end}}
-<form id="project-selection" class="selection" method="post" hidden>
+{{with .Projects}}
+<form id="project-selection" class="selection" method="post" action="{{$.Data.DeleteURL}}" hx-post="{{$.Data.DeleteURL}}" hx-target="#project-list" hx-select="#project-list" hx-swap="outerHTML" hidden>
 <label><input type="checkbox" data-select-all>{{t "selection.all"}}</label>
 <span class="selection-actions"><span data-count="{{t "selection.count" "{n}"}}"></span>
-<button formaction="{{$base}}/archive{{$q}}" data-only-state="active" data-confirm-neutral data-confirm-one="{{t "projects.confirm_archive_one"}}" data-confirm-many="{{t "projects.confirm_archive_many" "{n}"}}" data-confirm-ok="{{t "archive.archive"}}">{{template "icon-archive"}}{{t "archive.archive"}}</button>
-<button formaction="{{$base}}/unarchive{{$q}}" data-only-state="archived" data-confirm-neutral data-confirm-one="{{t "projects.confirm_unarchive_one"}}" data-confirm-many="{{t "projects.confirm_unarchive_many" "{n}"}}" data-confirm-ok="{{t "archive.unarchive"}}">{{template "icon-archive-restore"}}{{t "archive.unarchive"}}</button>
-<button formaction="{{$base}}/delete{{$q}}" class="danger" data-confirm-one="{{t "projects.confirm_delete_one"}}" data-confirm-many="{{t "projects.confirm_delete_many" "{n}"}}" data-confirm-ok="{{t "archive.delete"}}">{{template "icon-trash"}}{{t "archive.delete"}}</button></span>
+<button formaction="{{$.Data.ArchiveURL}}" data-only-state="active" data-confirm-neutral data-confirm-one="{{t "projects.confirm_archive_one"}}" data-confirm-many="{{t "projects.confirm_archive_many" "{n}"}}" data-confirm-ok="{{t "archive.archive"}}">{{template "icon-archive"}}{{t "archive.archive"}}</button>
+<button formaction="{{$.Data.UnarchiveURL}}" data-only-state="archived" data-confirm-neutral data-confirm-one="{{t "projects.confirm_unarchive_one"}}" data-confirm-many="{{t "projects.confirm_unarchive_many" "{n}"}}" data-confirm-ok="{{t "archive.unarchive"}}">{{template "icon-archive-restore"}}{{t "archive.unarchive"}}</button>
+<button class="danger" data-confirm-one="{{t "projects.confirm_delete_one"}}" data-confirm-many="{{t "projects.confirm_delete_many" "{n}"}}" data-confirm-ok="{{t "archive.delete"}}">{{template "icon-trash"}}{{t "archive.delete"}}</button></span>
 </form>
-<div class="table-wrap"><table>
+<div class="table-wrap"><table class="selectable">
 <thead><tr><td class="c-select"></td><th>{{t "projects.name"}}</th><th>{{t "projects.billable"}}</th><th class="num">{{t "projects.effective_rate"}}</th></tr></thead>
 <tbody>
-{{range .}}<tr><td class="c-select"><input type="checkbox" name="id" value="{{.ID}}" form="project-selection" data-state="{{if .Archived}}archived{{else}}active{{end}}" aria-label="{{t "projects.select" .Name}}"{{if index $.Data.Selected .ID}} checked{{end}}></td><td><a href="/projects/{{.ID}}">{{.Name}}</a>{{if .Archived}} <span class="hint">({{t "archive.archived"}})</span>{{end}}</td><td>{{if .Billable}}{{t "projects.yes"}}{{else}}{{t "projects.no"}}{{end}}</td><td class="num">{{.EffectiveRate}} {{$.Data.Customer.Currency}}{{if not .HourlyRate}} <span class="hint">({{t "projects.customer_rate"}})</span>{{end}}</td></tr>
+{{range .}}<tr><td><input type="checkbox" name="id" value="{{.ID}}" form="project-selection" data-state="{{if .Archived}}archived{{else}}active{{end}}" aria-label="{{t "projects.select" .Name}}"{{if index $.Data.Selected .ID}} checked{{end}}></td><td><a href="/projects/{{.ID}}">{{.Name}}</a>{{if .Archived}} <span class="hint">({{t "archive.archived"}})</span>{{end}}</td><td>{{if .Billable}}{{t "projects.yes"}}{{else}}{{t "projects.no"}}{{end}}</td><td class="num">{{.EffectiveRate}} {{$.Data.Customer.Currency}}{{if not .HourlyRate}} <span class="hint">({{t "projects.customer_rate"}})</span>{{end}}</td></tr>
 {{end}}</tbody>
 </table></div>
 {{else}}
 <p>{{t "projects.empty"}}</p>
-{{end}}
+{{end}}</div>
 {{end}}
 {{end}}

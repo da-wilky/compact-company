@@ -43,6 +43,7 @@
 "entries.error.delete_blocked" = { en = "Nothing was deleted. These entries can't be deleted:", de = "Nichts wurde gelöscht. Diese Einträge können nicht gelöscht werden:" }
 "entries.blocked.other" = { en = "entry of %s", de = "Eintrag von %s" }
 "entries.blocked.unassigned" = { en = "no project", de = "kein Projekt" }
+"entries.quoted" = { en = "“%s”", de = "„%s“" }
 "entries.error.edit_blocked" = { en = "Nothing was changed. These entries can't be changed:", de = "Nichts wurde geändert. Diese Einträge können nicht geändert werden:" }
 "entries.assign_project" = { en = "Assign to project…", de = "Projekt zuordnen…" }
 "entries.assign" = { en = "Assign", de = "Zuordnen" }

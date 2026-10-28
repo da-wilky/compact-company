@@ -6,9 +6,6 @@ import (
 	"net/http"
 	"strconv"
 	"time"
-
-	"golang.org/x/text/language"
-	"golang.org/x/text/message"
 )
 
 func init() {
@@ -92,10 +89,10 @@ func (a *App) pullEntries(tx *sql.Tx, id int64) error {
 		Scan(&from, &to, &grouping, &rounding, &invoiceLanguage); err != nil {
 		return err
 	}
-	workingTime := message.NewPrinter(language.Make(invoiceLanguage), message.Catalog(a.catalog)).Sprintf("invoices.working_time")
 	if from == "" {
 		return nil
 	}
+	workingTime := a.printer(invoiceLanguage).Sprintf("invoices.working_time")
 	loc, err := customerLocation(tx, id)
 	if err != nil {
 		return err

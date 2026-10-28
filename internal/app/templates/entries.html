@@ -8,7 +8,7 @@
 {{if .Day}}{{if not .IsToday}}<a class="pill" href="{{.Today}}">{{t "entries.today"}}</a>{{end}}
 <a class="pill" href="{{.All}}">{{t "entries.all"}}</a>
 <a class="prev" href="{{.Prev}}">{{t "entries.prev"}}</a>{{end}}
-<form class="jump" action="/entries">{{if .Everyone}}<input type="hidden" name="everyone" value="1">{{end}}{{with .Project}}<input type="hidden" name="project" value="{{.}}">{{end}}{{if ne .PerPage 10}}<input type="hidden" name="per_page" value="{{.PerPage}}">{{end}}
+<form class="jump" action="/entries">{{if .Everyone}}<input type="hidden" name="everyone" value="1">{{end}}{{with .Project}}<input type="hidden" name="project" value="{{.}}">{{end}}{{with .CustomPerPage}}<input type="hidden" name="per_page" value="{{.}}">{{end}}
 <input type="date" name="day" value="{{.Day}}" aria-label="{{t "entries.day"}}"><noscript><button>{{t "entries.jump"}}</button></noscript></form>
 {{if .Day}}<a class="next" href="{{.Next}}">{{t "entries.next"}}</a>{{end}}
 </nav>
@@ -21,8 +21,8 @@
 <span class="seg">{{range .}}<a href="{{.URL}}"{{if .Current}} aria-current="true"{{end}}>{{.Size}}</a>{{end}}</span></span>{{end}}
 </div>
 <div id="entry-list">
-{{with .Refused}}<div class="errors" role="alert"><p>{{t .}}</p>
-{{with $.Data.Blocked}}<ul>{{range .}}<li>{{date .Start}} {{clock .Start}}{{with .Description}} “{{.}}”{{end}} · {{if .Invoice}}{{template "invoice-badge" .Invoice}}{{else if .Running}}{{t "entries.running"}}{{else if not .Own}}{{t "entries.blocked.other" .User}}{{else}}{{t "entries.blocked.unassigned"}}{{end}}</li>{{end}}</ul>{{end}}</div>{{end}}
+{{with .Refusal}}<div class="errors selection-blocked" role="alert"><p>{{t .}}</p>
+{{with $.Data.Blocked}}<ul>{{range .}}<li>{{date .Start}} {{clock .Start}}{{with .Description}} {{t "entries.quoted" .}}{{end}} · {{if .Invoice}}{{template "invoice-badge" .Invoice}}{{else if .Running}}{{t "entries.running"}}{{else if not .Own}}{{t "entries.blocked.other" .User}}{{else}}{{t "entries.blocked.unassigned"}}{{end}}</li>{{end}}</ul>{{end}}</div>{{end}}
 {{if .Days}}<form id="entry-selection" class="selection" method="post" action="{{.DeleteURL}}" hx-post="{{.DeleteURL}}" hx-target="#entry-list" hx-select="#entry-list" hx-swap="outerHTML" hidden>
 <label><input type="checkbox" data-select-all>{{t "selection.all"}}</label>
 <span class="selection-actions"><span data-count="{{t "selection.count" "{n}"}}"></span>
@@ -41,7 +41,7 @@
 
 {{define "entry-days"}}{{with .Data}}{{range .Days}}<section class="entry-day">
 {{if not .Continued}}<h2>{{t .Weekday}} {{date .Date}} <span class="sum">{{duration .Total}}</span></h2>
-{{end}}<div class="table-wrap"><table>
+{{end}}<div class="table-wrap"><table class="selectable">
 <colgroup><col class="c-select">{{if $.Data.Everyone}}<col class="c-user">{{end}}<col class="c-time"><col class="c-dur"><col class="c-project"><col><col class="c-bill"></colgroup>
 <thead><tr><td></td>{{if $.Data.Everyone}}<th>{{t "entries.user"}}</th>{{end}}<th>{{t "entries.time"}}</th><th class="num">{{t "entries.duration"}}</th><th>{{t "entries.project"}}</th><th>{{t "entries.description"}}</th><th>{{t "entries.billable"}}</th></tr></thead>
 <tbody>

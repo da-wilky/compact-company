@@ -68,8 +68,7 @@ type invoicesPage struct {
 	Status    string
 	Statuses  []string
 	DeleteURL string
-	Selected  map[int64]bool
-	Blocked   []invoiceRow
+	selectionRefusal[invoiceRow]
 }
 
 type customerOption struct {
@@ -95,12 +94,12 @@ func (p invoicesPage) StatusLink(status string) string {
 }
 
 func (a *App) invoiceList(w http.ResponseWriter, r *http.Request) {
-	a.listInvoices(w, r, http.StatusOK, nil, nil)
+	a.listInvoices(w, r, http.StatusOK, selectionRefusal[invoiceRow]{})
 }
 
 // listInvoices renders the listing r asks for, with the selection a refused mass action leaves behind.
-func (a *App) listInvoices(w http.ResponseWriter, r *http.Request, status int, selected map[int64]bool, blocked []invoiceRow) {
-	page := invoicesPage{Statuses: invoiceStatuses, Selected: selected, Blocked: blocked}
+func (a *App) listInvoices(w http.ResponseWriter, r *http.Request, status int, refused selectionRefusal[invoiceRow]) {
+	page := invoicesPage{Statuses: invoiceStatuses, selectionRefusal: refused}
 	page.Customer, _ = strconv.ParseInt(r.FormValue("customer"), 10, 64)
 	if s := r.FormValue("status"); slices.Contains(invoiceStatuses, s) {
 		page.Status = s
@@ -276,19 +275,6 @@ func validOptionalRange(from, to string) bool {
 func parsePaymentDays(s string) (int, bool) {
 	n, err := strconv.Atoi(strings.TrimSpace(s))
 	return n, err == nil && n > 0
-}
-
-func parseIDs(ss []string) ([]int64, bool) {
-	ids := make([]int64, len(ss))
-	for i, s := range ss {
-		id, err := strconv.ParseInt(s, 10, 64)
-		if err != nil {
-			return nil, false
-		}
-		ids[i] = id
-	}
-	slices.Sort(ids)
-	return slices.Compact(ids), true
 }
 
 func (a *App) draftCreate(w http.ResponseWriter, r *http.Request) {
@@ -533,78 +519,45 @@ func (a *App) draftDelete(w http.ResponseWriter, r *http.Request) {
 }
 
 // deleteDraft deletes invoice id if it is a draft; cascades drop its lines and chosen projects and release its entries.
-func deleteDraft(db interface {
-	Exec(query string, args ...any) (sql.Result, error)
-}, id int64) (sql.Result, error) {
+func deleteDraft(db execer, id int64) (sql.Result, error) {
 	return db.Exec(`DELETE FROM invoice WHERE id = ? AND kind = ? AND number IS NULL`, id, kindInvoice)
 }
 
 // draftDeleteSelected deletes all selected drafts, or none when any of them is not a draft,
 // and answers with the listing its query names.
 func (a *App) draftDeleteSelected(w http.ResponseWriter, r *http.Request) {
-	if err := r.ParseForm(); err != nil {
-		a.errorPage(w, r, http.StatusBadRequest, "error.invalid_page")
-		return
-	}
-	selected := map[int64]bool{}
-	var ids []any
-	for _, s := range r.PostForm["id"] {
-		id, err := strconv.ParseInt(s, 10, 64)
-		if err != nil {
-			a.notFound(w, r)
-			return
-		}
-		selected[id] = true
-		ids = append(ids, id)
-	}
-	if len(ids) == 0 {
-		a.listInvoices(w, r, http.StatusOK, nil, nil)
-		return
-	}
-	tx, err := a.db.Begin()
-	if err != nil {
-		a.serverError(w, r, err)
-		return
-	}
-	defer func() { _ = tx.Rollback() }()
-	rows, err := tx.Query(`SELECT i.id, ifnull(i.number, ''), ifnull(i.snapshot ->> '$.customer.name', c.name), `+invoiceStatus+`
-		FROM invoice i JOIN customer c ON c.id = i.customer_id
-		WHERE i.id IN (?`+strings.Repeat(", ?", len(ids)-1)+`) ORDER BY i.number, i.id`, ids...)
-	if err != nil {
-		a.serverError(w, r, err)
-		return
-	}
-	defer func() { _ = rows.Close() }()
-	var blocked []invoiceRow
-	for rows.Next() {
-		var row invoiceRow
-		if err := rows.Scan(&row.ID, &row.Number, &row.Customer, &row.Status); err != nil {
-			a.serverError(w, r, err)
-			return
-		}
-		if !row.Selectable() {
-			blocked = append(blocked, row)
-		}
-	}
-	if err := rows.Err(); err != nil {
-		a.serverError(w, r, err)
-		return
-	}
-	if blocked != nil {
-		a.listInvoices(w, r, http.StatusUnprocessableEntity, selected, blocked)
-		return
-	}
-	for id := range selected {
-		if _, err := deleteDraft(tx, id); err != nil {
-			a.serverError(w, r, err)
-			return
-		}
-	}
-	if err := tx.Commit(); err != nil {
-		a.serverError(w, r, err)
-		return
-	}
-	a.listInvoices(w, r, http.StatusOK, nil, nil)
+	massWrite(a, w, r, massAction[invoiceRow]{
+		load: func(tx *sql.Tx, ids []int64) ([]invoiceRow, error) {
+			in, args := inList(ids)
+			rows, err := tx.Query(`SELECT i.id, ifnull(i.number, ''), ifnull(i.snapshot ->> '$.customer.name', c.name), `+invoiceStatus+`
+				FROM invoice i JOIN customer c ON c.id = i.customer_id
+				WHERE i.id`+in+` ORDER BY i.number, i.id`, args...)
+			if err != nil {
+				return nil, err
+			}
+			defer func() { _ = rows.Close() }()
+			var found []invoiceRow
+			for rows.Next() {
+				var row invoiceRow
+				if err := rows.Scan(&row.ID, &row.Number, &row.Customer, &row.Status); err != nil {
+					return nil, err
+				}
+				found = append(found, row)
+			}
+			return found, rows.Err()
+		},
+		blocks:  func(_ *sql.Tx, row *invoiceRow) (bool, error) { return !row.Selectable(), nil },
+		blocked: "invoices.error.delete_blocked",
+		apply: func(tx *sql.Tx, ids []int64) (string, error) {
+			for _, id := range ids {
+				if _, err := deleteDraft(tx, id); err != nil {
+					return "", err
+				}
+			}
+			return "", nil
+		},
+		list: func(status int, s selectionRefusal[invoiceRow]) { a.listInvoices(w, r, status, s) },
+	})
 }
 
 // afterInvoiceWrite redirects to done, or answers 404 when the write matched no row

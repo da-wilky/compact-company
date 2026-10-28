@@ -44,7 +44,8 @@ type projectsPage struct {
 	Customer     projectCustomer
 	Projects     []project
 	ShowArchived bool
-	refusedSelection
+	selectionRefusal[blockedRow]
+	archiveActions
 }
 
 type projectPage struct {
@@ -97,12 +98,14 @@ func (a *App) customerFromPath(w http.ResponseWriter, r *http.Request) (projectC
 func (a *App) projectList(w http.ResponseWriter, r *http.Request) {
 	c, ok := a.customerFromPath(w, r)
 	if ok {
-		a.listProjects(w, r, http.StatusOK, c, refusedSelection{})
+		a.listProjects(w, r, http.StatusOK, c, selectionRefusal[blockedRow]{})
 	}
 }
 
-func (a *App) listProjects(w http.ResponseWriter, r *http.Request, status int, c projectCustomer, s refusedSelection) {
-	page := projectsPage{Customer: c, ShowArchived: r.FormValue("archived") != "", refusedSelection: s}
+func (a *App) listProjects(w http.ResponseWriter, r *http.Request, status int, c projectCustomer, s selectionRefusal[blockedRow]) {
+	show := r.FormValue("archived") != ""
+	page := projectsPage{Customer: c, ShowArchived: show, selectionRefusal: s,
+		archiveActions: newArchiveActions("/customers/"+strconv.FormatInt(c.ID, 10)+"/projects", show)}
 	rows, err := a.db.Query(`SELECT id, name, hourly_rate, billable, archived FROM project
 		WHERE customer_id = ? AND (? OR archived = 0) ORDER BY id`, c.ID, page.ShowArchived)
 	if err != nil {

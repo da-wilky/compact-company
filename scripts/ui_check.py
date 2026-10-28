@@ -31,6 +31,15 @@ FIND_BREAKAGE = """() => {
   return problems;
 }"""
 
+# Selects the first row the list doesn't offer for selection, as a stale page would post it, so the action is refused.
+SELECT_UNSELECTABLE = """([form, link]) => {
+  const row = [...document.querySelectorAll("tbody tr")].find((tr) => !tr.querySelector("input[name=id]") && tr.querySelector(`a[href^="${link}"]`));
+  const box = Object.assign(document.createElement("input"), {type: "checkbox", name: "id", hidden: true, checked: true});
+  box.value = row.querySelector(`a[href^="${link}"]`).getAttribute("href").slice(link.length).match(/^\\d+/)[0];
+  box.setAttribute("form", form);
+  document.body.append(box);
+}"""
+
 
 def seed(api):
     today = datetime.date.today()
@@ -144,6 +153,13 @@ def main():
                         page.click(".selection-actions button.danger")
                         page.screenshot(path=f"{out}/{lang}-{viewport}-{scheme}-entries-selected-confirm.png")
                         failures += [f"{lang} {viewport} {scheme} /entries (delete confirm open): {p}" for p in page.evaluate(FIND_BREAKAGE)]
+                        page.click("dialog.confirm button[value=cancel]")
+                        page.evaluate(SELECT_UNSELECTABLE, ["entry-selection", "/entries/"])
+                        page.click(".selection-actions button.danger")
+                        page.click("dialog.confirm button[value=ok]")
+                        page.wait_for_selector(".selection-blocked")
+                        page.screenshot(path=f"{out}/{lang}-{viewport}-{scheme}-entries-blocked.png", full_page=True)
+                        failures += [f"{lang} {viewport} {scheme} /entries (delete refused): {p}" for p in page.evaluate(FIND_BREAKAGE)]
                     if "/invoices" in pages:
                         page.goto(base + "/invoices")
                         page.check("form.selection [data-select-all]")
@@ -152,6 +168,13 @@ def main():
                         page.click(".selection-actions button")
                         page.screenshot(path=f"{out}/{lang}-{viewport}-{scheme}-invoices-selected-confirm.png")
                         failures += [f"{lang} {viewport} {scheme} /invoices (delete confirm open): {p}" for p in page.evaluate(FIND_BREAKAGE)]
+                        page.click("dialog.confirm button[value=cancel]")
+                        page.evaluate(SELECT_UNSELECTABLE, ["invoice-selection", "/invoices/"])
+                        page.click(".selection-actions button.danger")
+                        page.click("dialog.confirm button[value=ok]")
+                        page.wait_for_selector(".selection-blocked")
+                        page.screenshot(path=f"{out}/{lang}-{viewport}-{scheme}-invoices-blocked.png", full_page=True)
+                        failures += [f"{lang} {viewport} {scheme} /invoices (delete refused): {p}" for p in page.evaluate(FIND_BREAKAGE)]
                     # Every seeded customer and project is still in use, so the delete is refused and nothing goes.
                     for path in ("/customers", f"/customers/{customer}/projects"):
                         if path not in pages:
@@ -162,6 +185,7 @@ def main():
                         page.screenshot(path=f"{out}/{lang}-{viewport}-{scheme}-{name}-selected.png", full_page=True)
                         failures += [f"{lang} {viewport} {scheme} {path} (rows selected): {p}" for p in page.evaluate(FIND_BREAKAGE)]
                         page.click(".selection-actions button.danger")
+                        page.screenshot(path=f"{out}/{lang}-{viewport}-{scheme}-{name}-selected-confirm.png")
                         page.click("dialog.confirm button[value=ok]")
                         page.wait_for_selector(".selection-blocked")
                         page.screenshot(path=f"{out}/{lang}-{viewport}-{scheme}-{name}-blocked.png", full_page=True)

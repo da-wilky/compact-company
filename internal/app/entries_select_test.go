@@ -131,6 +131,28 @@ func TestSelectionWithARunningTimerDeletesNothing(t *testing.T) {
 	c.get(free).wantStatus(t, http.StatusOK)
 }
 
+func TestBlockingEntriesAreQuotedInTheUsersLanguage(t *testing.T) {
+	ta := newTestApp(t, devConfig+"[defaults]\nlanguage = \"de\"\n")
+	c := ta.client()
+	timer := c.startTimer(url.Values{"description": {"tracking"}})
+
+	res := c.deleteEntries("", "/entries/"+strings.TrimPrefix(timer, "/timers/"))
+
+	wantInOrder(t, res.text(), "Diese Einträge können nicht gelöscht werden:", "26.10.2026 09:00 „tracking“ · läuft")
+}
+
+func TestUnknownSelectedEntryIsNotFoundAndDeletesNothing(t *testing.T) {
+	ta := newTestApp(t, devConfig)
+	c := ta.client()
+	free := c.createEntry(entryForm("", "2026-10-26T07:00", "2026-10-26T08:00", "free"))
+
+	c.deleteEntries("", free, "/entries/99").wantStatus(t, http.StatusNotFound)
+
+	c.get(free).wantStatus(t, http.StatusOK)
+	c.deleteEntries("", free, free).wantStatus(t, http.StatusOK)
+	c.get(free).wantStatus(t, http.StatusNotFound)
+}
+
 // selectionQuestion is what the confirmation of the action confirmed with ok asks with n entries selected;
 // app.js fills in the count.
 func (r *response) selectionQuestion(t *testing.T, ok string, n int) string {

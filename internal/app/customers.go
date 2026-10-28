@@ -38,7 +38,8 @@ type customer struct {
 type customersPage struct {
 	Customers    []customer
 	ShowArchived bool
-	refusedSelection
+	selectionRefusal[blockedRow]
+	archiveActions
 }
 
 type customerPage struct {
@@ -48,11 +49,12 @@ type customerPage struct {
 }
 
 func (a *App) customerList(w http.ResponseWriter, r *http.Request) {
-	a.listCustomers(w, r, http.StatusOK, refusedSelection{})
+	a.listCustomers(w, r, http.StatusOK, selectionRefusal[blockedRow]{})
 }
 
-func (a *App) listCustomers(w http.ResponseWriter, r *http.Request, status int, s refusedSelection) {
-	page := customersPage{ShowArchived: r.FormValue("archived") != "", refusedSelection: s}
+func (a *App) listCustomers(w http.ResponseWriter, r *http.Request, status int, s selectionRefusal[blockedRow]) {
+	show := r.FormValue("archived") != ""
+	page := customersPage{ShowArchived: show, selectionRefusal: s, archiveActions: newArchiveActions("/customers", show)}
 	rows, err := a.db.Query(`SELECT id, number, name, currency, hourly_rate, archived FROM customer WHERE ? OR archived = 0 ORDER BY id`, page.ShowArchived)
 	if err != nil {
 		a.serverError(w, r, err)

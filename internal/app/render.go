@@ -113,6 +113,10 @@ func loadCatalog() (catalog.Catalog, error) {
 	return b, nil
 }
 
+func (a *App) printer(lang string) *message.Printer {
+	return message.NewPrinter(language.Make(lang), message.Catalog(a.catalog))
+}
+
 var datetimeLayouts = map[string]string{"en": "2006-01-02 15:04", "de": "02.01.2006 15:04"}
 
 var dateLayouts = map[string]string{"en": "2006-01-02", "de": "02.01.2006"}
@@ -163,7 +167,7 @@ func (a *App) write(w http.ResponseWriter, r *http.Request, status int, page, na
 			return err
 		}
 	}
-	p := message.NewPrinter(language.Make(lang), message.Catalog(a.catalog))
+	p := a.printer(lang)
 	t, err := a.pages[page].Clone()
 	if err != nil {
 		return err

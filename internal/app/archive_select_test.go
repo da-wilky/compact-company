@@ -25,12 +25,13 @@ func TestSelectedCustomersAreArchivedTogether(t *testing.T) {
 	acme, globex := c.customerPath("acme"), c.customerPath("globex")
 	c.get("/customers").wantBody(t, `formaction="/customers/archive"`)
 
-	wantRedirect(t, c.postForm("/customers/archive", selectIDs(acme, globex)), "/customers")
+	res := c.hxPost("/customers/archive", selectIDs(acme, globex))
 
-	list := c.get("/customers")
-	list.wantNoBody(t, "acme")
-	list.wantNoBody(t, "globex")
-	list.wantBody(t, "initech")
+	res.wantStatus(t, http.StatusOK)
+	res.wantNoBody(t, "acme")
+	res.wantNoBody(t, "globex")
+	res.wantBody(t, "initech")
+	c.get("/customers").wantNoBody(t, "acme")
 }
 
 func TestSelectedCustomersAreUnarchivedKeepingTheArchivedFilter(t *testing.T) {
@@ -39,13 +40,16 @@ func TestSelectedCustomersAreUnarchivedKeepingTheArchivedFilter(t *testing.T) {
 	c.createCustomer(customerForm("acme", "85"))
 	c.createCustomer(customerForm("globex", "85"))
 	acme, globex := c.customerPath("acme"), c.customerPath("globex")
-	wantRedirect(t, c.postForm("/customers/archive", selectIDs(acme, globex)), "/customers")
+	c.hxPost("/customers/archive", selectIDs(acme, globex)).wantStatus(t, http.StatusOK)
 	all := c.get("/customers?archived=1")
 	all.wantBody(t, `formaction="/customers/unarchive?archived=1"`)
-	all.wantBody(t, `value="1" form="customer-selection" data-state="archived"`)
+	all.wantRow(t, "", "K-001", "acme (archived)", "85.00 EUR", "Projects")
 
-	wantRedirect(t, c.postForm("/customers/unarchive?archived=1", selectIDs(acme)), "/customers?archived=1")
+	res := c.hxPost("/customers/unarchive?archived=1", selectIDs(acme))
 
+	res.wantStatus(t, http.StatusOK)
+	res.wantRow(t, "", "K-001", "acme", "85.00 EUR", "Projects")
+	res.wantRow(t, "", "K-002", "globex (archived)", "85.00 EUR", "Projects")
 	list := c.get("/customers")
 	list.wantBody(t, "acme")
 	list.wantNoBody(t, "globex")
@@ -59,7 +63,7 @@ func TestABlockedCustomerStopsTheWholeMassDeleteAndIsNamed(t *testing.T) {
 	c.createCustomer(customerForm("initech", "85"))
 	acme, globex, initech := c.customerPath("acme"), c.customerPath("globex"), c.customerPath("initech")
 
-	res := c.postForm("/customers/delete", selectIDs(acme, globex))
+	res := c.hxPost("/customers/delete", selectIDs(acme, globex))
 
 	res.wantStatus(t, http.StatusUnprocessableEntity)
 	wantInOrder(t, res.text(), "Nothing was deleted. These customers can't be deleted:", "K-001 acme · This customer has projects.")
@@ -68,7 +72,7 @@ func TestABlockedCustomerStopsTheWholeMassDeleteAndIsNamed(t *testing.T) {
 	res.wantNoBody(t, `aria-label="Select customer K-003 initech" checked`)
 	c.get(globex).wantStatus(t, http.StatusOK)
 
-	wantRedirect(t, c.postForm("/customers/delete", selectIDs(globex, initech)), "/customers")
+	c.hxPost("/customers/delete", selectIDs(globex, initech)).wantStatus(t, http.StatusOK)
 	c.get(globex).wantStatus(t, http.StatusNotFound)
 	c.get(initech).wantStatus(t, http.StatusNotFound)
 }
@@ -80,7 +84,7 @@ func TestARunningTimerStopsMassArchivingItsCustomer(t *testing.T) {
 	c.createCustomer(customerForm("globex", "85"))
 	c.startTimer(url.Values{"project": {project}})
 
-	res := c.postForm("/customers/archive", selectIDs(c.customerPath("acme"), c.customerPath("globex")))
+	res := c.hxPost("/customers/archive", selectIDs(c.customerPath("acme"), c.customerPath("globex")))
 
 	res.wantStatus(t, http.StatusUnprocessableEntity)
 	wantInOrder(t, res.text(), "Nothing was archived.", "acme · A timer is running on a project of this customer.")
@@ -92,7 +96,7 @@ func TestUnknownSelectedCustomerIsNotFound(t *testing.T) {
 	c := ta.client()
 	c.createCustomer(customerForm("acme", "85"))
 
-	c.postForm("/customers/delete", selectIDs(c.customerPath("acme"), "/customers/99")).wantStatus(t, http.StatusNotFound)
+	c.hxPost("/customers/delete", selectIDs(c.customerPath("acme"), "/customers/99")).wantStatus(t, http.StatusNotFound)
 
 	c.get("/customers").wantBody(t, "acme")
 }
@@ -104,11 +108,14 @@ func TestSelectedProjectsAreArchivedAndUnarchivedTogether(t *testing.T) {
 	cust := c.customerPath("acme")
 	c.get(cust+"/projects").wantBody(t, `formaction="`+cust+`/projects/archive"`)
 
-	wantRedirect(t, c.postForm(cust+"/projects/archive", selectIDs(website, hosting)), cust+"/projects")
+	res := c.hxPost(cust+"/projects/archive", selectIDs(website, hosting, website))
 
-	c.get(cust+"/projects").wantNoBody(t, "website")
-	c.get(cust+"/projects").wantNoBody(t, "hosting")
-	wantRedirect(t, c.postForm(cust+"/projects/unarchive?archived=1", selectIDs(website)), cust+"/projects?archived=1")
+	res.wantStatus(t, http.StatusOK)
+	res.wantNoBody(t, "website")
+	res.wantNoBody(t, "hosting")
+	res = c.hxPost(cust+"/projects/unarchive?archived=1", selectIDs(website))
+	res.wantStatus(t, http.StatusOK)
+	res.wantBody(t, "hosting")
 	c.get(cust+"/projects").wantBody(t, "website")
 	c.get(cust+"/projects").wantNoBody(t, "hosting")
 }
@@ -124,7 +131,7 @@ func TestBlockedProjectsStopTheWholeMassDeleteAndAreNamed(t *testing.T) {
 	draft := c.createDraft(pullForm(c, "entry", "0"))
 	c.addLine(draft, assignedLineForm("Domain", "1", "20", hosting))
 
-	res := c.postForm(cust+"/projects/delete", selectIDs(website, hosting, audit))
+	res := c.hxPost(cust+"/projects/delete", selectIDs(website, hosting, audit))
 
 	res.wantStatus(t, http.StatusUnprocessableEntity)
 	wantInOrder(t, res.text(), "Nothing was deleted. These projects can't be deleted:",
@@ -132,7 +139,7 @@ func TestBlockedProjectsStopTheWholeMassDeleteAndAreNamed(t *testing.T) {
 	res.wantNoBody(t, "audit · ")
 	c.get(audit).wantStatus(t, http.StatusOK)
 
-	wantRedirect(t, c.postForm(cust+"/projects/delete", selectIDs(audit)), cust+"/projects")
+	c.hxPost(cust+"/projects/delete", selectIDs(audit)).wantStatus(t, http.StatusOK)
 	c.get(audit).wantStatus(t, http.StatusNotFound)
 }
 
@@ -143,7 +150,7 @@ func TestARunningTimerStopsMassArchivingItsProject(t *testing.T) {
 	cust := c.customerPath("acme")
 	c.startTimer(url.Values{"project": {hosting}})
 
-	res := c.postForm(cust+"/projects/archive", selectIDs(website, hosting))
+	res := c.hxPost(cust+"/projects/archive", selectIDs(website, hosting))
 
 	res.wantStatus(t, http.StatusUnprocessableEntity)
 	wantInOrder(t, res.text(), "Nothing was archived.", "hosting · A timer is running on this project.")
@@ -156,7 +163,7 @@ func TestAnotherCustomersProjectCantBeSelected(t *testing.T) {
 	website := c.websiteProject()
 	c.createCustomer(customerForm("globex", "85"))
 
-	c.postForm(c.customerPath("globex")+"/projects/delete", selectIDs(website)).wantStatus(t, http.StatusNotFound)
+	c.hxPost(c.customerPath("globex")+"/projects/delete", selectIDs(website)).wantStatus(t, http.StatusNotFound)
 
 	c.get("/projects/"+website).wantStatus(t, http.StatusOK)
 }

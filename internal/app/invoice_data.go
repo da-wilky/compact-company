@@ -18,6 +18,11 @@ type querier interface {
 	Query(query string, args ...any) (*sql.Rows, error)
 }
 
+// execer is *sql.DB or *sql.Tx, so a write can run alone or inside a larger transaction.
+type execer interface {
+	Exec(query string, args ...any) (sql.Result, error)
+}
+
 // invoiceData is the JSON handed to the Typst template, contract version 1 (templates/README.md).
 type invoiceData struct {
 	Version       int            `json:"version"`

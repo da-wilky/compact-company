@@ -85,6 +85,18 @@ func TestSelectionWithAnIssuedInvoiceDeletesNothingAndNamesIt(t *testing.T) {
 	c.get(issued).wantStatus(t, http.StatusOK)
 }
 
+func TestUnknownSelectedInvoiceIsNotFoundAndDeletesNothing(t *testing.T) {
+	ta := newTestApp(t, devConfig)
+	c := ta.client()
+	draft := c.acmeDraft()
+
+	c.deleteInvoices("", draft, "/invoices/99").wantStatus(t, http.StatusNotFound)
+
+	c.get(draft).wantStatus(t, http.StatusOK)
+	c.deleteInvoices("", draft, draft).wantStatus(t, http.StatusOK)
+	c.get(draft).wantStatus(t, http.StatusNotFound)
+}
+
 func TestDeletingSelectedDraftsAsksForConfirmationNamingTheCount(t *testing.T) {
 	en := newTestApp(t, devConfig).client()
 	en.acmeDraft()
