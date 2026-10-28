@@ -8,7 +8,7 @@
 {{if .Day}}{{if not .IsToday}}<a class="pill" href="{{.Today}}">{{t "entries.today"}}</a>{{end}}
 <a class="pill" href="{{.All}}">{{t "entries.all"}}</a>
 <a class="prev" href="{{.Prev}}">{{t "entries.prev"}}</a>{{end}}
-<form class="jump" action="/entries">{{if .Everyone}}<input type="hidden" name="everyone" value="1">{{end}}{{with .Project}}<input type="hidden" name="project" value="{{.}}">{{end}}
+<form class="jump" action="/entries">{{if .Everyone}}<input type="hidden" name="everyone" value="1">{{end}}{{with .Project}}<input type="hidden" name="project" value="{{.}}">{{end}}{{if ne .PerPage 10}}<input type="hidden" name="per_page" value="{{.PerPage}}">{{end}}
 <input type="date" name="day" value="{{.Day}}" aria-label="{{t "entries.day"}}"><noscript><button>{{t "entries.jump"}}</button></noscript></form>
 {{if .Day}}<a class="next" href="{{.Next}}">{{t "entries.next"}}</a>{{end}}
 </nav>
@@ -17,6 +17,8 @@
 <span class="label">{{t "entries.show"}}</span>
 <span class="seg"><a href="{{.Mine}}"{{if not .Everyone}} aria-current="true"{{end}}>{{t "entries.mine"}}</a><a href="{{.Team}}"{{if .Everyone}} aria-current="true"{{end}}>{{t "entries.everyone"}}</a></span>
 {{if .Project}}<span class="chip">{{if eq .Project "none"}}{{t "timers.unassigned"}}{{else}}{{.ProjectName}}{{end}} <a href="{{.Bare}}" aria-label="{{t "entries.clear_project"}}" title="{{t "entries.clear_project"}}">{{template "icon-x"}}</a></span>{{end}}
+{{with .PageSizes}}<span class="group"><span class="label">{{t "entries.per_page"}}</span>
+<span class="seg">{{range .}}<a href="{{.URL}}"{{if .Current}} aria-current="true"{{end}}>{{.Size}}</a>{{end}}</span></span>{{end}}
 </div>
 {{if .Days}}{{template "entry-days" $}}{{else}}
 <p>{{t "entries.empty"}}</p>

@@ -34,3 +34,4 @@
 "entries.all" = { en = "All entries", de = "Alle Einträge" }
 "entries.more" = { en = "Load more", de = "Mehr laden" }
 "entries.clear_project" = { en = "Remove project filter", de = "Projektfilter entfernen" }
+"entries.per_page" = { en = "Per page", de = "Pro Seite" }

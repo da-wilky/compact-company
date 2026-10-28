@@ -81,6 +81,64 @@ func TestEntriesLoadTenAtATimeAndContinueTheDay(t *testing.T) {
 	c.get("/entries?before=nope").wantStatus(t, http.StatusBadRequest)
 }
 
+func TestEntriesPageSizeIsChosenAndKeptWhilePaging(t *testing.T) {
+	ta := newTestApp(t, devConfig)
+	c := ta.client()
+	for d := 1; d <= 26; d++ {
+		c.createEntry(entryForm("", fmt.Sprintf("2026-09-%02dT08:00", d), fmt.Sprintf("2026-09-%02dT09:00", d), fmt.Sprintf("entry %02d", d)))
+	}
+
+	first := c.get("/entries?per_page=25")
+
+	wantInOrder(t, first.body, "entry 26", "entry 02")
+	first.wantNoBody(t, "entry 01")
+	m := moreLink.FindStringSubmatch(first.body)
+	if m == nil {
+		t.Fatalf("no load-more link:\n%s", first.body)
+	}
+	more := html.UnescapeString(m[1])
+	if !strings.Contains(more, "per_page=25") {
+		t.Fatalf("load-more link %q drops the page size", more)
+	}
+	c.hxGet(more).wantBody(t, "entry 01")
+}
+
+func TestEntriesPageSizeOffersFourSizesAndSurvivesFilters(t *testing.T) {
+	ta := newTestApp(t, devConfig)
+	c := ta.client()
+
+	res := c.get("/entries?per_page=50")
+
+	for _, n := range []string{"10", "25", "50", "100"} {
+		res.wantBody(t, ">"+n+"</a>")
+	}
+	res.wantBody(t, `href="/entries?everyone=1&amp;per_page=50">Team</a>`)
+	res.wantBody(t, `<input type="hidden" name="per_page" value="50">`)
+	res.wantBody(t, `href="/entries?per_page=100">100</a>`)
+	res.wantBody(t, `href="/entries">10</a>`)
+	day := c.get("/entries?day=2026-10-26&per_page=50")
+	day.wantBody(t, `href="/entries?per_page=50">All entries</a>`)
+}
+
+func TestInvalidEntriesPageSizeFallsBackToTen(t *testing.T) {
+	ta := newTestApp(t, devConfig)
+	c := ta.client()
+	for h := 8; h < 19; h++ {
+		c.createEntry(entryForm("", fmt.Sprintf("2026-10-26T%02d:00", h), fmt.Sprintf("2026-10-26T%02d:30", h), fmt.Sprintf("entry %02d", h)))
+	}
+
+	for _, size := range []string{"7", "1000", "nope", "-10"} {
+		res := c.get("/entries?per_page=" + size)
+		res.wantStatus(t, http.StatusOK)
+		wantInOrder(t, res.body, "entry 18", "entry 09")
+		res.wantNoBody(t, "entry 08")
+		res.wantBody(t, `href="/entries?per_page=25">25</a>`)
+		if m := moreLink.FindStringSubmatch(res.body); m == nil || strings.Contains(m[1], "per_page") {
+			t.Fatalf("per_page=%s: want a load-more link without a page size, got %v", size, m)
+		}
+	}
+}
+
 func TestEntryFiltersShowTheProjectAndKeepEachOther(t *testing.T) {
 	ta := newTestApp(t, devConfig)
 	c := ta.client()
