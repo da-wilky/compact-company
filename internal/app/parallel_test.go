@@ -43,7 +43,7 @@ func TestOverlapsRemainAfterSwitchingOffAndAreCheckedOnNextSave(t *testing.T) {
 	list.wantBody(t, "06:30–07:30")
 	res := alice.postForm(two, entryForm("", "2026-10-26T06:30", "2026-10-26T07:30", "two edited"))
 	res.wantStatus(t, http.StatusUnprocessableEntity)
-	res.wantBody(t, "This entry overlaps another of your entries.")
+	res.wantBody(t, "This time entry overlaps another of your time entries.")
 	alice.postForm(two, entryForm("", "2026-10-26T07:00", "2026-10-26T07:30", "two moved")).wantStatus(t, http.StatusSeeOther)
 }
 
@@ -66,7 +66,7 @@ func TestSwitchingParallelEntriesOffIsRefusedWhileSeveralTimersRun(t *testing.T)
 	res := alice.postForm("/profile", parallelSetting(false))
 
 	res.wantStatus(t, http.StatusUnprocessableEntity)
-	res.wantBody(t, "Stop all but one of your timers before switching parallel entries off.")
+	res.wantBody(t, "Stop all but one of your timers before switching parallel time entries off.")
 	res.wantBody(t, `name="parallel_entries" checked`)
 	alice.get("/profile").wantBody(t, `name="parallel_entries" checked`)
 	alice.hxPost(first+"/stop", nil).wantStatus(t, http.StatusOK)

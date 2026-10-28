@@ -18,7 +18,7 @@
 <p class="hint" id="current-time">{{t "settings.current_time" (datetime .Now)}}</p>
 <label><input type="checkbox" name="parallel_entries"{{if .ParallelEntries}} checked{{end}} aria-describedby="parallel-hint"> {{t "settings.parallel_entries"}}</label>
 <p class="hint" id="parallel-hint">{{t "settings.parallel_entries_hint"}}</p>
-<button>{{template "icon-save"}}{{t "settings.save"}}</button>
+<button>{{template "icon-save"}}{{t "common.save"}}</button>
 </form>
 {{end}}
 {{end}}

@@ -266,6 +266,10 @@ language = "de"
 
 	c.get("/customers").wantBody(t, "Noch keine Kunden.")
 	c.postForm("/customers", customerForm("acme", "")).wantBody(t, "Standard-Stundensatz ist erforderlich.")
+	c.createCustomer(customerForm("acme", "85"))
+	list := c.get("/customers")
+	wantConfirmation(t, list.selectionQuestion(t, "Löschen", 1), "1 Kunde löschen?")
+	wantConfirmation(t, list.selectionQuestion(t, "Löschen", 2), "2 Kunden löschen?")
 }
 
 func TestCrossOriginCustomerCreateIsRejected(t *testing.T) {

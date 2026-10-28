@@ -13,7 +13,6 @@
 "customers.timezone" = { en = "Timezone", de = "Zeitzone" }
 "customers.note" = { en = "Note", de = "Notiz" }
 "customers.projects" = { en = "Projects", de = "Projekte" }
-"customers.save" = { en = "Save", de = "Speichern" }
 "customers.error.name" = { en = "Name is required.", de = "Name ist erforderlich." }
 "customers.error.currency" = { en = "Currency must be an ISO 4217 code such as EUR.", de = "Währung muss ein ISO-4217-Code wie EUR sein." }
 "customers.error.hourly_rate_required" = { en = "Default hourly rate is required.", de = "Standard-Stundensatz ist erforderlich." }
@@ -26,7 +25,7 @@
 "customers.error.currency_invoiced" = { en = "The currency of a customer with invoices can't change.", de = "Die Währung eines Kunden mit Rechnungen kann nicht geändert werden." }
 "customers.confirm_delete" = { en = "Delete customer %s %s?", de = "Kunde %s %s löschen?" }
 "customers.select" = { en = "Select customer %s %s", de = "Kunde %s %s auswählen" }
-"customers.confirm_delete_one" = { en = "Delete 1 customer?", de = "1 Kunden löschen?" }
+"customers.confirm_delete_one" = { en = "Delete 1 customer?", de = "1 Kunde löschen?" }
 "customers.confirm_delete_many" = { en = "Delete %s customers?", de = "%s Kunden löschen?" }
 "customers.error.archive_blocked" = { en = "Nothing was archived. These customers can't be archived:", de = "Nichts wurde archiviert. Diese Kunden können nicht archiviert werden:" }
 "customers.error.delete_blocked" = { en = "Nothing was deleted. These customers can't be deleted:", de = "Nichts wurde gelöscht. Diese Kunden können nicht gelöscht werden:" }

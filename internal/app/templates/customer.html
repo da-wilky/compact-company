@@ -18,9 +18,9 @@
 </select></label>
 <label>{{t "customers.timezone"}} <input name="timezone" value="{{.Customer.Timezone}}" required></label>
 <label>{{t "customers.note"}} <textarea name="note" rows="3">{{.Customer.Note}}</textarea></label>
-<button>{{template "icon-save"}}{{t "customers.save"}}</button>
+<button>{{template "icon-save"}}{{t "common.save"}}</button>
 </form>
 {{with .Customer.ID}}{{if $.Data.Customer.Archived}}<form method="post" action="/customers/{{.}}/unarchive"><button>{{template "icon-archive-restore"}}{{t "archive.unarchive"}}</button></form>{{else}}<form method="post" action="/customers/{{.}}/archive"><button>{{template "icon-archive"}}{{t "archive.archive"}}</button></form>{{end}}
-<form method="post" action="/customers/{{.}}/delete" data-confirm="{{t "customers.confirm_delete" $.Data.Customer.Number $.Data.Customer.Name}}"><button class="danger">{{template "icon-trash"}}{{t "archive.delete"}}</button></form>{{end}}
+<form method="post" action="/customers/{{.}}/delete" data-confirm="{{t "customers.confirm_delete" $.Data.Customer.Number $.Data.Customer.Name}}"><button class="danger">{{template "icon-trash"}}{{t "common.delete"}}</button></form>{{end}}
 {{end}}
 {{end}}

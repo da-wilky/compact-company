@@ -12,7 +12,6 @@
 "projects.customer_rate" = { en = "customer default", de = "Kundenstandard" }
 "projects.hourly_rate" = { en = "Hourly rate override (%s)", de = "Abweichender Stundensatz (%s)" }
 "projects.hourly_rate_hint" = { en = "Leave empty to use the customer's default of %s %s.", de = "Leer lassen für den Kundenstandard von %s %s." }
-"projects.save" = { en = "Save", de = "Speichern" }
 "projects.error.name" = { en = "Name is required.", de = "Name ist erforderlich." }
 "projects.error.hourly_rate" = { en = "Hourly rate must be a non-negative decimal with no more decimals than the currency allows.", de = "Stundensatz muss eine nicht negative Dezimalzahl mit höchstens so vielen Nachkommastellen sein, wie die Währung erlaubt." }
 "projects.error.timer_running" = { en = "A timer is running on this project.", de = "Auf diesem Projekt läuft ein Timer." }

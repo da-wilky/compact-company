@@ -2,7 +2,6 @@ package app
 
 import (
 	"database/sql"
-	"fmt"
 	"net/http"
 	"time"
 )
@@ -11,10 +10,6 @@ func init() {
 	routes = append(routes, func(a *App, mux *http.ServeMux) {
 		mux.HandleFunc("GET /{$}", a.authed(a.home))
 	})
-}
-
-func formatHours(d time.Duration) string {
-	return fmt.Sprintf("%.1f", d.Hours())
 }
 
 type hoursTotal struct {

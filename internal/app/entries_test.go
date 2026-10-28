@@ -216,7 +216,7 @@ func TestOwnerCanFullyEditAnEntry(t *testing.T) {
 	c.get("/entries?day=2026-10-27").wantRow(t, "", "10:00–10:20", "0:20", "Unassigned", "moved", "")
 	clash := c.postForm(entry, entryForm("", "2026-10-27T08:30", "2026-10-27T10:20", "moved"))
 	clash.wantStatus(t, http.StatusUnprocessableEntity)
-	clash.wantBody(t, "This entry overlaps another of your entries.")
+	clash.wantBody(t, "This time entry overlaps another of your time entries.")
 	c.postForm(other, entryForm("", "2026-10-27T08:00", "2026-10-27T09:30", "longer")).wantStatus(t, http.StatusSeeOther)
 }
 
@@ -308,7 +308,7 @@ func TestUnassignedEntryCannotBeMarkedBillable(t *testing.T) {
 	res := c.postForm("/entries", form)
 
 	res.wantStatus(t, http.StatusUnprocessableEntity)
-	res.wantBody(t, "An entry without a project can&#39;t be billable")
+	res.wantBody(t, "An unassigned time entry can&#39;t be billable")
 	res.wantBody(t, `value="orphan"`)
 	c.get("/entries?day=2026-10-26").wantNoBody(t, "orphan")
 }
@@ -334,12 +334,12 @@ func TestOverlappingEntriesAreRefusedWithParallelEntriesOff(t *testing.T) {
 	res := alice.postForm("/entries", entryForm("", "2026-10-26T06:30", "2026-10-26T07:30", "clash"))
 
 	res.wantStatus(t, http.StatusUnprocessableEntity)
-	res.wantBody(t, "This entry overlaps another of your entries.")
+	res.wantBody(t, "This time entry overlaps another of your time entries.")
 	alice.postForm("/entries", entryForm("", "2026-10-26T07:00", "2026-10-26T08:00", "adjacent")).wantStatus(t, http.StatusSeeOther)
 	bob.postForm("/entries", entryForm("", "2026-10-26T06:30", "2026-10-26T07:30", "bob")).wantStatus(t, http.StatusSeeOther)
 	alice.startTimer(url.Values{})
 	alice.postForm("/entries", entryForm("", "2026-10-26T08:30", "2026-10-26T09:30", "into timer")).
-		wantBody(t, "This entry overlaps another of your entries.")
+		wantBody(t, "This time entry overlaps another of your time entries.")
 	alice.postForm("/entries", entryForm("", "2026-10-26T08:00", "2026-10-26T09:00", "before timer")).wantStatus(t, http.StatusSeeOther)
 }
 

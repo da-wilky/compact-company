@@ -33,7 +33,7 @@
 <label>{{t "invoices.service_to"}} <input type="date" name="service_to" value="{{.Header.ServiceTo}}" aria-describedby="service-hint"></label>
 <p class="hint" id="service-hint">{{t "invoices.service_hint"}}</p>{{end}}
 <label>{{t "invoices.payment_days"}} <input name="payment_days" value="{{.Header.PaymentDays}}" required inputmode="numeric"></label>
-<button>{{template "icon-save"}}{{t "invoices.save"}}</button>
+<button>{{template "icon-save"}}{{t "common.save"}}</button>
 </form>
 <form method="post" action="/invoices/{{.ID}}/delete" data-confirm="{{t "invoices.confirm_delete" .CustomerNumber .CustomerName}}"><button class="danger">{{template "icon-trash"}}{{t "invoices.delete"}}</button></form>
 {{end}}{{end}}

@@ -19,7 +19,7 @@
 <option value="">{{t "invoices.line_no_project"}}</option>
 {{range .Projects}}<option value="{{.ID}}"{{if eq .ID $.Data.Line.ProjectID}} selected{{end}}>{{.Name}}{{if .Archived}} ({{t "archive.archived"}}){{end}}</option>
 {{end}}</select></label>{{end}}
-<button>{{template "icon-save"}}{{t "invoices.save"}}</button>
+<button>{{template "icon-save"}}{{t "common.save"}}</button>
 </form>
 {{with .Entries}}<h2>{{t "invoices.line_entries"}}</h2>
 <div class="table-wrap"><table>

@@ -181,7 +181,7 @@ func TestWeekAndDayDatesFollowTheLanguage(t *testing.T) {
 	week.wantBody(t, "Woche ab 26.10.2026")
 	week.wantRow(t, "", "Mo 26.10.2026", "Di 27.10.2026", "Mi 28.10.2026", "Do 29.10.2026", "Fr 30.10.2026", "Sa 31.10.2026", "So 01.11.2026", "Summe")
 	week.wantBody(t, `href="/week?week=2026-11-02">Nächste Woche</a>`)
-	day.wantBody(t, "Einträge am 28.10.2026")
+	day.wantBody(t, "Zeiteinträge am 28.10.2026")
 	day.wantBody(t, `href="/entries?day=2026-10-29">Nächster Tag</a>`)
 }
 

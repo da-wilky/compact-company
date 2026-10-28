@@ -1,9 +1,10 @@
-"entries.title" = { en = "Entries on %s", de = "Einträge am %s" }
+"entries.title" = { en = "Time entries on %s", de = "Zeiteinträge am %s" }
 "entries.nav" = { en = "Entries", de = "Einträge" }
+"entries.heading" = { en = "Time entries", de = "Zeiteinträge" }
 "entries.prev" = { en = "Previous day", de = "Vorheriger Tag" }
 "entries.next" = { en = "Next day", de = "Nächster Tag" }
-"entries.new" = { en = "New entry", de = "Neuer Eintrag" }
-"entries.edit" = { en = "Edit entry", de = "Eintrag bearbeiten" }
+"entries.new" = { en = "New time entry", de = "Neuer Zeiteintrag" }
+"entries.edit" = { en = "Edit time entry", de = "Zeiteintrag bearbeiten" }
 "entries.empty" = { en = "No time entries yet.", de = "Noch keine Zeiteinträge." }
 "entries.empty_day" = { en = "No time entries on this day.", de = "Keine Zeiteinträge an diesem Tag." }
 "entries.empty_filtered" = { en = "No time entries match this filter.", de = "Keine Zeiteinträge passen zu diesem Filter." }
@@ -13,19 +14,19 @@
 "entries.description" = { en = "Description", de = "Beschreibung" }
 "entries.billable" = { en = "Billable", de = "Abrechenbar" }
 "entries.billable_default" = { en = "Project default", de = "Projektstandard" }
+"entries.yes" = { en = "yes", de = "ja" }
+"entries.no" = { en = "no", de = "nein" }
 "entries.running" = { en = "running", de = "läuft" }
 "entries.start" = { en = "Start", de = "Beginn" }
 "entries.end" = { en = "End", de = "Ende" }
-"entries.save" = { en = "Save", de = "Speichern" }
 "entries.error.start" = { en = "Start must be a date and time.", de = "Beginn muss ein Datum mit Uhrzeit sein." }
 "entries.error.end" = { en = "End must be a date and time.", de = "Ende muss ein Datum mit Uhrzeit sein." }
 "entries.error.order" = { en = "End must not be before start.", de = "Ende darf nicht vor dem Beginn liegen." }
 "entries.error.project" = { en = "This project can't receive new time.", de = "Auf dieses Projekt kann keine neue Zeit gebucht werden." }
-"entries.error.unassigned_billable" = { en = "An entry without a project can't be billable or not billable.", de = "Ein Eintrag ohne Projekt kann nicht als abrechenbar oder nicht abrechenbar markiert werden." }
-"entries.error.overlap" = { en = "This entry overlaps another of your entries.", de = "Dieser Eintrag überschneidet sich mit einem anderen deiner Einträge." }
-"entries.claimed" = { en = "This entry is on an invoice and can't change.", de = "Dieser Eintrag steht auf einer Rechnung und kann nicht geändert werden." }
-"entries.error.claimed" = { en = "This entry is on an invoice: remove it from the draft or cancel the line first.", de = "Dieser Eintrag steht auf einer Rechnung: Entferne ihn aus dem Entwurf oder storniere zuerst die Position." }
-"entries.delete" = { en = "Delete", de = "Löschen" }
+"entries.error.unassigned_billable" = { en = "An unassigned time entry can't be billable or not billable.", de = "Ein nicht zugeordneter Zeiteintrag kann nicht als abrechenbar oder nicht abrechenbar markiert werden." }
+"entries.error.overlap" = { en = "This time entry overlaps another of your time entries.", de = "Dieser Zeiteintrag überschneidet sich mit einem anderen deiner Zeiteinträge." }
+"entries.claimed" = { en = "This time entry is on an invoice and can't change.", de = "Dieser Zeiteintrag steht auf einer Rechnung und kann nicht geändert werden." }
+"entries.error.claimed" = { en = "This time entry is on an invoice: remove it from the draft or cancel the line first.", de = "Dieser Zeiteintrag steht auf einer Rechnung: Entferne ihn aus dem Entwurf oder storniere zuerst die Position." }
 "entries.user" = { en = "User", de = "Benutzer" }
 "entries.mine" = { en = "Mine", de = "Meine" }
 "entries.everyone" = { en = "Team", de = "Team" }
@@ -36,17 +37,17 @@
 "entries.all" = { en = "All entries", de = "Alle Einträge" }
 "entries.more" = { en = "Load more", de = "Mehr laden" }
 "entries.clear_project" = { en = "Remove project filter", de = "Projektfilter entfernen" }
-"entries.confirm_delete" = { en = "Delete the entry of %s %s?", de = "Eintrag vom %s %s löschen?" }
-"entries.confirm_delete_described" = { en = "Delete the entry of %s %s “%s”?", de = "Eintrag vom %s %s „%s“ löschen?" }
+"entries.confirm_delete" = { en = "Delete the time entry of %s %s?", de = "Zeiteintrag vom %s %s löschen?" }
+"entries.confirm_delete_described" = { en = "Delete the time entry of %s %s “%s”?", de = "Zeiteintrag vom %s %s „%s“ löschen?" }
 "entries.per_page" = { en = "Per page", de = "Pro Seite" }
-"entries.select" = { en = "Select the entry of %s %s", de = "Eintrag vom %s %s auswählen" }
-"entries.confirm_delete_one" = { en = "Delete 1 entry?", de = "1 Eintrag löschen?" }
-"entries.confirm_delete_many" = { en = "Delete %s entries?", de = "%s Einträge löschen?" }
-"entries.error.delete_blocked" = { en = "Nothing was deleted. These entries can't be deleted:", de = "Nichts wurde gelöscht. Diese Einträge können nicht gelöscht werden:" }
-"entries.blocked.other" = { en = "entry of %s", de = "Eintrag von %s" }
-"entries.blocked.unassigned" = { en = "no project", de = "kein Projekt" }
+"entries.select" = { en = "Select the time entry of %s %s", de = "Zeiteintrag vom %s %s auswählen" }
+"entries.confirm_delete_one" = { en = "Delete 1 time entry?", de = "1 Zeiteintrag löschen?" }
+"entries.confirm_delete_many" = { en = "Delete %s time entries?", de = "%s Zeiteinträge löschen?" }
+"entries.error.delete_blocked" = { en = "Nothing was deleted. These time entries can't be deleted:", de = "Nichts wurde gelöscht. Diese Zeiteinträge können nicht gelöscht werden:" }
+"entries.blocked.other" = { en = "time entry of %s", de = "Zeiteintrag von %s" }
+"entries.blocked.unassigned" = { en = "unassigned", de = "nicht zugeordnet" }
 "entries.quoted" = { en = "“%s”", de = "„%s“" }
-"entries.error.edit_blocked" = { en = "Nothing was changed. These entries can't be changed:", de = "Nichts wurde geändert. Diese Einträge können nicht geändert werden:" }
+"entries.error.edit_blocked" = { en = "Nothing was changed. These time entries can't be changed:", de = "Nichts wurde geändert. Diese Zeiteinträge können nicht geändert werden:" }
 "entries.assign_project" = { en = "Assign to project…", de = "Projekt zuordnen…" }
 "entries.assign" = { en = "Assign", de = "Zuordnen" }
 "entries.mark_billable" = { en = "Billable", de = "Abrechenbar" }

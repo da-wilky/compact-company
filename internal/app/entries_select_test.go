@@ -72,7 +72,7 @@ func TestSelectedEntriesAreDeletedTogetherKeepingFiltersAndPage(t *testing.T) {
 	res := c.deleteEntries(query, paths[0], paths[2])
 
 	res.wantStatus(t, http.StatusOK)
-	wantInOrder(t, res.text(), "Entries on 2026-10-26", "acme · website", "slot 11", "slot 09")
+	wantInOrder(t, res.text(), "Time entries on 2026-10-26", "acme · website", "slot 11", "slot 09")
 	res.wantNoBody(t, "slot 08")
 	res.wantNoBody(t, "slot 10")
 	res.wantNoBody(t, "elsewhere")
@@ -109,10 +109,10 @@ func TestSelectionWithAnUndeletableEntryDeletesNothingAndNamesTheBlockers(t *tes
 	res := alice.deleteEntries("?everyone=1", free, claimed, bobs)
 
 	res.wantStatus(t, http.StatusUnprocessableEntity)
-	wantInOrder(t, res.text(), "Nothing was deleted. These entries can't be deleted:",
-		"2026-09-02 08:00 “billed” · On a draft", "2026-09-03 10:00 “bob's” · entry of bob")
+	wantInOrder(t, res.text(), "Nothing was deleted. These time entries can't be deleted:",
+		"2026-09-02 08:00 “billed” · On a draft", "2026-09-03 10:00 “bob's” · time entry of bob")
 	wantPaths(t, res.selectable(), free)
-	res.wantBody(t, `value="`+strings.TrimPrefix(free, "/entries/")+`" form="entry-selection" aria-label="Select the entry of 2026-09-03 08:00" checked>`)
+	res.wantBody(t, `value="`+strings.TrimPrefix(free, "/entries/")+`" form="entry-selection" aria-label="Select the time entry of 2026-09-03 08:00" checked>`)
 	alice.get(free).wantStatus(t, http.StatusOK)
 	alice.get(claimed).wantStatus(t, http.StatusOK)
 	bob.get(bobs).wantStatus(t, http.StatusOK)
@@ -127,7 +127,7 @@ func TestSelectionWithARunningTimerDeletesNothing(t *testing.T) {
 	res := c.deleteEntries("", free, "/entries/"+strings.TrimPrefix(timer, "/timers/"))
 
 	res.wantStatus(t, http.StatusUnprocessableEntity)
-	wantInOrder(t, res.text(), "These entries can't be deleted:", "2026-10-26 09:00 “tracking” · running")
+	wantInOrder(t, res.text(), "These time entries can't be deleted:", "2026-10-26 09:00 “tracking” · running")
 	c.get(free).wantStatus(t, http.StatusOK)
 }
 
@@ -138,7 +138,7 @@ func TestBlockingEntriesAreQuotedInTheUsersLanguage(t *testing.T) {
 
 	res := c.deleteEntries("", "/entries/"+strings.TrimPrefix(timer, "/timers/"))
 
-	wantInOrder(t, res.text(), "Diese Einträge können nicht gelöscht werden:", "26.10.2026 09:00 „tracking“ · läuft")
+	wantInOrder(t, res.text(), "Diese Zeiteinträge können nicht gelöscht werden:", "26.10.2026 09:00 „tracking“ · läuft")
 }
 
 func TestUnknownSelectedEntryIsNotFoundAndDeletesNothing(t *testing.T) {
@@ -175,10 +175,10 @@ func TestDeletingTheSelectionAsksForConfirmationNamingTheCount(t *testing.T) {
 
 	page, seite := en.get("/entries"), de.get("/entries")
 
-	wantConfirmation(t, page.selectionQuestion(t, "Delete", 7), "Delete 7 entries?")
-	wantConfirmation(t, page.selectionQuestion(t, "Delete", 1), "Delete 1 entry?")
-	wantConfirmation(t, seite.selectionQuestion(t, "Löschen", 7), "7 Einträge löschen?")
-	wantConfirmation(t, seite.selectionQuestion(t, "Löschen", 1), "1 Eintrag löschen?")
+	wantConfirmation(t, page.selectionQuestion(t, "Delete", 7), "Delete 7 time entries?")
+	wantConfirmation(t, page.selectionQuestion(t, "Delete", 1), "Delete 1 time entry?")
+	wantConfirmation(t, seite.selectionQuestion(t, "Löschen", 7), "7 Zeiteinträge löschen?")
+	wantConfirmation(t, seite.selectionQuestion(t, "Löschen", 1), "1 Zeiteintrag löschen?")
 }
 
 var selectionForm = regexp.MustCompile(`<form id="entry-selection"[^>]* action="([^"]*)"`)
@@ -244,7 +244,7 @@ func TestAssigningToAnArchivedProjectChangesNothing(t *testing.T) {
 	res.wantStatus(t, http.StatusUnprocessableEntity)
 	res.wantBody(t, "This project can&#39;t receive new time.")
 	wantPaths(t, res.selectable(), orphan)
-	res.wantBody(t, `aria-label="Select the entry of 2026-10-26 08:00" checked>`)
+	res.wantBody(t, `aria-label="Select the time entry of 2026-10-26 08:00" checked>`)
 	res.wantRow(t, "", "08:00–09:00", "1:00", "Unassigned", "orphan", "")
 }
 
@@ -260,8 +260,8 @@ func TestSelectionWithAnUnchangeableEntryAssignsNothingAndNamesTheBlockers(t *te
 	res := alice.massEdit("assign", "?everyone=1", url.Values{"project": {hosting}}, free, claimed, bobs)
 
 	res.wantStatus(t, http.StatusUnprocessableEntity)
-	wantInOrder(t, res.text(), "Nothing was changed. These entries can't be changed:",
-		"2026-09-02 08:00 “billed” · On a draft", "2026-09-03 10:00 “bob's” · entry of bob")
+	wantInOrder(t, res.text(), "Nothing was changed. These time entries can't be changed:",
+		"2026-09-02 08:00 “billed” · On a draft", "2026-09-03 10:00 “bob's” · time entry of bob")
 	wantPaths(t, res.selectable(), free)
 	res.wantRow(t, "", "alice", "08:00–09:00", "1:00", "Unassigned", "free", "")
 	res.wantRow(t, "", "bob", "10:00–11:00", "1:00", "Unassigned", "bob's", "")
@@ -301,6 +301,6 @@ func TestSelectionWithAnUnassignedEntryChangesNoBillableFlag(t *testing.T) {
 	res := c.massEdit("billable", "", url.Values{"billable": {"no"}}, assigned, orphan)
 
 	res.wantStatus(t, http.StatusUnprocessableEntity)
-	wantInOrder(t, res.text(), "Nothing was changed. These entries can't be changed:", "2026-10-26 09:00 “orphan” · no project")
+	wantInOrder(t, res.text(), "Nothing was changed. These time entries can't be changed:", "2026-10-26 09:00 “orphan” · unassigned")
 	res.wantRow(t, "", "08:00–09:00", "1:00", "acme · website", "assigned", "yes")
 }

@@ -23,7 +23,7 @@ func TestOverviewSumsEveryonesEndedBillableTimePerCustomer(t *testing.T) {
 
 	res := alice.get("/")
 
-	res.wantRow(t, "acme", "2.5 h", "", "2026-10-05", "Create draft")
+	res.wantRow(t, "acme", "2:30 h", "", "2026-10-05", "Create draft")
 	res.wantNoBody(t, "Nothing to bill, nothing open.")
 }
 
@@ -39,9 +39,9 @@ func TestOverviewSplitsUnbilledTimeIntoNotOnAnyInvoiceAndEachDraft(t *testing.T)
 
 	res := c.get("/")
 
-	res.wantRow(t, "acme", "1.0 h", "2.0 h , 0.5 h", "2026-09-02", "Create draft")
-	res.wantBody(t, `<a href="`+early+`">2.0 h</a>`)
-	res.wantBody(t, `<a href="`+late+`">0.5 h</a>`)
+	res.wantRow(t, "acme", "1:00 h", "2:00 h , 0:30 h", "2026-09-02", "Create draft")
+	res.wantBody(t, `<a href="`+early+`">2:00 h</a>`)
+	res.wantBody(t, `<a href="`+late+`">0:30 h</a>`)
 }
 
 func TestOverviewLeavesOutTimeOnIssuedInvoicesAndDatesTheOldestEntryInTheCustomersTimezone(t *testing.T) {
@@ -56,7 +56,7 @@ func TestOverviewLeavesOutTimeOnIssuedInvoicesAndDatesTheOldestEntryInTheCustome
 
 	res := c.get("/")
 
-	res.wantRow(t, "acme", "0.5 h", "", "2026-10-01", "Create draft")
+	res.wantRow(t, "acme", "0:30 h", "", "2026-10-01", "Create draft")
 }
 
 func TestOverviewOffersCreateDraftOnlyForTimeNotOnAnyInvoice(t *testing.T) {
@@ -68,7 +68,7 @@ func TestOverviewOffersCreateDraftOnlyForTimeNotOnAnyInvoice(t *testing.T) {
 
 	res := c.get("/")
 
-	res.wantRow(t, "acme", "", "2.0 h", "2026-09-02", "")
+	res.wantRow(t, "acme", "", "2:00 h", "2026-09-02", "")
 	res.wantNoBody(t, "/invoices/new?customer=")
 	c.postForm(draft+"/delete", nil).wantStatus(t, http.StatusSeeOther)
 	c.get("/").wantBody(t, `<a href="/invoices/new?customer=`)
@@ -125,6 +125,6 @@ func TestOverviewListsCustomersWithUnbilledTimeArchivedOnesIncludedMostHoursFirs
 
 	res := c.get("/")
 
-	wantInOrder(t, res.text(), "globex 3.0 h", "acme 1.0 h")
+	wantInOrder(t, res.text(), "globex 3:00 h", "acme 1:00 h")
 	res.in(t, "Unbilled time").wantNoBody(t, "initech")
 }

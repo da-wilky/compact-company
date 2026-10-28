@@ -19,9 +19,9 @@ func TestOverviewIsTheStartPageInBothLanguages(t *testing.T) {
 	de := c.get("/")
 	de.wantBody(t, "<title>Übersicht · compact-company</title>")
 	wantInOrder(t, de.body, `href="/"`, "Übersicht</a>")
-	wantInOrder(t, de.text(), "Diese Woche 0.0 h · 0.0 h abrechenbar", "Dieser Monat 0.0 h", "Nichts abzurechnen, nichts offen.")
+	wantInOrder(t, de.text(), "Diese Woche 0:00 h · 0:00 h abrechenbar", "Dieser Monat 0:00 h", "Nichts abzurechnen, nichts offen.")
 	c.createEntry(entryForm("", "2026-10-26T06:00", "2026-10-26T06:30", "orphan"))
-	c.get("/").wantBody(t, "1 nicht zugeordneter Eintrag (0.5 h)")
+	c.get("/").wantBody(t, "1 nicht zugeordneter Zeiteintrag (0:30 h)")
 }
 
 func TestOverviewHoursAreThisIsoWeekAndCalendarMonthByStartInMyTimezone(t *testing.T) {
@@ -39,7 +39,7 @@ timezone = "Europe/Berlin"
 
 	res := c.get("/")
 
-	wantInOrder(t, res.text(), "This week 3.5 h · 0.0 h billable", "This month 3.0 h · 0.0 h billable")
+	wantInOrder(t, res.text(), "This week 3:30 h · 0:00 h billable", "This month 3:00 h · 0:00 h billable")
 }
 
 func TestOverviewHoursSplitOffTheBillablePartAndCountOnlyMyEntries(t *testing.T) {
@@ -58,7 +58,7 @@ func TestOverviewHoursSplitOffTheBillablePartAndCountOnlyMyEntries(t *testing.T)
 
 	res := alice.get("/")
 
-	wantInOrder(t, res.text(), "This week 3.0 h · 2.5 h billable", "This month 4.0 h · 2.5 h billable")
+	wantInOrder(t, res.text(), "This week 3:00 h · 2:30 h billable", "This month 4:00 h · 2:30 h billable")
 }
 
 func TestOverviewCountsMyEndedUnassignedEntries(t *testing.T) {
@@ -74,9 +74,9 @@ func TestOverviewCountsMyEndedUnassignedEntries(t *testing.T) {
 
 	res := alice.get("/")
 
-	res.wantBody(t, `<a href="/entries?project=none">2 unassigned entries (1.5 h)</a>`)
+	res.wantBody(t, `<a href="/entries?project=none">2 unassigned time entries (1:30 h)</a>`)
 	res.wantNoBody(t, "Nothing to bill, nothing open.")
-	bob.get("/").wantBody(t, `<a href="/entries?project=none">1 unassigned entry (2.0 h)</a>`)
+	bob.get("/").wantBody(t, `<a href="/entries?project=none">1 unassigned time entry (2:00 h)</a>`)
 }
 
 func TestOverviewWithNothingToDoSaysSo(t *testing.T) {
@@ -91,7 +91,7 @@ func TestOverviewWithNothingToDoSaysSo(t *testing.T) {
 	res := c.get("/")
 
 	res.wantBody(t, "Nothing to bill, nothing open.")
-	res.wantNoBody(t, "unassigned entr")
+	res.wantNoBody(t, "unassigned time entr")
 }
 
 func TestOverviewShowsZeroHours(t *testing.T) {
@@ -99,5 +99,5 @@ func TestOverviewShowsZeroHours(t *testing.T) {
 
 	res := ta.client().get("/")
 
-	wantInOrder(t, res.text(), "This week 0.0 h · 0.0 h billable", "This month 0.0 h · 0.0 h billable")
+	wantInOrder(t, res.text(), "This week 0:00 h · 0:00 h billable", "This month 0:00 h · 0:00 h billable")
 }

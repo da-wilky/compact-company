@@ -1,7 +1,7 @@
 {{define "title"}}{{if .Data.Entry.ID}}{{t "entries.edit"}}{{else}}{{t "entries.new"}}{{end}}{{end}}
 {{define "content"}}
 {{with .Data}}
-<a class="crumb" href="{{.Back}}">{{template "icon-arrow-left"}}{{t "entries.nav"}}</a>
+<a class="crumb" href="{{.Back}}">{{template "icon-arrow-left"}}{{t "entries.heading"}}</a>
 <h1>{{template "title" $}}</h1>
 {{with .Errors}}<ul class="errors" role="alert">{{range .}}<li>{{t .}}</li>{{end}}</ul>{{end}}
 {{with .Entry.Invoice}}<p class="hint">{{t "entries.claimed"}} {{template "invoice-badge" .}}</p>{{end}}
@@ -9,7 +9,7 @@
 <input type="hidden" name="return" value="{{.Return}}">
 <fieldset{{if .ReadOnly}} disabled{{end}}>
 <label>{{t "entries.project"}} <select name="project">
-<option value="">{{t "timers.no_project"}}</option>
+<option value="">{{t "timers.unassigned"}}</option>
 {{range .Customers}}<optgroup label="{{.Name}}">
 {{range .Projects}}<option value="{{.ID}}"{{if eq (print .ID) $.Data.Entry.Project}} selected{{end}}>{{.Name}}</option>
 {{end}}</optgroup>
@@ -19,12 +19,12 @@
 <label>{{t "entries.description"}} <input name="description" value="{{.Entry.Description}}"></label>
 <label>{{t "entries.billable"}} <select name="billable">
 <option value="">{{t "entries.billable_default"}}</option>
-<option value="yes"{{if eq .Entry.Billable "yes"}} selected{{end}}>{{t "projects.yes"}}</option>
-<option value="no"{{if eq .Entry.Billable "no"}} selected{{end}}>{{t "projects.no"}}</option>
+<option value="yes"{{if eq .Entry.Billable "yes"}} selected{{end}}>{{t "entries.yes"}}</option>
+<option value="no"{{if eq .Entry.Billable "no"}} selected{{end}}>{{t "entries.no"}}</option>
 </select></label>
 </fieldset>
-{{if not .ReadOnly}}<button>{{template "icon-save"}}{{t "entries.save"}}</button>{{end}}
+{{if not .ReadOnly}}<button>{{template "icon-save"}}{{t "common.save"}}</button>{{end}}
 </form>
-{{if and .Entry.ID (not .ReadOnly)}}<form method="post" action="/entries/{{.Entry.ID}}/delete" data-confirm="{{$day := day (slice .Entry.Start 0 10)}}{{$clock := slice .Entry.Start 11}}{{with .Entry.Description}}{{t "entries.confirm_delete_described" $day $clock .}}{{else}}{{t "entries.confirm_delete" $day $clock}}{{end}}"><input type="hidden" name="return" value="{{.Return}}"><button class="danger">{{template "icon-trash"}}{{t "entries.delete"}}</button></form>{{end}}
+{{if and .Entry.ID (not .ReadOnly)}}<form method="post" action="/entries/{{.Entry.ID}}/delete" data-confirm="{{$day := day (slice .Entry.Start 0 10)}}{{$clock := slice .Entry.Start 11}}{{with .Entry.Description}}{{t "entries.confirm_delete_described" $day $clock .}}{{else}}{{t "entries.confirm_delete" $day $clock}}{{end}}"><input type="hidden" name="return" value="{{.Return}}"><button class="danger">{{template "icon-trash"}}{{t "common.delete"}}</button></form>{{end}}
 {{end}}
 {{end}}

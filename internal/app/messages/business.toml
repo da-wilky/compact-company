@@ -16,7 +16,6 @@
 "business.tax_mode.small_business" = { en = "Small business (§ 19 UStG, no VAT)", de = "Kleinunternehmer (§ 19 UStG, ohne USt.)" }
 "business.tax_mode.standard" = { en = "Standard (VAT)", de = "Regelbesteuerung (mit USt.)" }
 "business.vat_rate" = { en = "VAT rate (%%)", de = "Umsatzsteuersatz (%%)" }
-"business.save" = { en = "Save", de = "Speichern" }
 "business.error.managed" = { en = "Business data is managed by config and can't be edited here.", de = "Die Unternehmensdaten werden durch die Konfiguration verwaltet und können hier nicht bearbeitet werden." }
 "business.error.tax_mode" = { en = "Choose a tax mode.", de = "Bitte eine Besteuerung wählen." }
 "business.error.vat_rate" = { en = "VAT rate must be a whole number from 0 to 100.", de = "Der Umsatzsteuersatz muss eine ganze Zahl von 0 bis 100 sein." }

@@ -4,4 +4,3 @@
 "archive.archived" = { en = "archived", de = "archiviert" }
 "archive.archive" = { en = "Archive", de = "Archivieren" }
 "archive.unarchive" = { en = "Unarchive", de = "Wiederherstellen" }
-"archive.delete" = { en = "Delete", de = "Löschen" }
