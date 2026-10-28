@@ -160,6 +160,7 @@ function confirmForms() {
   function ask(source, then) {
     text.textContent = source.dataset.confirm;
     ok.textContent = source.dataset.confirmOk || ok.dataset.label;
+    ok.classList.toggle("danger", !("confirmNeutral" in source.dataset));
     proceed = then;
     dialog.returnValue = "";
     dialog.showModal();
