@@ -199,6 +199,19 @@ func TestDownloadServesThePDFStoredAtIssuing(t *testing.T) {
 	}
 }
 
+func TestAnIssuedInvoiceLeadsWithItsStatusAmountAndActions(t *testing.T) {
+	ta := newTestApp(t, devConfig)
+	c := ta.client()
+	invoice := c.issuableDraft()
+	wantRedirect(t, c.issue(invoice), invoice)
+
+	res := c.get(invoice)
+
+	wantInOrder(t, res.text(), "Invoices Invoice 2026-001 K-001 acme",
+		"Issued 151.73 EUR Download PDF Payment date", "Mark paid Cancel lines", "Workshop")
+	wantInOrder(t, res.body, `href="/invoices"`, `href="`+invoice+`/pdf"`, `action="`+invoice+`/paid"`, `href="`+invoice+`/cancel"`)
+}
+
 func TestLaterBusinessAndCustomerChangesLeaveIssuedInvoicesAlone(t *testing.T) {
 	ta := newTestApp(t, devConfig)
 	c := ta.client()
@@ -213,7 +226,7 @@ func TestLaterBusinessAndCustomerChangesLeaveIssuedInvoicesAlone(t *testing.T) {
 	c.postForm(c.customerPath("acme"), customerForm("Globex AG", "99")).wantStatus(t, http.StatusSeeOther)
 
 	res := c.get(draft)
-	res.wantBody(t, "K-001 acme ·")
+	wantInOrder(t, res.text(), "Invoice 2026-001 K-001 acme Issue date")
 	wantInOrder(t, res.body, "127.50", "24.23", "151.73")
 	list := c.get("/invoices")
 	wantInOrder(t, list.body, "2026-001", "acme", "151.73 EUR")
