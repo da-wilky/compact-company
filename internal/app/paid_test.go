@@ -50,7 +50,7 @@ func TestDraftsCantBeMarkedPaid(t *testing.T) {
 	c.postForm(draft+"/unpaid", url.Values{}).wantStatus(t, http.StatusNotFound)
 
 	c.get(draft).wantBody(t, "Draft for acme")
-	c.get("/invoices?status=paid").wantBody(t, "No invoices.")
+	c.get("/invoices?status=paid").wantBody(t, "No invoices match these filters.")
 }
 
 func TestUndoingPaidMakesTheInvoiceIssuedAgain(t *testing.T) {
@@ -118,5 +118,5 @@ func TestCancellationInvoicesCantBeMarkedPaid(t *testing.T) {
 	c.markPaid(cancellation, "2026-11-03").wantStatus(t, http.StatusNotFound)
 
 	c.get(cancellation).wantNoBody(t, "Paid on")
-	c.get("/invoices?status=paid").wantBody(t, "No invoices.")
+	c.get("/invoices?status=paid").wantBody(t, "No invoices match these filters.")
 }

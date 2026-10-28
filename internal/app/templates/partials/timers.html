@@ -1,5 +1,5 @@
 {{define "timers"}}<div id="timers" class="timers" hx-target="this" hx-swap="outerHTML">
-{{with .Timers}}{{with .Error}}<p class="error" role="alert">{{t .}}</p>{{end}}
+{{with .Timers}}{{with .Error}}<ul class="errors" role="alert"><li>{{t .}}</li></ul>{{end}}
 {{range .Running}}<div class="timer">
 <div class="timer-top"><span class="pulse" aria-hidden="true"></span>
 <span class="project">{{if .Project}}{{.Project}}{{else}}{{t "timers.unassigned"}}{{end}}</span>

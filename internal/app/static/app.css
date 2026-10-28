@@ -85,7 +85,7 @@ h1 { margin: 0 0 1rem; font-size: 1.75rem; font-weight: 650; letter-spacing: -.0
 .stats dt { color: var(--muted); font-size: .85rem; }
 .stats dd { margin: .2rem 0 0; color: var(--muted); font-variant-numeric: tabular-nums; }
 .stats b { color: var(--fg); font-size: 1.35rem; font-weight: 650; }
-.error, .errors { color: var(--danger); }
+.errors { color: var(--danger); }
 .banner { padding: .75rem 1rem; border-radius: 10px; background: var(--accent-soft); color: var(--fg); }
 .typst-error { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 0.85rem; }
 .sha { overflow-wrap: anywhere; }
@@ -193,7 +193,6 @@ button.icon svg.icon { width: 12px; height: 12px; fill: currentColor; }
 .status-card p { margin: 0; }
 .status-card .status { color: var(--muted); font-size: .75rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
 .status-card .due { font-size: 1.35rem; font-weight: 650; font-variant-numeric: tabular-nums; }
-.status-card .errors { margin: 0; padding-left: 1.1rem; }
 .status-card form { display: grid; gap: .5rem; margin: 0; padding-top: .6rem; border-top: 1px solid var(--line); }
 .status-card input { color: var(--fg); }
 .status-card .danger { justify-self: start; color: var(--danger); font-size: .85rem; font-weight: 500; }
@@ -235,7 +234,7 @@ tfoot > tr > * { border-top: 1px solid var(--line); border-bottom: 0; font-weigh
 main > form:not(.form, .settings) { display: inline-block; margin: 1rem .5rem 0 0; }
 
 .timers { display: grid; gap: .5rem; }
-.timers p { margin: 0; font-size: .85rem; }
+.timers .errors { margin: 0; padding-left: 1.1rem; font-size: .85rem; }
 .timer, .timer-start { display: grid; gap: .4rem; margin: 0; padding: .5rem; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
 .timer-start { border-color: var(--field); }
 .timer { border-color: color-mix(in oklab, var(--run) 45%, var(--line)); background: color-mix(in oklab, var(--run) 7%, var(--surface)); }

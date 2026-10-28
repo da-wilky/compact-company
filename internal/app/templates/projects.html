@@ -26,7 +26,7 @@
 {{end}}</tbody>
 </table></div>
 {{else}}
-<p>{{t "projects.empty"}}</p>
+<p class="hint">{{if .HidesArchived}}{{t "projects.empty_active"}}{{else}}{{t "projects.empty"}}{{end}}</p>
 {{end}}</div>
 {{end}}
 {{end}}

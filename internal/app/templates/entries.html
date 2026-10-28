@@ -34,7 +34,7 @@
 <button class="danger" formnovalidate data-confirm-one="{{t "entries.confirm_delete_one"}}" data-confirm-many="{{t "entries.confirm_delete_many" "{n}"}}" data-confirm-ok="{{t "entries.delete"}}">{{template "icon-trash"}}{{t "entries.delete"}}</button></span>
 </form>
 {{template "entry-days" $}}{{else}}
-<p>{{t "entries.empty"}}</p>
+<p class="hint">{{if .Day}}{{t "entries.empty_day"}}{{else if .Project}}{{t "entries.empty_filtered"}}{{else}}{{t "entries.empty"}}{{end}}</p>
 {{end}}</div>
 {{end}}
 {{end}}

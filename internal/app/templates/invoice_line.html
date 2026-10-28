@@ -8,7 +8,7 @@
 <div><h1>{{template "title" $}}</h1>
 {{with .Line.ID}}<p class="hint">{{$.Data.Line.Description}}</p>{{end}}</div>
 </div>
-{{with .Errors}}<ul class="errors">{{range .}}<li>{{t .}}</li>{{end}}</ul>{{end}}
+{{with .Errors}}<ul class="errors" role="alert">{{range .}}<li>{{t .}}</li>{{end}}</ul>{{end}}
 <form method="post" action="/invoices/{{.Draft.ID}}/lines{{with .Line.ID}}/{{.}}{{end}}" class="form">
 <label>{{t "invoices.description"}} <input name="description" value="{{.Line.Description}}" required></label>
 <label>{{t "invoices.detail"}} <input name="detail" value="{{.Line.Detail}}"></label>

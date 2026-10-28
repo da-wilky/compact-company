@@ -6,7 +6,7 @@
 <div><h1>{{template "title" $}}</h1>
 {{with .Customer.ID}}<p class="hint">{{$.Data.Customer.Number}} {{$.Data.Customer.Name}}</p>{{end}}</div>
 </div>
-{{with .Errors}}<ul class="errors">{{range .}}<li>{{t .}}</li>{{end}}</ul>{{end}}
+{{with .Errors}}<ul class="errors" role="alert">{{range .}}<li>{{t .}}</li>{{end}}</ul>{{end}}
 <form method="post" action="/customers{{with .Customer.ID}}/{{.}}{{end}}" class="form">
 <label>{{t "customers.name"}} <input name="name" value="{{.Customer.Name}}" required></label>
 <label>{{t "customers.address"}} <textarea name="address" rows="4">{{.Customer.Address}}</textarea></label>

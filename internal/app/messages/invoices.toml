@@ -1,6 +1,7 @@
 "invoices.title" = { en = "Invoices", de = "Rechnungen" }
 "invoices.new" = { en = "New draft", de = "Neuer Entwurf" }
-"invoices.empty" = { en = "No invoices.", de = "Keine Rechnungen." }
+"invoices.empty" = { en = "No invoices yet.", de = "Noch keine Rechnungen." }
+"invoices.empty_filtered" = { en = "No invoices match these filters.", de = "Keine Rechnungen passen zu diesen Filtern." }
 "invoices.number" = { en = "Number", de = "Nummer" }
 "invoices.customer" = { en = "Customer", de = "Kunde" }
 "invoices.issue_date" = { en = "Issue date", de = "Rechnungsdatum" }

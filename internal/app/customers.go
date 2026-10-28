@@ -38,6 +38,8 @@ type customer struct {
 type customersPage struct {
 	Customers    []customer
 	ShowArchived bool
+	// HidesArchived is set when the list is empty only because archived customers are hidden.
+	HidesArchived bool
 	selectionRefusal[blockedRow]
 	archiveActions
 }
@@ -74,6 +76,12 @@ func (a *App) listCustomers(w http.ResponseWriter, r *http.Request, status int, 
 	if err := rows.Err(); err != nil {
 		a.serverError(w, r, err)
 		return
+	}
+	if !show && page.Customers == nil {
+		if err := a.db.QueryRow(`SELECT EXISTS (SELECT 1 FROM customer WHERE archived = 1)`).Scan(&page.HidesArchived); err != nil {
+			a.serverError(w, r, err)
+			return
+		}
 	}
 	a.render(w, r, status, "customers", page)
 }

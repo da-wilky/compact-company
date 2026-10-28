@@ -4,7 +4,9 @@
 "entries.next" = { en = "Next day", de = "Nächster Tag" }
 "entries.new" = { en = "New entry", de = "Neuer Eintrag" }
 "entries.edit" = { en = "Edit entry", de = "Eintrag bearbeiten" }
-"entries.empty" = { en = "No entries.", de = "Keine Einträge." }
+"entries.empty" = { en = "No time entries yet.", de = "Noch keine Zeiteinträge." }
+"entries.empty_day" = { en = "No time entries on this day.", de = "Keine Zeiteinträge an diesem Tag." }
+"entries.empty_filtered" = { en = "No time entries match this filter.", de = "Keine Zeiteinträge passen zu diesem Filter." }
 "entries.time" = { en = "Time", de = "Zeit" }
 "entries.duration" = { en = "Duration", de = "Dauer" }
 "entries.project" = { en = "Project", de = "Projekt" }

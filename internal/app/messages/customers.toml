@@ -2,6 +2,7 @@
 "customers.new" = { en = "New customer", de = "Neuer Kunde" }
 "customers.edit" = { en = "Edit customer", de = "Kunde bearbeiten" }
 "customers.empty" = { en = "No customers yet.", de = "Noch keine Kunden." }
+"customers.empty_active" = { en = "No active customers.", de = "Keine aktiven Kunden." }
 "customers.number" = { en = "Number", de = "Nummer" }
 "customers.name" = { en = "Name", de = "Name" }
 "customers.address" = { en = "Address", de = "Anschrift" }

@@ -2,7 +2,7 @@
 {{define "content"}}
 <h1>{{template "title" .}}</h1>
 {{with .Data}}
-{{with .Error}}<p class="error" role="alert">{{t .}}</p>{{end}}
+{{with .Error}}<ul class="errors" role="alert"><li>{{t .}}</li></ul>{{end}}
 <p class="hint">{{t "profile.defaults_hint"}} <a href="/settings">{{t "settings.title"}}</a></p>
 <form method="post" action="/profile" class="settings">
 <label>{{t "settings.language"}}

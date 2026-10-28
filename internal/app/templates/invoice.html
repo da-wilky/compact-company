@@ -3,9 +3,8 @@
 {{with .Data}}{{with .Draft}}
 <a class="crumb" href="/invoices">{{template "icon-arrow-left"}}{{t "invoices.title"}}</a>
 <h1>{{template "title" $}}</h1>
+{{template "render-errors" $.Data}}
 <p class="actions"><a href="/invoices/{{.ID}}/refresh">{{template "icon-refresh-cw"}}{{t "invoices.refresh"}}</a> <a href="/invoices/{{.ID}}/preview">{{template "icon-eye"}}{{t "invoices.preview"}}</a> <a href="/invoices/{{.ID}}/issue">{{template "icon-send"}}{{t "invoices.issue"}}</a></p>
-{{with $.Data.MissingBusiness}}<p class="error">{{t "business.missing"}} {{range $i, $k := .}}{{if $i}}, {{end}}{{t $k}}{{end}}<br><a href="/settings#business">{{t "business.link"}}</a></p>{{end}}
-{{with $.Data.TypstError}}<div class="error"><p>{{t "invoices.typst_error"}}</p><pre class="typst-error">{{.}}</pre></div>{{end}}
 {{if .Lines}}
 <div class="table-wrap"><table class="invoice-lines">
 <thead><tr><th>{{t "invoices.description"}}</th><th class="num">{{t "invoices.quantity"}}</th><th>{{t "invoices.unit"}}</th><th class="num">{{t "invoices.price"}}</th><th class="num">{{t "invoices.total"}}</th><th></th></tr></thead>
@@ -22,10 +21,9 @@
 </tfoot>
 </table></div>
 {{else}}
-<p>{{t "invoices.no_lines"}}</p>
+<p class="hint">{{t "invoices.no_lines"}}</p>
 <p class="add-line"><a href="/invoices/{{.ID}}/lines/new">{{template "icon-plus"}}{{t "invoices.add_line"}}</a></p>
 {{end}}
-{{with $.Data.Errors}}<ul class="errors">{{range .}}<li>{{t .}}</li>{{end}}</ul>{{end}}
 <form method="post" action="/invoices/{{.ID}}" class="form invoice-header">
 <p class="hint">{{.CustomerNumber}} {{.CustomerName}} · {{t (print "invoices.grouping." .Grouping)}} · {{if .RoundingMinutes}}{{t "invoices.rounding.minutes" .RoundingMinutes}}{{else}}{{t "invoices.rounding.none"}}{{end}}<br>{{t "invoices.projects"}}: {{if .AllProjects}}{{t "invoices.all_projects"}}{{else}}{{range $i, $p := .Projects}}{{if $i}}, {{end}}{{$p}}{{else}}{{t "invoices.projects_none"}}{{end}}{{end}}</p>
 <label>{{t "invoices.from"}} <input type="date" name="from" value="{{.Header.From}}"></label>

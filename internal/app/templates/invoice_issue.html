@@ -5,6 +5,7 @@
 {{with .Data.Draft}}
 <a class="crumb" href="/invoices/{{.ID}}">{{template "icon-arrow-left"}}{{template "parent" $}}</a>
 <h1>{{template "title" $}}</h1>
+{{template "render-errors" $.Data}}
 <form method="post" action="/invoices/{{.ID}}/issue" class="form">
 <p>{{t "invoices.issue_warning"}}</p>
 <p class="hint">{{.CustomerNumber}} {{.CustomerName}} · {{t "invoices.gross"}} {{.Gross}} {{.Currency}}</p>

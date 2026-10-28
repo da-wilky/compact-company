@@ -212,7 +212,7 @@ func TestOwnerCanFullyEditAnEntry(t *testing.T) {
 	res := c.postForm(entry, edit)
 
 	wantRedirect(t, res, "/entries?day=2026-10-27")
-	c.get("/entries?day=2026-10-26").wantBody(t, "No entries.")
+	c.get("/entries?day=2026-10-26").wantBody(t, "No time entries on this day.")
 	c.get("/entries?day=2026-10-27").wantRow(t, "", "10:00–10:20", "0:20", "Unassigned", "moved", "")
 	clash := c.postForm(entry, entryForm("", "2026-10-27T08:30", "2026-10-27T10:20", "moved"))
 	clash.wantStatus(t, http.StatusUnprocessableEntity)
@@ -323,7 +323,7 @@ func TestEntryEndingBeforeItStartsIsRefused(t *testing.T) {
 	res.wantBody(t, "End must not be before start.")
 	res.wantBody(t, `value="2026-10-26T10:00"`)
 	c.postForm("/entries", entryForm("", "2026-10-26T10:00", "", "")).wantBody(t, "End must be a date and time.")
-	c.get("/entries?day=2026-10-26").wantBody(t, "No entries.")
+	c.get("/entries?day=2026-10-26").wantBody(t, "No time entries on this day.")
 }
 
 func TestOverlappingEntriesAreRefusedWithParallelEntriesOff(t *testing.T) {

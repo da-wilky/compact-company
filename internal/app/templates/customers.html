@@ -25,7 +25,7 @@
 {{end}}</tbody>
 </table></div>
 {{else}}
-<p>{{t "customers.empty"}}</p>
+<p class="hint">{{if .HidesArchived}}{{t "customers.empty_active"}}{{else}}{{t "customers.empty"}}{{end}}</p>
 {{end}}</div>
 {{end}}
 {{end}}

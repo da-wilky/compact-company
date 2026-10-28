@@ -3,8 +3,8 @@
 {{with .Data}}
 <a class="crumb" href="{{.Back}}">{{template "icon-arrow-left"}}{{t "entries.nav"}}</a>
 <h1>{{template "title" $}}</h1>
+{{with .Errors}}<ul class="errors" role="alert">{{range .}}<li>{{t .}}</li>{{end}}</ul>{{end}}
 {{with .Entry.Invoice}}<p class="hint">{{t "entries.claimed"}} {{template "invoice-badge" .}}</p>{{end}}
-{{with .Errors}}<ul class="errors">{{range .}}<li>{{t .}}</li>{{end}}</ul>{{end}}
 <form method="post" action="{{with .Entry.ID}}/entries/{{.}}{{else}}/entries{{end}}" class="form">
 <input type="hidden" name="return" value="{{.Return}}">
 <fieldset{{if .ReadOnly}} disabled{{end}}>

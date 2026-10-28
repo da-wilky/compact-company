@@ -2,6 +2,7 @@
 "projects.new" = { en = "New project", de = "Neues Projekt" }
 "projects.edit" = { en = "Edit project", de = "Projekt bearbeiten" }
 "projects.empty" = { en = "No projects yet.", de = "Noch keine Projekte." }
+"projects.empty_active" = { en = "No active projects.", de = "Keine aktiven Projekte." }
 "projects.name" = { en = "Name", de = "Name" }
 "projects.billable" = { en = "Billable", de = "Abrechenbar" }
 "projects.billable_default" = { en = "Billable by default", de = "Standardmäßig abrechenbar" }

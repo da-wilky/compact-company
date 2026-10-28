@@ -44,6 +44,8 @@ type projectsPage struct {
 	Customer     projectCustomer
 	Projects     []project
 	ShowArchived bool
+	// HidesArchived is set when the list is empty only because archived projects are hidden.
+	HidesArchived bool
 	selectionRefusal[blockedRow]
 	archiveActions
 }
@@ -130,6 +132,12 @@ func (a *App) listProjects(w http.ResponseWriter, r *http.Request, status int, c
 	if err := rows.Err(); err != nil {
 		a.serverError(w, r, err)
 		return
+	}
+	if !show && page.Projects == nil {
+		if err := a.db.QueryRow(`SELECT EXISTS (SELECT 1 FROM project WHERE customer_id = ? AND archived = 1)`, c.ID).Scan(&page.HidesArchived); err != nil {
+			a.serverError(w, r, err)
+			return
+		}
 	}
 	a.render(w, r, status, "projects", page)
 }

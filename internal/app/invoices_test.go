@@ -383,7 +383,7 @@ func TestInvoiceListShowsDraftsNewestFirstAndFilters(t *testing.T) {
 
 	issued := c.get("/invoices?status=issued")
 	issued.wantNoBody(t, `href="`+acme+`"`)
-	issued.wantBody(t, "No invoices.")
+	issued.wantBody(t, "No invoices match these filters.")
 	c.get("/invoices?status=draft").wantBody(t, `href="`+acme+`"`)
 }
 

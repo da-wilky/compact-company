@@ -24,12 +24,12 @@ func (a *App) draftPreview(w http.ResponseWriter, r *http.Request) {
 	}
 	data, _, err := a.invoiceJSON(a.db, d.ID, nil, issueDate)
 	if err != nil {
-		a.renderDraftFailure(w, r, d, err)
+		a.renderDraftFailure(w, r, "invoice", d, err)
 		return
 	}
 	pdf, err := a.renderPDF(r.Context(), data)
 	if err != nil {
-		a.renderDraftFailure(w, r, d, err)
+		a.renderDraftFailure(w, r, "invoice", d, err)
 		return
 	}
 	w.Header().Set("Content-Type", "application/pdf")
