@@ -202,9 +202,10 @@ button.icon svg.icon { width: 12px; height: 12px; fill: currentColor; }
 
 button { padding: .45rem 1.1rem; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--fg); font: inherit; font-weight: 500; cursor: pointer; }
 button:hover { border-color: var(--accent); }
-.form > button, .settings button { justify-self: start; border-color: var(--accent); background: var(--accent); color: var(--accent-fg); }
+.form > button, .settings button, button.primary { justify-self: start; border-color: var(--accent); background: var(--accent); color: var(--accent-fg); }
 button.ghost { border-color: transparent; background: transparent; }
 button.danger { border-color: var(--danger); background: var(--danger); color: var(--accent-fg); }
+button.ghost.danger { border-color: transparent; background: transparent; color: var(--danger); }
 dialog.confirm { width: min(26rem, calc(100vw - 2rem)); padding: 1.4rem; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); color: var(--fg); box-shadow: var(--shadow); }
 dialog.confirm::backdrop { background: var(--backdrop); }
 dialog.confirm button[value=ok]:not(.danger) { border-color: var(--accent); background: var(--accent); color: var(--accent-fg); }

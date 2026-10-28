@@ -25,10 +25,6 @@
 "customers.error.currency_invoiced" = { en = "The currency of a customer with invoices can't change.", de = "Die Währung eines Kunden mit Rechnungen kann nicht geändert werden." }
 "customers.confirm_delete" = { en = "Delete customer %s %s?", de = "Kunde %s %s löschen?" }
 "customers.select" = { en = "Select customer %s %s", de = "Kunde %s %s auswählen" }
-"customers.confirm_archive_one" = { en = "Archive 1 customer and its projects?", de = "1 Kunden samt Projekten archivieren?" }
-"customers.confirm_archive_many" = { en = "Archive %s customers and their projects?", de = "%s Kunden samt Projekten archivieren?" }
-"customers.confirm_unarchive_one" = { en = "Unarchive 1 customer?", de = "1 Kunden wiederherstellen?" }
-"customers.confirm_unarchive_many" = { en = "Unarchive %s customers?", de = "%s Kunden wiederherstellen?" }
 "customers.confirm_delete_one" = { en = "Delete 1 customer?", de = "1 Kunden löschen?" }
 "customers.confirm_delete_many" = { en = "Delete %s customers?", de = "%s Kunden löschen?" }
 "customers.error.archive_blocked" = { en = "Nothing was archived. These customers can't be archived:", de = "Nichts wurde archiviert. Diese Kunden können nicht archiviert werden:" }

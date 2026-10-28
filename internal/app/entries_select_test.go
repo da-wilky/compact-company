@@ -219,7 +219,7 @@ func TestSelectedEntriesAreAssignedToAProjectTogether(t *testing.T) {
 	res.wantRow(t, "", "10:00–11:00", "1:00", "Unassigned", "left alone", "")
 }
 
-func TestAssigningOffersOnlyProjectsThatReceiveTimeAndAsksNamingTheCount(t *testing.T) {
+func TestAssigningOffersOnlyProjectsThatReceiveTime(t *testing.T) {
 	ta := newTestApp(t, devConfig)
 	c := ta.client()
 	website, hosting := c.acmeProjects()
@@ -230,8 +230,6 @@ func TestAssigningOffersOnlyProjectsThatReceiveTimeAndAsksNamingTheCount(t *test
 
 	page.wantBody(t, `<optgroup label="acme"><option value="`+website+`">website</option></optgroup>`)
 	page.wantNoBody(t, `value="`+hosting+`"`)
-	wantConfirmation(t, page.selectionQuestion(t, "Assign", 3), "Assign 3 entries to the chosen project?")
-	wantConfirmation(t, page.selectionQuestion(t, "Assign", 1), "Assign 1 entry to the chosen project?")
 }
 
 func TestAssigningToAnArchivedProjectChangesNothing(t *testing.T) {
@@ -305,18 +303,4 @@ func TestSelectionWithAnUnassignedEntryChangesNoBillableFlag(t *testing.T) {
 	res.wantStatus(t, http.StatusUnprocessableEntity)
 	wantInOrder(t, res.text(), "Nothing was changed. These entries can't be changed:", "2026-10-26 09:00 “orphan” · no project")
 	res.wantRow(t, "", "08:00–09:00", "1:00", "acme · website", "assigned", "yes")
-}
-
-func TestMarkingTheSelectionAsksNamingTheCount(t *testing.T) {
-	en := newTestApp(t, devConfig).client()
-	en.createEntry(entryForm("", "2026-10-26T08:00", "2026-10-26T09:00", ""))
-	de := newTestApp(t, devConfig+"[defaults]\nlanguage = \"de\"\n").client()
-	de.createEntry(entryForm("", "2026-10-26T08:00", "2026-10-26T09:00", ""))
-
-	page, seite := en.get("/entries"), de.get("/entries")
-
-	wantConfirmation(t, page.selectionQuestion(t, "Billable", 4), "Mark 4 entries billable?")
-	wantConfirmation(t, page.selectionQuestion(t, "Not billable", 1), "Mark 1 entry not billable?")
-	wantConfirmation(t, seite.selectionQuestion(t, "Abrechenbar", 4), "4 Einträge als abrechenbar markieren?")
-	wantConfirmation(t, seite.selectionQuestion(t, "Nicht abrechenbar", 1), "1 Eintrag als nicht abrechenbar markieren?")
 }

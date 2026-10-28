@@ -14,13 +14,13 @@
 <p class="due">{{or $.Data.AmountDue .Totals.Gross}} {{.Currency}}</p>
 <a class="pill primary" href="/invoices/{{$.Data.ID}}/pdf">{{template "icon-download"}}{{t "invoices.download"}}</a>
 {{with $.Data.Errors}}<ul class="errors">{{range .}}<li>{{t .}}</li>{{end}}</ul>{{end}}
-{{if $.Data.PaidDate}}<form method="post" action="/invoices/{{$.Data.ID}}/unpaid">
+{{if $.Data.PaidDate}}<form method="post" action="/invoices/{{$.Data.ID}}/unpaid" data-confirm="{{t "invoices.confirm_undo_paid" $.Data.Number}}" data-confirm-ok="{{t "invoices.undo_paid"}}" data-confirm-neutral>
 <p>{{t "invoices.paid_on" (day $.Data.PaidDate)}}</p>
-<button>{{template "icon-undo-2"}}{{t "invoices.undo_paid"}}</button>
+<button class="primary">{{template "icon-undo-2"}}{{t "invoices.undo_paid"}}</button>
 </form>
 {{else if $.Data.Cancellable}}<form method="post" action="/invoices/{{$.Data.ID}}/paid">
 <label>{{t "invoices.paid_date"}} <input type="date" name="paid_date" value="{{$.Data.PaidForm}}" required></label>
-<button>{{template "icon-check"}}{{t "invoices.mark_paid"}}</button>
+<button class="primary">{{template "icon-check"}}{{t "invoices.mark_paid"}}</button>
 </form>{{end}}
 {{if $.Data.Cancellable}}<a class="danger" href="/invoices/{{$.Data.ID}}/cancel">{{template "icon-file-x"}}{{t "invoices.cancel"}}</a>{{end}}
 </aside>

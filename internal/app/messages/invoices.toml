@@ -103,6 +103,7 @@
 "invoices.paid_date" = { en = "Payment date", de = "Zahlungsdatum" }
 "invoices.mark_paid" = { en = "Mark paid", de = "Als bezahlt markieren" }
 "invoices.undo_paid" = { en = "Undo paid", de = "Bezahlt zurücknehmen" }
+"invoices.confirm_undo_paid" = { en = "Undo the payment of invoice %s?", de = "Zahlung der Rechnung %s zurücknehmen?" }
 "invoices.error.paid_date" = { en = "Enter a valid payment date.", de = "Bitte ein gültiges Zahlungsdatum angeben." }
 "invoices.error.paid_cancelled" = { en = "Every line of this invoice is cancelled, so it can't be marked paid.", de = "Alle Positionen dieser Rechnung sind storniert, sie kann nicht als bezahlt markiert werden." }
 "invoices.confirm_delete" = { en = "Delete the draft for %s %s?", de = "Entwurf für %s %s löschen?" }

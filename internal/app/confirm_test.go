@@ -74,3 +74,13 @@ func TestDeletingAnEntryWithoutDescriptionAsksInGerman(t *testing.T) {
 
 	wantConfirmation(t, c.get(entry).confirmation(t, entry+"/delete"), "Eintrag vom 26.10.2026 08:00 löschen?")
 }
+
+func TestUndoingPaidAsksForConfirmation(t *testing.T) {
+	ta := newTestApp(t, devConfig)
+	c := ta.client()
+	invoice := c.issuableDraft()
+	wantRedirect(t, c.issue(invoice), invoice)
+	wantRedirect(t, c.markPaid(invoice, "2026-11-03"), invoice)
+
+	wantConfirmation(t, c.get(invoice).confirmation(t, invoice+"/unpaid"), "Undo the payment of invoice 2026-001?")
+}

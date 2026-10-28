@@ -12,7 +12,7 @@
 <tbody>
 {{range .Sections}}{{with .Project}}<tr class="section"><th colspan="6">{{.}}</th></tr>
 {{end}}{{$s := .}}{{range $i, $l := .Lines}}<tr{{if $s.Project}} class="in-section"{{end}}><td><a href="/invoices/{{$.Data.Draft.ID}}/lines/{{.ID}}">{{.Description}}</a>{{if .Generated}} <span class="tag">{{t "invoices.generated"}}</span>{{end}}{{with .Detail}}<br><span class="hint">{{.}}</span>{{end}}</td><td class="num">{{.Quantity}}</td><td>{{.Unit}}</td><td class="num">{{.UnitPrice}}</td><td class="num">{{.Total}}</td>
-<td class="line-actions">{{if $i}}<form method="post" action="/invoices/{{$.Data.Draft.ID}}/lines/{{.ID}}/up"><button class="ghost" aria-label="{{t "invoices.move_up"}}" title="{{t "invoices.move_up"}}">{{template "icon-arrow-up"}}</button></form>{{end}}{{if gt (len (slice $s.Lines $i)) 1}}<form method="post" action="/invoices/{{$.Data.Draft.ID}}/lines/{{.ID}}/down"><button class="ghost" aria-label="{{t "invoices.move_down"}}" title="{{t "invoices.move_down"}}">{{template "icon-arrow-down"}}</button></form>{{end}}<form method="post" action="/invoices/{{$.Data.Draft.ID}}/lines/{{.ID}}/delete" data-confirm="{{t "invoices.confirm_delete_line" .Description}}"><button class="ghost" aria-label="{{t "invoices.delete_line"}}" title="{{t "invoices.delete_line"}}">{{template "icon-trash"}}</button></form></td></tr>
+<td class="line-actions">{{if $i}}<form method="post" action="/invoices/{{$.Data.Draft.ID}}/lines/{{.ID}}/up"><button class="ghost" aria-label="{{t "invoices.move_up"}}" title="{{t "invoices.move_up"}}">{{template "icon-arrow-up"}}</button></form>{{end}}{{if gt (len (slice $s.Lines $i)) 1}}<form method="post" action="/invoices/{{$.Data.Draft.ID}}/lines/{{.ID}}/down"><button class="ghost" aria-label="{{t "invoices.move_down"}}" title="{{t "invoices.move_down"}}">{{template "icon-arrow-down"}}</button></form>{{end}}<form method="post" action="/invoices/{{$.Data.Draft.ID}}/lines/{{.ID}}/delete" data-confirm="{{t "invoices.confirm_delete_line" .Description}}"><button class="ghost danger" aria-label="{{t "invoices.delete_line"}}" title="{{t "invoices.delete_line"}}">{{template "icon-trash"}}</button></form></td></tr>
 {{end}}{{end}}<tr class="add-line"><td colspan="6"><a href="/invoices/{{.ID}}/lines/new">{{template "icon-plus"}}{{t "invoices.add_line"}}</a></td></tr>
 </tbody>
 <tfoot>
@@ -35,8 +35,8 @@
 <label>{{t "invoices.service_to"}} <input type="date" name="service_to" value="{{.Header.ServiceTo}}" aria-describedby="service-hint"></label>
 <p class="hint" id="service-hint">{{t "invoices.service_hint"}}</p>{{end}}
 <label>{{t "invoices.payment_days"}} <input name="payment_days" value="{{.Header.PaymentDays}}" required inputmode="numeric"></label>
-<button>{{t "invoices.save"}}</button>
+<button>{{template "icon-save"}}{{t "invoices.save"}}</button>
 </form>
-<form method="post" action="/invoices/{{.ID}}/delete" data-confirm="{{t "invoices.confirm_delete" .CustomerNumber .CustomerName}}"><button>{{template "icon-trash"}}{{t "invoices.delete"}}</button></form>
+<form method="post" action="/invoices/{{.ID}}/delete" data-confirm="{{t "invoices.confirm_delete" .CustomerNumber .CustomerName}}"><button class="danger">{{template "icon-trash"}}{{t "invoices.delete"}}</button></form>
 {{end}}{{end}}
 {{end}}

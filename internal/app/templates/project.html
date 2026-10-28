@@ -14,9 +14,9 @@
 <label>{{t "projects.hourly_rate" .Customer.Currency}} <input name="hourly_rate" value="{{.Project.HourlyRate}}" inputmode="decimal" placeholder="{{.Customer.HourlyRate}}">
 <span class="hint">{{t "projects.hourly_rate_hint" .Customer.HourlyRate .Customer.Currency}}</span></label>
 <label><input type="checkbox" name="billable"{{if .Project.Billable}} checked{{end}}> {{t "projects.billable_default"}}</label>
-<button>{{t "projects.save"}}</button>
+<button>{{template "icon-save"}}{{t "projects.save"}}</button>
 </form>
 {{with .Project.ID}}{{if $.Data.Project.Archived}}<form method="post" action="/projects/{{.}}/unarchive"><button>{{template "icon-archive-restore"}}{{t "archive.unarchive"}}</button></form>{{else}}<form method="post" action="/projects/{{.}}/archive"><button>{{template "icon-archive"}}{{t "archive.archive"}}</button></form>{{end}}
-<form method="post" action="/projects/{{.}}/delete" data-confirm="{{t "projects.confirm_delete" $.Data.Project.Name}}"><button>{{template "icon-trash"}}{{t "archive.delete"}}</button></form>{{end}}
+<form method="post" action="/projects/{{.}}/delete" data-confirm="{{t "projects.confirm_delete" $.Data.Project.Name}}"><button class="danger">{{template "icon-trash"}}{{t "archive.delete"}}</button></form>{{end}}
 {{end}}
 {{end}}

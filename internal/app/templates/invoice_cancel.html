@@ -16,7 +16,7 @@
 {{else}}<label><input type="checkbox" name="line" value="{{.ID}}"> {{.Description}}<span class="hint"> · {{.Quantity}} {{.Unit}} · {{.Total}} {{$.Data.Invoice.Snapshot.Currency}}</span></label>
 {{end}}{{end}}{{end}}</fieldset>
 <label>{{t "invoices.reason"}} <textarea name="reason" rows="2">{{.Reason}}</textarea></label>
-<button>{{template "icon-file-x"}}{{t "invoices.cancel_issue"}}</button>
+<button class="danger">{{template "icon-file-x"}}{{t "invoices.cancel_issue"}}</button>
 </form>
 {{end}}
 {{end}}

@@ -19,10 +19,6 @@
 "projects.error.on_invoice" = { en = "This project is on an invoice.", de = "Dieses Projekt steht auf einer Rechnung." }
 "projects.confirm_delete" = { en = "Delete project %s?", de = "Projekt %s löschen?" }
 "projects.select" = { en = "Select project %s", de = "Projekt %s auswählen" }
-"projects.confirm_archive_one" = { en = "Archive 1 project?", de = "1 Projekt archivieren?" }
-"projects.confirm_archive_many" = { en = "Archive %s projects?", de = "%s Projekte archivieren?" }
-"projects.confirm_unarchive_one" = { en = "Unarchive 1 project?", de = "1 Projekt wiederherstellen?" }
-"projects.confirm_unarchive_many" = { en = "Unarchive %s projects?", de = "%s Projekte wiederherstellen?" }
 "projects.confirm_delete_one" = { en = "Delete 1 project?", de = "1 Projekt löschen?" }
 "projects.confirm_delete_many" = { en = "Delete %s projects?", de = "%s Projekte löschen?" }
 "projects.error.archive_blocked" = { en = "Nothing was archived. These projects can't be archived:", de = "Nichts wurde archiviert. Diese Projekte können nicht archiviert werden:" }

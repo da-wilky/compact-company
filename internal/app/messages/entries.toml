@@ -47,11 +47,5 @@
 "entries.error.edit_blocked" = { en = "Nothing was changed. These entries can't be changed:", de = "Nichts wurde geändert. Diese Einträge können nicht geändert werden:" }
 "entries.assign_project" = { en = "Assign to project…", de = "Projekt zuordnen…" }
 "entries.assign" = { en = "Assign", de = "Zuordnen" }
-"entries.confirm_assign_one" = { en = "Assign 1 entry to the chosen project?", de = "1 Eintrag dem gewählten Projekt zuordnen?" }
-"entries.confirm_assign_many" = { en = "Assign %s entries to the chosen project?", de = "%s Einträge dem gewählten Projekt zuordnen?" }
 "entries.mark_billable" = { en = "Billable", de = "Abrechenbar" }
 "entries.mark_not_billable" = { en = "Not billable", de = "Nicht abrechenbar" }
-"entries.confirm_billable_one" = { en = "Mark 1 entry billable?", de = "1 Eintrag als abrechenbar markieren?" }
-"entries.confirm_billable_many" = { en = "Mark %s entries billable?", de = "%s Einträge als abrechenbar markieren?" }
-"entries.confirm_not_billable_one" = { en = "Mark 1 entry not billable?", de = "1 Eintrag als nicht abrechenbar markieren?" }
-"entries.confirm_not_billable_many" = { en = "Mark %s entries not billable?", de = "%s Einträge als nicht abrechenbar markieren?" }

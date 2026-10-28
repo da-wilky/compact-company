@@ -28,9 +28,9 @@
 <span class="selection-actions"><span data-count="{{t "selection.count" "{n}"}}"></span>
 <span class="group"><select name="project" required aria-label="{{t "entries.assign_project"}}"><option value="">{{t "entries.assign_project"}}</option>
 {{range .Customers}}<optgroup label="{{.Name}}">{{range .Projects}}<option value="{{.ID}}">{{.Name}}</option>{{end}}</optgroup>{{end}}</select>
-<button formaction="{{.AssignURL}}" data-confirm-neutral data-confirm-one="{{t "entries.confirm_assign_one"}}" data-confirm-many="{{t "entries.confirm_assign_many" "{n}"}}" data-confirm-ok="{{t "entries.assign"}}">{{template "icon-folder-input"}}{{t "entries.assign"}}</button></span>
-<button formaction="{{.BillableURL}}" formnovalidate name="billable" value="yes" data-confirm-neutral data-confirm-one="{{t "entries.confirm_billable_one"}}" data-confirm-many="{{t "entries.confirm_billable_many" "{n}"}}" data-confirm-ok="{{t "entries.mark_billable"}}">{{template "icon-check"}}{{t "entries.mark_billable"}}</button>
-<button formaction="{{.BillableURL}}" formnovalidate name="billable" value="no" data-confirm-neutral data-confirm-one="{{t "entries.confirm_not_billable_one"}}" data-confirm-many="{{t "entries.confirm_not_billable_many" "{n}"}}" data-confirm-ok="{{t "entries.mark_not_billable"}}">{{template "icon-x"}}{{t "entries.mark_not_billable"}}</button>
+<button formaction="{{.AssignURL}}">{{template "icon-folder-input"}}{{t "entries.assign"}}</button></span>
+<button formaction="{{.BillableURL}}" formnovalidate name="billable" value="yes">{{template "icon-check"}}{{t "entries.mark_billable"}}</button>
+<button formaction="{{.BillableURL}}" formnovalidate name="billable" value="no">{{template "icon-x"}}{{t "entries.mark_not_billable"}}</button>
 <button class="danger" formnovalidate data-confirm-one="{{t "entries.confirm_delete_one"}}" data-confirm-many="{{t "entries.confirm_delete_many" "{n}"}}" data-confirm-ok="{{t "entries.delete"}}">{{template "icon-trash"}}{{t "entries.delete"}}</button></span>
 </form>
 {{template "entry-days" $}}{{else}}
