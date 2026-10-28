@@ -89,8 +89,8 @@ func (a *App) cancelLines(w http.ResponseWriter, r *http.Request) {
 		FROM invoice WHERE id = ? RETURNING id`, kindCancellation, page.Reason, inv.ID).Scan(&cancellation)
 	if err == nil {
 		_, err = tx.Exec(`INSERT INTO invoice_line
-			(invoice_id, position, generated, description, detail, quantity, unit, unit_price, cancels_line_id)
-			SELECT ?, position, 0, description, detail, -quantity, unit, unit_price, id
+			(invoice_id, position, generated, description, detail, quantity, unit, unit_price, cancels_line_id, project_id)
+			SELECT ?, position, 0, description, detail, -quantity, unit, unit_price, id, project_id
 			FROM invoice_line WHERE id IN (SELECT value FROM json_each(?))`, cancellation, string(idList))
 	}
 	if err == nil {

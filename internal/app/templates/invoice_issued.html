@@ -27,8 +27,9 @@
 <div class="table-wrap"><table class="invoice-lines">
 <thead><tr><th>{{t "invoices.description"}}</th><th class="num">{{t "invoices.quantity"}}</th><th>{{t "invoices.unit"}}</th><th class="num">{{t "invoices.price"}}</th><th class="num">{{t "invoices.total"}}</th><th></th></tr></thead>
 <tbody>
-{{range $.Data.Lines}}<tr><td>{{.Description}}{{with .Detail}}<br><span class="hint">{{.}}</span>{{end}}</td><td class="num">{{.Quantity}}</td><td>{{.Unit}}</td><td class="num">{{.UnitPrice}}</td><td class="num">{{.Total}}</td><td>{{with .CancelledBy}}<a class="tag" href="/invoices/{{.ID}}">{{t "invoices.cancelled_by" .Number}}</a>{{end}}</td></tr>
-{{end}}</tbody>
+{{range $.Data.Sections}}{{with .Project}}<tr class="section"><th colspan="6">{{.}}</th></tr>
+{{end}}{{$s := .}}{{range .Lines}}<tr{{if $s.Project}} class="in-section"{{end}}><td>{{.Description}}{{with .Detail}}<br><span class="hint">{{.}}</span>{{end}}</td><td class="num">{{.Quantity}}</td><td>{{.Unit}}</td><td class="num">{{.UnitPrice}}</td><td class="num">{{.Total}}</td><td>{{with .CancelledBy}}<a class="tag" href="/invoices/{{.ID}}">{{t "invoices.cancelled_by" .Number}}</a>{{end}}</td></tr>
+{{end}}{{end}}</tbody>
 <tfoot>
 <tr><th colspan="4">{{t "invoices.net"}}</th><td class="num">{{.Totals.Net}}</td><td>{{.Currency}}</td></tr>
 {{if not .Tax.SmallBusiness}}<tr><th colspan="4">{{t "invoices.vat" .Tax.VATRate}}</th><td class="num">{{.Totals.VAT}}</td><td>{{.Currency}}</td></tr>{{end}}

@@ -1,3 +1,5 @@
 "layout.signed_in_as" = { en = "Signed in as %s", de = "Angemeldet als %s" }
 "layout.logout" = { en = "Log out", de = "Abmelden" }
-"layout.settings" = { en = "Settings", de = "Einstellungen" }
+"layout.business" = { en = "Business", de = "Unternehmen" }
+"layout.cancel" = { en = "Cancel", de = "Abbrechen" }
+"layout.delete" = { en = "Delete", de = "Löschen" }

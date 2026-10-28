@@ -148,9 +148,79 @@ function timezoneSelects() {
   }
 }
 
+// A form, or its submit button, with data-confirm submits only once the dialog is confirmed;
+// data-confirm-ok relabels the confirm button.
+function confirmForms() {
+  const dialog = document.querySelector("dialog.confirm");
+  if (!dialog) return;
+  const text = dialog.querySelector("#confirm-text");
+  const ok = dialog.querySelector("button[value=ok]");
+  const asking = (form, submitter) => [submitter, form].find((el) => el?.dataset.confirm);
+  let proceed = null;
+  function ask(source, then) {
+    text.textContent = source.dataset.confirm;
+    ok.textContent = source.dataset.confirmOk || ok.dataset.label;
+    ok.classList.toggle("danger", !("confirmNeutral" in source.dataset));
+    proceed = then;
+    dialog.returnValue = "";
+    dialog.showModal();
+  }
+  // htmx submits from the form's own listener, before this document one, so its forms are held here instead.
+  document.addEventListener("htmx:confirm", (e) => {
+    const source = asking(e.detail.elt, e.detail.triggeringEvent?.submitter);
+    if (!source) return;
+    e.preventDefault();
+    ask(source, () => e.detail.issueRequest(true));
+  });
+  let confirmed = false;
+  document.addEventListener("submit", (e) => {
+    const source = asking(e.target, e.submitter);
+    if (!source || confirmed || e.defaultPrevented) return;
+    e.preventDefault();
+    ask(source, () => {
+      confirmed = true;
+      e.target.requestSubmit(e.submitter);
+      confirmed = false;
+    });
+  });
+  dialog.addEventListener("close", () => {
+    if (dialog.returnValue === "ok") proceed();
+  });
+}
+
+// A form.selection gathers the row checkboxes that name it (form="<its id>") and shows once there are any.
+// [data-select-all] toggles them all; .selection-actions shows while some are checked;
+// [data-count] and each button's data-confirm-one / data-confirm-many follow the count, "{n}" standing for it;
+// a button with data-only-state shows only while every checked box has that data-state.
+function selections() {
+  const boxes = (form) => [...form.elements].filter((el) => el.type === "checkbox" && el.name);
+  function update(form) {
+    const all = boxes(form), n = all.filter((b) => b.checked).length;
+    const toggle = form.querySelector("[data-select-all]");
+    form.hidden = all.length === 0;
+    toggle.checked = n > 0 && n === all.length;
+    toggle.indeterminate = n > 0 && n < all.length;
+    form.querySelector(".selection-actions").hidden = n === 0;
+    for (const el of form.querySelectorAll("[data-count]")) el.textContent = el.dataset.count.replace("{n}", n);
+    for (const b of form.querySelectorAll("[data-confirm-many]")) b.dataset.confirm = (n === 1 ? b.dataset.confirmOne : b.dataset.confirmMany).replace("{n}", n);
+    for (const b of form.querySelectorAll("[data-only-state]")) b.hidden = !all.every((box) => !box.checked || box.dataset.state === b.dataset.onlyState);
+  }
+  const updateAll = () => document.querySelectorAll("form.selection").forEach(update);
+  document.addEventListener("change", (e) => {
+    const form = e.target.form;
+    if (!form?.classList.contains("selection")) return;
+    if (e.target.matches("[data-select-all]")) for (const b of boxes(form)) b.checked = e.target.checked;
+    update(form);
+  });
+  document.addEventListener("htmx:afterSettle", updateAll);
+  updateAll();
+}
+
 tickTimers();
 setInterval(tickTimers, 1000);
 document.addEventListener("htmx:afterSwap", tickTimers);
 markCurrentNav();
 document.querySelectorAll(".jump input[type=date]").forEach(datePicker);
 timezoneSelects();
+confirmForms();
+selections();

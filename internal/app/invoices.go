@@ -2,6 +2,7 @@ package app
 
 import (
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/url"
@@ -20,6 +21,7 @@ func init() {
 		mux.HandleFunc("GET /invoices", a.authed(a.invoiceList))
 		mux.HandleFunc("GET /invoices/new", a.authed(a.draftNew))
 		mux.HandleFunc("POST /invoices", a.authed(a.draftCreate))
+		mux.HandleFunc("POST /invoices/delete", a.authed(a.draftDeleteSelected))
 		mux.HandleFunc("GET /invoices/{id}", a.authed(a.invoiceShow))
 		mux.HandleFunc("POST /invoices/{id}", a.authed(a.draftUpdate))
 		mux.HandleFunc("POST /invoices/{id}/delete", a.authed(a.draftDelete))
@@ -54,12 +56,19 @@ type invoiceRow struct {
 	Status    string
 }
 
+// Selectable reports whether r may be selected for a mass action: only drafts can be deleted.
+func (r invoiceRow) Selectable() bool {
+	return r.Status == "draft"
+}
+
 type invoicesPage struct {
 	Rows      []invoiceRow
 	Customers []customerOption
 	Customer  int64
 	Status    string
 	Statuses  []string
+	DeleteURL string
+	selectionRefusal[invoiceRow]
 }
 
 type customerOption struct {
@@ -85,11 +94,17 @@ func (p invoicesPage) StatusLink(status string) string {
 }
 
 func (a *App) invoiceList(w http.ResponseWriter, r *http.Request) {
-	page := invoicesPage{Statuses: invoiceStatuses}
+	a.listInvoices(w, r, http.StatusOK, selectionRefusal[invoiceRow]{})
+}
+
+// listInvoices renders the listing r asks for, with the selection a refused mass action leaves behind.
+func (a *App) listInvoices(w http.ResponseWriter, r *http.Request, status int, refused selectionRefusal[invoiceRow]) {
+	page := invoicesPage{Statuses: invoiceStatuses, selectionRefusal: refused}
 	page.Customer, _ = strconv.ParseInt(r.FormValue("customer"), 10, 64)
 	if s := r.FormValue("status"); slices.Contains(invoiceStatuses, s) {
 		page.Status = s
 	}
+	page.DeleteURL = "/invoices/delete" + strings.TrimPrefix(page.StatusLink(page.Status), "/invoices")
 	var err error
 	if page.Customers, err = a.customerOptions(); err != nil {
 		a.serverError(w, r, err)
@@ -142,7 +157,7 @@ func (a *App) invoiceList(w http.ResponseWriter, r *http.Request) {
 		}
 		row.Gross = formatAmount(totals.Gross, unit)
 	}
-	a.render(w, r, http.StatusOK, "invoices", page)
+	a.render(w, r, status, "invoices", page)
 }
 
 // customerOptions lists every customer, archived ones included: finished work can still be billed.
@@ -169,14 +184,45 @@ type draftNewForm struct {
 	Grouping        string
 	RoundingMinutes string
 	PaymentDays     string
+	AllProjects     bool
+	Projects        []string
+}
+
+func (f draftNewForm) Picked(id int64) bool {
+	return slices.Contains(f.Projects, strconv.FormatInt(id, 10))
 }
 
 type draftNewPage struct {
 	Form       draftNewForm
 	Customers  []customerOption
+	Projects   []projectOption
 	Groupings  []string
 	Increments []int
 	Errors     []string
+}
+
+type projectOption struct {
+	ID       int64
+	Name     string
+	Archived bool
+}
+
+// projectOptions lists the projects p meeting cond, archived ones included: their finished work can still be billed.
+func (a *App) projectOptions(cond string, arg any) ([]projectOption, error) {
+	rows, err := a.db.Query(`SELECT p.id, p.name, p.archived FROM project p WHERE `+cond+` ORDER BY p.name, p.id`, arg)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	var opts []projectOption
+	for rows.Next() {
+		var o projectOption
+		if err := rows.Scan(&o.ID, &o.Name, &o.Archived); err != nil {
+			return nil, err
+		}
+		opts = append(opts, o)
+	}
+	return opts, rows.Err()
 }
 
 func (a *App) draftNew(w http.ResponseWriter, r *http.Request) {
@@ -195,6 +241,7 @@ func (a *App) draftNew(w http.ResponseWriter, r *http.Request) {
 		Grouping:        "project",
 		RoundingMinutes: strconv.Itoa(a.cfg.Invoice.RoundingMinutes),
 		PaymentDays:     strconv.Itoa(a.cfg.Invoice.PaymentDays),
+		AllProjects:     true,
 	}, nil)
 }
 
@@ -204,7 +251,16 @@ func (a *App) renderDraftNew(w http.ResponseWriter, r *http.Request, status int,
 		a.serverError(w, r, err)
 		return
 	}
-	a.render(w, r, status, "invoice_new", draftNewPage{Form: f, Customers: customers, Groupings: groupings, Increments: config.RoundingIncrements, Errors: errs})
+	// The browser selects the first customer when none of them matches, so its projects are the ones to offer.
+	if len(customers) > 0 && !slices.ContainsFunc(customers, func(c customerOption) bool { return strconv.FormatInt(c.ID, 10) == f.Customer }) {
+		f.Customer = strconv.FormatInt(customers[0].ID, 10)
+	}
+	projects, err := a.projectOptions("p.customer_id = ?", f.Customer)
+	if err != nil {
+		a.serverError(w, r, err)
+		return
+	}
+	a.render(w, r, status, "invoice_new", draftNewPage{Form: f, Customers: customers, Projects: projects, Groupings: groupings, Increments: config.RoundingIncrements, Errors: errs})
 }
 
 func validOptionalRange(from, to string) bool {
@@ -229,6 +285,11 @@ func (a *App) draftCreate(w http.ResponseWriter, r *http.Request) {
 		Grouping:        r.PostFormValue("grouping"),
 		RoundingMinutes: r.PostFormValue("rounding_minutes"),
 		PaymentDays:     strings.TrimSpace(r.PostFormValue("payment_days")),
+		AllProjects:     r.PostFormValue("all_projects") != "",
+	}
+	// The project checkboxes are only hidden while "All projects" is ticked, so they still submit.
+	if !f.AllProjects {
+		f.Projects = r.PostForm["project"]
 	}
 	var errs []string
 	customerID, err := strconv.ParseInt(f.Customer, 10, 64)
@@ -249,8 +310,17 @@ func (a *App) draftCreate(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		errs = append(errs, "invoices.error.payment_days")
 	}
+	projectIDs, ok := parseIDs(f.Projects)
+	if !ok || (!f.AllProjects && len(projectIDs) == 0) {
+		errs = append(errs, "invoices.error.projects")
+	}
 	if errs != nil {
 		a.renderDraftNew(w, r, http.StatusUnprocessableEntity, f, errs)
+		return
+	}
+	idsJSON, err := json.Marshal(projectIDs)
+	if err != nil {
+		a.serverError(w, r, err)
 		return
 	}
 	tx, err := a.db.Begin()
@@ -261,15 +331,28 @@ func (a *App) draftCreate(w http.ResponseWriter, r *http.Request) {
 	defer func() { _ = tx.Rollback() }()
 	var id int64
 	err = tx.QueryRow(`INSERT INTO invoice
-		(kind, customer_id, range_from, range_to, service_from, service_to, grouping, rounding_minutes, payment_days, currency)
-		SELECT ?7, id, ?1, ?2, '', '', ?3, ?4, ?5, currency FROM customer WHERE id = ?6 RETURNING id`,
-		f.From, f.To, f.Grouping, rounding, paymentDays, customerID, kindInvoice).Scan(&id)
+		(kind, customer_id, range_from, range_to, service_from, service_to, grouping, rounding_minutes, payment_days, currency, all_projects)
+		SELECT ?7, id, ?1, ?2, '', '', ?3, ?4, ?5, currency, ?8 FROM customer WHERE id = ?6 RETURNING id`,
+		f.From, f.To, f.Grouping, rounding, paymentDays, customerID, kindInvoice, f.AllProjects).Scan(&id)
 	if errors.Is(err, sql.ErrNoRows) {
 		a.renderDraftNew(w, r, http.StatusUnprocessableEntity, f, []string{"invoices.error.customer"})
 		return
 	}
+	if err == nil && len(projectIDs) > 0 {
+		var res sql.Result
+		var n int64
+		res, err = tx.Exec(`INSERT INTO invoice_project (invoice_id, project_id)
+			SELECT ?, id FROM project WHERE customer_id = ? AND id IN (SELECT value FROM json_each(?))`, id, customerID, string(idsJSON))
+		if err == nil {
+			n, err = res.RowsAffected()
+		}
+		if err == nil && n < int64(len(projectIDs)) {
+			a.renderDraftNew(w, r, http.StatusUnprocessableEntity, f, []string{"invoices.error.projects"})
+			return
+		}
+	}
 	if err == nil {
-		err = pullEntries(tx, id)
+		err = a.pullEntries(tx, id)
 	}
 	if err == nil {
 		err = tx.Commit()
@@ -299,7 +382,10 @@ type draft struct {
 	Currency        string
 	Grouping        string
 	RoundingMinutes int
-	Header          draftHeader
+	AllProjects     bool
+	// Projects names the fixed choice of projects the draft bills, unless AllProjects.
+	Projects []string
+	Header   draftHeader
 	// ServicePeriod is set while the draft claims entries, which then decide it.
 	ServicePeriod   *period
 	Lines           []invoiceLine
@@ -307,6 +393,8 @@ type draft struct {
 	VATPercent      int64
 	unit            currency.Unit
 }
+
+func (d draft) Sections() []lineSection[invoiceLine] { return sections(d.Lines, invoiceLine.project) }
 
 type draftPage struct {
 	Draft  draft
@@ -319,12 +407,15 @@ func (a *App) loadDraft(id int64) (draft, error) {
 	d := draft{ID: id}
 	var paymentDays int
 	err := a.db.QueryRow(`SELECT c.number, c.name, i.currency, i.grouping, i.rounding_minutes,
-		i.range_from, i.range_to, i.service_from, i.service_to, i.payment_days
+		i.range_from, i.range_to, i.service_from, i.service_to, i.payment_days, i.all_projects
 		FROM invoice i JOIN customer c ON c.id = i.customer_id
 		WHERE i.id = ? AND i.kind = ? AND i.number IS NULL`, id, kindInvoice).
 		Scan(&d.CustomerNumber, &d.CustomerName, &d.Currency, &d.Grouping, &d.RoundingMinutes,
-			&d.Header.From, &d.Header.To, &d.Header.ServiceFrom, &d.Header.ServiceTo, &paymentDays)
+			&d.Header.From, &d.Header.To, &d.Header.ServiceFrom, &d.Header.ServiceTo, &paymentDays, &d.AllProjects)
 	if err != nil {
+		return d, err
+	}
+	if d.Projects, err = a.draftProjects(id); err != nil {
 		return d, err
 	}
 	d.Header.PaymentDays = strconv.Itoa(paymentDays)
@@ -344,6 +435,24 @@ func (a *App) loadDraft(id int64) (draft, error) {
 	d.Lines = lines
 	d.Net, d.VAT, d.Gross = formatAmount(totals.Net, d.unit), formatAmount(totals.VAT, d.unit), formatAmount(totals.Gross, d.unit)
 	return d, nil
+}
+
+func (a *App) draftProjects(id int64) ([]string, error) {
+	rows, err := a.db.Query(`SELECT p.name FROM invoice_project ip JOIN project p ON p.id = ip.project_id
+		WHERE ip.invoice_id = ? ORDER BY p.name, p.id`, id)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	var names []string
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			return nil, err
+		}
+		names = append(names, name)
+	}
+	return names, rows.Err()
 }
 
 // draftFromPath writes 404 or 500 itself when ok is false.
@@ -405,8 +514,50 @@ func (a *App) draftDelete(w http.ResponseWriter, r *http.Request) {
 		a.notFound(w, r)
 		return
 	}
-	res, err := a.db.Exec(`DELETE FROM invoice WHERE id = ? AND kind = ? AND number IS NULL`, id, kindInvoice)
+	res, err := deleteDraft(a.db, id)
 	a.afterInvoiceWrite(w, r, res, err, "/invoices")
+}
+
+// deleteDraft deletes invoice id if it is a draft; cascades drop its lines and chosen projects and release its entries.
+func deleteDraft(db execer, id int64) (sql.Result, error) {
+	return db.Exec(`DELETE FROM invoice WHERE id = ? AND kind = ? AND number IS NULL`, id, kindInvoice)
+}
+
+// draftDeleteSelected deletes all selected drafts, or none when any of them is not a draft,
+// and answers with the listing its query names.
+func (a *App) draftDeleteSelected(w http.ResponseWriter, r *http.Request) {
+	massWrite(a, w, r, massAction[invoiceRow]{
+		load: func(tx *sql.Tx, ids []int64) ([]invoiceRow, error) {
+			in, args := inList(ids)
+			rows, err := tx.Query(`SELECT i.id, ifnull(i.number, ''), ifnull(i.snapshot ->> '$.customer.name', c.name), `+invoiceStatus+`
+				FROM invoice i JOIN customer c ON c.id = i.customer_id
+				WHERE i.id`+in+` ORDER BY i.number, i.id`, args...)
+			if err != nil {
+				return nil, err
+			}
+			defer func() { _ = rows.Close() }()
+			var found []invoiceRow
+			for rows.Next() {
+				var row invoiceRow
+				if err := rows.Scan(&row.ID, &row.Number, &row.Customer, &row.Status); err != nil {
+					return nil, err
+				}
+				found = append(found, row)
+			}
+			return found, rows.Err()
+		},
+		blocks:  func(_ *sql.Tx, row *invoiceRow) (bool, error) { return !row.Selectable(), nil },
+		blocked: "invoices.error.delete_blocked",
+		apply: func(tx *sql.Tx, ids []int64) (string, error) {
+			for _, id := range ids {
+				if _, err := deleteDraft(tx, id); err != nil {
+					return "", err
+				}
+			}
+			return "", nil
+		},
+		list: func(status int, s selectionRefusal[invoiceRow]) { a.listInvoices(w, r, status, s) },
+	})
 }
 
 // afterInvoiceWrite redirects to done, or answers 404 when the write matched no row

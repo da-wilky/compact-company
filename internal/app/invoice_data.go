@@ -18,6 +18,11 @@ type querier interface {
 	Query(query string, args ...any) (*sql.Rows, error)
 }
 
+// execer is *sql.DB or *sql.Tx, so a write can run alone or inside a larger transaction.
+type execer interface {
+	Exec(query string, args ...any) (sql.Result, error)
+}
+
 // invoiceData is the JSON handed to the Typst template, contract version 1 (templates/README.md).
 type invoiceData struct {
 	Version       int            `json:"version"`
@@ -79,6 +84,7 @@ type lineData struct {
 	UnitPrice   string      `json:"unit_price"`
 	Total       string      `json:"total"`
 	Entries     []lineEntry `json:"entries"`
+	Project     *string     `json:"project"`
 }
 
 type totalsData struct {
@@ -222,8 +228,12 @@ func (a *App) invoiceJSON(q querier, id int64, number *string, issueDate string)
 	}
 	d.Lines = []lineData{}
 	for _, l := range lines {
-		d.Lines = append(d.Lines, lineData{Description: l.Description, Detail: l.Detail, Quantity: l.Quantity, Unit: l.Unit,
-			UnitPrice: l.UnitPrice, Total: l.Total, Entries: append([]lineEntry{}, entries[l.ID]...)})
+		line := lineData{Description: l.Description, Detail: l.Detail, Quantity: l.Quantity, Unit: l.Unit,
+			UnitPrice: l.UnitPrice, Total: l.Total, Entries: append([]lineEntry{}, entries[l.ID]...)}
+		if l.Project != "" {
+			line.Project = &l.Project
+		}
+		d.Lines = append(d.Lines, line)
 	}
 	data, err := json.Marshal(d)
 	return data, t.Gross, err

@@ -12,6 +12,6 @@
 <button>{{t "projects.save"}}</button>
 </form>
 {{with .Project.ID}}{{if $.Data.Project.Archived}}<form method="post" action="/projects/{{.}}/unarchive"><button>{{template "icon-archive-restore"}}{{t "archive.unarchive"}}</button></form>{{else}}<form method="post" action="/projects/{{.}}/archive"><button>{{template "icon-archive"}}{{t "archive.archive"}}</button></form>{{end}}
-<form method="post" action="/projects/{{.}}/delete"><button>{{template "icon-trash"}}{{t "archive.delete"}}</button></form>{{end}}
+<form method="post" action="/projects/{{.}}/delete" data-confirm="{{t "projects.confirm_delete" $.Data.Project.Name}}"><button>{{template "icon-trash"}}{{t "archive.delete"}}</button></form>{{end}}
 {{end}}
 {{end}}

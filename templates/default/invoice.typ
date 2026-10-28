@@ -107,9 +107,27 @@
   #if data.reason != "" [ #tr("Reason", "Grund"): #data.reason]
 ]
 
+// Lines arrive in section order, so a project's section starts where its project differs from the line before.
+#let starts-section(i) = {
+  let p = data.lines.at(i).project
+  p != none and (i == 0 or data.lines.at(i - 1).project != p)
+}
+
 #v(0.8cm)
 #{
   set table(stroke: none, inset: (x: 4pt, y: 5pt))
+  let rows = ()
+  for (i, l) in data.lines.enumerate() {
+    if starts-section(i) { rows += ([], table.cell(colspan: 5, strong(l.project))) }
+    rows += (
+      str(i + 1),
+      pad(left: if l.project != none { 1em } else { 0pt })[#l.description #if l.detail != "" [\ #text(9pt, fill: luma(90), l.detail)]],
+      decimal(l.quantity),
+      l.unit,
+      amount(l.unit_price),
+      amount(l.total),
+    )
+  }
   table(
     columns: (auto, 1fr, auto, auto, auto, auto),
     align: (left, left, right, left, right, right),
@@ -123,18 +141,7 @@
       [*#tr("Total", "Gesamt")*],
     ),
     table.hline(stroke: 0.4pt),
-    ..data
-      .lines
-      .enumerate()
-      .map(((i, l)) => (
-        str(i + 1),
-        [#l.description #if l.detail != "" [\ #text(9pt, fill: luma(90), l.detail)]],
-        decimal(l.quantity),
-        l.unit,
-        amount(l.unit_price),
-        amount(l.total),
-      ))
-      .flatten(),
+    ..rows,
     table.hline(stroke: 0.4pt),
   )
 }
@@ -173,8 +180,17 @@
   #if data.number != none [#tr("Reference", "Verwendungszweck"): #data.number]
 ]
 
-#let entries = data.lines.enumerate().map(((i, l)) => l.entries.map(e => (i + 1, e))).flatten().chunks(2)
-#if entries.len() > 0 {
+#let entry-rows = ()
+#let entry-section = none
+#for (i, l) in data.lines.enumerate() {
+  if l.entries.len() == 0 { continue }
+  if l.project != none and l.project != entry-section {
+    entry-rows.push(table.cell(colspan: 5, strong(l.project)))
+  }
+  entry-section = l.project
+  for e in l.entries { entry-rows += (str(i + 1), date(e.date), e.user, e.description, duration(e.seconds)) }
+}
+#if entry-rows.len() > 0 {
   pagebreak()
   text(14pt, weight: "bold", tr("Time entries", "Zeitnachweis"))
   v(0.4em)
@@ -191,6 +207,6 @@
       [*#tr("Hours", "Stunden")*],
     ),
     table.hline(stroke: 0.4pt),
-    ..entries.map(((pos, e)) => (str(pos), date(e.date), e.user, e.description, duration(e.seconds))).flatten(),
+    ..entry-rows,
   )
 }

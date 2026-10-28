@@ -17,3 +17,14 @@
 "projects.error.hourly_rate" = { en = "Hourly rate must be a non-negative decimal with no more decimals than the currency allows.", de = "Stundensatz muss eine nicht negative Dezimalzahl mit höchstens so vielen Nachkommastellen sein, wie die Währung erlaubt." }
 "projects.error.timer_running" = { en = "A timer is running on this project.", de = "Auf diesem Projekt läuft ein Timer." }
 "projects.error.has_entries" = { en = "This project has time entries.", de = "Dieses Projekt hat Zeiteinträge." }
+"projects.error.on_invoice" = { en = "This project is on an invoice.", de = "Dieses Projekt steht auf einer Rechnung." }
+"projects.confirm_delete" = { en = "Delete project %s?", de = "Projekt %s löschen?" }
+"projects.select" = { en = "Select project %s", de = "Projekt %s auswählen" }
+"projects.confirm_archive_one" = { en = "Archive 1 project?", de = "1 Projekt archivieren?" }
+"projects.confirm_archive_many" = { en = "Archive %s projects?", de = "%s Projekte archivieren?" }
+"projects.confirm_unarchive_one" = { en = "Unarchive 1 project?", de = "1 Projekt wiederherstellen?" }
+"projects.confirm_unarchive_many" = { en = "Unarchive %s projects?", de = "%s Projekte wiederherstellen?" }
+"projects.confirm_delete_one" = { en = "Delete 1 project?", de = "1 Projekt löschen?" }
+"projects.confirm_delete_many" = { en = "Delete %s projects?", de = "%s Projekte löschen?" }
+"projects.error.archive_blocked" = { en = "Nothing was archived. These projects can't be archived:", de = "Nichts wurde archiviert. Diese Projekte können nicht archiviert werden:" }
+"projects.error.delete_blocked" = { en = "Nothing was deleted. These projects can't be deleted:", de = "Nichts wurde gelöscht. Diese Projekte können nicht gelöscht werden:" }

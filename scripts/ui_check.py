@@ -31,6 +31,15 @@ FIND_BREAKAGE = """() => {
   return problems;
 }"""
 
+# Selects the first row the list doesn't offer for selection, as a stale page would post it, so the action is refused.
+SELECT_UNSELECTABLE = """([form, link]) => {
+  const row = [...document.querySelectorAll("tbody tr")].find((tr) => !tr.querySelector("input[name=id]") && tr.querySelector(`a[href^="${link}"]`));
+  const box = Object.assign(document.createElement("input"), {type: "checkbox", name: "id", hidden: true, checked: true});
+  box.value = row.querySelector(`a[href^="${link}"]`).getAttribute("href").slice(link.length).match(/^\\d+/)[0];
+  box.setAttribute("form", form);
+  document.body.append(box);
+}"""
+
 
 def seed(api):
     today = datetime.date.today()
@@ -44,23 +53,27 @@ def seed(api):
         d = monday + datetime.timedelta(days=day)
         api.post(f"{base}/entries", form={"project": projects.get(project, ""), "start": f"{d}T{hours[0]:02}:00", "end": f"{d}T{hours[1]:02}:00", "description": f"{project or 'Admin'} work", "billable": ""})
     api.post(f"{base}/timers", form={"project": projects["Hosting"], "description": "Server update"})
-    draft = api.post(f"{base}/invoices", form={"customer": customer, "from": str(monday), "to": str(today), "grouping": "project", "rounding_minutes": "15", "payment_days": "14"}, max_redirects=0).headers["location"]
-    for line in [("Website relaunch", "Design and implementation of the new landing page", "12.5", "h", "85"), ("Hosting", "", "1", "month", "29.90")]:
-        api.post(f"{base}{draft}/lines", form=dict(zip(("description", "detail", "quantity", "unit", "unit_price"), line)))
+    draft = api.post(f"{base}/invoices", form={"customer": customer, "from": str(monday), "to": str(today), "grouping": "project", "rounding_minutes": "15", "payment_days": "14", "all_projects": "1"}, max_redirects=0).headers["location"]
+    for line in [("Website relaunch", "Design and implementation of the new landing page", "12.5", "h", "85", ""), ("Hosting", "", "1", "month", "29.90", projects["Hosting"])]:
+        api.post(f"{base}{draft}/lines", form=dict(zip(("description", "detail", "quantity", "unit", "unit_price", "project"), line)))
     line = re.search(rf'href="({draft}/lines/\d+)"', api.get(f"{base}{draft}").text()).group(1)
     entry = re.findall(r'href="(/entries/\d+)\?', api.get(f"{base}/entries").text())[-1]  # Monday's, claimed by the draft
-    issued = api.post(f"{base}/invoices", form={"customer": customer, "from": str(monday), "to": str(today), "grouping": "project", "rounding_minutes": "0", "payment_days": "14"}, max_redirects=0).headers["location"]
-    api.post(f"{base}{issued}/lines", form={"description": "Workshop", "detail": "On site, two days", "quantity": "16", "unit": "h", "unit_price": "85"})
+    # Last week's time, so the issued invoice has project sections next to its free lines.
+    for day, project in [(-7, "Website relaunch"), (-6, "Hosting")]:
+        d = monday + datetime.timedelta(days=day)
+        api.post(f"{base}/entries", form={"project": projects[project], "start": f"{d}T09:00", "end": f"{d}T11:00", "description": f"{project} work", "billable": ""})
+    issued = api.post(f"{base}/invoices", form={"customer": customer, "from": str(monday - datetime.timedelta(days=7)), "to": str(today), "grouping": "project", "rounding_minutes": "0", "payment_days": "14", "all_projects": "1"}, max_redirects=0).headers["location"]
+    api.post(f"{base}{issued}/lines", form={"description": "Workshop", "detail": "On site, two days", "quantity": "16", "unit": "h", "unit_price": "85", "project": projects["Website relaunch"]})
     business = {"name": "Samuel Wilk", "company": "swilk", "address": "Hauptstraße 1\n12345 Berlin", "tax_number": "12/345/67890", "tax_mode": "standard", "vat_rate": "19"}
     api.post(f"{base}/settings/business", form=business)
     api.post(f"{base}{issued}/lines", form={"description": "Travel", "detail": "", "quantity": "1", "unit": "flat", "unit_price": "120"})
     api.post(f"{base}{issued}/issue")
-    travel = re.search(r'name="line" value="(\d+)"> Travel', api.get(f"{base}{issued}/cancel").text()).group(1)
-    cancellation = api.post(f"{base}{issued}/cancel", form={"line": travel, "reason": "Travel was included in the workshop price"}, max_redirects=0).headers["location"]
+    hosting = re.findall(r'name="line" value="(\d+)"> Arbeitszeit', api.get(f"{base}{issued}/cancel").text())[0]
+    cancellation = api.post(f"{base}{issued}/cancel", form={"line": hosting, "reason": "Hosting is billed yearly"}, max_redirects=0).headers["location"]
     api.post(f"{base}{issued}/paid", form={"paid_date": str(today)})
     # Unset again so the draft's preview shows the missing-data page instead of a PDF download.
     api.post(f"{base}/settings/business", form=business | {"name": ""})
-    empty = api.post(f"{base}/invoices", form={"customer": customer, "from": "", "to": "", "grouping": "project", "rounding_minutes": "0", "payment_days": "14"}, max_redirects=0).headers["location"]
+    empty = api.post(f"{base}/invoices", form={"customer": customer, "from": "", "to": "", "grouping": "project", "rounding_minutes": "0", "payment_days": "14", "project": projects["Website relaunch"]}, max_redirects=0).headers["location"]
     seed_open_invoices(api, customer, business)
     # Time after the drafts were made, so the overview shows unbilled time both on a draft and on no invoice.
     last_friday = monday - datetime.timedelta(days=3)
@@ -80,7 +93,7 @@ def seed_open_invoices(api, customer, business):
     today = datetime.date.today()
     for owner, description, quantity, price, overdue_days in [(customer, "Maintenance", "6", "85", 0), (customer, "Consulting", "3.5", "85", 12),
                                                               (northwind, "Integration", "10", "120", 0), (northwind, "Support retainer", "1", "450", 4)]:
-        invoice = api.post(f"{base}/invoices", form={"customer": owner, "from": str(today), "to": str(today), "grouping": "project", "rounding_minutes": "0", "payment_days": "14"}, max_redirects=0).headers["location"]
+        invoice = api.post(f"{base}/invoices", form={"customer": owner, "from": str(today), "to": str(today), "grouping": "project", "rounding_minutes": "0", "payment_days": "14", "all_projects": "1"}, max_redirects=0).headers["location"]
         api.post(f"{base}{invoice}/lines", form={"description": description, "detail": "", "quantity": quantity, "unit": "h", "unit_price": price})
         api.post(f"{base}{invoice}/issue")
         if overdue_days:
@@ -123,6 +136,65 @@ def main():
                         page.click(".picker-trigger")
                         page.screenshot(path=f"{out}/{lang}-{viewport}-{scheme}-week-picker.png")
                         failures += [f"{lang} {viewport} {scheme} /week (picker open): {p}" for p in page.evaluate(FIND_BREAKAGE)]
+                        page.goto(base + draft)
+                        page.click(f'form[action="{draft}/delete"] button')
+                        page.screenshot(path=f"{out}/{lang}-{viewport}-{scheme}-confirm-dialog.png")
+                        failures += [f"{lang} {viewport} {scheme} {draft} (confirm dialog open): {p}" for p in page.evaluate(FIND_BREAKAGE)]
+                    if "/entries" in pages:
+                        page.goto(base + "/entries")
+                        page.check("form.selection [data-select-all]")
+                        page.screenshot(path=f"{out}/{lang}-{viewport}-{scheme}-entries-selected.png", full_page=True)
+                        failures += [f"{lang} {viewport} {scheme} /entries (rows selected): {p}" for p in page.evaluate(FIND_BREAKAGE)]
+                        page.select_option(".selection-actions select[name=project]", index=1)
+                        page.click(".selection-actions select[name=project] + button")
+                        page.screenshot(path=f"{out}/{lang}-{viewport}-{scheme}-entries-selected-assign-confirm.png")
+                        failures += [f"{lang} {viewport} {scheme} /entries (assign confirm open): {p}" for p in page.evaluate(FIND_BREAKAGE)]
+                        page.click("dialog.confirm button[value=cancel]")
+                        page.click(".selection-actions button.danger")
+                        page.screenshot(path=f"{out}/{lang}-{viewport}-{scheme}-entries-selected-confirm.png")
+                        failures += [f"{lang} {viewport} {scheme} /entries (delete confirm open): {p}" for p in page.evaluate(FIND_BREAKAGE)]
+                        page.click("dialog.confirm button[value=cancel]")
+                        page.evaluate(SELECT_UNSELECTABLE, ["entry-selection", "/entries/"])
+                        page.click(".selection-actions button.danger")
+                        page.click("dialog.confirm button[value=ok]")
+                        page.wait_for_selector(".selection-blocked")
+                        page.screenshot(path=f"{out}/{lang}-{viewport}-{scheme}-entries-blocked.png", full_page=True)
+                        failures += [f"{lang} {viewport} {scheme} /entries (delete refused): {p}" for p in page.evaluate(FIND_BREAKAGE)]
+                    if "/invoices" in pages:
+                        page.goto(base + "/invoices")
+                        page.check("form.selection [data-select-all]")
+                        page.screenshot(path=f"{out}/{lang}-{viewport}-{scheme}-invoices-selected.png", full_page=True)
+                        failures += [f"{lang} {viewport} {scheme} /invoices (drafts selected): {p}" for p in page.evaluate(FIND_BREAKAGE)]
+                        page.click(".selection-actions button")
+                        page.screenshot(path=f"{out}/{lang}-{viewport}-{scheme}-invoices-selected-confirm.png")
+                        failures += [f"{lang} {viewport} {scheme} /invoices (delete confirm open): {p}" for p in page.evaluate(FIND_BREAKAGE)]
+                        page.click("dialog.confirm button[value=cancel]")
+                        page.evaluate(SELECT_UNSELECTABLE, ["invoice-selection", "/invoices/"])
+                        page.click(".selection-actions button.danger")
+                        page.click("dialog.confirm button[value=ok]")
+                        page.wait_for_selector(".selection-blocked")
+                        page.screenshot(path=f"{out}/{lang}-{viewport}-{scheme}-invoices-blocked.png", full_page=True)
+                        failures += [f"{lang} {viewport} {scheme} /invoices (delete refused): {p}" for p in page.evaluate(FIND_BREAKAGE)]
+                    # Every seeded customer and project is still in use, so the delete is refused and nothing goes.
+                    for path in ("/customers", f"/customers/{customer}/projects"):
+                        if path not in pages:
+                            continue
+                        name = re.sub(r"[^a-z0-9]+", "-", path.lower()).strip("-")
+                        page.goto(base + path)
+                        page.check("form.selection [data-select-all]")
+                        page.screenshot(path=f"{out}/{lang}-{viewport}-{scheme}-{name}-selected.png", full_page=True)
+                        failures += [f"{lang} {viewport} {scheme} {path} (rows selected): {p}" for p in page.evaluate(FIND_BREAKAGE)]
+                        page.click(".selection-actions button.danger")
+                        page.screenshot(path=f"{out}/{lang}-{viewport}-{scheme}-{name}-selected-confirm.png")
+                        page.click("dialog.confirm button[value=ok]")
+                        page.wait_for_selector(".selection-blocked")
+                        page.screenshot(path=f"{out}/{lang}-{viewport}-{scheme}-{name}-blocked.png", full_page=True)
+                        failures += [f"{lang} {viewport} {scheme} {path} (delete refused): {p}" for p in page.evaluate(FIND_BREAKAGE)]
+                    if not only or "/invoices/new" in only:
+                        page.goto(base + "/invoices/new")
+                        page.uncheck("input[name=all_projects]")
+                        page.screenshot(path=f"{out}/{lang}-{viewport}-{scheme}-invoices-new-projects.png", full_page=True)
+                        failures += [f"{lang} {viewport} {scheme} /invoices/new (projects shown): {p}" for p in page.evaluate(FIND_BREAKAGE)]
                     page.close()
         browser.close()
     print(f"screenshots: {out}")

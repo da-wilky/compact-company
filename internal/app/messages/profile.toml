@@ -1,2 +1,3 @@
 "profile.title" = { en = "Profile", de = "Profil" }
 "profile.default" = { en = "Default (%s)", de = "Voreinstellung (%s)" }
+"profile.defaults_hint" = { en = "Settings left on Default follow the business-wide defaults:", de = "Auf Voreinstellung belassene Einstellungen folgen den Voreinstellungen des Unternehmens:" }

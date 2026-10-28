@@ -51,12 +51,13 @@ A failing compile (a `panic`, a missing font, a syntax error) is shown to the us
   "customer": { "number": "K-001", "name": "Genossenschaft Aufwind eG", "address": ["Windweg 3", "54321 Hamburg"] },
   "lines": [
     {
-      "description": "Website relaunch",
+      "description": "Working time",
       "detail": "",
       "quantity": "2.5",
       "unit": "h",
       "unit_price": "85.00",
       "total": "212.50",
+      "project": "Website relaunch",
       "entries": [
         { "date": "2026-09-02", "user": "Samuel Wilk", "seconds": 9000, "description": "Kickoff and wireframes" }
       ]
@@ -81,7 +82,8 @@ A failing compile (a `panic`, a missing font, a syntax error) is shown to the us
 | `business` | The sender. Empty strings for unset optional fields; `name`, `address` and `tax_number` are always set. |
 | `tax` | `small_business: true` means no VAT under § 19 UStG and `vat_rate` 0; otherwise `vat_rate` is the integer percent applied. A cancellation carries the cancelled invoice's `tax`. |
 | `customer` | The recipient. |
-| `lines` | In order. `quantity × unit_price = total`, rounded half up to the currency's minor unit. Cancellation lines carry negated quantities and totals. |
+| `lines` | In order: by project section, then the lines without a project. `quantity × unit_price = total`, rounded half up to the currency's minor unit. Cancellation lines carry negated quantities and totals. |
+| `lines[].project` | The name of the project the line bills, or `null`. Lines of one project are consecutive; a template shows them under a heading with the name (a *project section*, also for a single project) and the lines without a project after all sections, without a heading. Headings carry no amount. |
 | `lines[].entries` | The time entries billed by a line, oldest first; empty for free lines and cancellations. `seconds` is the tracked duration before rounding. |
 | `totals` | `net` is the sum of line totals, `vat` is rounded once on `net`, `gross = net + vat`. |
 | `cancels` | For a cancellation invoice the cancelled invoice's `number` and `issue_date`; otherwise `null`. |

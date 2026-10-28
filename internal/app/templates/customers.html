@@ -1,15 +1,27 @@
 {{define "title"}}{{t "customers.title"}}{{end}}
 {{define "content"}}
+{{with .Data}}
 <h1>{{t "customers.title"}}</h1>
-<p class="actions"><a href="/customers/new">{{template "icon-plus"}}{{t "customers.new"}}</a>{{if .Data.ShowArchived}}<a href="/customers">{{template "icon-eye-off"}}{{t "archive.hide"}}</a>{{else}}<a href="/customers?archived=1">{{template "icon-eye"}}{{t "archive.show"}}</a>{{end}}</p>
-{{with .Data.Customers}}
-<div class="table-wrap"><table>
-<thead><tr><th>{{t "customers.number"}}</th><th>{{t "customers.name"}}</th><th class="num">{{t "customers.hourly_rate"}}</th><th>{{t "customers.projects"}}</th></tr></thead>
+<p class="actions"><a href="/customers/new">{{template "icon-plus"}}{{t "customers.new"}}</a>{{if .ShowArchived}}<a href="/customers">{{template "icon-eye-off"}}{{t "archive.hide"}}</a>{{else}}<a href="/customers?archived=1">{{template "icon-eye"}}{{t "archive.show"}}</a>{{end}}</p>
+<div id="customer-list">
+{{with .Blocked}}<div class="errors selection-blocked" role="alert"><p>{{t $.Data.Refusal}}</p>
+<ul>{{range .}}<li>{{.Name}} · {{t .Reason}}</li>{{end}}</ul></div>{{end}}
+{{with .Customers}}
+<form id="customer-selection" class="selection" method="post" action="{{$.Data.DeleteURL}}" hx-post="{{$.Data.DeleteURL}}" hx-target="#customer-list" hx-select="#customer-list" hx-swap="outerHTML" hidden>
+<label><input type="checkbox" data-select-all>{{t "selection.all"}}</label>
+<span class="selection-actions"><span data-count="{{t "selection.count" "{n}"}}"></span>
+<button formaction="{{$.Data.ArchiveURL}}" data-only-state="active" data-confirm-neutral data-confirm-one="{{t "customers.confirm_archive_one"}}" data-confirm-many="{{t "customers.confirm_archive_many" "{n}"}}" data-confirm-ok="{{t "archive.archive"}}">{{template "icon-archive"}}{{t "archive.archive"}}</button>
+<button formaction="{{$.Data.UnarchiveURL}}" data-only-state="archived" data-confirm-neutral data-confirm-one="{{t "customers.confirm_unarchive_one"}}" data-confirm-many="{{t "customers.confirm_unarchive_many" "{n}"}}" data-confirm-ok="{{t "archive.unarchive"}}">{{template "icon-archive-restore"}}{{t "archive.unarchive"}}</button>
+<button class="danger" data-confirm-one="{{t "customers.confirm_delete_one"}}" data-confirm-many="{{t "customers.confirm_delete_many" "{n}"}}" data-confirm-ok="{{t "archive.delete"}}">{{template "icon-trash"}}{{t "archive.delete"}}</button></span>
+</form>
+<div class="table-wrap"><table class="selectable">
+<thead><tr><td class="c-select"></td><th>{{t "customers.number"}}</th><th>{{t "customers.name"}}</th><th class="num">{{t "customers.hourly_rate"}}</th><th>{{t "customers.projects"}}</th></tr></thead>
 <tbody>
-{{range .}}<tr><td>{{.Number}}</td><td><a href="/customers/{{.ID}}">{{.Name}}</a>{{if .Archived}} <span class="hint">({{t "archive.archived"}})</span>{{end}}</td><td class="num">{{.HourlyRate}} {{.Currency}}</td><td><a href="/customers/{{.ID}}/projects">{{t "customers.projects"}}</a></td></tr>
+{{range .}}<tr><td><input type="checkbox" name="id" value="{{.ID}}" form="customer-selection" data-state="{{if .Archived}}archived{{else}}active{{end}}" aria-label="{{t "customers.select" .Number .Name}}"{{if index $.Data.Selected .ID}} checked{{end}}></td><td>{{.Number}}</td><td><a href="/customers/{{.ID}}">{{.Name}}</a>{{if .Archived}} <span class="hint">({{t "archive.archived"}})</span>{{end}}</td><td class="num">{{.HourlyRate}} {{.Currency}}</td><td><a href="/customers/{{.ID}}/projects">{{t "customers.projects"}}</a></td></tr>
 {{end}}</tbody>
 </table></div>
 {{else}}
 <p>{{t "customers.empty"}}</p>
+{{end}}</div>
 {{end}}
 {{end}}

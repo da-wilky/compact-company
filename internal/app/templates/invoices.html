@@ -12,15 +12,23 @@
 <select name="customer" aria-label="{{t "invoices.customer"}}"><option value="">{{t "invoices.all_customers"}}</option>{{range .Customers}}<option value="{{.ID}}"{{if eq .ID $.Data.Customer}} selected{{end}}>{{.Name}}</option>{{end}}</select>
 <button>{{t "invoices.filter"}}</button></form>
 </div>
+<div id="invoice-list">
+{{with .Blocked}}<div class="errors selection-blocked" role="alert"><p>{{t $.Data.Refusal}}</p>
+<ul>{{range .}}<li>{{.Number}} · {{.Customer}} · {{t (print "invoices.status." .Status)}}</li>{{end}}</ul></div>{{end}}
 {{with .Rows}}
-<div class="table-wrap"><table>
-<thead><tr><th>{{t "invoices.number"}}</th><th>{{t "invoices.customer"}}</th><th>{{t "invoices.issue_date"}}</th><th class="num">{{t "invoices.gross"}}</th><th>{{t "invoices.status"}}</th><th>{{t "invoices.paid"}}</th></tr></thead>
+<form id="invoice-selection" class="selection" method="post" action="{{$.Data.DeleteURL}}" hx-post="{{$.Data.DeleteURL}}" hx-target="#invoice-list" hx-select="#invoice-list" hx-swap="outerHTML" hidden>
+<label><input type="checkbox" data-select-all>{{t "selection.all"}}</label>
+<span class="selection-actions"><span data-count="{{t "selection.count" "{n}"}}"></span>
+<button class="danger" data-confirm-one="{{t "invoices.confirm_delete_one"}}" data-confirm-many="{{t "invoices.confirm_delete_many" "{n}"}}" data-confirm-ok="{{t "invoices.delete_selected"}}">{{template "icon-trash"}}{{t "invoices.delete_selected"}}</button></span>
+</form>
+<div class="table-wrap"><table class="invoice-list selectable">
+<thead><tr><td class="c-select"></td><th>{{t "invoices.number"}}</th><th>{{t "invoices.customer"}}</th><th>{{t "invoices.issue_date"}}</th><th class="num">{{t "invoices.gross"}}</th><th>{{t "invoices.status"}}</th><th>{{t "invoices.paid"}}</th></tr></thead>
 <tbody>
-{{range .}}<tr><td><a href="/invoices/{{.ID}}">{{or .Number (t "invoices.status.draft")}}</a></td><td>{{.Customer}}</td><td>{{with .IssueDate}}{{day .}}{{end}}</td><td class="num">{{.Gross}} {{.Currency}}</td><td>{{t (print "invoices.status." .Status)}}</td><td>{{with .PaidDate}}{{day .}}{{end}}</td></tr>
+{{range .}}<tr><td>{{if .Selectable}}<input type="checkbox" name="id" value="{{.ID}}" form="invoice-selection" aria-label="{{t "invoices.select" .Customer}}"{{if index $.Data.Selected .ID}} checked{{end}}>{{end}}</td><td><a href="/invoices/{{.ID}}">{{or .Number (t "invoices.status.draft")}}</a></td><td>{{.Customer}}</td><td>{{with .IssueDate}}{{day .}}{{end}}</td><td class="num">{{.Gross}} {{.Currency}}</td><td>{{t (print "invoices.status." .Status)}}</td><td>{{with .PaidDate}}{{day .}}{{end}}</td></tr>
 {{end}}</tbody>
 </table></div>
 {{else}}
 <p>{{t "invoices.empty"}}</p>
-{{end}}
+{{end}}</div>
 {{end}}
 {{end}}

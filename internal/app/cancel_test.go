@@ -125,10 +125,10 @@ func TestCancellingALineReleasesItsEntriesForANewDraft(t *testing.T) {
 	website, hosting := c.acmeProjects()
 	c.createEntry(entryForm(website, "2026-09-02T08:00", "2026-09-02T09:00", "design"))
 	c.createEntry(entryForm(hosting, "2026-09-03T08:00", "2026-09-03T08:30", "server"))
-	inv := c.createDraft(pullForm(c, "project", "0"))
+	inv := c.createDraft(pullForm(c, "entry", "0"))
 	wantRedirect(t, c.issue(inv), inv)
 
-	c.cancelLines(inv, "", "website")
+	c.cancelLines(inv, "", "design")
 
 	again := c.createDraft(pullForm(c, "project", "0"))
 	res := c.get(again)
@@ -189,7 +189,7 @@ func TestCancellationPassesTheContractWithTheOriginalTaxToTheTemplate(t *testing
 		"kind": "cancellation", "draft": false, "number": "2026-002", "issue_date": "2026-10-26",
 		"cancels": {"number": "2026-001", "issue_date": "2026-10-26"}, "reason": "wrong rate",
 		"tax": {"small_business": false, "vat_rate": 19},
-		"lines": [{"description": "Workshop", "detail": "", "quantity": "-1.5", "unit": "h", "unit_price": "85.00", "total": "-127.50", "entries": []}],
+		"lines": [{"description": "Workshop", "detail": "", "quantity": "-1.5", "unit": "h", "unit_price": "85.00", "total": "-127.50", "entries": [], "project": null}],
 		"totals": {"net": "-127.50", "vat": "-24.23", "gross": "-151.73"}
 	}`).(map[string]any)
 	for key, w := range want {
@@ -229,10 +229,10 @@ func TestTheServicePeriodFromEntriesIsFrozenAtIssuingAlsoForItsCancellation(t *t
 	website, hosting := c.acmeProjects()
 	c.createEntry(entryForm(website, "2026-09-02T08:00", "2026-09-02T09:00", "design"))
 	c.createEntry(entryForm(hosting, "2026-09-19T08:00", "2026-09-19T08:30", "server"))
-	inv := c.createDraft(pullForm(c, "project", "0"))
+	inv := c.createDraft(pullForm(c, "entry", "0"))
 	wantRedirect(t, c.issue(inv), inv)
 
-	res := c.postForm(inv+"/cancel", c.cancelForm(inv, "", "website", "hosting"))
+	res := c.postForm(inv+"/cancel", c.cancelForm(inv, "", "design", "server"))
 
 	got := res.servicePeriod(t)
 	if want := decodeJSON(t, `{"from": "2026-09-02", "to": "2026-09-19"}`); !reflect.DeepEqual(got, want) {

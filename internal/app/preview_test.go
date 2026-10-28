@@ -89,8 +89,8 @@ func TestPreviewPassesTheContractToTheTemplate(t *testing.T) {
 		"tax": {"small_business": false, "vat_rate": 19},
 		"customer": {"number": "K-001", "name": "acme", "address": ["Hauptstr. 1", "12345 Berlin"]},
 		"lines": [
-			{"description": "Workshop", "detail": "on site", "quantity": "1.5", "unit": "h", "unit_price": "85.00", "total": "127.50", "entries": []},
-			{"description": "Hosting", "detail": "", "quantity": "2", "unit": "h", "unit_price": "10.01", "total": "20.02", "entries": []}
+			{"description": "Workshop", "detail": "on site", "quantity": "1.5", "unit": "h", "unit_price": "85.00", "total": "127.50", "entries": [], "project": null},
+			{"description": "Hosting", "detail": "", "quantity": "2", "unit": "h", "unit_price": "10.01", "total": "20.02", "entries": [], "project": null}
 		],
 		"totals": {"net": "147.52", "vat": "28.03", "gross": "175.55"},
 		"cancels": null, "reason": ""
@@ -176,7 +176,10 @@ func TestDefaultTemplatePreviewsADraftWithoutIssuingIt(t *testing.T) {
 			form := customerForm("acme", "85")
 			form.Set("invoice_language", tc.language)
 			c.createCustomer(form)
-			draft := c.createDraft(draftForm(c.customerPath("acme"), "2026-09-01", "2026-09-30"))
+			cust := c.customerPath("acme")
+			c.createProject(cust, projectForm("website", ""))
+			c.createEntry(entryForm(strings.TrimPrefix(c.projectPath(cust, "website"), "/projects/"), "2026-09-02T08:00", "2026-09-02T09:00", "design"))
+			draft := c.createDraft(draftForm(cust, "2026-09-01", "2026-09-30"))
 			c.addLine(draft, lineForm("Workshop", "1.5", "85"))
 
 			res := c.get(draft + "/preview")

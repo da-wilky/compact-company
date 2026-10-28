@@ -29,7 +29,7 @@ func TestManualEntryShowsInTheDayListing(t *testing.T) {
 	list.wantBody(t, "acme · website")
 	list.wantBody(t, "kickoff")
 	list.wantBody(t, "08:00–09:45")
-	list.wantRow(t, "08:00–09:45", "1:45", "acme · website", "kickoff", "yes")
+	list.wantRow(t, "", "08:00–09:45", "1:45", "acme · website", "kickoff", "yes")
 	c.get("/entries?day=2026-10-27").wantNoBody(t, "kickoff")
 }
 
@@ -79,6 +79,64 @@ func TestEntriesLoadTenAtATimeAndContinueTheDay(t *testing.T) {
 	wantInOrder(t, more.text(), "entry 08", "Sun 2026-10-25 1:00", "sunday")
 	more.wantNoBody(t, "Load more")
 	c.get("/entries?before=nope").wantStatus(t, http.StatusBadRequest)
+}
+
+func TestEntriesPageSizeIsChosenAndKeptWhilePaging(t *testing.T) {
+	ta := newTestApp(t, devConfig)
+	c := ta.client()
+	for d := 1; d <= 26; d++ {
+		c.createEntry(entryForm("", fmt.Sprintf("2026-09-%02dT08:00", d), fmt.Sprintf("2026-09-%02dT09:00", d), fmt.Sprintf("entry %02d", d)))
+	}
+
+	first := c.get("/entries?per_page=25")
+
+	wantInOrder(t, first.body, "entry 26", "entry 02")
+	first.wantNoBody(t, "entry 01")
+	m := moreLink.FindStringSubmatch(first.body)
+	if m == nil {
+		t.Fatalf("no load-more link:\n%s", first.body)
+	}
+	more := html.UnescapeString(m[1])
+	if !strings.Contains(more, "per_page=25") {
+		t.Fatalf("load-more link %q drops the page size", more)
+	}
+	c.hxGet(more).wantBody(t, "entry 01")
+}
+
+func TestEntriesPageSizeOffersFourSizesAndSurvivesFilters(t *testing.T) {
+	ta := newTestApp(t, devConfig)
+	c := ta.client()
+
+	res := c.get("/entries?per_page=50")
+
+	for _, n := range []string{"10", "25", "50", "100"} {
+		res.wantBody(t, ">"+n+"</a>")
+	}
+	res.wantBody(t, `href="/entries?everyone=1&amp;per_page=50">Team</a>`)
+	res.wantBody(t, `<input type="hidden" name="per_page" value="50">`)
+	res.wantBody(t, `href="/entries?per_page=100">100</a>`)
+	res.wantBody(t, `href="/entries">10</a>`)
+	day := c.get("/entries?day=2026-10-26&per_page=50")
+	day.wantBody(t, `href="/entries?per_page=50">All entries</a>`)
+}
+
+func TestInvalidEntriesPageSizeFallsBackToTen(t *testing.T) {
+	ta := newTestApp(t, devConfig)
+	c := ta.client()
+	for h := 8; h < 19; h++ {
+		c.createEntry(entryForm("", fmt.Sprintf("2026-10-26T%02d:00", h), fmt.Sprintf("2026-10-26T%02d:30", h), fmt.Sprintf("entry %02d", h)))
+	}
+
+	for _, size := range []string{"7", "1000", "nope", "-10"} {
+		res := c.get("/entries?per_page=" + size)
+		res.wantStatus(t, http.StatusOK)
+		wantInOrder(t, res.body, "entry 18", "entry 09")
+		res.wantNoBody(t, "entry 08")
+		res.wantBody(t, `href="/entries?per_page=25">25</a>`)
+		if m := moreLink.FindStringSubmatch(res.body); m == nil || strings.Contains(m[1], "per_page") {
+			t.Fatalf("per_page=%s: want a load-more link without a page size, got %v", size, m)
+		}
+	}
 }
 
 func TestEntryFiltersShowTheProjectAndKeepEachOther(t *testing.T) {
@@ -139,7 +197,7 @@ func TestAssigningAnUnassignedEntryAppliesTheProjectDefault(t *testing.T) {
 	wantRedirect(t, res, "/entries?day=2026-10-26")
 	list := c.get("/entries?day=2026-10-26")
 	list.wantBody(t, "08:00–09:30")
-	list.wantRow(t, "08:00–09:30", "1:30", "acme · website", "adopted", "yes")
+	list.wantRow(t, "", "08:00–09:30", "1:30", "acme · website", "adopted", "yes")
 	c.get(entry).wantBody(t, `<option value="yes" selected>`)
 }
 
@@ -155,7 +213,7 @@ func TestOwnerCanFullyEditAnEntry(t *testing.T) {
 
 	wantRedirect(t, res, "/entries?day=2026-10-27")
 	c.get("/entries?day=2026-10-26").wantBody(t, "No entries.")
-	c.get("/entries?day=2026-10-27").wantRow(t, "10:00–10:20", "0:20", "Unassigned", "moved", "")
+	c.get("/entries?day=2026-10-27").wantRow(t, "", "10:00–10:20", "0:20", "Unassigned", "moved", "")
 	clash := c.postForm(entry, entryForm("", "2026-10-27T08:30", "2026-10-27T10:20", "moved"))
 	clash.wantStatus(t, http.StatusUnprocessableEntity)
 	clash.wantBody(t, "This entry overlaps another of your entries.")
@@ -192,7 +250,7 @@ func TestColleaguesCanViewButNotChangeAnEntry(t *testing.T) {
 	alice.get("/entries?day=2026-10-26").wantBody(t, "alice work")
 	bob.get("/entries?day=2026-10-26").wantNoBody(t, "alice work")
 	everyone := bob.get("/entries?day=2026-10-26&everyone=1")
-	everyone.wantRow(t, "alice", "08:00–09:00", "1:00", "Unassigned", "alice work", "")
+	everyone.wantRow(t, "", "alice", "08:00–09:00", "1:00", "Unassigned", "alice work", "")
 	everyone.wantNoBody(t, `href="`+entry+`"`)
 	everyone.wantBody(t, `href="/entries?day=2026-10-27&amp;everyone=1"`)
 }
@@ -235,10 +293,10 @@ func TestEntryBillableInheritsTheProjectDefaultUnlessSet(t *testing.T) {
 	c.postForm("/entries", entryForm("", "2026-10-26T11:00", "2026-10-26T12:00", "orphan")).wantStatus(t, http.StatusSeeOther)
 
 	list := c.get("/entries?day=2026-10-26")
-	list.wantRow(t, "08:00–09:00", "1:00", "acme · internal", "inherited", "no")
-	list.wantRow(t, "09:00–10:00", "1:00", "acme · website", "explicit", "no")
-	list.wantRow(t, "10:00–11:00", "1:00", "acme · website", "default", "yes")
-	list.wantRow(t, "11:00–12:00", "1:00", "Unassigned", "orphan", "")
+	list.wantRow(t, "", "08:00–09:00", "1:00", "acme · internal", "inherited", "no")
+	list.wantRow(t, "", "09:00–10:00", "1:00", "acme · website", "explicit", "no")
+	list.wantRow(t, "", "10:00–11:00", "1:00", "acme · website", "default", "yes")
+	list.wantRow(t, "", "11:00–12:00", "1:00", "Unassigned", "orphan", "")
 }
 
 func TestUnassignedEntryCannotBeMarkedBillable(t *testing.T) {
@@ -308,7 +366,7 @@ func TestStoppedTimerIsListedWithItsEndAndDuration(t *testing.T) {
 	list := c.get("/entries")
 	wantInOrder(t, list.text(), "Mon 2026-10-26 1:30")
 	list.wantBody(t, "09:00–10:30")
-	list.wantRow(t, "09:00–10:30", "1:30", "Unassigned", "tracked", "")
+	list.wantRow(t, "", "09:00–10:30", "1:30", "Unassigned", "tracked", "")
 }
 
 func TestEntriesAreEnteredAndAttributedInTheViewersTimezone(t *testing.T) {
