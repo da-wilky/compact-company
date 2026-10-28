@@ -101,9 +101,10 @@ parallel_entries = true
 `)
 	alice := ta.loginAs("alice")
 	page := alice.get("/settings").in(t, "Voreinstellungen")
-	page.wantBody(t, `<select name="language" disabled>`)
+	page.wantBody(t, `<select name="language" disabled`)
 	page.wantBody(t, `name="currency" value="CHF" disabled`)
 	page.wantBody(t, `name="parallel_entries" checked disabled`)
+	page.wantNoBody(t, "Speichern")
 
 	wantRedirect(t, alice.postForm("/settings/defaults", defaultsForm("en", "UTC", "EUR", false)), "/settings")
 

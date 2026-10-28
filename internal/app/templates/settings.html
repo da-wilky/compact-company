@@ -7,24 +7,27 @@
 <p class="banner" role="note">{{t "settings.business_wide"}}</p>
 <h2>{{t "settings.defaults"}}</h2>
 <p class="hint">{{t "settings.defaults_hint"}}</p>
-<form method="post" action="/settings/defaults" class="settings">
+{{$readOnly := and .Managed.Language .Managed.Timezone .Managed.Currency .Managed.ParallelEntries}}
+<form method="post" action="/settings/defaults" class="form">
+<fieldset{{if $readOnly}} disabled{{end}}>
 <label>{{t "settings.language"}}
-<select name="language"{{if .Managed.Language}} disabled{{end}}>
+<select name="language"{{if .Managed.Language}} disabled aria-describedby="language-hint"{{end}}>
 {{range .Languages}}<option value="{{.Value}}"{{if eq .Value $.Data.Defaults.Language}} selected{{end}}>{{.Name}}</option>
 {{end}}</select>
 </label>
-{{if .Managed.Language}}<p class="hint">{{t "settings.managed"}}</p>{{end}}
+{{if .Managed.Language}}<p class="hint" id="language-hint">{{t "settings.managed"}}</p>{{end}}
 <label>{{t "settings.timezone"}}
-<input name="timezone" value="{{.Defaults.Timezone}}"{{if .Managed.Timezone}} disabled{{end}} required spellcheck="false" autocomplete="off">
+<input name="timezone" value="{{.Defaults.Timezone}}"{{if .Managed.Timezone}} disabled{{end}} required spellcheck="false" autocomplete="off" aria-describedby="timezone-hint">
 </label>
-<p class="hint">{{if .Managed.Timezone}}{{t "settings.managed"}}{{else}}{{t "settings.timezone_hint"}}{{end}}</p>
+<p class="hint" id="timezone-hint">{{if .Managed.Timezone}}{{t "settings.managed"}}{{else}}{{t "settings.timezone_hint"}}{{end}}</p>
 <label>{{t "settings.currency"}}
-<input name="currency" value="{{.Defaults.Currency}}"{{if .Managed.Currency}} disabled{{end}} required maxlength="3" spellcheck="false" autocomplete="off">
+<input name="currency" value="{{.Defaults.Currency}}"{{if .Managed.Currency}} disabled aria-describedby="currency-hint"{{end}} required maxlength="3" spellcheck="false" autocomplete="off">
 </label>
-{{if .Managed.Currency}}<p class="hint">{{t "settings.managed"}}</p>{{end}}
-<label><input type="checkbox" name="parallel_entries"{{if .Defaults.ParallelEntries}} checked{{end}}{{if .Managed.ParallelEntries}} disabled{{end}}> {{t "settings.parallel_entries"}}</label>
-<p class="hint">{{if .Managed.ParallelEntries}}{{t "settings.managed"}}{{else}}{{t "settings.parallel_entries_default_hint"}}{{end}}</p>
-<button>{{template "icon-save"}}{{t "settings.save"}}</button>
+{{if .Managed.Currency}}<p class="hint" id="currency-hint">{{t "settings.managed"}}</p>{{end}}
+<label><input type="checkbox" name="parallel_entries"{{if .Defaults.ParallelEntries}} checked{{end}}{{if .Managed.ParallelEntries}} disabled{{end}} aria-describedby="parallel-hint"> {{t "settings.parallel_entries"}}</label>
+<p class="hint" id="parallel-hint">{{if .Managed.ParallelEntries}}{{t "settings.managed"}}{{else}}{{t "settings.parallel_entries_default_hint"}}{{end}}</p>
+</fieldset>
+{{if not $readOnly}}<button>{{template "icon-save"}}{{t "settings.save"}}</button>{{end}}
 </form>
 {{with .Business}}
 <h2 id="business">{{t "business.title"}}</h2>

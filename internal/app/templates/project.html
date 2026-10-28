@@ -11,8 +11,8 @@
 {{with .Errors}}<ul class="errors" role="alert">{{range .}}<li>{{t .}}</li>{{end}}</ul>{{end}}
 <form method="post" action="{{with .Project.ID}}/projects/{{.}}{{else}}/customers/{{$.Data.Customer.ID}}/projects{{end}}" class="form">
 <label>{{t "projects.name"}} <input name="name" value="{{.Project.Name}}" required></label>
-<label>{{t "projects.hourly_rate" .Customer.Currency}} <input name="hourly_rate" value="{{.Project.HourlyRate}}" inputmode="decimal" placeholder="{{.Customer.HourlyRate}}">
-<span class="hint">{{t "projects.hourly_rate_hint" .Customer.HourlyRate .Customer.Currency}}</span></label>
+<label>{{t "projects.hourly_rate" .Customer.Currency}} <input name="hourly_rate" value="{{.Project.HourlyRate}}" inputmode="decimal" placeholder="{{.Customer.HourlyRate}}" aria-describedby="rate-hint"></label>
+<p class="hint" id="rate-hint">{{t "projects.hourly_rate_hint" .Customer.HourlyRate .Customer.Currency}}</p>
 <label><input type="checkbox" name="billable"{{if .Project.Billable}} checked{{end}}> {{t "projects.billable_default"}}</label>
 <button>{{template "icon-save"}}{{t "projects.save"}}</button>
 </form>

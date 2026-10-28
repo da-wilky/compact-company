@@ -201,7 +201,7 @@ button.icon svg.icon { width: 12px; height: 12px; fill: currentColor; }
 
 button { padding: .45rem 1.1rem; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--fg); font: inherit; font-weight: 500; cursor: pointer; }
 button:hover { border-color: var(--accent); }
-.form > button, .settings button, button.primary { justify-self: start; border-color: var(--accent); background: var(--accent); color: var(--accent-fg); }
+.form > button, button.primary { justify-self: start; border-color: var(--accent); background: var(--accent); color: var(--accent-fg); }
 button.ghost { border-color: transparent; background: transparent; }
 button.danger { border-color: var(--danger); background: var(--danger); color: var(--accent-fg); }
 button.ghost.danger { border-color: transparent; background: transparent; color: var(--danger); }
@@ -223,15 +223,15 @@ tfoot > tr > * { border-top: 1px solid var(--line); border-bottom: 0; font-weigh
 .num { text-align: right; font-variant-numeric: tabular-nums; }
 .table-wrap { overflow-x: auto; }
 
-.form, .settings { display: grid; gap: .9rem; max-width: 34rem; padding: 1.75rem; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
-.form label, .settings label, .status-card label { display: grid; gap: .3rem; color: var(--muted); font-size: .85rem; font-weight: 550; }
-.form label > :not(.hint), .settings label > :not(.hint) { color: var(--fg); font-size: .95rem; font-weight: 400; }
-.form label:has(input[type=checkbox]), .settings label:has(input[type=checkbox]) { display: flex; align-items: center; gap: .5rem; color: var(--fg); }
-.settings .hint { margin: -.5rem 0 0; }
+.form { display: grid; gap: .9rem; max-width: 34rem; padding: 1.75rem; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+.form label, .status-card label { display: grid; gap: .3rem; color: var(--muted); font-size: .85rem; font-weight: 550; }
+.form label > :not(.hint) { color: var(--fg); font-size: .95rem; font-weight: 400; }
+.form label:has(input[type=checkbox]) { display: flex; align-items: center; gap: .5rem; color: var(--fg); }
+.form p.hint[id] { margin: -.5rem 0 0; }
 .invoice-projects legend { margin-bottom: .5rem; padding: 0; color: var(--muted); font-size: .85rem; font-weight: 550; }
 .project-choice { display: grid; gap: .6rem; padding-left: 1.6rem; }
 .invoice-projects:has([name=all_projects]:checked) .project-choice { display: none; }
-main > form:not(.form, .settings) { display: inline-block; margin: 1rem .5rem 0 0; }
+main > form:not(.form) { display: inline-block; margin: 1rem .5rem 0 0; }
 
 .timers { display: grid; gap: .5rem; }
 .timers .errors { margin: 0; padding-left: 1.1rem; font-size: .85rem; }
@@ -282,7 +282,7 @@ button.icon:hover { filter: brightness(1.1); }
   .tabs a { flex-direction: column; gap: 0; padding: .35rem; font-size: .7rem; }
   .tabs .mobile { display: flex; }
   main { padding: 1.25rem 1rem 6rem; }
-  .form, .settings { padding: 1rem; }
+  .form { padding: 1rem; }
   .page-head .pager { width: 100%; flex-wrap: wrap; }
   .invoice-body { grid-template-columns: minmax(0, 1fr); }
   .invoice-body > .table-wrap { grid-row: auto; }

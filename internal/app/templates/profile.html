@@ -4,7 +4,7 @@
 {{with .Data}}
 {{with .Error}}<ul class="errors" role="alert"><li>{{t .}}</li></ul>{{end}}
 <p class="hint">{{t "profile.defaults_hint"}} <a href="/settings">{{t "settings.title"}}</a></p>
-<form method="post" action="/profile" class="settings">
+<form method="post" action="/profile" class="form">
 <label>{{t "settings.language"}}
 <select name="language">
 <option value=""{{if eq "" .Language}} selected{{end}}>{{t "profile.default" .DefaultLanguageName}}</option>
@@ -12,12 +12,12 @@
 {{end}}</select>
 </label>
 <label>{{t "settings.timezone"}}
-<input name="timezone" value="{{.Timezone}}" placeholder="{{t "profile.default" .Default.Timezone}}" spellcheck="false" autocomplete="off" aria-describedby="timezone-hint">
+<input name="timezone" value="{{.Timezone}}" placeholder="{{t "profile.default" .Default.Timezone}}" spellcheck="false" autocomplete="off" aria-describedby="timezone-hint current-time">
 </label>
 <p class="hint" id="timezone-hint">{{t "settings.timezone_hint"}}</p>
-<p class="hint">{{t "settings.current_time" (datetime .Now)}}</p>
-<label><input type="checkbox" name="parallel_entries"{{if .ParallelEntries}} checked{{end}}> {{t "settings.parallel_entries"}}</label>
-<p class="hint">{{t "settings.parallel_entries_hint"}}</p>
+<p class="hint" id="current-time">{{t "settings.current_time" (datetime .Now)}}</p>
+<label><input type="checkbox" name="parallel_entries"{{if .ParallelEntries}} checked{{end}} aria-describedby="parallel-hint"> {{t "settings.parallel_entries"}}</label>
+<p class="hint" id="parallel-hint">{{t "settings.parallel_entries_hint"}}</p>
 <button>{{template "icon-save"}}{{t "settings.save"}}</button>
 </form>
 {{end}}
