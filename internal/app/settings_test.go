@@ -14,6 +14,27 @@ func defaultsForm(language, timezone, currency string, parallel bool) url.Values
 	return form
 }
 
+func TestSettingsAreNamedAsBusinessWide(t *testing.T) {
+	ta := newTestApp(t, devConfig)
+	alice, bob := ta.loginAs("alice"), ta.loginAs("bob")
+	wantRedirect(t, bob.postForm("/profile", url.Values{"language": {"de"}}), "/profile")
+
+	alice.get("/").wantBody(t, `aria-label="Business settings" title="Business settings"`)
+	page := alice.get("/settings")
+	page.wantBody(t, "<title>Business settings ·")
+	page.wantBody(t, "These settings apply to every user of this business.")
+
+	bob.get("/").wantBody(t, `title="Unternehmenseinstellungen"`)
+	bob.get("/settings").wantBody(t, "<title>Unternehmenseinstellungen ·")
+}
+
+func TestProfileLinksToTheBusinessSettingsItsDefaultsComeFrom(t *testing.T) {
+	ta := newTestApp(t, devConfig)
+	alice := ta.loginAs("alice")
+
+	alice.get("/profile").wantBody(t, `<a href="/settings">Business settings</a>`)
+}
+
 func TestDefaultsAreEditedOnTheSettingsPageAndPrefillNewCustomers(t *testing.T) {
 	ta := newTestApp(t, devConfig)
 	alice, bob := ta.loginAs("alice"), ta.loginAs("bob")
