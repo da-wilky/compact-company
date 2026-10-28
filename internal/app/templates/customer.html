@@ -1,7 +1,11 @@
-{{define "title"}}{{with .Data.Customer.Number}}{{.}}{{else}}{{t "customers.new"}}{{end}}{{end}}
+{{define "title"}}{{if .Data.Customer.ID}}{{t "customers.edit"}}{{else}}{{t "customers.new"}}{{end}}{{end}}
 {{define "content"}}
 {{with .Data}}
-<h1>{{with .Customer.Number}}{{t "customers.edit" .}}{{else}}{{t "customers.new"}}{{end}}</h1>
+<a class="crumb" href="/customers">{{template "icon-arrow-left"}}{{t "customers.title"}}</a>
+<div class="page-head">
+<div><h1>{{template "title" $}}</h1>
+{{with .Customer.ID}}<p class="hint">{{$.Data.Customer.Number}} {{$.Data.Customer.Name}}</p>{{end}}</div>
+</div>
 {{with .Errors}}<ul class="errors">{{range .}}<li>{{t .}}</li>{{end}}</ul>{{end}}
 <form method="post" action="/customers{{with .Customer.ID}}/{{.}}{{end}}" class="form">
 <label>{{t "customers.name"}} <input name="name" value="{{.Customer.Name}}" required></label>

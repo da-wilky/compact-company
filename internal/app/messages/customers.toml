@@ -1,6 +1,6 @@
 "customers.title" = { en = "Customers", de = "Kunden" }
 "customers.new" = { en = "New customer", de = "Neuer Kunde" }
-"customers.edit" = { en = "Customer %s", de = "Kunde %s" }
+"customers.edit" = { en = "Edit customer", de = "Kunde bearbeiten" }
 "customers.empty" = { en = "No customers yet.", de = "Noch keine Kunden." }
 "customers.number" = { en = "Number", de = "Nummer" }
 "customers.name" = { en = "Name", de = "Name" }

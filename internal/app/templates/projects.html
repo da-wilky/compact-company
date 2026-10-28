@@ -1,8 +1,13 @@
 {{define "title"}}{{t "projects.title" .Data.Customer.Name}}{{end}}
 {{define "content"}}
 {{with .Data}}
-<h1>{{t "projects.title" .Customer.Name}}</h1>
-<p class="actions"><a href="/customers/{{.Customer.ID}}">{{template "icon-arrow-left"}}{{t "projects.customer" .Customer.Number}}</a><a href="/customers/{{.Customer.ID}}/projects/new">{{template "icon-plus"}}{{t "projects.new"}}</a>{{if .ShowArchived}}<a href="/customers/{{.Customer.ID}}/projects">{{template "icon-eye-off"}}{{t "archive.hide"}}</a>{{else}}<a href="/customers/{{.Customer.ID}}/projects?archived=1">{{template "icon-eye"}}{{t "archive.show"}}</a>{{end}}</p>
+<a class="crumb" href="/customers/{{.Customer.ID}}">{{template "icon-arrow-left"}}{{t "customers.edit"}}</a>
+<h1>{{template "title" $}}</h1>
+<p class="actions"><a href="/customers/{{.Customer.ID}}/projects/new">{{template "icon-plus"}}{{t "projects.new"}}</a></p>
+<div class="filters">
+<span class="label">{{t "archive.show"}}</span>
+<span class="seg"><a href="/customers/{{.Customer.ID}}/projects"{{if not .ShowArchived}} aria-current="true"{{end}}>{{t "archive.active"}}</a><a href="/customers/{{.Customer.ID}}/projects?archived=1"{{if .ShowArchived}} aria-current="true"{{end}}>{{t "archive.all"}}</a></span>
+</div>
 <div id="project-list">
 {{with .Blocked}}<div class="errors selection-blocked" role="alert"><p>{{t $.Data.Refusal}}</p>
 <ul>{{range .}}<li>{{.Name}} · {{t .Reason}}</li>{{end}}</ul></div>{{end}}

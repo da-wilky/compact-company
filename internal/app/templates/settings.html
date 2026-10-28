@@ -1,6 +1,6 @@
 {{define "title"}}{{t "settings.title"}}{{end}}
 {{define "content"}}
-<h1>{{t "settings.title"}}</h1>
+<h1>{{template "title" .}}</h1>
 <p class="banner" role="note">{{t "settings.business_wide"}}</p>
 {{with .Data}}
 <h2>{{t "settings.defaults"}}</h2>

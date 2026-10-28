@@ -95,12 +95,10 @@ h1 { margin: 0 0 1rem; font-size: 1.75rem; font-weight: 650; letter-spacing: -.0
 .page-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem; margin-bottom: 1.25rem; }
 .page-head h1 { margin: 0; }
 .page-head .hint { margin: .2rem 0 0; }
-.page-head .title { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; }
 .pill { padding: .35rem .9rem; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--fg); font-size: .9rem; font-weight: 500; }
 .pill:hover { border-color: var(--accent); text-decoration: none; }
 .pill.primary { padding: .45rem 1.1rem; border-color: var(--accent); background: var(--accent); color: var(--accent-fg); }
 .pill.primary:hover { filter: brightness(1.05); }
-.title .pill { border-color: var(--accent-soft); background: var(--accent-soft); color: var(--accent); }
 
 .pager { display: flex; align-items: center; gap: .4rem; min-width: 0; }
 .pager .prev, .pager .next { position: relative; flex: none; width: 34px; height: 34px; border: 1px solid var(--field); border-radius: 50%; background: var(--surface); color: var(--fg); font-size: 0; }

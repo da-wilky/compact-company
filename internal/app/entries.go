@@ -348,6 +348,14 @@ type entryPage struct {
 	Return    string
 }
 
+// Back is the listing the entry was opened from, as redirectBack accepts it.
+func (p entryPage) Back() string {
+	if strings.HasPrefix(p.Return, "/entries?") {
+		return p.Return
+	}
+	return "/entries"
+}
+
 // renderEntry offers storedProject ("" = none) even when it no longer receives new time.
 func (a *App) renderEntry(w http.ResponseWriter, r *http.Request, status int, page entryPage, storedProject string) {
 	storedID, _ := strconv.ParseInt(storedProject, 10, 64)

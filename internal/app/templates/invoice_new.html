@@ -1,8 +1,8 @@
 {{define "title"}}{{t "invoices.new"}}{{end}}
 {{define "content"}}
 {{with .Data}}
-<h1>{{t "invoices.new"}}</h1>
-<p class="actions"><a href="/invoices">{{template "icon-arrow-left"}}{{t "invoices.title"}}</a></p>
+<a class="crumb" href="/invoices">{{template "icon-arrow-left"}}{{t "invoices.title"}}</a>
+<h1>{{template "title" $}}</h1>
 {{with .Errors}}<ul class="errors">{{range .}}<li>{{t .}}</li>{{end}}</ul>{{end}}
 <form method="post" action="/invoices" class="form">
 <label>{{t "invoices.customer"}} <select name="customer" required hx-get="/invoices/new" hx-target="#project-choice" hx-select="#project-choice" hx-swap="outerHTML">

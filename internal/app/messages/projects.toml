@@ -1,7 +1,6 @@
 "projects.title" = { en = "Projects of %s", de = "Projekte von %s" }
-"projects.customer" = { en = "Customer %s", de = "Kunde %s" }
 "projects.new" = { en = "New project", de = "Neues Projekt" }
-"projects.edit" = { en = "Project %s", de = "Projekt %s" }
+"projects.edit" = { en = "Edit project", de = "Projekt bearbeiten" }
 "projects.empty" = { en = "No projects yet.", de = "Noch keine Projekte." }
 "projects.name" = { en = "Name", de = "Name" }
 "projects.billable" = { en = "Billable", de = "Abrechenbar" }

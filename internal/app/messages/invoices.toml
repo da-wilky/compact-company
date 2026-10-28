@@ -40,7 +40,7 @@
 "invoices.no_lines" = { en = "No lines yet.", de = "Noch keine Positionen." }
 "invoices.add_line" = { en = "Add line", de = "Position hinzufügen" }
 "invoices.edit_line" = { en = "Edit line", de = "Position bearbeiten" }
-"invoices.back" = { en = "Back to draft", de = "Zurück zum Entwurf" }
+"invoices.new_line" = { en = "New line", de = "Neue Position" }
 "invoices.generated" = { en = "from time", de = "aus Zeiten" }
 "invoices.working_time" = { en = "Working time", de = "Arbeitszeit" }
 "invoices.description" = { en = "Description", de = "Beschreibung" }
@@ -91,7 +91,6 @@
 "invoices.status.cancelled" = { en = "Cancelled", de = "Storniert" }
 "invoices.status.partially_cancelled" = { en = "Partially cancelled", de = "Teilweise storniert" }
 "invoices.cancel" = { en = "Cancel lines", de = "Positionen stornieren" }
-"invoices.cancel_title" = { en = "Cancel lines of invoice %s", de = "Positionen der Rechnung %s stornieren" }
 "invoices.cancel_lines" = { en = "Lines to cancel", de = "Zu stornierende Positionen" }
 "invoices.cancel_warning" = { en = "Cancelling issues a cancellation invoice right away, with the next invoice number, reversing the ticked lines. Their time entries can be billed again. A cancelled line can't be restored.", de = "Beim Stornieren wird sofort eine Stornorechnung mit der nächsten Rechnungsnummer gestellt, die die angekreuzten Positionen aufhebt. Ihre Zeiteinträge können erneut abgerechnet werden. Eine stornierte Position lässt sich nicht wiederherstellen." }
 "invoices.cancel_issue" = { en = "Issue cancellation invoice", de = "Stornorechnung stellen" }
@@ -99,7 +98,6 @@
 "invoices.cancels" = { en = "Cancels invoice", de = "Storniert Rechnung" }
 "invoices.reason" = { en = "Reason", de = "Grund" }
 "invoices.amount_due" = { en = "Amount still due", de = "Noch offener Betrag" }
-"invoices.back_to_invoice" = { en = "Back to invoice", de = "Zurück zur Rechnung" }
 "invoices.error.cancel_lines" = { en = "Tick at least one line of this invoice that isn't cancelled yet.", de = "Bitte mindestens eine noch nicht stornierte Position dieser Rechnung ankreuzen." }
 "invoices.paid_on" = { en = "Paid on %s", de = "Bezahlt am %s" }
 "invoices.paid_date" = { en = "Payment date", de = "Zahlungsdatum" }

@@ -158,8 +158,11 @@ func TestEditingFromADrilledInCellReturnsToIt(t *testing.T) {
 		t.Fatalf("edit links = %v", links)
 	}
 	self := "/entries?day=2026-10-26&amp;everyone=1&amp;project=" + project
-	c.get(links[0][1]).wantBody(t, `<input type="hidden" name="return" value="`+self+`">`)
+	form := c.get(links[0][1])
+	form.wantBody(t, `<input type="hidden" name="return" value="`+self+`">`)
+	form.wantBody(t, `href="`+self+`"`)
 	edit, del := links[1][2], links[0][2]
+	c.get(edit+"?return=https://evil.test/entries").wantNoBody(t, `href="https://evil.test`)
 	update := entryForm(project, "2026-10-26T06:00", "2026-10-26T06:30", "first")
 	update.Set("return", cell)
 	wantRedirect(t, c.postForm(edit, update), cell)

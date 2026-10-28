@@ -208,7 +208,7 @@ func TestEditCustomerShowsStoredValues(t *testing.T) {
 	res := c.get(c.customerPath("acme"))
 
 	res.wantStatus(t, http.StatusOK)
-	res.wantBody(t, "Customer K-001")
+	wantInOrder(t, res.text(), "Edit customer", "K-001 acme")
 	res.wantBody(t, `value="85.50"`)
 	res.wantBody(t, "Hauptstr. 1\n12345 Berlin")
 	res.wantBody(t, `value="billing@acme.example"`)
@@ -243,7 +243,7 @@ func TestInvalidEditKeepsTheCustomer(t *testing.T) {
 	res := c.postForm(path, customerForm("acme", ""))
 
 	res.wantStatus(t, http.StatusUnprocessableEntity)
-	res.wantBody(t, "Customer K-001")
+	wantInOrder(t, res.text(), "Edit customer", "K-001 acme")
 	c.get("/customers").wantBody(t, "85.00 EUR")
 }
 

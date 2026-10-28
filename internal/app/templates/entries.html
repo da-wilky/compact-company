@@ -2,8 +2,7 @@
 {{define "content"}}
 {{with .Data}}
 <div class="page-head">
-<div class="title"><h1>{{if .Day}}{{t "entries.title" (date .From)}}{{else}}{{t "entries.nav"}}{{end}}</h1>
-<a class="pill" href="/entries/new">{{template "icon-plus"}}{{t "entries.new"}}</a></div>
+<h1>{{template "title" $}}</h1>
 <nav class="pager" aria-label="{{t "entries.nav"}}">
 {{if .Day}}{{if not .IsToday}}<a class="pill" href="{{.Today}}">{{t "entries.today"}}</a>{{end}}
 <a class="pill" href="{{.All}}">{{t "entries.all"}}</a>
@@ -13,6 +12,7 @@
 {{if .Day}}<a class="next" href="{{.Next}}">{{t "entries.next"}}</a>{{end}}
 </nav>
 </div>
+<p class="actions"><a href="/entries/new">{{template "icon-plus"}}{{t "entries.new"}}</a></p>
 <div class="filters">
 <span class="label">{{t "entries.show"}}</span>
 <span class="seg"><a href="{{.Mine}}"{{if not .Everyone}} aria-current="true"{{end}}>{{t "entries.mine"}}</a><a href="{{.Team}}"{{if .Everyone}} aria-current="true"{{end}}>{{t "entries.everyone"}}</a></span>

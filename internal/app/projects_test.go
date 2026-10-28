@@ -122,7 +122,7 @@ func TestAnyUserCanEditAnyProject(t *testing.T) {
 
 	edit := bob.get(path)
 	edit.wantStatus(t, http.StatusOK)
-	edit.wantBody(t, "Project website")
+	wantInOrder(t, edit.text(), "Projects of", "Edit project", "website")
 	edit.wantBody(t, `value="100.00"`)
 	edit.wantBody(t, `name="billable" checked`)
 	form := projectForm("relaunch", "")

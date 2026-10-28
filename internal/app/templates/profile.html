@@ -1,6 +1,6 @@
 {{define "title"}}{{t "profile.title"}}{{end}}
 {{define "content"}}
-<h1>{{t "profile.title"}}</h1>
+<h1>{{template "title" .}}</h1>
 {{with .Data}}
 {{with .Error}}<p class="error" role="alert">{{t .}}</p>{{end}}
 <p class="hint">{{t "profile.defaults_hint"}} <a href="/settings">{{t "settings.title"}}</a></p>

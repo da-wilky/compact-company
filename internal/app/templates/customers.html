@@ -1,8 +1,12 @@
 {{define "title"}}{{t "customers.title"}}{{end}}
 {{define "content"}}
 {{with .Data}}
-<h1>{{t "customers.title"}}</h1>
-<p class="actions"><a href="/customers/new">{{template "icon-plus"}}{{t "customers.new"}}</a>{{if .ShowArchived}}<a href="/customers">{{template "icon-eye-off"}}{{t "archive.hide"}}</a>{{else}}<a href="/customers?archived=1">{{template "icon-eye"}}{{t "archive.show"}}</a>{{end}}</p>
+<h1>{{template "title" $}}</h1>
+<p class="actions"><a href="/customers/new">{{template "icon-plus"}}{{t "customers.new"}}</a></p>
+<div class="filters">
+<span class="label">{{t "archive.show"}}</span>
+<span class="seg"><a href="/customers"{{if not .ShowArchived}} aria-current="true"{{end}}>{{t "archive.active"}}</a><a href="/customers?archived=1"{{if .ShowArchived}} aria-current="true"{{end}}>{{t "archive.all"}}</a></span>
+</div>
 <div id="customer-list">
 {{with .Blocked}}<div class="errors selection-blocked" role="alert"><p>{{t $.Data.Refusal}}</p>
 <ul>{{range .}}<li>{{.Name}} · {{t .Reason}}</li>{{end}}</ul></div>{{end}}

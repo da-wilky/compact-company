@@ -1,10 +1,9 @@
 {{define "title"}}{{t "invoices.draft_for" .Data.Draft.CustomerName}}{{end}}
 {{define "content"}}
 {{with .Data}}{{with .Draft}}
-<div class="page-head">
-<h1>{{t "invoices.draft_for" .CustomerName}}</h1>
-</div>
-<p class="actions"><a href="/invoices">{{template "icon-arrow-left"}}{{t "invoices.title"}}</a> <a href="/invoices/{{.ID}}/refresh">{{template "icon-refresh-cw"}}{{t "invoices.refresh"}}</a> <a href="/invoices/{{.ID}}/preview">{{template "icon-eye"}}{{t "invoices.preview"}}</a> <a href="/invoices/{{.ID}}/issue">{{template "icon-send"}}{{t "invoices.issue"}}</a></p>
+<a class="crumb" href="/invoices">{{template "icon-arrow-left"}}{{t "invoices.title"}}</a>
+<h1>{{template "title" $}}</h1>
+<p class="actions"><a href="/invoices/{{.ID}}/refresh">{{template "icon-refresh-cw"}}{{t "invoices.refresh"}}</a> <a href="/invoices/{{.ID}}/preview">{{template "icon-eye"}}{{t "invoices.preview"}}</a> <a href="/invoices/{{.ID}}/issue">{{template "icon-send"}}{{t "invoices.issue"}}</a></p>
 {{with $.Data.MissingBusiness}}<p class="error">{{t "business.missing"}} {{range $i, $k := .}}{{if $i}}, {{end}}{{t $k}}{{end}}<br><a href="/settings#business">{{t "business.link"}}</a></p>{{end}}
 {{with $.Data.TypstError}}<div class="error"><p>{{t "invoices.typst_error"}}</p><pre class="typst-error">{{.}}</pre></div>{{end}}
 {{if .Lines}}

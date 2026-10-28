@@ -1,8 +1,10 @@
-{{define "title"}}{{t "invoices.cancel_title" .Data.Invoice.Number}}{{end}}
+{{define "title"}}{{t "invoices.cancel"}}{{end}}
+{{define "parent"}}{{t "invoices.invoice" .Data.Invoice.Number}}{{end}}
+{{define "tab"}}{{template "title" .}} · {{template "parent" .}}{{end}}
 {{define "content"}}
 {{with .Data}}
+<a class="crumb" href="/invoices/{{.Invoice.ID}}">{{template "icon-arrow-left"}}{{template "parent" $}}</a>
 <h1>{{template "title" $}}</h1>
-<p class="actions"><a href="/invoices/{{.Invoice.ID}}">{{template "icon-arrow-left"}}{{t "invoices.back_to_invoice"}}</a></p>
 {{with .MissingBusiness}}<p class="error">{{t "business.missing"}} {{range $i, $k := .}}{{if $i}}, {{end}}{{t $k}}{{end}}<br><a href="/settings#business">{{t "business.link"}}</a></p>{{end}}
 {{with .TypstError}}<div class="error"><p>{{t "invoices.typst_error"}}</p><pre class="typst-error">{{.}}</pre></div>{{end}}
 {{with .Errors}}<ul class="errors">{{range .}}<li>{{t .}}</li>{{end}}</ul>{{end}}

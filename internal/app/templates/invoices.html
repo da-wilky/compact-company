@@ -1,10 +1,8 @@
 {{define "title"}}{{t "invoices.title"}}{{end}}
 {{define "content"}}
 {{with .Data}}
-<div class="page-head">
-<div class="title"><h1>{{t "invoices.title"}}</h1>
-<a class="pill" href="/invoices/new">{{template "icon-plus"}}{{t "invoices.new"}}</a></div>
-</div>
+<h1>{{template "title" $}}</h1>
+<p class="actions"><a href="/invoices/new">{{template "icon-plus"}}{{t "invoices.new"}}</a></p>
 <div class="filters">
 <span class="label">{{t "invoices.show"}}</span>
 <span class="seg"><a href="{{.StatusLink ""}}"{{if not .Status}} aria-current="true"{{end}}>{{t "invoices.all"}}</a>{{range .Statuses}}<a href="{{$.Data.StatusLink .}}"{{if eq . $.Data.Status}} aria-current="true"{{end}}>{{t (print "invoices.status." .)}}</a>{{end}}</span>
