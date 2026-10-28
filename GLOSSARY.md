@@ -53,8 +53,11 @@ The business an instance serves; it sends every invoice.
 _Avoid_: Seller, issuer, company
 
 **Invoice**:
-A bill to one customer, made of lines.
+A bill to one customer, made of lines; it bills either all of the customer's projects, including ones added later, or a fixed choice of them.
 _Avoid_: Bill
+
+**Project section**:
+The lines of an invoice that belong to one project, under a heading with the project's name; lines without a project come after all sections.
 
 **Service period**:
 When the billed work was done: from the start of the invoice's first time entry to the end of its last. An invoice without time entries may have one set by hand; without one it was supplied on its issue date.
