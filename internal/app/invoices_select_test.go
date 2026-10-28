@@ -93,10 +93,10 @@ func TestDeletingSelectedDraftsAsksForConfirmationNamingTheCount(t *testing.T) {
 
 	page, seite := en.get("/invoices"), de.get("/invoices")
 
-	wantConfirmation(t, page.selectionQuestion(t, 3), "Delete 3 drafts?")
-	wantConfirmation(t, page.selectionQuestion(t, 1), "Delete 1 draft?")
-	wantConfirmation(t, seite.selectionQuestion(t, 3), "3 Entwürfe löschen?")
-	wantConfirmation(t, seite.selectionQuestion(t, 1), "1 Entwurf löschen?")
+	wantConfirmation(t, page.selectionQuestion(t, "Delete", 3), "Delete 3 drafts?")
+	wantConfirmation(t, page.selectionQuestion(t, "Delete", 1), "Delete 1 draft?")
+	wantConfirmation(t, seite.selectionQuestion(t, "Löschen", 3), "3 Entwürfe löschen?")
+	wantConfirmation(t, seite.selectionQuestion(t, "Löschen", 1), "1 Entwurf löschen?")
 }
 
 var invoiceSelectionForm = regexp.MustCompile(`<form id="invoice-selection"[^>]* action="([^"]*)"`)
