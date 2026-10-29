@@ -32,6 +32,11 @@
 "todos.error.priority" = { en = "Priority must be low, normal or high.", de = "Priorität muss niedrig, normal oder hoch sein." }
 "todos.error.due_date" = { en = "Due date must be a date.", de = "Fälligkeitsdatum muss ein Datum sein." }
 "todos.error.archived" = { en = "This project is archived and takes no new todos.", de = "Dieses Projekt ist archiviert und nimmt keine neuen Aufgaben an." }
+"todos.error.move_target" = { en = "Choose another active project of the same customer.", de = "Wähle ein anderes aktives Projekt desselben Kunden." }
+"todos.error.move_claimed" = { en = "This todo has time entries on a draft or issued invoice, so it can't move.", de = "Diese Aufgabe hat Zeiteinträge auf einem Entwurf oder einer gestellten Rechnung und kann deshalb nicht verschoben werden." }
+"todos.move_to" = { en = "Move to another project", de = "In ein anderes Projekt verschieben" }
+"todos.move_hint" = { en = "Its time entries move with it.", de = "Ihre Zeiteinträge werden mitverschoben." }
+"todos.move" = { en = "Move", de = "Verschieben" }
 "todos.error.status" = { en = "Invalid status.", de = "Ungültiger Status." }
 "todos.start" = { en = "Start timer on %s", de = "Timer für %s starten" }
 "todos.tracked" = { en = "%s h", de = "%s h" }

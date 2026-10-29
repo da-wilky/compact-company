@@ -22,6 +22,14 @@
 <label>{{t "todos.due_date"}} <input type="date" name="due_date" value="{{.Todo.DueDate}}"></label>
 <button>{{template "icon-save"}}{{t "common.save"}}</button>
 </form>
+{{with .MoveTargets}}<h2>{{t "todos.move_to"}}</h2>
+<form method="post" action="/todos/{{$.Data.Todo.ID}}/move" class="form">
+<label>{{t "todos.project"}} <select name="project" aria-describedby="move-hint">
+{{range .}}<option value="{{.ID}}">{{.Name}}</option>
+{{end}}</select></label>
+<p class="hint" id="move-hint">{{t "todos.move_hint"}}</p>
+<button>{{template "icon-folder-input"}}{{t "todos.move"}}</button>
+</form>{{end}}
 {{with .Todo.ID}}<form method="post" action="/todos/{{.}}/delete" data-confirm="{{with $.Data.Todo}}{{if eq .Entries 0}}{{t "todos.confirm_delete" .Title}}{{else if eq .Entries 1}}{{t "todos.confirm_delete_entry" .Title}}{{else}}{{t "todos.confirm_delete_entries" .Title .Entries}}{{end}}{{end}}"><button class="danger">{{template "icon-trash"}}{{t "common.delete"}}</button></form>{{end}}
 {{end}}
 {{end}}

@@ -16,6 +16,7 @@ func init() {
 		mux.HandleFunc("GET /todos/{id}", a.authed(a.todoEdit))
 		mux.HandleFunc("POST /todos/{id}", a.authed(a.todoUpdate))
 		mux.HandleFunc("POST /todos/{id}/delete", a.authed(a.todoDelete))
+		mux.HandleFunc("POST /todos/{id}/move", a.authed(a.todoMove))
 		mux.HandleFunc("POST /todos/{id}/status", a.authed(a.todoSetStatus))
 	})
 }
@@ -167,7 +168,9 @@ type todoPage struct {
 	Todo       todo
 	Users      []todoUser
 	Priorities []string
-	Errors     []string
+	// MoveTargets are the projects the todo may move to.
+	MoveTargets []todoProject
+	Errors      []string
 }
 
 func (a *App) renderTodo(w http.ResponseWriter, r *http.Request, status int, page todoPage) {
@@ -176,8 +179,35 @@ func (a *App) renderTodo(w http.ResponseWriter, r *http.Request, status int, pag
 		a.serverError(w, r, err)
 		return
 	}
+	if page.Todo.ID != 0 {
+		if page.MoveTargets, err = a.moveTargets(page.Project.ID); err != nil {
+			a.serverError(w, r, err)
+			return
+		}
+	}
 	page.Priorities = priorityKeys
 	a.render(w, r, status, "todo", page)
+}
+
+// moveTarget selects (project id, name) of the other active projects of project ?1's customer.
+const moveTarget = `SELECT t.id, t.name FROM project p JOIN project t ON t.customer_id = p.customer_id JOIN customer c ON c.id = t.customer_id
+	WHERE p.id = ?1 AND t.id <> p.id AND NOT t.archived AND NOT c.archived`
+
+func (a *App) moveTargets(projectID int64) ([]todoProject, error) {
+	rows, err := a.db.Query(moveTarget+` ORDER BY t.name, t.id`, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	var targets []todoProject
+	for rows.Next() {
+		var p todoProject
+		if err := rows.Scan(&p.ID, &p.Name); err != nil {
+			return nil, err
+		}
+		targets = append(targets, p)
+	}
+	return targets, rows.Err()
 }
 
 func (a *App) todoUsers() ([]todoUser, error) {
@@ -371,6 +401,56 @@ func (a *App) todoDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	http.Redirect(w, r, "/projects/"+strconv.FormatInt(projectID, 10), http.StatusSeeOther)
+}
+
+// todoMove moves a todo and all its entries to another active project of the same customer, unless an entry is claimed.
+func (a *App) todoMove(w http.ResponseWriter, r *http.Request) {
+	p, t, ok := a.todoFromPath(w, r)
+	if !ok {
+		return
+	}
+	// An unparsable id is 0, which is no move target.
+	target, _ := strconv.ParseInt(r.PostFormValue("project"), 10, 64)
+	tx, err := a.db.Begin()
+	if err != nil {
+		a.serverError(w, r, err)
+		return
+	}
+	defer func() { _ = tx.Rollback() }()
+	var allowed, claimed bool
+	if err := tx.QueryRow(`SELECT EXISTS (`+moveTarget+` AND t.id = ?2)`, p.ID, target).Scan(&allowed); err != nil {
+		a.serverError(w, r, err)
+		return
+	}
+	if err := tx.QueryRow(`SELECT EXISTS (SELECT 1 FROM time_entry WHERE todo_id = ? AND invoice_line_id IS NOT NULL)`, t.ID).Scan(&claimed); err != nil {
+		a.serverError(w, r, err)
+		return
+	}
+	var errs []string
+	if !allowed {
+		errs = append(errs, "todos.error.move_target")
+	}
+	if claimed {
+		errs = append(errs, "todos.error.move_claimed")
+	}
+	if errs != nil {
+		a.renderTodo(w, r, http.StatusUnprocessableEntity, todoPage{Project: p, Todo: t, Errors: errs})
+		return
+	}
+	// The todo moves first: an entry whose project differs from its todo's loses the todo (0013's trigger).
+	if _, err := tx.Exec(`UPDATE todo SET project_id = ? WHERE id = ?`, target, t.ID); err != nil {
+		a.serverError(w, r, err)
+		return
+	}
+	if _, err := tx.Exec(`UPDATE time_entry SET project_id = ? WHERE todo_id = ?`, target, t.ID); err != nil {
+		a.serverError(w, r, err)
+		return
+	}
+	if err := tx.Commit(); err != nil {
+		a.serverError(w, r, err)
+		return
+	}
+	http.Redirect(w, r, "/projects/"+strconv.FormatInt(target, 10), http.StatusSeeOther)
 }
 
 // todoSetStatus is the one way a todo's status changes, whichever board posts it.
