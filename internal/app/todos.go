@@ -39,6 +39,9 @@ type todoCard struct {
 	DueDate  string
 	Overdue  bool
 	StatusID int64
+	Tracked  time.Duration
+	// Startable: the todo may receive new time, so the card offers a timer.
+	Startable bool
 }
 
 func (c todoCard) PriorityKey() string { return priorityKeys[c.Priority] }
@@ -80,25 +83,47 @@ func (a *App) loadBoard(r *http.Request, ret, where string, args ...any) (board,
 	if err := statuses.Err(); err != nil {
 		return b, err
 	}
-	rows, err := a.db.Query(`SELECT t.id, t.title, ifnull(u.display_name, ''), t.priority, ifnull(t.due_date, ''), t.status_id
-		FROM todo t LEFT JOIN user u ON u.id = t.assignee_id
+	now := a.now().Unix()
+	rows, err := a.db.Query(`SELECT t.id, t.title, ifnull(u.display_name, ''), t.priority, ifnull(t.due_date, ''), t.status_id, p.archived OR c.archived,
+			(SELECT ifnull(sum(ifnull(e.end_time, ?) - e.start_time), 0) FROM time_entry e WHERE e.todo_id = t.id)
+		FROM todo t LEFT JOIN user u ON u.id = t.assignee_id JOIN project p ON p.id = t.project_id JOIN customer c ON c.id = p.customer_id
 		WHERE `+where+`
-		ORDER BY t.priority DESC, t.due_date IS NULL, t.due_date, t.created_at, t.id`, args...)
+		ORDER BY t.priority DESC, t.due_date IS NULL, t.due_date, t.created_at, t.id`, append([]any{now}, args...)...)
 	if err != nil {
 		return b, err
 	}
 	defer func() { _ = rows.Close() }()
 	for rows.Next() {
 		var c todoCard
-		if err := rows.Scan(&c.ID, &c.Title, &c.Assignee, &c.Priority, &c.DueDate, &c.StatusID); err != nil {
+		var archived bool
+		var tracked int64
+		if err := rows.Scan(&c.ID, &c.Title, &c.Assignee, &c.Priority, &c.DueDate, &c.StatusID, &archived, &tracked); err != nil {
 			return b, err
 		}
+		c.Tracked = (time.Duration(tracked) * time.Second).Truncate(time.Minute)
 		col := &b.Columns[column[c.StatusID]]
 		c.Overdue = !col.Status.Done && c.DueDate != "" && c.DueDate < today
+		c.Startable = !col.Status.Done && !archived
 		col.Todos = append(col.Todos, c)
 		b.Empty = false
 	}
 	return b, rows.Err()
+}
+
+// openTodoProject returns the project of a todo that may receive new time: one not done.
+// An entry on a todo always has this project; the migration's triggers enforce it.
+func openTodoProject(tx *sql.Tx, id int64) (int64, error) {
+	var project int64
+	err := tx.QueryRow(`SELECT t.project_id FROM todo t JOIN todo_status s ON s.id = t.status_id WHERE t.id = ? AND s.done = 0`, id).Scan(&project)
+	return project, err
+}
+
+// startWork moves a todo in the first status to the working status, if one is set.
+func startWork(tx *sql.Tx, id int64) error {
+	_, err := tx.Exec(`UPDATE todo SET status_id = (SELECT working_status_id FROM defaults)
+		WHERE id = ? AND status_id = (SELECT id FROM todo_status ORDER BY position LIMIT 1)
+			AND (SELECT working_status_id FROM defaults) IS NOT NULL`, id)
+	return err
 }
 
 func (a *App) projectBoard(r *http.Request, projectID int64) (board, error) {
@@ -131,6 +156,7 @@ type todo struct {
 	AssigneeID  int64
 	Priority    int
 	DueDate     string
+	Entries     int
 }
 
 type todoPage struct {
@@ -276,9 +302,10 @@ func (a *App) todoFromPath(w http.ResponseWriter, r *http.Request) (todoProject,
 	}
 	t := todo{ID: id}
 	var p todoProject
-	err = a.db.QueryRow(`SELECT p.id, p.name, p.archived OR c.archived, t.title, t.description, ifnull(t.assignee_id, 0), t.priority, ifnull(t.due_date, '')
+	err = a.db.QueryRow(`SELECT p.id, p.name, p.archived OR c.archived, t.title, t.description, ifnull(t.assignee_id, 0), t.priority, ifnull(t.due_date, ''),
+			(SELECT count(*) FROM time_entry WHERE todo_id = t.id)
 		FROM todo t JOIN project p ON p.id = t.project_id JOIN customer c ON c.id = p.customer_id WHERE t.id = ?`, id).
-		Scan(&p.ID, &p.Name, &p.Archived, &t.Title, &t.Description, &t.AssigneeID, &t.Priority, &t.DueDate)
+		Scan(&p.ID, &p.Name, &p.Archived, &t.Title, &t.Description, &t.AssigneeID, &t.Priority, &t.DueDate, &t.Entries)
 	if errors.Is(err, sql.ErrNoRows) {
 		a.notFound(w, r)
 		return p, t, false
@@ -307,7 +334,7 @@ func (a *App) todoUpdate(w http.ResponseWriter, r *http.Request) {
 		a.serverError(w, r, err)
 		return
 	}
-	t.ID = stored.ID
+	t.ID, t.Entries = stored.ID, stored.Entries
 	if errs != nil {
 		a.renderTodo(w, r, http.StatusUnprocessableEntity, todoPage{Project: p, Todo: t, Errors: errs})
 		return

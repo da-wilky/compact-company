@@ -76,7 +76,7 @@ def seed(api):
     for day, hours, project in [(0, (8, 12), "Website relaunch"), (1, (9, 11), "Hosting"), (2, (13, 17), "Website relaunch"), (3, (8, 9), "")]:
         d = monday + datetime.timedelta(days=day)
         api.post(f"{base}/entries", form={"project": projects.get(project, ""), "start": f"{d}T{hours[0]:02}:00", "end": f"{d}T{hours[1]:02}:00", "description": f"{project or 'Admin'} work", "billable": ""})
-    api.post(f"{base}/timers", form={"project": projects["Hosting"], "description": "Server update"})
+    api.post(f"{base}/timers", form={"project": "todo:1", "description": "Landing page"})
     draft = api.post(f"{base}/invoices", form={"customer": customer, "from": str(monday), "to": str(today), "grouping": "project", "rounding_minutes": "15", "payment_days": "14", "all_projects": "1"}, max_redirects=0).headers["location"]
     for line in [("Website relaunch", "Design and implementation of the new landing page", "12.5", "h", "85", ""), ("Hosting", "", "1", "month", "29.90", projects["Hosting"])]:
         api.post(f"{base}{draft}/lines", form=dict(zip(("description", "detail", "quantity", "unit", "unit_price", "project"), line)))

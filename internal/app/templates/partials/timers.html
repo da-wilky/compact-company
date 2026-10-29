@@ -5,6 +5,7 @@
 <span class="project">{{if .Project}}{{.Project}}{{else}}{{t "timers.unassigned"}}{{end}}</span>
 <time class="elapsed" data-start="{{.Start.Unix}}" title="{{t "timers.since" (datetime .Start)}}">{{t "timers.since" (clock .Start)}}</time>
 <form method="post" action="/timers/{{.ID}}/stop" hx-post="/timers/{{.ID}}/stop"><button class="icon stop" aria-label="{{t "timers.stop"}}" title="{{t "timers.stop"}}">{{template "icon-square"}}</button></form></div>
+{{with .Todo}}<p class="timer-todo">{{.}}</p>{{end}}
 <div class="timer-bottom"><form method="post" action="/timers/{{.ID}}" hx-post="/timers/{{.ID}}" hx-trigger="change from:find input, submit">
 <input name="description" value="{{.Description}}" placeholder="{{t "timers.description"}}" aria-label="{{t "timers.description"}}">
 </form>
@@ -23,6 +24,7 @@
 <option value="">{{t "timers.unassigned"}}</option>
 {{range .Customers}}<optgroup label="{{.Name}}">
 {{range .Projects}}<option value="{{.ID}}">{{.Name}}</option>
-{{end}}</optgroup>
+{{$project := .Name}}{{range .Todos}}<option value="todo:{{.ID}}">{{$project}} › {{.Title}}</option>
+{{end}}{{end}}</optgroup>
 {{end}}</select>
 </form>{{end}}
