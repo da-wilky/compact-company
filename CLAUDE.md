@@ -4,7 +4,7 @@ Adding routes, pages, strings, migrations or tests, or touching the flake: see `
 
 ### Issue tracker
 
-GitHub Issues on da-wilky/compact-company via `gh`. See `docs/agents/issue-tracker.md`.
+GitHub Issues on da-wilky/compact-company. Read `docs/agents/issue-tracker.md` before any `gh` call.
 
 ### Triage labels
 

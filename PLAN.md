@@ -20,7 +20,8 @@ TimeTracker and similar tools are overloaded (CRM, pipelines, inventory, chat, â
 ## Non-goals (for now)
 
 - Customer portal (maybe later, see "Later")
-- Todos / project management, CRM, quotes, expenses
+- CRM, quotes, expenses
+- Todos and boards stay lean: no dependencies, subtasks, sprints, Gantt or workload planning
 - Multi-user teams, roles
 - E-invoicing (ZUGFeRD/XRechnung) â€“ Kleinunternehmer are exempt from issuing; revisit when needed
 
