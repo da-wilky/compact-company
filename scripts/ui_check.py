@@ -108,7 +108,11 @@ def seed(api):
     fleet = re.search(r'href="/projects/(\d+)">', api.get(f"{base}/customers/{other}/projects").text()).group(1)
     api.post(f"{base}/projects/{fleet}/todos", form={"title": "Sketch the dashboard", "description": "", "assignee": "1", "priority": "2", "due_date": ""})
     api.post(f"{base}/entries", form={"project": fleet, "start": f"{last_friday}T13:30", "end": f"{last_friday}T15:00", "description": "Dashboard review", "billable": ""})
-    return customer, projects["Website relaunch"], draft, line, entry, issued, cancellation, empty
+    api.post(f"{base}/customers/{other}/projects", form={"name": "Legacy portal", "hourly_rate": "", "billable": "on"})
+    legacy = re.search(r'href="/projects/(\d+)">Legacy portal<', api.get(f"{base}/customers/{other}/projects").text()).group(1)
+    api.post(f"{base}/projects/{legacy}/todos", form={"title": "Export the old data", "description": "", "assignee": "1", "priority": "1", "due_date": ""})
+    api.post(f"{base}/projects/{legacy}/archive")
+    return customer, projects["Website relaunch"], draft, line, entry, issued, cancellation, empty, legacy
 
 
 def seed_open_invoices(api, customer, business):
@@ -134,12 +138,12 @@ def main():
     with sync_playwright() as p:
         browser = p.chromium.launch(executable_path=chromium)
         api = browser.new_context().request
-        customer, project, draft, line, entry, issued, cancellation, empty = seed(api)
+        customer, project, draft, line, entry, issued, cancellation, empty, legacy = seed(api)
         today = datetime.date.today().isoformat()
         templates = [("home", "/"), ("week", "/week"), ("week", "/week?everyone=1"), ("entries", "/entries"),
                      ("entries", f"/entries?day={today}&project={project}"), ("entry", "/entries/new"), ("entry", entry),
                      ("customers", "/customers"), ("customer", "/customers/new"), ("customer", f"/customers/{customer}"),
-                     ("projects", f"/customers/{customer}/projects"), ("project", f"/projects/{project}"),
+                     ("projects", f"/customers/{customer}/projects"), ("project", f"/projects/{project}"), ("project", f"/projects/{legacy}"),
                      ("todo", f"/projects/{project}/todos/new"), ("todo", "/todos/1"), ("todos", "/todos"), ("todos", "/todos?assignee=me"),
                      ("invoices", "/invoices"), ("invoice_new", "/invoices/new"), ("invoice", draft), ("invoice", f"{draft}/preview"),
                      ("invoice_line", f"{draft}/lines/new"), ("invoice_line", line), ("invoice_refresh", f"{draft}/refresh"),
