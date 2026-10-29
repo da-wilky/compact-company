@@ -1,19 +1,29 @@
 """Render every page in English and German at desktop and phone width in light and dark, fail on layout breakage, save screenshots.
 
-Usage: ui_check.py <base-url> <database> <screenshot-dir> <chromium> [path…], against a fresh dev-mode instance (it seeds data).
+Usage: ui_check.py <base-url> <database> <screenshot-dir> <chromium> [path… | --changed <git-ref>], against a fresh dev-mode instance (it seeds data).
 Paths render only those pages; the seed is deterministic, so e.g. /invoices/1 is the draft with lines, /invoices/4 the empty one without a range
-and /invoices/5 to /invoices/8 open invoices, the even ones overdue.
+and /invoices/5 to /invoices/8 open invoices, the even ones overdue. --changed renders only the pages whose template differs from <git-ref>.
+Interactions select by route, data-* or ARIA attributes, so renaming a styling class can't break them.
 """
 
 import datetime
 import re
 import sqlite3
+import subprocess
 import sys
 
 from playwright.sync_api import sync_playwright
 
 base, database, out, chromium = sys.argv[1:5]
 only = sys.argv[5:]
+changed = None
+if only[:1] == ["--changed"]:
+    files = subprocess.run(["git", "diff", "--name-only", only[1], "--", "internal/app/templates", "internal/app/static", "internal/app/messages"],
+                           capture_output=True, text=True, check=True).stdout.split()
+    names = [m[1] for f in files if (m := re.fullmatch(r"internal/app/templates/(\w+)\.html", f)) and m[1] != "layout"]
+    # Partials, the layout, CSS, JS and strings reach every page, so any of those renders them all.
+    changed = set(names) if len(names) == len(files) else None
+    only = []
 
 VIEWPORTS = {"desktop": (1280, 800), "phone": (390, 800)}
 
@@ -120,16 +130,23 @@ def main():
         api = browser.new_context().request
         customer, project, draft, line, entry, issued, cancellation, empty = seed(api)
         today = datetime.date.today().isoformat()
-        pages = only or ["/", "/week", "/week?everyone=1", "/entries", f"/entries?day={today}&project={project}", "/entries/new", entry,
-                 "/customers", "/customers/new", f"/customers/{customer}", f"/customers/{customer}/projects", f"/projects/{project}",
-                 "/invoices", "/invoices/new", draft, f"{draft}/preview", f"{draft}/lines/new", line, f"{draft}/refresh",
-                 f"{draft}/issue", issued, f"{issued}/cancel", cancellation, empty, f"{empty}/refresh",
-                 "/settings", "/profile", "/no-such-page"]
+        templates = [("home", "/"), ("week", "/week"), ("week", "/week?everyone=1"), ("entries", "/entries"),
+                     ("entries", f"/entries?day={today}&project={project}"), ("entry", "/entries/new"), ("entry", entry),
+                     ("customers", "/customers"), ("customer", "/customers/new"), ("customer", f"/customers/{customer}"),
+                     ("projects", f"/customers/{customer}/projects"), ("project", f"/projects/{project}"),
+                     ("invoices", "/invoices"), ("invoice_new", "/invoices/new"), ("invoice", draft), ("invoice", f"{draft}/preview"),
+                     ("invoice_line", f"{draft}/lines/new"), ("invoice_line", line), ("invoice_refresh", f"{draft}/refresh"),
+                     ("invoice_issue", f"{draft}/issue"), ("invoice_issued", issued), ("invoice_cancel", f"{issued}/cancel"),
+                     ("invoice_issued", cancellation), ("invoice", empty), ("invoice_refresh", f"{empty}/refresh"),
+                     ("settings", "/settings"), ("profile", "/profile"), ("error", "/no-such-page")]
+        if changed:
+            only[:] = [path for name, path in templates if name in changed]
+        pages = only or [path for _, path in templates]
         for lang in ("en", "de"):
             page = browser.new_page()
             page.goto(f"{base}/profile")
             page.select_option("select[name=language]", lang)
-            page.click("form.form button")
+            page.click("form[action=\"/profile\"] button")
             page.close()
             for viewport, (width, height) in VIEWPORTS.items():
                 for scheme in ("light", "dark"):
@@ -142,7 +159,7 @@ def main():
                         failures += [f"{lang} {viewport} {scheme} {path}: {p}" for p in page.evaluate(FIND_BREAKAGE)]
                     if not only:
                         page.goto(base + "/week")
-                        page.click(".picker-trigger")
+                        page.click("button[aria-haspopup=dialog]")
                         page.screenshot(path=f"{out}/{lang}-{viewport}-{scheme}-week-picker.png")
                         failures += [f"{lang} {viewport} {scheme} /week (picker open): {p}" for p in page.evaluate(FIND_BREAKAGE)]
                         page.goto(base + draft)
@@ -151,32 +168,32 @@ def main():
                         failures += [f"{lang} {viewport} {scheme} {draft} (confirm dialog open): {p}" for p in page.evaluate(FIND_BREAKAGE)]
                     if "/entries" in pages:
                         page.goto(base + "/entries")
-                        page.check("form.selection [data-select-all]")
+                        page.check("[data-select-all]")
                         page.screenshot(path=f"{out}/{lang}-{viewport}-{scheme}-entries-selected.png", full_page=True)
                         failures += [f"{lang} {viewport} {scheme} /entries (rows selected): {p}" for p in page.evaluate(FIND_BREAKAGE)]
-                        page.click(".selection-actions button.danger")
+                        page.click("button[data-confirm-many]")
                         page.screenshot(path=f"{out}/{lang}-{viewport}-{scheme}-entries-selected-confirm.png")
                         failures += [f"{lang} {viewport} {scheme} /entries (delete confirm open): {p}" for p in page.evaluate(FIND_BREAKAGE)]
-                        page.click("dialog.confirm button[value=cancel]")
+                        page.click("dialog button[value=cancel]")
                         page.evaluate(SELECT_UNSELECTABLE, ["entry-selection", "/entries/"])
-                        page.click(".selection-actions button.danger")
-                        page.click("dialog.confirm button[value=ok]")
-                        page.wait_for_selector(".selection-blocked")
+                        page.click("button[data-confirm-many]")
+                        page.click("dialog button[value=ok]")
+                        page.wait_for_selector("main [role=alert]")
                         page.screenshot(path=f"{out}/{lang}-{viewport}-{scheme}-entries-blocked.png", full_page=True)
                         failures += [f"{lang} {viewport} {scheme} /entries (delete refused): {p}" for p in page.evaluate(FIND_BREAKAGE)]
                     if "/invoices" in pages:
                         page.goto(base + "/invoices")
-                        page.check("form.selection [data-select-all]")
+                        page.check("[data-select-all]")
                         page.screenshot(path=f"{out}/{lang}-{viewport}-{scheme}-invoices-selected.png", full_page=True)
                         failures += [f"{lang} {viewport} {scheme} /invoices (drafts selected): {p}" for p in page.evaluate(FIND_BREAKAGE)]
-                        page.click(".selection-actions button")
+                        page.click("button[data-confirm-many]")
                         page.screenshot(path=f"{out}/{lang}-{viewport}-{scheme}-invoices-selected-confirm.png")
                         failures += [f"{lang} {viewport} {scheme} /invoices (delete confirm open): {p}" for p in page.evaluate(FIND_BREAKAGE)]
-                        page.click("dialog.confirm button[value=cancel]")
+                        page.click("dialog button[value=cancel]")
                         page.evaluate(SELECT_UNSELECTABLE, ["invoice-selection", "/invoices/"])
-                        page.click(".selection-actions button.danger")
-                        page.click("dialog.confirm button[value=ok]")
-                        page.wait_for_selector(".selection-blocked")
+                        page.click("button[data-confirm-many]")
+                        page.click("dialog button[value=ok]")
+                        page.wait_for_selector("main [role=alert]")
                         page.screenshot(path=f"{out}/{lang}-{viewport}-{scheme}-invoices-blocked.png", full_page=True)
                         failures += [f"{lang} {viewport} {scheme} /invoices (delete refused): {p}" for p in page.evaluate(FIND_BREAKAGE)]
                     # Every seeded customer and project is still in use, so the delete is refused and nothing goes.
@@ -185,13 +202,13 @@ def main():
                             continue
                         name = re.sub(r"[^a-z0-9]+", "-", path.lower()).strip("-")
                         page.goto(base + path)
-                        page.check("form.selection [data-select-all]")
+                        page.check("[data-select-all]")
                         page.screenshot(path=f"{out}/{lang}-{viewport}-{scheme}-{name}-selected.png", full_page=True)
                         failures += [f"{lang} {viewport} {scheme} {path} (rows selected): {p}" for p in page.evaluate(FIND_BREAKAGE)]
-                        page.click(".selection-actions button.danger")
+                        page.click("button[data-confirm-many]")
                         page.screenshot(path=f"{out}/{lang}-{viewport}-{scheme}-{name}-selected-confirm.png")
-                        page.click("dialog.confirm button[value=ok]")
-                        page.wait_for_selector(".selection-blocked")
+                        page.click("dialog button[value=ok]")
+                        page.wait_for_selector("main [role=alert]")
                         page.screenshot(path=f"{out}/{lang}-{viewport}-{scheme}-{name}-blocked.png", full_page=True)
                         failures += [f"{lang} {viewport} {scheme} {path} (delete refused): {p}" for p in page.evaluate(FIND_BREAKAGE)]
                     if not only or "/invoices/new" in only:

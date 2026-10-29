@@ -37,7 +37,7 @@ func init() {
 
 Page anatomy, top to bottom (`templates_test.go` checks the mechanical parts):
 
-- **Crumb:** pages in the main nav (home, week, entries, invoices, customers, settings, profile) have none; every other page has exactly one `.crumb`, pointing at its hierarchical parent and labelled with that page's `h1`.
+- **Crumb:** pages linked from `layout.html` have none; every other page has exactly one `.crumb`, pointing at its hierarchical parent and labelled with that page's `h1`.
 - **Heading:** the `h1` renders `{{template "title" $}}`. New/edit pages read "New X" / "Edit X", the record's identity as a `.hint` subtitle. A page whose crumb names a record also defines `"parent"` (the crumb label) and `"tab"` (`{{template "title" .}} · {{template "parent" .}}`) for `<title>`.
 - **Errors:** one `ul.errors role="alert"` directly under the heading holds every error of the page; pages that render invoices use the `render-errors` partial for missing business data and Typst failures.
 - **Actions:** "New …" and other page actions are a `p.actions` row under the heading, below the whole `.page-head` when there is a pager.
@@ -123,7 +123,7 @@ While working, run `nix run .#check`: formatting, lint, the markup-assertion, ta
 
 `nix flake check -L` is what CI runs: the same checks from git-tracked files only, so `git add` new files first.
 
-After any template or CSS change, run `nix run .#ui-check` (Linux): it seeds a throwaway instance, renders every page in English and German at 1280 and 390 px in light and dark, fails on horizontal overflow, invisible or cut-off text, and prints a directory of screenshots. Each run takes a free port, so parallel runs are fine. Look at the screenshots of the pages you touched; the check can't judge alignment or wrapping. New pages go into `pages` in `scripts/ui_check.py`. To iterate on a few pages, pass their paths: `nix run .#ui-check -- /invoices/1` (seeded ids are listed in the script's docstring).
+After any template or CSS change, run `nix run .#ui-check` (Linux): it seeds a throwaway instance, renders every page in English and German at 1280 and 390 px in light and dark, fails on horizontal overflow, invisible or cut-off text, and prints a directory of screenshots. Each run takes a free port, so parallel runs are fine. Look at the screenshots of the pages you touched; the check can't judge alignment or wrapping. New pages go into `pages` in `scripts/ui_check.py`. To iterate on a few pages, pass their paths: `nix run .#ui-check -- /invoices/1` (seeded ids are listed in the script's docstring), or `-- --changed main` for the pages whose template changed; read the phone shots first, they are the smallest.
 
 ## Nix
 
