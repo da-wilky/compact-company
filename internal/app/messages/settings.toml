@@ -16,7 +16,7 @@
 "settings.parallel_entries_default_hint" = { en = "New users start with this; each user can change it on their profile.", de = "Neue Benutzer beginnen damit; jeder kann es in seinem Profil ändern." }
 "settings.error.currency" = { en = "Currency must be an ISO 4217 code such as EUR.", de = "Währung muss ein ISO-4217-Code wie EUR sein." }
 "settings.statuses" = { en = "Statuses", de = "Status" }
-"settings.statuses_hint" = { en = "Every board shows the statuses in this order. New todos get the first status, so it can't be a done status.", de = "Jedes Board zeigt die Status in dieser Reihenfolge. Neue Aufgaben erhalten den ersten Status, daher darf er kein erledigter Status sein." }
+"settings.statuses_hint" = { en = "Every board shows the statuses in this order. New todos get the first status, so it can't be a done status.", de = "Die Status erscheinen überall in dieser Reihenfolge. Neue Aufgaben erhalten den ersten Status, daher darf er kein erledigter Status sein." }
 "settings.status_name" = { en = "Name", de = "Name" }
 "settings.status_name_of" = { en = "Name of %s", de = "Name von %s" }
 "settings.status_done" = { en = "Counts as done", de = "Zählt als erledigt" }
