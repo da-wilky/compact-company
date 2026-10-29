@@ -6,7 +6,7 @@ import (
 	"slices"
 )
 
-// filterOption is one choice of a filter-seg toggle; Label is a catalog key.
+// filterOption is one choice of a filter-seg toggle; Label is a catalog key, or text the catalog passes through (a page size).
 type filterOption struct {
 	Label   string
 	URL     string

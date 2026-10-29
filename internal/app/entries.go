@@ -135,6 +135,7 @@ type entriesPage struct {
 	BillableURL          string
 	Whose, PageSizes     []filterOption
 	Projects             filterSelect
+	JumpHidden           []hiddenField
 	Days                 []entryDay
 	Customers            []pickerCustomer
 	selectionRefusal[entryRow]
@@ -226,6 +227,7 @@ func (a *App) listEntries(w http.ResponseWriter, r *http.Request, status int, re
 		{"filter.mine", f.with(func(f *entriesFilter) { f.Everyone = false }), !f.Everyone},
 		{"filter.team", f.with(func(f *entriesFilter) { f.Everyone = true }), f.Everyone},
 	}
+	page.JumpHidden = hiddenFields(f.query(""), "day")
 	if page.Projects, err = a.projectFilter(f); err != nil {
 		a.serverError(w, r, err)
 		return

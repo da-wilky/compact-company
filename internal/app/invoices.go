@@ -122,12 +122,12 @@ func (a *App) listInvoices(w http.ResponseWriter, r *http.Request, status int, r
 		a.serverError(w, r, err)
 		return
 	}
-	page.Customers = filterSelect{Action: "/invoices", Name: "customer", Label: "invoices.customer", All: "invoices.all_customers",
-		Hidden: hiddenFields(invoicesQuery(page.Customer, page.Status), "customer"), Groups: []filterGroup{{}}}
+	var options []filterSelectOption
 	for _, c := range customers {
-		page.Customers.Groups[0].Options = append(page.Customers.Groups[0].Options,
-			filterSelectOption{Value: strconv.FormatInt(c.ID, 10), Name: c.Name, Archived: c.Archived, Selected: c.ID == page.Customer})
+		options = append(options, filterSelectOption{Value: strconv.FormatInt(c.ID, 10), Name: c.Name, Archived: c.Archived, Selected: c.ID == page.Customer})
 	}
+	page.Customers = filterSelect{Action: "/invoices", Name: "customer", Label: "invoices.customer", All: "invoices.all_customers",
+		Hidden: hiddenFields(invoicesQuery(page.Customer, page.Status), "customer"), Groups: []filterGroup{{Options: options}}}
 	// Issued rows show their snapshot, so later customer or business changes don't reach them.
 	rows, err := a.db.Query(`SELECT * FROM (SELECT i.id, ifnull(i.number, '') number, ifnull(i.snapshot ->> '$.customer.name', c.name),
 		ifnull(i.issue_date, '') issue_date, ifnull(i.paid_date, '') paid_date, i.currency, i.gross,

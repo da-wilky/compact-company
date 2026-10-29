@@ -7,7 +7,7 @@
 {{if .Day}}{{if not .IsToday}}<a class="pill" href="{{.Today}}">{{t "entries.today"}}</a>{{end}}
 <a class="pill" href="{{.All}}">{{t "entries.all"}}</a>
 <a class="prev" href="{{.Prev}}">{{t "entries.prev"}}</a>{{end}}
-<form class="jump" action="/entries">{{if .Everyone}}<input type="hidden" name="everyone" value="1">{{end}}{{with .Project}}<input type="hidden" name="project" value="{{.}}">{{end}}{{with .CustomPerPage}}<input type="hidden" name="per_page" value="{{.}}">{{end}}
+<form class="jump" action="/entries">{{range .JumpHidden}}<input type="hidden" name="{{.Name}}" value="{{.Value}}">{{end}}
 <input type="date" name="day" value="{{.Day}}" aria-label="{{t "entries.day"}}"><noscript><button>{{t "filter.go"}}</button></noscript></form>
 {{if .Day}}<a class="next" href="{{.Next}}">{{t "entries.next"}}</a>{{end}}
 </nav>
