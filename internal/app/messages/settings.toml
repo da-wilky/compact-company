@@ -15,3 +15,26 @@
 "settings.managed" = { en = "Set in the configuration file.", de = "In der Konfigurationsdatei festgelegt." }
 "settings.parallel_entries_default_hint" = { en = "New users start with this; each user can change it on their profile.", de = "Neue Benutzer beginnen damit; jeder kann es in seinem Profil ändern." }
 "settings.error.currency" = { en = "Currency must be an ISO 4217 code such as EUR.", de = "Währung muss ein ISO-4217-Code wie EUR sein." }
+"settings.statuses" = { en = "Statuses", de = "Status" }
+"settings.statuses_hint" = { en = "Every board shows the statuses in this order. New todos get the first status, so it can't be a done status.", de = "Jedes Board zeigt die Status in dieser Reihenfolge. Neue Aufgaben erhalten den ersten Status, daher darf er kein erledigter Status sein." }
+"settings.status_name" = { en = "Name", de = "Name" }
+"settings.status_name_of" = { en = "Name of %s", de = "Name von %s" }
+"settings.status_done" = { en = "Counts as done", de = "Zählt als erledigt" }
+"settings.status_done_short" = { en = "Done", de = "Erledigt" }
+"settings.status_done_of" = { en = "%s counts as done", de = "%s zählt als erledigt" }
+"settings.save_status" = { en = "Save status %s", de = "Status %s speichern" }
+"settings.move_status_up" = { en = "Move %s up", de = "%s nach oben verschieben" }
+"settings.move_status_down" = { en = "Move %s down", de = "%s nach unten verschieben" }
+"settings.delete_status" = { en = "Delete status %s", de = "Status %s löschen" }
+"settings.confirm_delete_status" = { en = "Delete status %s?", de = "Status %s löschen?" }
+"settings.new_status" = { en = "New status", de = "Neuer Status" }
+"settings.add_status" = { en = "Add status", de = "Status hinzufügen" }
+"settings.working_status" = { en = "Working status", de = "Arbeitsstatus" }
+"settings.working_status_hint" = { en = "Starting a timer on a todo in the first status moves it to this status.", de = "Wird ein Timer für eine Aufgabe im ersten Status gestartet, wechselt sie in diesen Status." }
+"settings.working_none" = { en = "None", de = "Keiner" }
+"settings.error.status_name" = { en = "Status name is required.", de = "Statusname ist erforderlich." }
+"settings.error.first_done" = { en = "The first status can't be a done status.", de = "Der erste Status darf kein erledigter Status sein." }
+"settings.error.working_done" = { en = "The working status can't be a done status.", de = "Der Arbeitsstatus darf kein erledigter Status sein." }
+"settings.error.status_used" = { en = "Todos have this status. Move them to another status first.", de = "Aufgaben haben diesen Status. Verschiebe sie zuerst in einen anderen Status." }
+"settings.error.status_working" = { en = "This is the working status. Choose another one first.", de = "Das ist der Arbeitsstatus. Wähle zuerst einen anderen." }
+"settings.error.no_status" = { en = "Keep at least one status.", de = "Mindestens ein Status muss bleiben." }
