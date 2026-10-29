@@ -205,6 +205,8 @@ button.icon svg.icon { width: 12px; height: 12px; fill: currentColor; }
 .card > a { color: var(--fg); font-weight: 550; overflow-wrap: anywhere; }
 .card > a:hover { color: var(--accent); }
 .card-meta { display: flex; flex-wrap: wrap; align-items: center; gap: .3rem .5rem; margin: 0; color: var(--muted); font-size: .8rem; }
+.card-actions { display: flex; align-items: center; gap: .4rem; }
+.card-actions > form:first-child { flex: 1; min-width: 0; }
 .card form { display: flex; gap: .4rem; margin: 0; }
 .card select { min-width: 0; padding: .2rem .5rem; font-size: .8rem; }
 .card[draggable] { cursor: grab; }
@@ -259,6 +261,7 @@ main > form:not(.form) { display: inline-block; margin: 1rem .5rem 0 0; }
 .timer-bottom input { color: var(--muted); }
 .timer-top input:focus, .timer-bottom input:focus { box-shadow: inset 0 -2px 0 var(--accent); color: var(--fg); }
 .timer .project { flex: 1; min-width: 0; overflow: hidden; font-size: .85rem; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.timer-todo { overflow: hidden; margin: 0; padding-left: calc(7px + .4rem); font-size: .85rem; text-overflow: ellipsis; white-space: nowrap; }
 .timer .elapsed { color: var(--run); font-size: .9rem; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .timer-start select { width: 100%; padding: .25rem .4rem; border-radius: 8px; background: var(--bg); color: var(--muted); font-size: .8rem; }
 button.icon { display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 0; font-size: .7rem; }

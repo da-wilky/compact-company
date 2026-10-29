@@ -22,6 +22,6 @@
 <label>{{t "todos.due_date"}} <input type="date" name="due_date" value="{{.Todo.DueDate}}"></label>
 <button>{{template "icon-save"}}{{t "common.save"}}</button>
 </form>
-{{with .Todo.ID}}<form method="post" action="/todos/{{.}}/delete" data-confirm="{{t "todos.confirm_delete" $.Data.Todo.Title}}"><button class="danger">{{template "icon-trash"}}{{t "common.delete"}}</button></form>{{end}}
+{{with .Todo.ID}}<form method="post" action="/todos/{{.}}/delete" data-confirm="{{with $.Data.Todo}}{{if eq .Entries 0}}{{t "todos.confirm_delete" .Title}}{{else if eq .Entries 1}}{{t "todos.confirm_delete_entry" .Title}}{{else}}{{t "todos.confirm_delete_entries" .Title .Entries}}{{end}}{{end}}"><button class="danger">{{template "icon-trash"}}{{t "common.delete"}}</button></form>{{end}}
 {{end}}
 {{end}}
