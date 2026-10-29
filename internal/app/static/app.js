@@ -216,6 +216,65 @@ function selections() {
   updateAll();
 }
 
+// Dropping a board card on another column picks that column's [data-status] in the card's dropdown,
+// so the change posts exactly as if chosen by hand. A refused change resets the dropdown and shows
+// the error page's heading above the board.
+function boards() {
+  let dragged = null;
+  const columnOf = (el) => el.closest?.(".board [data-status]");
+  const target = (e) => {
+    const column = dragged && columnOf(e.target);
+    return column && column !== columnOf(dragged) && column.closest(".board") === dragged.closest(".board") ? column : null;
+  };
+  document.addEventListener("dragstart", (e) => {
+    dragged = e.target.closest?.(".board .card");
+    if (!dragged) return;
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", dragged.querySelector("a").textContent);
+    dragged.classList.add("dragging");
+  });
+  document.addEventListener("dragover", (e) => {
+    const column = target(e);
+    if (!column) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    column.classList.add("drop-target");
+  });
+  document.addEventListener("dragleave", (e) => {
+    const column = columnOf(e.target);
+    if (column && !column.contains(e.relatedTarget)) column.classList.remove("drop-target");
+  });
+  document.addEventListener("drop", (e) => {
+    const column = target(e);
+    if (!column) return;
+    e.preventDefault();
+    const select = dragged.querySelector("select[name=status]");
+    select.value = column.dataset.status;
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  document.addEventListener("dragend", () => {
+    dragged?.classList.remove("dragging");
+    dragged = null;
+    for (const c of document.querySelectorAll(".drop-target")) c.classList.remove("drop-target");
+  });
+  const boardOf = (e) => e.detail.elt.closest?.(".board");
+  document.addEventListener("htmx:beforeRequest", (e) => {
+    const board = boardOf(e);
+    if (board?.previousElementSibling?.matches(".board-error")) board.previousElementSibling.remove();
+  });
+  document.addEventListener("htmx:responseError", (e) => {
+    const board = boardOf(e);
+    if (!board) return;
+    e.detail.elt.reset();
+    const page = new DOMParser().parseFromString(e.detail.xhr.responseText, "text/html");
+    const error = document.createElement("p");
+    error.className = "errors board-error";
+    error.setAttribute("role", "alert");
+    error.textContent = page.querySelector("main h1")?.textContent || e.detail.xhr.statusText;
+    board.before(error);
+  });
+}
+
 tickTimers();
 setInterval(tickTimers, 1000);
 document.addEventListener("htmx:afterSwap", tickTimers);
@@ -225,3 +284,4 @@ for (const s of document.querySelectorAll(".filter-select select")) s.addEventLi
 timezoneSelects();
 confirmForms();
 selections();
+boards();

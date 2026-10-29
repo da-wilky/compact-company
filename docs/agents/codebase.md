@@ -92,7 +92,9 @@ Reuse these instead of re-deriving them:
 
 ## Todo boards
 
-Every board is the `board` partial (`partials/board.html`) fed by `loadBoard` in `todos.go`: all statuses as columns, cards in the one board order. A status change, whatever triggers it, posts `status` and `return` to `POST /todos/{id}/status`, which redirects to `return` (a board page, checked by `boardReturn`); htmx swaps `#board` out of the page that redirect lands on. A new board page passes its own URL as `return` and adds its prefix to `boardReturn`.
+Every board is the `board` partial (`partials/board.html`) fed by `loadBoard` in `todos.go`: all statuses as columns, cards in the one board order. A status change, whatever triggers it, posts `status` and `return` to `POST /todos/{id}/status`, which redirects to `return` (a board page, checked by `boardReturn`); htmx swaps `#board` out of the page that redirect lands on. A new board page passes its own URL as `return` and adds its prefix to `boardReturn`. Dragging a card onto another column (`data-status`) only picks that status in the card's dropdown, so drag and dropdown send the same request; a refused change resets the dropdown and `app.js` shows the error page's heading above the board.
+
+The status list and working status are edited in Settings (`statuses.go`); every change goes through `changeStatuses`, which rolls back with a message if the first or the working status ends up done.
 
 Time on a todo: an entry's project is always its todo's project. Triggers on `time_entry` (`0013_time_entry_todo.sql`) hold it for every write: setting a todo of another project aborts, changing the project clears the todo, deleting a todo clears it on its entries. So a write that sets a todo sets its project in the same statement, and moving a todo updates the todo before its entries. `openTodoProject` in `todos.go` resolves a todo that may receive new time (not done) to its project; `startWork` is the move to the working status. `POST /timers` takes `project=todo:<id>` for a todo, plus a board's `return` for plain forms.
 
