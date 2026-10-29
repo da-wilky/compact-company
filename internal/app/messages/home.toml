@@ -5,6 +5,8 @@
 "home.billable" = { en = "%s h billable", de = "%s h abrechenbar" }
 "home.unassigned_one" = { en = "1 unassigned time entry (%s h)", de = "1 nicht zugeordneter Zeiteintrag (%s h)" }
 "home.unassigned" = { en = "%d unassigned time entries (%s h)", de = "%d nicht zugeordnete Zeiteinträge (%s h)" }
+"home.my_todos" = { en = "My todos", de = "Meine Aufgaben" }
+"home.all_my_todos" = { en = "All my todos", de = "Alle meine Aufgaben" }
 "home.unbilled" = { en = "Unbilled time", de = "Nicht abgerechnete Zeit" }
 "home.not_invoiced" = { en = "Not on any invoice", de = "Auf keiner Rechnung" }
 "home.on_draft" = { en = "On a draft", de = "Auf einem Entwurf" }
