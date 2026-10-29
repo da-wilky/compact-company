@@ -3,6 +3,7 @@
 "todos.edit" = { en = "Edit todo", de = "Aufgabe bearbeiten" }
 "todos.empty" = { en = "No todos yet.", de = "Noch keine Aufgaben." }
 "todos.empty_filtered" = { en = "No todos match these filters.", de = "Keine Aufgaben passen zu diesen Filtern." }
+"todos.empty_active" = { en = "No todos in active projects.", de = "Keine Aufgaben in aktiven Projekten." }
 "todos.customer" = { en = "Customer", de = "Kunde" }
 "todos.all_customers" = { en = "All customers", de = "Alle Kunden" }
 "todos.project" = { en = "Project", de = "Projekt" }

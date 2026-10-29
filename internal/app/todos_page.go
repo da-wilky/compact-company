@@ -43,8 +43,10 @@ func (f todosFilter) selectFor(name, label, all string) filterSelect {
 }
 
 type todosPage struct {
-	Board                                    board
-	Filtered                                 bool
+	Board    board
+	Filtered bool
+	// OnlyArchived: the unfiltered board is empty, yet todos exist in archived projects.
+	OnlyArchived                             bool
 	Customers, Projects, Assignees, Statuses filterSelect
 }
 
@@ -81,6 +83,12 @@ func (a *App) todoBoard(w http.ResponseWriter, r *http.Request) {
 	}
 	b.ShowProjects = true
 	page := todosPage{Board: b, Filtered: len(f.query()) > 0}
+	if b.Empty && !page.Filtered {
+		if err := a.db.QueryRow(`SELECT EXISTS (SELECT 1 FROM todo)`).Scan(&page.OnlyArchived); err != nil {
+			a.serverError(w, r, err)
+			return
+		}
+	}
 	if err := a.todoFilters(&page, f); err != nil {
 		a.serverError(w, r, err)
 		return

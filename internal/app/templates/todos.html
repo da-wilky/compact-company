@@ -9,6 +9,6 @@
 {{template "filter-select" .Assignees}}
 {{template "filter-select" .Statuses}}
 </div>
-{{if .Board.Empty}}<div id="board"><p class="hint">{{if .Filtered}}{{t "todos.empty_filtered"}}{{else}}{{t "todos.empty"}}{{end}}</p></div>{{else}}{{template "board" .Board}}{{end}}
+{{if .Board.Empty}}<div id="board"><p class="hint">{{if .Filtered}}{{t "todos.empty_filtered"}}{{else if .OnlyArchived}}{{t "todos.empty_active"}}{{else}}{{t "todos.empty"}}{{end}}</p></div>{{else}}{{template "board" .Board}}{{end}}
 {{end}}
 {{end}}
