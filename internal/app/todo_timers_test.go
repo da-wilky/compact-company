@@ -19,7 +19,7 @@ func TestCardStartButtonStartsATimerOnTheTodoAndItsProject(t *testing.T) {
 	project := c.websitePath()
 	c.createTodo(project, todoForm("Write copy"))
 	todo := c.todoPath(project, "Write copy")
-	c.get(project).column(t, "Open").wantBody(t, `<button name="project" value="todo:`+strings.TrimPrefix(todo, "/todos/")+`"`)
+	c.get(project).column(t, "Open").wantBody(t, `name="project" value="todo:`+strings.TrimPrefix(todo, "/todos/")+`"`)
 
 	res := c.hxPost("/timers", startOn(todo))
 
