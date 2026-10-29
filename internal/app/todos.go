@@ -34,6 +34,7 @@ type todoStatus struct {
 type todoCard struct {
 	ID       int64
 	Title    string
+	Project  string
 	Assignee string
 	Priority int
 	DueDate  string
@@ -49,13 +50,15 @@ type boardColumn struct {
 }
 
 // board is every status as a column of the todos a page shows; Return is the page a status change goes back to.
+// Cards name their project when the board spans projects.
 type board struct {
-	Columns []boardColumn
-	Return  string
-	Empty   bool
+	Columns      []boardColumn
+	Return       string
+	Empty        bool
+	ShowProjects bool
 }
 
-// loadBoard loads the todos matching where (todo aliased t), sorted as every board shows them.
+// loadBoard loads the todos matching where (todo t, project p, customer c), sorted as every board shows them.
 func (a *App) loadBoard(r *http.Request, ret, where string, args ...any) (board, error) {
 	b := board{Return: ret, Empty: true}
 	loc, err := a.viewerLocation(r)
@@ -80,8 +83,8 @@ func (a *App) loadBoard(r *http.Request, ret, where string, args ...any) (board,
 	if err := statuses.Err(); err != nil {
 		return b, err
 	}
-	rows, err := a.db.Query(`SELECT t.id, t.title, ifnull(u.display_name, ''), t.priority, ifnull(t.due_date, ''), t.status_id
-		FROM todo t LEFT JOIN user u ON u.id = t.assignee_id
+	rows, err := a.db.Query(`SELECT t.id, t.title, p.name, ifnull(u.display_name, ''), t.priority, ifnull(t.due_date, ''), t.status_id
+		FROM todo t JOIN project p ON p.id = t.project_id JOIN customer c ON c.id = p.customer_id LEFT JOIN user u ON u.id = t.assignee_id
 		WHERE `+where+`
 		ORDER BY t.priority DESC, t.due_date IS NULL, t.due_date, t.created_at, t.id`, args...)
 	if err != nil {
@@ -90,7 +93,7 @@ func (a *App) loadBoard(r *http.Request, ret, where string, args ...any) (board,
 	defer func() { _ = rows.Close() }()
 	for rows.Next() {
 		var c todoCard
-		if err := rows.Scan(&c.ID, &c.Title, &c.Assignee, &c.Priority, &c.DueDate, &c.StatusID); err != nil {
+		if err := rows.Scan(&c.ID, &c.Title, &c.Project, &c.Assignee, &c.Priority, &c.DueDate, &c.StatusID); err != nil {
 			return b, err
 		}
 		col := &b.Columns[column[c.StatusID]]
@@ -107,7 +110,7 @@ func (a *App) projectBoard(r *http.Request, projectID int64) (board, error) {
 
 // boardReturn is where a status change from a board goes back to: a board page, else fallback.
 func boardReturn(to, fallback string) string {
-	if strings.HasPrefix(to, "/projects/") {
+	if strings.HasPrefix(to, "/projects/") || to == "/todos" || strings.HasPrefix(to, "/todos?") {
 		return to
 	}
 	return fallback
@@ -142,26 +145,30 @@ type todoPage struct {
 }
 
 func (a *App) renderTodo(w http.ResponseWriter, r *http.Request, status int, page todoPage) {
-	rows, err := a.db.Query(`SELECT id, display_name FROM user ORDER BY display_name, id`)
-	if err != nil {
-		a.serverError(w, r, err)
-		return
-	}
-	defer func() { _ = rows.Close() }()
-	for rows.Next() {
-		var u todoUser
-		if err := rows.Scan(&u.ID, &u.Name); err != nil {
-			a.serverError(w, r, err)
-			return
-		}
-		page.Users = append(page.Users, u)
-	}
-	if err := rows.Err(); err != nil {
+	var err error
+	if page.Users, err = a.todoUsers(); err != nil {
 		a.serverError(w, r, err)
 		return
 	}
 	page.Priorities = priorityKeys
 	a.render(w, r, status, "todo", page)
+}
+
+func (a *App) todoUsers() ([]todoUser, error) {
+	rows, err := a.db.Query(`SELECT id, display_name FROM user ORDER BY display_name, id`)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	var users []todoUser
+	for rows.Next() {
+		var u todoUser
+		if err := rows.Scan(&u.ID, &u.Name); err != nil {
+			return nil, err
+		}
+		users = append(users, u)
+	}
+	return users, rows.Err()
 }
 
 // todoProjectFromPath writes 404 or 500 itself when ok is false.

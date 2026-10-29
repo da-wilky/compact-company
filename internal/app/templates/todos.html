@@ -1,0 +1,14 @@
+{{define "title"}}{{t "todos.title"}}{{end}}
+{{define "content"}}
+{{with .Data}}
+<h1>{{template "title" $}}</h1>
+<div class="filters">
+<span class="label">{{t "filter.show"}}</span>
+{{template "filter-select" .Customers}}
+{{template "filter-select" .Projects}}
+{{template "filter-select" .Assignees}}
+{{template "filter-select" .Statuses}}
+</div>
+{{if .Board.Empty}}<div id="board"><p class="hint">{{if .Filtered}}{{t "todos.empty_filtered"}}{{else}}{{t "todos.empty"}}{{end}}</p></div>{{else}}{{template "board" .Board}}{{end}}
+{{end}}
+{{end}}

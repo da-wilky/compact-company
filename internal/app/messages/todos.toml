@@ -2,6 +2,15 @@
 "todos.new" = { en = "New todo", de = "Neue Aufgabe" }
 "todos.edit" = { en = "Edit todo", de = "Aufgabe bearbeiten" }
 "todos.empty" = { en = "No todos yet.", de = "Noch keine Aufgaben." }
+"todos.empty_filtered" = { en = "No todos match these filters.", de = "Keine Aufgaben passen zu diesen Filtern." }
+"todos.customer" = { en = "Customer", de = "Kunde" }
+"todos.all_customers" = { en = "All customers", de = "Alle Kunden" }
+"todos.project" = { en = "Project", de = "Projekt" }
+"todos.all_projects" = { en = "All projects", de = "Alle Projekte" }
+"todos.everyone" = { en = "Everyone", de = "Alle Personen" }
+"todos.me" = { en = "Me", de = "Ich" }
+"todos.status" = { en = "Status", de = "Status" }
+"todos.all_statuses" = { en = "All statuses", de = "Alle Status" }
 "todos.todo_title" = { en = "Title", de = "Titel" }
 "todos.description" = { en = "Description", de = "Beschreibung" }
 "todos.assignee" = { en = "Assignee", de = "Zuständig" }
