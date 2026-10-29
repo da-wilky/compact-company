@@ -2,7 +2,7 @@
 
 Usage: ui_check.py <base-url> <database> <screenshot-dir> <chromium> [path… | --changed <git-ref>], against a fresh dev-mode instance (it seeds data).
 Paths render only those pages; the seed is deterministic, so e.g. /invoices/1 is the draft with lines, /invoices/4 the empty one without a range
-and /invoices/5 to /invoices/8 open invoices, the even ones overdue. --changed renders only the pages whose template differs from <git-ref>.
+and /invoices/5 to /invoices/8 open invoices, the even ones overdue; /todos/1 is an overdue todo. --changed renders only the pages whose template differs from <git-ref>.
 Interactions select by route, data-* or ARIA attributes, so renaming a styling class can't break them.
 """
 
@@ -68,6 +68,11 @@ def seed(api):
     for name in ("Website relaunch", "Hosting"):
         api.post(f"{base}/customers/{customer}/projects", form={"name": name, "hourly_rate": "", "billable": "on"})
     projects = dict((n, i) for i, n in re.findall(r'href="/projects/(\d+)">([^<]+)<', api.get(f"{base}/customers/{customer}/projects").text()))
+    for title, assignee, priority, due in [("Write the landing page copy for the relaunch and its pricing section", "1", "2", today - datetime.timedelta(days=1)),
+                                           ("Set up redirects", "", "1", today + datetime.timedelta(days=5)), ("Pick fonts", "1", "0", ""), ("Review analytics", "", "1", "")]:
+        api.post(f"{base}/projects/{projects['Website relaunch']}/todos", form={"title": title, "description": "", "assignee": assignee, "priority": priority, "due_date": str(due)})
+    for todo, status in [(3, 2), (4, 4)]:
+        api.post(f"{base}/todos/{todo}/status", form={"status": str(status)})
     for day, hours, project in [(0, (8, 12), "Website relaunch"), (1, (9, 11), "Hosting"), (2, (13, 17), "Website relaunch"), (3, (8, 9), "")]:
         d = monday + datetime.timedelta(days=day)
         api.post(f"{base}/entries", form={"project": projects.get(project, ""), "start": f"{d}T{hours[0]:02}:00", "end": f"{d}T{hours[1]:02}:00", "description": f"{project or 'Admin'} work", "billable": ""})
@@ -134,6 +139,7 @@ def main():
                      ("entries", f"/entries?day={today}&project={project}"), ("entry", "/entries/new"), ("entry", entry),
                      ("customers", "/customers"), ("customer", "/customers/new"), ("customer", f"/customers/{customer}"),
                      ("projects", f"/customers/{customer}/projects"), ("project", f"/projects/{project}"),
+                     ("todo", f"/projects/{project}/todos/new"), ("todo", "/todos/1"),
                      ("invoices", "/invoices"), ("invoice_new", "/invoices/new"), ("invoice", draft), ("invoice", f"{draft}/preview"),
                      ("invoice_line", f"{draft}/lines/new"), ("invoice_line", line), ("invoice_refresh", f"{draft}/refresh"),
                      ("invoice_issue", f"{draft}/issue"), ("invoice_issued", issued), ("invoice_cancel", f"{issued}/cancel"),

@@ -17,6 +17,9 @@
 <button>{{template "icon-save"}}{{t "common.save"}}</button>
 </form>
 {{with .Project.ID}}{{if $.Data.Project.Archived}}<form method="post" action="/projects/{{.}}/unarchive"><button>{{template "icon-archive-restore"}}{{t "archive.unarchive"}}</button></form>{{else}}<form method="post" action="/projects/{{.}}/archive"><button>{{template "icon-archive"}}{{t "archive.archive"}}</button></form>{{end}}
-<form method="post" action="/projects/{{.}}/delete" data-confirm="{{t "projects.confirm_delete" $.Data.Project.Name}}"><button class="danger">{{template "icon-trash"}}{{t "common.delete"}}</button></form>{{end}}
+<form method="post" action="/projects/{{.}}/delete" data-confirm="{{t "projects.confirm_delete" $.Data.Project.Name}}"><button class="danger">{{template "icon-trash"}}{{t "common.delete"}}</button></form>
+<h2>{{t "todos.title"}}</h2>
+{{if not $.Data.Project.Archived}}<p class="actions"><a href="/projects/{{.}}/todos/new">{{template "icon-plus"}}{{t "todos.new"}}</a></p>{{end}}
+{{if $.Data.Board.Empty}}<p class="hint">{{t "todos.empty"}}</p>{{else}}{{template "board" $.Data.Board}}{{end}}{{end}}
 {{end}}
 {{end}}

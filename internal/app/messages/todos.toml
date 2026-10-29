@@ -1,0 +1,24 @@
+"todos.title" = { en = "Todos", de = "Aufgaben" }
+"todos.new" = { en = "New todo", de = "Neue Aufgabe" }
+"todos.edit" = { en = "Edit todo", de = "Aufgabe bearbeiten" }
+"todos.empty" = { en = "No todos yet.", de = "Noch keine Aufgaben." }
+"todos.todo_title" = { en = "Title", de = "Titel" }
+"todos.description" = { en = "Description", de = "Beschreibung" }
+"todos.assignee" = { en = "Assignee", de = "Zuständig" }
+"todos.unassigned" = { en = "Nobody", de = "Niemand" }
+"todos.priority" = { en = "Priority", de = "Priorität" }
+"todos.priority.low" = { en = "Low", de = "Niedrig" }
+"todos.priority.normal" = { en = "Normal", de = "Normal" }
+"todos.priority.high" = { en = "High", de = "Hoch" }
+"todos.due_date" = { en = "Due date", de = "Fälligkeitsdatum" }
+"todos.due_on" = { en = "Due %s", de = "Fällig %s" }
+"todos.overdue" = { en = "Overdue", de = "Überfällig" }
+"todos.status_of" = { en = "Status of %s", de = "Status von %s" }
+"todos.set_status" = { en = "Set status", de = "Status setzen" }
+"todos.confirm_delete" = { en = "Delete todo %s?", de = "Aufgabe %s löschen?" }
+"todos.error.title" = { en = "Title is required.", de = "Titel ist erforderlich." }
+"todos.error.assignee" = { en = "Choose an existing user as assignee.", de = "Wähle einen vorhandenen Benutzer als Zuständigen." }
+"todos.error.priority" = { en = "Priority must be low, normal or high.", de = "Priorität muss niedrig, normal oder hoch sein." }
+"todos.error.due_date" = { en = "Due date must be a date.", de = "Fälligkeitsdatum muss ein Datum sein." }
+"todos.error.archived" = { en = "This project is archived and takes no new todos.", de = "Dieses Projekt ist archiviert und nimmt keine neuen Aufgaben an." }
+"todos.error.status" = { en = "Invalid status.", de = "Ungültiger Status." }
