@@ -445,7 +445,7 @@ func (a *App) todoMove(w http.ResponseWriter, r *http.Request) {
 		a.renderTodo(w, r, http.StatusUnprocessableEntity, todoPage{Project: p, Todo: t, Errors: errs})
 		return
 	}
-	// The todo moves first: an entry whose project differs from its todo's loses the todo (0013's trigger).
+	// The todo moves first: an entry whose project differs from its todo's loses the todo (0012's trigger).
 	if _, err := tx.Exec(`UPDATE todo SET project_id = ? WHERE id = ?`, target, t.ID); err != nil {
 		a.serverError(w, r, err)
 		return
