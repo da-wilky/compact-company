@@ -106,6 +106,7 @@ def seed(api):
     other = max(map(int, re.findall(r'href="/customers/(\d+)/projects"', api.get(f"{base}/customers").text())))
     api.post(f"{base}/customers/{other}/projects", form={"name": "Fleet dashboard", "hourly_rate": "", "billable": "on"})
     fleet = re.search(r'href="/projects/(\d+)">', api.get(f"{base}/customers/{other}/projects").text()).group(1)
+    api.post(f"{base}/projects/{fleet}/todos", form={"title": "Sketch the dashboard", "description": "", "assignee": "1", "priority": "2", "due_date": ""})
     api.post(f"{base}/entries", form={"project": fleet, "start": f"{last_friday}T13:30", "end": f"{last_friday}T15:00", "description": "Dashboard review", "billable": ""})
     return customer, projects["Website relaunch"], draft, line, entry, issued, cancellation, empty
 
@@ -139,7 +140,7 @@ def main():
                      ("entries", f"/entries?day={today}&project={project}"), ("entry", "/entries/new"), ("entry", entry),
                      ("customers", "/customers"), ("customer", "/customers/new"), ("customer", f"/customers/{customer}"),
                      ("projects", f"/customers/{customer}/projects"), ("project", f"/projects/{project}"),
-                     ("todo", f"/projects/{project}/todos/new"), ("todo", "/todos/1"),
+                     ("todo", f"/projects/{project}/todos/new"), ("todo", "/todos/1"), ("todos", "/todos"), ("todos", "/todos?assignee=me"),
                      ("invoices", "/invoices"), ("invoice_new", "/invoices/new"), ("invoice", draft), ("invoice", f"{draft}/preview"),
                      ("invoice_line", f"{draft}/lines/new"), ("invoice_line", line), ("invoice_refresh", f"{draft}/refresh"),
                      ("invoice_issue", f"{draft}/issue"), ("invoice_issued", issued), ("invoice_cancel", f"{issued}/cancel"),

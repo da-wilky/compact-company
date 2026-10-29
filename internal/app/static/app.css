@@ -285,7 +285,7 @@ button.icon:hover { filter: brightness(1.1); }
   .me { margin: 0; padding: 0; border: 0; }
   .me .profile { flex: none; }
   .tabs { position: fixed; left: 0; right: 0; bottom: 0; grid-auto-flow: column; grid-auto-columns: 1fr; padding: .35rem .5rem calc(.35rem + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); background: var(--surface); }
-  .tabs a { flex-direction: column; gap: 0; padding: .35rem; font-size: .7rem; }
+  .tabs a { flex-direction: column; gap: 0; padding: .35rem .15rem; font-size: .7rem; }
   .tabs .mobile { display: flex; }
   main { padding: 1.25rem 1rem 6rem; }
   .form { padding: 1rem; }
