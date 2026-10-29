@@ -73,7 +73,7 @@ func (a *App) todoBoard(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	b, err := a.loadBoard(r, f.url(), `NOT p.archived AND NOT c.archived
-		AND (?1 = 0 OR c.id = ?1) AND (?2 = 0 OR p.id = ?2) AND (?3 = 0 OR t.assignee_id = ?3) AND (?4 = 0 OR t.status_id = ?4)`,
+		AND (? IN (0, c.id)) AND (? IN (0, p.id)) AND (? IN (0, t.assignee_id)) AND (? IN (0, t.status_id))`,
 		f.Customer, f.Project, assignee, f.Status)
 	if err != nil {
 		a.serverError(w, r, err)
