@@ -308,6 +308,35 @@ func TestArchivedProjectTakesNoNewTodos(t *testing.T) {
 	wantCards(t, c.get(project).column(t, "Open"), "Write copy")
 }
 
+func TestArchivedProjectBoardIsReadOnly(t *testing.T) {
+	for _, archive := range []string{"project", "customer"} {
+		t.Run(archive, func(t *testing.T) {
+			ta := newTestApp(t, devConfig)
+			c := ta.client()
+			project := c.websitePath()
+			c.createTodo(project, todoForm("Write copy"))
+			todo := c.todoPath(project, "Write copy")
+			done := statusID(t, c.get(project), "Done")
+			archivePath := project + "/archive"
+			if archive == "customer" {
+				archivePath = "/customers/1/archive"
+			}
+			c.postForm(archivePath, nil).wantStatus(t, http.StatusSeeOther)
+
+			board := c.get(project)
+			wantCards(t, board.column(t, "Open"), "Write copy")
+			board.wantNoBody(t, `action="`+todo+`/status"`)
+			board.wantNoBody(t, `draggable="true"`) // markup is the behaviour
+			board.wantNoBody(t, `value="todo:`)
+			res := c.postForm(todo+"/status", url.Values{"status": {done}, "return": {project}})
+
+			res.wantStatus(t, http.StatusUnprocessableEntity)
+			res.wantBody(t, "This project is archived, so its todos keep their status.")
+			wantCards(t, c.get(project).column(t, "Open"), "Write copy")
+		})
+	}
+}
+
 func TestTodosRenderInGerman(t *testing.T) {
 	ta := newTestApp(t, devConfig)
 	c := ta.client()

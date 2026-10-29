@@ -227,7 +227,7 @@ function boards() {
     return column && column !== columnOf(dragged) && column.closest(".board") === dragged.closest(".board") ? column : null;
   };
   document.addEventListener("dragstart", (e) => {
-    dragged = e.target.closest?.(".board .card");
+    dragged = e.target.closest?.(".board .card[draggable=true]");
     if (!dragged) return;
     e.dataTransfer.effectAllowed = "move";
     e.dataTransfer.setData("text/plain", dragged.querySelector("a").textContent);

@@ -134,7 +134,7 @@ func (a *App) loadMyTodos(userID int64, loc *time.Location) ([]todoCard, error) 
 		if err := rows.Scan(&c.ID, &c.Title, &c.Project, &c.Priority, &c.DueDate); err != nil {
 			return nil, err
 		}
-		c.Overdue = c.DueDate != "" && c.DueDate < today
+		c.Overdue = overdue(c.DueDate, today)
 		todos = append(todos, c)
 	}
 	return todos, rows.Err()

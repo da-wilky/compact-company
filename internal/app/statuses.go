@@ -81,7 +81,7 @@ func (a *App) changeStatuses(w http.ResponseWriter, r *http.Request, change func
 			return err
 		}
 		var firstDone, workingDone bool
-		err = tx.QueryRow(`SELECT done FROM todo_status ORDER BY position LIMIT 1`).Scan(&firstDone)
+		err = tx.QueryRow(`SELECT done FROM todo_status WHERE id = ` + firstStatus).Scan(&firstDone)
 		if errors.Is(err, sql.ErrNoRows) {
 			return errStatusRule("settings.error.no_status")
 		}

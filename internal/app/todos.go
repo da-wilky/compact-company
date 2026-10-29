@@ -42,11 +42,20 @@ type todoCard struct {
 	Overdue  bool
 	StatusID int64
 	Tracked  time.Duration
-	// Startable: the todo may receive new time, so the card offers a timer.
+	// Archived: the todo's project or customer is archived, which freezes its status.
+	Archived  bool
 	Startable bool
 }
 
 func (c todoCard) PriorityKey() string { return priorityKeys[c.Priority] }
+
+func overdue(dueDate, today string) bool { return dueDate != "" && dueDate < today }
+
+// boardOrder sorts todo t as every board shows it.
+const boardOrder = `t.priority DESC, t.due_date IS NULL, t.due_date, t.created_at, t.id`
+
+// firstStatus is the id of the status new todos get.
+const firstStatus = `(SELECT id FROM todo_status ORDER BY position LIMIT 1)`
 
 type boardColumn struct {
 	Status todoStatus
@@ -92,22 +101,21 @@ func (a *App) loadBoard(r *http.Request, ret, where string, args ...any) (board,
 			(SELECT ifnull(sum(ifnull(e.end_time, ?) - e.start_time), 0) FROM time_entry e WHERE e.todo_id = t.id)
 		FROM todo t JOIN project p ON p.id = t.project_id JOIN customer c ON c.id = p.customer_id LEFT JOIN user u ON u.id = t.assignee_id
 		WHERE `+where+`
-		ORDER BY t.priority DESC, t.due_date IS NULL, t.due_date, t.created_at, t.id`, append([]any{now}, args...)...)
+		ORDER BY `+boardOrder, append([]any{now}, args...)...)
 	if err != nil {
 		return b, err
 	}
 	defer func() { _ = rows.Close() }()
 	for rows.Next() {
 		var c todoCard
-		var archived bool
 		var tracked int64
-		if err := rows.Scan(&c.ID, &c.Title, &c.Project, &c.Assignee, &c.Priority, &c.DueDate, &c.StatusID, &archived, &tracked); err != nil {
+		if err := rows.Scan(&c.ID, &c.Title, &c.Project, &c.Assignee, &c.Priority, &c.DueDate, &c.StatusID, &c.Archived, &tracked); err != nil {
 			return b, err
 		}
 		c.Tracked = (time.Duration(tracked) * time.Second).Truncate(time.Minute)
 		col := &b.Columns[column[c.StatusID]]
-		c.Overdue = !col.Status.Done && c.DueDate != "" && c.DueDate < today
-		c.Startable = !col.Status.Done && !archived
+		c.Overdue = !col.Status.Done && overdue(c.DueDate, today)
+		c.Startable = !col.Status.Done && !c.Archived
 		col.Todos = append(col.Todos, c)
 		b.Empty = false
 	}
@@ -125,7 +133,7 @@ func openTodoProject(tx *sql.Tx, id int64) (int64, error) {
 // startWork moves a todo in the first status to the working status, if one is set.
 func startWork(tx *sql.Tx, id int64) error {
 	_, err := tx.Exec(`UPDATE todo SET status_id = (SELECT working_status_id FROM defaults)
-		WHERE id = ? AND status_id = (SELECT id FROM todo_status ORDER BY position LIMIT 1)
+		WHERE id = ? AND status_id = `+firstStatus+`
 			AND (SELECT working_status_id FROM defaults) IS NOT NULL`, id)
 	return err
 }
@@ -322,7 +330,7 @@ func (a *App) todoCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if _, err := a.db.Exec(`INSERT INTO todo (project_id, title, description, status_id, assignee_id, priority, due_date, created_at)
-		VALUES (?, ?, ?, (SELECT id FROM todo_status ORDER BY position LIMIT 1), ?, ?, ?, ?)`,
+		VALUES (?, ?, ?, `+firstStatus+`, ?, ?, ?, ?)`,
 		p.ID, t.Title, t.Description, assignee, t.Priority, due, a.now().Unix()); err != nil {
 		a.serverError(w, r, err)
 		return
@@ -473,12 +481,22 @@ func (a *App) todoSetStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var projectID int64
-	err = a.db.QueryRow(`UPDATE todo SET status_id = ? WHERE id = ? RETURNING project_id`, status, id).Scan(&projectID)
+	var archived bool
+	err = a.db.QueryRow(`SELECT p.id, p.archived OR c.archived FROM todo t JOIN project p ON p.id = t.project_id JOIN customer c ON c.id = p.customer_id
+		WHERE t.id = ?`, id).Scan(&projectID, &archived)
 	if errors.Is(err, sql.ErrNoRows) {
 		a.notFound(w, r)
 		return
 	}
 	if err != nil {
+		a.serverError(w, r, err)
+		return
+	}
+	if archived {
+		a.errorPage(w, r, http.StatusUnprocessableEntity, "todos.error.archived_status")
+		return
+	}
+	if _, err := a.db.Exec(`UPDATE todo SET status_id = ? WHERE id = ?`, status, id); err != nil {
 		a.serverError(w, r, err)
 		return
 	}
