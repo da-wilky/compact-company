@@ -96,6 +96,8 @@ Every board is the `board` partial (`partials/board.html`) fed by `loadBoard` in
 
 The status list and working status are edited in Settings (`statuses.go`); every change goes through `changeStatuses`, which rolls back with a message if the first or the working status ends up done.
 
+Time on a todo: an entry's project is always its todo's project. Triggers on `time_entry` (`0013_time_entry_todo.sql`) hold it for every write: setting a todo of another project aborts, changing the project clears the todo, deleting a todo clears it on its entries. So a write that sets a todo sets its project in the same statement, and moving a todo updates the todo before its entries. `openTodoProject` in `todos.go` resolves a todo that may receive new time (not done) to its project; `startWork` is the move to the working status. `POST /timers` takes `project=todo:<id>` for a todo, plus a board's `return` for plain forms.
+
 ## Mass actions and confirmation
 
 Selecting rows and acting on all of them (entries, invoices, customers, projects) is one mechanism; a new list or action plugs into it.
