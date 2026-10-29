@@ -39,6 +39,7 @@ var (
 		[]guard{
 			{`SELECT EXISTS (SELECT 1 FROM time_entry WHERE project_id = ?)`, "projects.error.has_entries"},
 			{`SELECT EXISTS (SELECT 1 FROM invoice_line WHERE project_id = ?)`, "projects.error.on_invoice"},
+			{`SELECT EXISTS (SELECT 1 FROM todo WHERE project_id = ?)`, "projects.error.has_todos"},
 		},
 		[]string{`DELETE FROM project WHERE id = ?`}}
 )
@@ -78,7 +79,7 @@ func (a *App) projectWrite(rw rowWrite) http.HandlerFunc {
 			return
 		}
 		refuse := func(refusal string) {
-			a.render(w, r, http.StatusUnprocessableEntity, "project", projectPage{Customer: c, Project: p, Errors: []string{refusal}})
+			a.renderProject(w, r, http.StatusUnprocessableEntity, projectPage{Customer: c, Project: p, Errors: []string{refusal}})
 		}
 		a.guardedWrite(w, r, p.ID, rw, refuse, "/customers/"+strconv.FormatInt(c.ID, 10)+"/projects")
 	}

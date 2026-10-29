@@ -14,6 +14,7 @@
 "projects.error.hourly_rate" = { en = "Hourly rate must be a non-negative decimal with no more decimals than the currency allows.", de = "Stundensatz muss eine nicht negative Dezimalzahl mit höchstens so vielen Nachkommastellen sein, wie die Währung erlaubt." }
 "projects.error.timer_running" = { en = "A timer is running on this project.", de = "Auf diesem Projekt läuft ein Timer." }
 "projects.error.has_entries" = { en = "This project has time entries.", de = "Dieses Projekt hat Zeiteinträge." }
+"projects.error.has_todos" = { en = "This project has todos.", de = "Dieses Projekt hat Aufgaben." }
 "projects.error.on_invoice" = { en = "This project is on an invoice.", de = "Dieses Projekt steht auf einer Rechnung." }
 "projects.confirm_delete" = { en = "Delete project %s?", de = "Projekt %s löschen?" }
 "projects.select" = { en = "Select project %s", de = "Projekt %s auswählen" }

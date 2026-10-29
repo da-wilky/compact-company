@@ -2,7 +2,7 @@
 
 Usage: ui_check.py <base-url> <database> <screenshot-dir> <chromium> [path… | --changed <git-ref>], against a fresh dev-mode instance (it seeds data).
 Paths render only those pages; the seed is deterministic, so e.g. /invoices/1 is the draft with lines, /invoices/4 the empty one without a range
-and /invoices/5 to /invoices/8 open invoices, the even ones overdue. --changed renders only the pages whose template differs from <git-ref>.
+and /invoices/5 to /invoices/8 open invoices, the even ones overdue; /todos/1 is an overdue todo. --changed renders only the pages whose template differs from <git-ref>.
 Interactions select by route, data-* or ARIA attributes, so renaming a styling class can't break them.
 """
 
@@ -68,10 +68,15 @@ def seed(api):
     for name in ("Website relaunch", "Hosting"):
         api.post(f"{base}/customers/{customer}/projects", form={"name": name, "hourly_rate": "", "billable": "on"})
     projects = dict((n, i) for i, n in re.findall(r'href="/projects/(\d+)">([^<]+)<', api.get(f"{base}/customers/{customer}/projects").text()))
+    for title, assignee, priority, due in [("Write the landing page copy for the relaunch and its pricing section", "1", "2", today - datetime.timedelta(days=1)),
+                                           ("Set up redirects", "", "1", today + datetime.timedelta(days=5)), ("Pick fonts", "1", "0", ""), ("Review analytics", "", "1", "")]:
+        api.post(f"{base}/projects/{projects['Website relaunch']}/todos", form={"title": title, "description": "", "assignee": assignee, "priority": priority, "due_date": str(due)})
+    for todo, status in [(3, 2), (4, 4)]:
+        api.post(f"{base}/todos/{todo}/status", form={"status": str(status)})
     for day, hours, project in [(0, (8, 12), "Website relaunch"), (1, (9, 11), "Hosting"), (2, (13, 17), "Website relaunch"), (3, (8, 9), "")]:
         d = monday + datetime.timedelta(days=day)
         api.post(f"{base}/entries", form={"project": projects.get(project, ""), "start": f"{d}T{hours[0]:02}:00", "end": f"{d}T{hours[1]:02}:00", "description": f"{project or 'Admin'} work", "billable": ""})
-    api.post(f"{base}/timers", form={"project": projects["Hosting"], "description": "Server update"})
+    api.post(f"{base}/timers", form={"project": "todo:1", "description": "Landing page"})
     draft = api.post(f"{base}/invoices", form={"customer": customer, "from": str(monday), "to": str(today), "grouping": "project", "rounding_minutes": "15", "payment_days": "14", "all_projects": "1"}, max_redirects=0).headers["location"]
     for line in [("Website relaunch", "Design and implementation of the new landing page", "12.5", "h", "85", ""), ("Hosting", "", "1", "month", "29.90", projects["Hosting"])]:
         api.post(f"{base}{draft}/lines", form=dict(zip(("description", "detail", "quantity", "unit", "unit_price", "project"), line)))
@@ -96,13 +101,18 @@ def seed(api):
     seed_open_invoices(api, customer, business)
     # Time after the drafts were made, so the overview shows unbilled time both on a draft and on no invoice.
     last_friday = monday - datetime.timedelta(days=3)
-    api.post(f"{base}/entries", form={"project": projects["Website relaunch"], "start": f"{last_friday}T09:00", "end": f"{last_friday}T12:30", "description": "Content migration", "billable": ""})
+    api.post(f"{base}/entries", form={"project": projects["Website relaunch"], "start": f"{last_friday}T09:00", "end": f"{last_friday}T12:30", "description": "Content migration", "billable": "", "todo": "2"})
     api.post(f"{base}/customers", form={"name": "Nordlicht Logistik GmbH", "address": "Am Hafen 5\n20457 Hamburg", "email": "rechnung@nordlicht.example", "currency": "EUR", "invoice_language": "de", "timezone": "Europe/Berlin", "hourly_rate": "90"})
     other = max(map(int, re.findall(r'href="/customers/(\d+)/projects"', api.get(f"{base}/customers").text())))
     api.post(f"{base}/customers/{other}/projects", form={"name": "Fleet dashboard", "hourly_rate": "", "billable": "on"})
     fleet = re.search(r'href="/projects/(\d+)">', api.get(f"{base}/customers/{other}/projects").text()).group(1)
+    api.post(f"{base}/projects/{fleet}/todos", form={"title": "Sketch the dashboard", "description": "", "assignee": "1", "priority": "2", "due_date": ""})
     api.post(f"{base}/entries", form={"project": fleet, "start": f"{last_friday}T13:30", "end": f"{last_friday}T15:00", "description": "Dashboard review", "billable": ""})
-    return customer, projects["Website relaunch"], draft, line, entry, issued, cancellation, empty
+    api.post(f"{base}/customers/{other}/projects", form={"name": "Legacy portal", "hourly_rate": "", "billable": "on"})
+    legacy = re.search(r'href="/projects/(\d+)">Legacy portal<', api.get(f"{base}/customers/{other}/projects").text()).group(1)
+    api.post(f"{base}/projects/{legacy}/todos", form={"title": "Export the old data", "description": "", "assignee": "1", "priority": "1", "due_date": ""})
+    api.post(f"{base}/projects/{legacy}/archive")
+    return customer, projects["Website relaunch"], draft, line, entry, issued, cancellation, empty, legacy
 
 
 def seed_open_invoices(api, customer, business):
@@ -128,12 +138,13 @@ def main():
     with sync_playwright() as p:
         browser = p.chromium.launch(executable_path=chromium)
         api = browser.new_context().request
-        customer, project, draft, line, entry, issued, cancellation, empty = seed(api)
+        customer, project, draft, line, entry, issued, cancellation, empty, legacy = seed(api)
         today = datetime.date.today().isoformat()
         templates = [("home", "/"), ("week", "/week"), ("week", "/week?everyone=1"), ("entries", "/entries"),
                      ("entries", f"/entries?day={today}&project={project}"), ("entry", "/entries/new"), ("entry", entry),
                      ("customers", "/customers"), ("customer", "/customers/new"), ("customer", f"/customers/{customer}"),
-                     ("projects", f"/customers/{customer}/projects"), ("project", f"/projects/{project}"),
+                     ("projects", f"/customers/{customer}/projects"), ("project", f"/projects/{project}"), ("project", f"/projects/{legacy}"),
+                     ("todo", f"/projects/{project}/todos/new"), ("todo", "/todos/1"), ("todos", "/todos"), ("todos", "/todos?assignee=me"), ("todo", "/todos/new"),
                      ("invoices", "/invoices"), ("invoice_new", "/invoices/new"), ("invoice", draft), ("invoice", f"{draft}/preview"),
                      ("invoice_line", f"{draft}/lines/new"), ("invoice_line", line), ("invoice_refresh", f"{draft}/refresh"),
                      ("invoice_issue", f"{draft}/issue"), ("invoice_issued", issued), ("invoice_cancel", f"{issued}/cancel"),
@@ -216,6 +227,27 @@ def main():
                         page.uncheck("input[name=all_projects]")
                         page.screenshot(path=f"{out}/{lang}-{viewport}-{scheme}-invoices-new-projects.png", full_page=True)
                         failures += [f"{lang} {viewport} {scheme} /invoices/new (projects shown): {p}" for p in page.evaluate(FIND_BREAKAGE)]
+                    if "/todos" in pages:
+                        page.goto(base + "/todos")
+                        page.locator("[aria-haspopup=menu]").first.click()
+                        page.wait_for_selector("[role=menu]:popover-open")
+                        page.screenshot(path=f"{out}/{lang}-{viewport}-{scheme}-todos-status-menu.png")
+                        failures += [f"{lang} {viewport} {scheme} /todos (status menu open): {p}" for p in page.evaluate(FIND_BREAKAGE)]
+                    if f"/projects/{project}" in pages:
+                        # A column whose status no longer exists, as on a page loaded before the status was deleted.
+                        page.goto(f"{base}/projects/{project}")
+                        column = page.locator("[data-status]").last
+                        column.evaluate("c => c.dataset.status = '0'")
+                        # Dispatched rather than dragged by mouse, since the target column may sit outside the board's scrolled view.
+                        drag = {"dataTransfer": page.evaluate_handle("new DataTransfer()")}
+                        card = page.locator("[draggable]").first
+                        card.dispatch_event("dragstart", drag)
+                        column.dispatch_event("dragover", drag)
+                        column.dispatch_event("drop", drag)
+                        card.dispatch_event("dragend", drag)
+                        page.wait_for_selector("main [role=alert]")
+                        page.screenshot(path=f"{out}/{lang}-{viewport}-{scheme}-project-drag-refused.png", full_page=True)
+                        failures += [f"{lang} {viewport} {scheme} /projects/{project} (drag refused): {p}" for p in page.evaluate(FIND_BREAKAGE)]
                     page.close()
         browser.close()
     print(f"screenshots: {out}")

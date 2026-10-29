@@ -1,0 +1,45 @@
+"todos.title" = { en = "Todos", de = "Aufgaben" }
+"todos.new" = { en = "New todo", de = "Neue Aufgabe" }
+"todos.edit" = { en = "Edit todo", de = "Aufgabe bearbeiten" }
+"todos.empty" = { en = "No todos yet.", de = "Noch keine Aufgaben." }
+"todos.empty_filtered" = { en = "No todos match these filters.", de = "Keine Aufgaben passen zu diesen Filtern." }
+"todos.empty_active" = { en = "No todos in active projects.", de = "Keine Aufgaben in aktiven Projekten." }
+"todos.customer" = { en = "Customer", de = "Kunde" }
+"todos.all_customers" = { en = "All customers", de = "Alle Kunden" }
+"todos.project" = { en = "Project", de = "Projekt" }
+"todos.all_projects" = { en = "All projects", de = "Alle Projekte" }
+"todos.everyone" = { en = "Everyone", de = "Alle Personen" }
+"todos.me" = { en = "Me", de = "Ich" }
+"todos.status" = { en = "Status", de = "Status" }
+"todos.all_statuses" = { en = "All statuses", de = "Alle Status" }
+"todos.todo_title" = { en = "Title", de = "Titel" }
+"todos.description" = { en = "Description", de = "Beschreibung" }
+"todos.assignee" = { en = "Assignee", de = "Zuständig" }
+"todos.unassigned" = { en = "Nobody", de = "Niemand" }
+"todos.priority" = { en = "Priority", de = "Priorität" }
+"todos.priority.low" = { en = "Low", de = "Niedrig" }
+"todos.priority.normal" = { en = "Normal", de = "Normal" }
+"todos.priority.high" = { en = "High", de = "Hoch" }
+"todos.due_date" = { en = "Due date", de = "Fälligkeitsdatum" }
+"todos.due_on" = { en = "Due %s", de = "Fällig %s" }
+"todos.overdue" = { en = "Overdue", de = "Überfällig" }
+"todos.status_of" = { en = "Status of %s", de = "Status von %s" }
+"todos.set_status" = { en = "Set status", de = "Status setzen" }
+"todos.confirm_delete" = { en = "Delete todo %s?", de = "Aufgabe %s löschen?" }
+"todos.confirm_delete_entry" = { en = "Delete todo %s? Its time entry stays on the project without a todo.", de = "Aufgabe %s löschen? Ihr Zeiteintrag bleibt ohne Aufgabe im Projekt." }
+"todos.confirm_delete_entries" = { en = "Delete todo %s? Its %d time entries stay on the project without a todo.", de = "Aufgabe %s löschen? Ihre %d Zeiteinträge bleiben ohne Aufgabe im Projekt." }
+"todos.error.title" = { en = "Title is required.", de = "Titel ist erforderlich." }
+"todos.error.assignee" = { en = "Choose an existing user as assignee.", de = "Wähle einen vorhandenen Benutzer als Zuständigen." }
+"todos.error.priority" = { en = "Priority must be low, normal or high.", de = "Priorität muss niedrig, normal oder hoch sein." }
+"todos.error.due_date" = { en = "Due date must be a date.", de = "Fälligkeitsdatum muss ein Datum sein." }
+"todos.error.archived" = { en = "This project is archived and takes no new todos.", de = "Dieses Projekt ist archiviert und nimmt keine neuen Aufgaben an." }
+"todos.error.archived_status" = { en = "This project is archived, so its todos keep their status.", de = "Dieses Projekt ist archiviert, deshalb behalten seine Aufgaben ihren Status." }
+"todos.error.move_target" = { en = "Choose another active project of the same customer.", de = "Wähle ein anderes aktives Projekt desselben Kunden." }
+"todos.error.move_claimed" = { en = "This todo has time entries on a draft or issued invoice, so it can't move.", de = "Diese Aufgabe hat Zeiteinträge auf einem Entwurf oder einer gestellten Rechnung und kann deshalb nicht verschoben werden." }
+"todos.move_to" = { en = "Move to another project", de = "In ein anderes Projekt verschieben" }
+"todos.move_hint" = { en = "Its time entries move with it.", de = "Ihre Zeiteinträge werden mitverschoben." }
+"todos.move" = { en = "Move", de = "Verschieben" }
+"todos.error.status" = { en = "Invalid status.", de = "Ungültiger Status." }
+"todos.error.project" = { en = "Choose an active project.", de = "Wähle ein aktives Projekt." }
+"todos.start" = { en = "Start timer on %s", de = "Timer für %s starten" }
+"todos.tracked" = { en = "%s h", de = "%s h" }

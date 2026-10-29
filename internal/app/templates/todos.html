@@ -1,0 +1,15 @@
+{{define "title"}}{{t "todos.title"}}{{end}}
+{{define "content"}}
+{{with .Data}}
+<h1>{{template "title" $}}</h1>
+<p class="actions"><a href="{{.NewURL}}">{{template "icon-plus"}}{{t "todos.new"}}</a></p>
+<div class="filters">
+<span class="label">{{t "filter.show"}}</span>
+{{template "filter-select" .Customers}}
+{{template "filter-select" .Projects}}
+{{template "filter-select" .Assignees}}
+{{template "filter-select" .Statuses}}
+</div>
+{{if .Board.Empty}}<div id="board"><p class="hint">{{if .Filtered}}{{t "todos.empty_filtered"}}{{else if .OnlyArchived}}{{t "todos.empty_active"}}{{else}}{{t "todos.empty"}}{{end}}</p></div>{{else}}{{template "board" .Board}}{{end}}
+{{end}}
+{{end}}

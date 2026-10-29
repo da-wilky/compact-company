@@ -23,10 +23,11 @@ type overviewPage struct {
 	Unbilled        []unbilledCustomer
 	Drafts          []draftSummary
 	Open            openInvoices
+	Todos           []todoCard
 }
 
 func (p overviewPage) Empty() bool {
-	return p.Unassigned == 0 && len(p.Unbilled) == 0 && len(p.Drafts) == 0 && len(p.Open.Rows) == 0
+	return p.Unassigned == 0 && len(p.Todos) == 0 && len(p.Unbilled) == 0 && len(p.Drafts) == 0 && len(p.Open.Rows) == 0
 }
 
 func (a *App) home(w http.ResponseWriter, r *http.Request) {
@@ -42,6 +43,10 @@ func (a *App) home(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if page.Unassigned, page.UnassignedHours, err = a.loadUnassigned(userID); err != nil {
+		a.serverError(w, r, err)
+		return
+	}
+	if page.Todos, err = a.loadMyTodos(userID, loc); err != nil {
 		a.serverError(w, r, err)
 		return
 	}
@@ -109,4 +114,28 @@ func (a *App) loadUnassigned(userID int64) (count int, tracked time.Duration, er
 		SELECT count(*), ifnull(sum(end_time - start_time), 0) FROM time_entry
 		WHERE user_id = ? AND project_id IS NULL AND end_time IS NOT NULL`, userID).Scan(&count, &seconds)
 	return count, time.Duration(seconds) * time.Second, err
+}
+
+// loadMyTodos sorts by due date first, which already puts the overdue todos on top.
+func (a *App) loadMyTodos(userID int64, loc *time.Location) ([]todoCard, error) {
+	today := a.now().In(loc).Format(time.DateOnly)
+	rows, err := a.db.Query(`SELECT t.id, t.title, p.name, t.priority, ifnull(t.due_date, '')
+		FROM todo t JOIN todo_status s ON s.id = t.status_id JOIN project p ON p.id = t.project_id JOIN customer c ON c.id = p.customer_id
+		WHERE t.assignee_id = ? AND NOT s.done AND NOT p.archived AND NOT c.archived
+		ORDER BY t.due_date IS NULL, t.due_date, t.priority DESC, t.created_at, t.id
+		LIMIT 10`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	var todos []todoCard
+	for rows.Next() {
+		var c todoCard
+		if err := rows.Scan(&c.ID, &c.Title, &c.Project, &c.Priority, &c.DueDate); err != nil {
+			return nil, err
+		}
+		c.Overdue = overdue(c.DueDate, today)
+		todos = append(todos, c)
+	}
+	return todos, rows.Err()
 }

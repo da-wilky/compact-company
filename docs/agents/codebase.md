@@ -90,6 +90,14 @@ Reuse these instead of re-deriving them:
 - Invoice dates are ISO dates in the customer's timezone; resolve timezones per query with `locationCache`.
 - Week and month windows: `mondayOf` in `week.go`.
 
+## Todo boards
+
+Every board is the `board` partial (`partials/board.html`) fed by `loadBoard` in `todos.go`: all statuses as columns, cards in the one board order (`boardOrder`; new todos get `firstStatus`, `overdue` decides the badge). A status change, whatever triggers it, posts `status` and `return` to `POST /todos/{id}/status`, which redirects to `return` (a board page, checked by `boardReturn`); htmx swaps `#board` out of the page that redirect lands on. A new board page passes its own URL as `return` and adds its prefix to `boardReturn`. Dragging a card onto another column (`data-status`) only picks that status in the card's dropdown, so drag and dropdown send the same request; a refused change resets the dropdown and `app.js` shows the error page's heading above the board. A card of an archived project or customer has no dropdown, drag or timer, and the handler refuses its status change (422); archiving leaves statuses as they are. The Todos page (`todos_page.go`) sets `ShowProjects` so cards name their project; its `assignee=me` resolves to the viewer, so `/todos?assignee=me` is the link to one's own todos; its "New todo" (`/todos/new`) picks the project, preselecting the project filter. The todo edit page also sets the status, as the one place without the board; touch screens have no native drag, so the card keeps its dropdown, which `statusMenus` in `app.js` turns into a popover menu that sets the hidden select.
+
+The status list and working status are edited in Settings (`statuses.go`); every change goes through `changeStatuses`, which rolls back with a message if the first or the working status ends up done.
+
+Time on a todo: an entry's project is always its todo's project. Triggers on `time_entry` (`0012_todo.sql`) hold it for every write: setting a todo of another project aborts, changing the project clears the todo, deleting a todo clears it on its entries. So a write that sets a todo sets its project in the same statement, and moving a todo updates the todo before its entries. `openTodoProject` in `todos.go` resolves a todo that may receive new time (not done) to its project; `startWork` is the move to the working status. `POST /timers` takes `project=todo:<id>` for a todo, plus a board's `return` for plain forms. The entry form posts `project` and `todo` side by side: `validateEntry` lets a newly picked todo set the project, else a project other than the todo's clears the todo.
+
 ## Mass actions and confirmation
 
 Selecting rows and acting on all of them (entries, invoices, customers, projects) is one mechanism; a new list or action plugs into it.

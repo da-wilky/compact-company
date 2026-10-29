@@ -54,6 +54,16 @@ type projectPage struct {
 	Customer projectCustomer
 	Project  project
 	Errors   []string
+	Board    board
+}
+
+func (a *App) renderProject(w http.ResponseWriter, r *http.Request, status int, page projectPage) {
+	var err error
+	if page.Board, err = a.loadBoard(r, "/projects/"+strconv.FormatInt(page.Project.ID, 10), `t.project_id = ?`, page.Project.ID); err != nil {
+		a.serverError(w, r, err)
+		return
+	}
+	a.render(w, r, status, "project", page)
 }
 
 func (a *App) loadProjectCustomer(id int64) (projectCustomer, error) {
@@ -239,7 +249,7 @@ func (a *App) projectEdit(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	a.render(w, r, http.StatusOK, "project", projectPage{Customer: c, Project: p})
+	a.renderProject(w, r, http.StatusOK, projectPage{Customer: c, Project: p})
 }
 
 func (a *App) projectUpdate(w http.ResponseWriter, r *http.Request) {
@@ -261,7 +271,7 @@ func (a *App) projectUpdate(w http.ResponseWriter, r *http.Request) {
 	p.ID, p.Archived = stored.ID, stored.Archived
 	if errs != nil {
 		_ = tx.Rollback()
-		a.render(w, r, http.StatusUnprocessableEntity, "project", projectPage{Customer: c, Project: p, Errors: errs})
+		a.renderProject(w, r, http.StatusUnprocessableEntity, projectPage{Customer: c, Project: p, Errors: errs})
 		return
 	}
 	if _, err := tx.Exec(`UPDATE project SET name = ?, hourly_rate = ?, billable = ? WHERE id = ?`,

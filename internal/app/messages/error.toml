@@ -7,4 +7,6 @@
 "error.invalid_day" = { en = "Invalid day.", de = "Ungültiger Tag." }
 "error.invalid_week" = { en = "Invalid week.", de = "Ungültige Woche." }
 "error.invalid_project" = { en = "Invalid project.", de = "Ungültiges Projekt." }
+"error.invalid_todo" = { en = "Invalid todo.", de = "Ungültige Aufgabe." }
+"error.invalid_filter" = { en = "Invalid filter.", de = "Ungültiger Filter." }
 "error.invalid_page" = { en = "Invalid page.", de = "Ungültige Seite." }

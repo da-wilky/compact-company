@@ -216,6 +216,154 @@ function selections() {
   updateAll();
 }
 
+// Dropping a board card on another column picks that column's [data-status] in the card's dropdown,
+// so the change posts exactly as if chosen by hand. A refused change resets the dropdown and shows
+// the error page's heading above the board.
+function boards() {
+  let dragged = null;
+  const columnOf = (el) => el.closest?.(".board [data-status]");
+  const target = (e) => {
+    const column = dragged && columnOf(e.target);
+    return column && column !== columnOf(dragged) && column.closest(".board") === dragged.closest(".board") ? column : null;
+  };
+  document.addEventListener("dragstart", (e) => {
+    dragged = e.target.closest?.(".board .card[draggable=true]");
+    if (!dragged) return;
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", dragged.querySelector("a").textContent);
+    dragged.classList.add("dragging");
+  });
+  document.addEventListener("dragover", (e) => {
+    const column = target(e);
+    if (!column) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    column.classList.add("drop-target");
+  });
+  document.addEventListener("dragleave", (e) => {
+    const column = columnOf(e.target);
+    if (column && !column.contains(e.relatedTarget)) column.classList.remove("drop-target");
+  });
+  document.addEventListener("drop", (e) => {
+    const column = target(e);
+    if (!column) return;
+    e.preventDefault();
+    const select = dragged.querySelector("select[name=status]");
+    select.value = column.dataset.status;
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  document.addEventListener("dragend", () => {
+    dragged?.classList.remove("dragging");
+    dragged = null;
+    for (const c of document.querySelectorAll(".drop-target")) c.classList.remove("drop-target");
+  });
+  const boardOf = (e) => e.detail.elt.closest?.(".board");
+  document.addEventListener("htmx:beforeRequest", (e) => {
+    const board = boardOf(e);
+    if (board?.previousElementSibling?.matches(".board-error")) board.previousElementSibling.remove();
+  });
+  document.addEventListener("htmx:responseError", (e) => {
+    const board = boardOf(e);
+    if (!board) return;
+    e.detail.elt.reset();
+    const page = new DOMParser().parseFromString(e.detail.xhr.responseText, "text/html");
+    const error = document.createElement("p");
+    error.className = "errors board-error";
+    error.setAttribute("role", "alert");
+    error.textContent = page.querySelector("main h1")?.textContent || e.detail.xhr.statusText;
+    board.before(error);
+  });
+}
+
+// A card's status select becomes a button opening one shared menu; choosing sets the select and fires its
+// change, so the post is the dropdown's own. The menu is a popover because the scrolling board would clip it.
+function statusMenus() {
+  const menu = document.createElement("div");
+  menu.className = "status-menu";
+  menu.setAttribute("role", "menu");
+  menu.popover = "manual";
+  document.body.append(menu);
+  let trigger = null, select = null;
+  const items = () => [...menu.querySelectorAll("[role=menuitemradio]")];
+
+  function enhance() {
+    for (const s of document.querySelectorAll(".card-status select:not([hidden])")) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "status-trigger";
+      b.setAttribute("aria-haspopup", "menu");
+      b.setAttribute("aria-expanded", "false");
+      b.setAttribute("aria-label", s.getAttribute("aria-label"));
+      b.textContent = s.selectedOptions[0]?.text ?? "";
+      s.hidden = true;
+      s.after(b);
+    }
+  }
+
+  function open(b) {
+    trigger = b;
+    select = b.parentElement.querySelector("select");
+    menu.setAttribute("aria-label", select.getAttribute("aria-label"));
+    menu.replaceChildren(...[...select.options].map((o) => {
+      const item = document.createElement("button");
+      item.type = "button";
+      item.tabIndex = -1;
+      item.setAttribute("role", "menuitemradio");
+      item.setAttribute("aria-checked", String(o.selected));
+      item.dataset.value = o.value;
+      item.textContent = o.text;
+      return item;
+    }));
+    menu.showPopover();
+    const r = b.getBoundingClientRect();
+    menu.style.top = `${r.bottom + 4}px`;
+    menu.style.left = `${Math.max(8, Math.min(r.right - menu.offsetWidth, innerWidth - menu.offsetWidth - 8))}px`;
+    b.setAttribute("aria-expanded", "true");
+    (items().find((i) => i.getAttribute("aria-checked") === "true") ?? items()[0]).focus({ preventScroll: true });
+  }
+
+  function close(refocus) {
+    if (!menu.matches(":popover-open")) return;
+    menu.hidePopover();
+    trigger.setAttribute("aria-expanded", "false");
+    if (refocus) trigger.focus();
+  }
+
+  document.addEventListener("click", (e) => {
+    const b = e.target.closest?.(".status-trigger");
+    const item = e.target.closest?.(".status-menu [role=menuitemradio]");
+    if (item) {
+      close(true);
+      if (item.dataset.value === select.value) return;
+      select.value = item.dataset.value;
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+    } else if (b) {
+      const again = b === trigger && menu.matches(":popover-open");
+      close(again);
+      if (!again) open(b);
+    } else if (!menu.contains(e.target)) close(false);
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.target.matches?.(".status-trigger") && (e.key === "ArrowDown" || e.key === "ArrowUp")) {
+      e.preventDefault();
+      open(e.target);
+    }
+  });
+  menu.addEventListener("keydown", (e) => {
+    const all = items(), i = all.indexOf(document.activeElement);
+    const to = { ArrowDown: i + 1, ArrowUp: i - 1, Home: 0, End: all.length - 1 }[e.key];
+    if (to !== undefined) all[(to + all.length) % all.length].focus();
+    else if (e.key === "Escape") close(true);
+    else if (e.key === "Tab") close(true);
+    else return;
+    e.preventDefault();
+  });
+  addEventListener("scroll", () => close(false), true);
+  addEventListener("resize", () => close(false));
+  document.addEventListener("htmx:afterSwap", enhance);
+  enhance();
+}
+
 tickTimers();
 setInterval(tickTimers, 1000);
 document.addEventListener("htmx:afterSwap", tickTimers);
@@ -225,3 +373,5 @@ for (const s of document.querySelectorAll(".filter-select select")) s.addEventLi
 timezoneSelects();
 confirmForms();
 selections();
+boards();
+statusMenus();

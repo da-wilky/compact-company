@@ -14,6 +14,11 @@
 {{range .Projects}}<option value="{{.ID}}"{{if eq (print .ID) $.Data.Entry.Project}} selected{{end}}>{{.Name}}</option>
 {{end}}</optgroup>
 {{end}}</select></label>
+<label>{{t "entries.todo"}} <select name="todo" aria-describedby="todo-hint">
+<option value="">{{t "entries.no_todo"}}</option>
+{{range .Customers}}{{$customer := .Name}}{{range .Projects}}{{if .Todos}}<optgroup label="{{$customer}} · {{.Name}}">{{range .Todos}}<option value="{{.ID}}"{{if eq (print .ID) $.Data.Entry.Todo}} selected{{end}}>{{.Title}}</option>{{end}}</optgroup>
+{{end}}{{end}}{{end}}</select></label>
+<p class="hint" id="todo-hint">{{t "entries.todo_hint"}}</p>
 <label>{{t "entries.start"}} <input type="datetime-local" name="start" value="{{.Entry.Start}}" required></label>
 <label>{{t "entries.end"}} <input type="datetime-local" name="end" value="{{.Entry.End}}" required></label>
 <label>{{t "entries.description"}} <input name="description" value="{{.Entry.Description}}"></label>

@@ -47,3 +47,10 @@
 "entries.assign" = { en = "Assign", de = "Zuordnen" }
 "entries.mark_billable" = { en = "Billable", de = "Abrechenbar" }
 "entries.mark_not_billable" = { en = "Not billable", de = "Nicht abrechenbar" }
+"entries.todo" = { en = "Todo", de = "Aufgabe" }
+"entries.no_todo" = { en = "No todo", de = "Keine Aufgabe" }
+"entries.todo_hint" = { en = "A todo sets its project. Another project clears the todo.", de = "Eine Aufgabe setzt ihr Projekt. Ein anderes Projekt entfernt die Aufgabe." }
+"entries.all_todos" = { en = "All todos", de = "Alle Aufgaben" }
+"entries.set_todo" = { en = "Set todo…", de = "Aufgabe setzen…" }
+"entries.set" = { en = "Set", de = "Setzen" }
+"entries.error.todo" = { en = "This todo can't receive new time.", de = "Auf diese Aufgabe kann keine neue Zeit gebucht werden." }

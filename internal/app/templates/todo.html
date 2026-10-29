@@ -1,0 +1,41 @@
+{{define "title"}}{{if .Data.Todo.ID}}{{t "todos.edit"}}{{else}}{{t "todos.new"}}{{end}}{{end}}
+{{define "parent"}}{{if .Data.OnTodos}}{{t "todos.title"}}{{else}}{{.Data.Project.Name}}{{end}}{{end}}
+{{define "tab"}}{{template "title" .}} · {{template "parent" .}}{{end}}
+{{define "content"}}
+{{with .Data}}
+<a class="crumb" href="{{if .OnTodos}}/todos{{else}}/projects/{{.Project.ID}}{{end}}">{{template "icon-arrow-left"}}{{template "parent" $}}</a>
+<div class="page-head">
+<div><h1>{{template "title" $}}</h1>
+{{with .Todo.ID}}<p class="hint">{{$.Data.Todo.Title}}</p>{{end}}</div>
+</div>
+{{with .Errors}}<ul class="errors" role="alert">{{range .}}<li>{{t .}}</li>{{end}}</ul>{{end}}
+<form method="post" action="{{if .Todo.ID}}/todos/{{.Todo.ID}}{{else if .OnTodos}}/todos{{else}}/projects/{{.Project.ID}}/todos{{end}}" class="form">
+{{if .OnTodos}}<label>{{t "todos.project"}} <select name="project" required>
+{{range .Projects}}<optgroup label="{{.Label}}">{{range .Options}}<option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Name}}</option>{{end}}</optgroup>
+{{end}}</select></label>{{end}}
+<label>{{t "todos.todo_title"}} <input name="title" value="{{.Todo.Title}}" required></label>
+<label>{{t "todos.description"}} <textarea name="description" rows="4">{{.Todo.Description}}</textarea></label>
+{{with .Statuses}}<label>{{t "todos.status"}} <select name="status">
+{{range .}}<option value="{{.ID}}"{{if eq .ID $.Data.Todo.StatusID}} selected{{end}}>{{.Name}}</option>
+{{end}}</select></label>{{end}}
+<label>{{t "todos.assignee"}} <select name="assignee">
+<option value="">{{t "todos.unassigned"}}</option>
+{{range .Users}}<option value="{{.ID}}"{{if eq .ID $.Data.Todo.AssigneeID}} selected{{end}}>{{.Name}}</option>
+{{end}}</select></label>
+<label>{{t "todos.priority"}} <select name="priority">
+{{range $value, $key := .Priorities}}<option value="{{$value}}"{{if eq $value $.Data.Todo.Priority}} selected{{end}}>{{t $key}}</option>
+{{end}}</select></label>
+<label>{{t "todos.due_date"}} <input type="date" name="due_date" value="{{.Todo.DueDate}}"></label>
+<button>{{template "icon-save"}}{{t "common.save"}}</button>
+</form>
+{{with .MoveTargets}}<h2>{{t "todos.move_to"}}</h2>
+<form method="post" action="/todos/{{$.Data.Todo.ID}}/move" class="form">
+<label>{{t "todos.project"}} <select name="project" aria-describedby="move-hint">
+{{range .}}<option value="{{.ID}}">{{.Name}}</option>
+{{end}}</select></label>
+<p class="hint" id="move-hint">{{t "todos.move_hint"}}</p>
+<button>{{template "icon-folder-input"}}{{t "todos.move"}}</button>
+</form>{{end}}
+{{with .Todo.ID}}<form method="post" action="/todos/{{.}}/delete" data-confirm="{{with $.Data.Todo}}{{if eq .Entries 0}}{{t "todos.confirm_delete" .Title}}{{else if eq .Entries 1}}{{t "todos.confirm_delete_entry" .Title}}{{else}}{{t "todos.confirm_delete_entries" .Title .Entries}}{{end}}{{end}}"><button class="danger">{{template "icon-trash"}}{{t "common.delete"}}</button></form>{{end}}
+{{end}}
+{{end}}

@@ -7,6 +7,16 @@
 <div><dt>{{t "home.month"}}</dt><dd><b>{{t "home.hours" (duration .Month.Total)}}</b> · {{t "home.billable" (duration .Month.Billable)}}</dd></div>
 </dl>
 {{if .Unassigned}}<p class="actions"><a href="/entries?project=none">{{if eq .Unassigned 1}}{{t "home.unassigned_one" (duration .UnassignedHours)}}{{else}}{{t "home.unassigned" .Unassigned (duration .UnassignedHours)}}{{end}}</a></p>{{end}}
+{{with .Todos}}
+<h2>{{t "home.my_todos"}}</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>{{t "todos.todo_title"}}</th><th>{{t "todos.project"}}</th><th>{{t "todos.priority"}}</th><th>{{t "todos.due_date"}}</th></tr></thead>
+<tbody>
+{{range .}}<tr><td><a href="/todos/{{.ID}}">{{.Title}}</a></td><td>{{.Project}}</td><td>{{t .PriorityKey}}</td><td>{{with .DueDate}}{{day .}}{{end}}{{if .Overdue}} <span class="badge">{{t "todos.overdue"}}</span>{{end}}</td></tr>
+{{end}}</tbody>
+</table></div>
+<p class="actions"><a href="/todos?assignee=me">{{t "home.all_my_todos"}}</a></p>
+{{end}}
 {{with .Unbilled}}
 <h2>{{t "home.unbilled"}}</h2>
 <div class="table-wrap"><table>
