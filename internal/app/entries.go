@@ -20,6 +20,7 @@ func init() {
 		mux.HandleFunc("POST /entries/delete", a.authed(a.entryDeleteSelected))
 		mux.HandleFunc("POST /entries/assign", a.authed(a.entryAssignSelected))
 		mux.HandleFunc("POST /entries/billable", a.authed(a.entryBillableSelected))
+		mux.HandleFunc("POST /entries/todo", a.authed(a.entryTodoSelected))
 		mux.HandleFunc("GET /entries/{id}", a.authed(a.entryEdit))
 		mux.HandleFunc("POST /entries/{id}", a.authed(a.entryUpdate))
 		mux.HandleFunc("POST /entries/{id}/delete", a.authed(a.entryDelete))
@@ -41,6 +42,7 @@ type entryRow struct {
 	User        string
 	Own         bool
 	Project     string
+	Todo        string
 	Start, End  time.Time
 	Running     bool
 	Duration    time.Duration
@@ -74,11 +76,12 @@ type entryDay struct {
 }
 
 // entriesFilter is what /entries shows: one Day ("" = every day), only the viewer's
-// entries unless Everyone, an optional Project ("none" = unassigned), and PerPage entries at a time.
+// entries unless Everyone, an optional Project ("none" = unassigned) and Todo, and PerPage entries at a time.
 type entriesFilter struct {
 	Day      string
 	Everyone bool
 	Project  string
+	Todo     string
 	PerPage  int
 }
 
@@ -100,6 +103,9 @@ func (f entriesFilter) query(before string) url.Values {
 	}
 	if f.Project != "" {
 		q.Set("project", f.Project)
+	}
+	if f.Todo != "" {
+		q.Set("todo", f.Todo)
 	}
 	if n := f.CustomPerPage(); n != 0 {
 		q.Set("per_page", strconv.Itoa(n))
@@ -132,9 +138,9 @@ type entriesPage struct {
 	All                  string
 	More                 string
 	DeleteURL, AssignURL string
-	BillableURL          string
+	BillableURL, TodoURL string
 	Whose, PageSizes     []filterOption
-	Projects             filterSelect
+	Projects, Todos      filterSelect
 	JumpHidden           []hiddenField
 	Days                 []entryDay
 	Customers            []pickerCustomer
@@ -154,10 +160,10 @@ func (a *App) listEntries(w http.ResponseWriter, r *http.Request, status int, re
 	}
 	u := currentUser(r)
 	q := r.URL.Query()
-	f := entriesFilter{Everyone: q.Get("everyone") != "", Project: q.Get("project"), PerPage: entryPageSize(q.Get("per_page"))}
+	f := entriesFilter{Everyone: q.Get("everyone") != "", Project: q.Get("project"), Todo: q.Get("todo"), PerPage: entryPageSize(q.Get("per_page"))}
 	where, args := " WHERE (? OR e.user_id = ?)", []any{f.Everyone, u.ID}
 	page := entriesPage{selectionRefusal: refused}
-	if page.Customers, err = a.loadPicker(0); err != nil {
+	if page.Customers, err = a.loadPicker(0, 0); err != nil {
 		a.serverError(w, r, err)
 		return
 	}
@@ -181,6 +187,22 @@ func (a *App) listEntries(w http.ResponseWriter, r *http.Request, status int, re
 			return
 		}
 		where += " AND e.project_id = ?"
+		args = append(args, id)
+	}
+	if f.Todo != "" {
+		id, err := strconv.ParseInt(f.Todo, 10, 64)
+		var exists bool
+		if err == nil {
+			if err := a.db.QueryRow(`SELECT EXISTS (SELECT 1 FROM todo WHERE id = ?)`, id).Scan(&exists); err != nil {
+				a.serverError(w, r, err)
+				return
+			}
+		}
+		if !exists {
+			a.errorPage(w, r, http.StatusBadRequest, "error.invalid_todo")
+			return
+		}
+		where += " AND e.todo_id = ?"
 		args = append(args, id)
 	}
 	totalsWhere, totalsArgs := where, args
@@ -222,7 +244,7 @@ func (a *App) listEntries(w http.ResponseWriter, r *http.Request, status int, re
 	page.entriesFilter = f
 	page.Self = f.url("")
 	query := strings.TrimPrefix(f.url(before), "/entries")
-	page.DeleteURL, page.AssignURL, page.BillableURL = "/entries/delete"+query, "/entries/assign"+query, "/entries/billable"+query
+	page.DeleteURL, page.AssignURL, page.BillableURL, page.TodoURL = "/entries/delete"+query, "/entries/assign"+query, "/entries/billable"+query, "/entries/todo"+query
 	page.Whose = []filterOption{
 		{"filter.mine", f.with(func(f *entriesFilter) { f.Everyone = false }), !f.Everyone},
 		{"filter.team", f.with(func(f *entriesFilter) { f.Everyone = true }), f.Everyone},
@@ -232,11 +254,16 @@ func (a *App) listEntries(w http.ResponseWriter, r *http.Request, status int, re
 		a.serverError(w, r, err)
 		return
 	}
+	if page.Todos, err = a.todoFilter(f); err != nil {
+		a.serverError(w, r, err)
+		return
+	}
 
 	rows, err := a.db.Query(`
-		SELECT e.id, e.user_id, u.display_name, ifnull(c.name || ' · ' || p.name, ''), e.start_time, e.end_time, e.description, e.billable, ci.id, ci.number
+		SELECT e.id, e.user_id, u.display_name, ifnull(c.name || ' · ' || p.name, ''), ifnull(t.title, ''), e.start_time, e.end_time, e.description, e.billable, ci.id, ci.number
 		FROM time_entry e JOIN user u ON u.id = e.user_id
-		LEFT JOIN project p ON p.id = e.project_id LEFT JOIN customer c ON c.id = p.customer_id`+claimJoin+where+`
+		LEFT JOIN project p ON p.id = e.project_id LEFT JOIN customer c ON c.id = p.customer_id
+		LEFT JOIN todo t ON t.id = e.todo_id`+claimJoin+where+`
 		ORDER BY e.start_time DESC, e.id DESC`+limit, args...)
 	if err != nil {
 		a.serverError(w, r, err)
@@ -249,7 +276,7 @@ func (a *App) listEntries(w http.ResponseWriter, r *http.Request, status int, re
 		var userID, start int64
 		var end, invoice sql.NullInt64
 		var number sql.NullString
-		if err := rows.Scan(&e.ID, &userID, &e.User, &e.Project, &start, &end, &e.Description, &e.Billable, &invoice, &number); err != nil {
+		if err := rows.Scan(&e.ID, &userID, &e.User, &e.Project, &e.Todo, &start, &end, &e.Description, &e.Billable, &invoice, &number); err != nil {
 			a.serverError(w, r, err)
 			return
 		}
@@ -324,6 +351,36 @@ func (a *App) projectFilter(f entriesFilter) (filterSelect, error) {
 	return s, rows.Err()
 }
 
+// todoFilter offers every todo, done ones and those of archived projects included, grouped by project.
+func (a *App) todoFilter(f entriesFilter) (filterSelect, error) {
+	s := filterSelect{Action: "/entries", Name: "todo", Label: "entries.todo", All: "entries.all_todos", Hidden: hiddenFields(f.query(""), "todo")}
+	rows, err := a.db.Query(`SELECT p.id, c.name || ' · ' || p.name, t.id, t.title, p.archived OR c.archived
+		FROM todo t JOIN project p ON p.id = t.project_id JOIN customer c ON c.id = p.customer_id
+		ORDER BY c.name, c.id, p.name, p.id, t.title, t.id`)
+	if err != nil {
+		return s, err
+	}
+	defer func() { _ = rows.Close() }()
+	var lastProject int64
+	for rows.Next() {
+		var project, todo int64
+		var projectName string
+		var o filterSelectOption
+		if err := rows.Scan(&project, &projectName, &todo, &o.Name, &o.Archived); err != nil {
+			return s, err
+		}
+		if project != lastProject {
+			s.Groups = append(s.Groups, filterGroup{Label: projectName})
+			lastProject = project
+		}
+		o.Value = strconv.FormatInt(todo, 10)
+		o.Selected = o.Value == f.Todo
+		last := &s.Groups[len(s.Groups)-1]
+		last.Options = append(last.Options, o)
+	}
+	return s, rows.Err()
+}
+
 // sumEntryDays totals each day over all its matching entries, not only the ones on this page.
 func (a *App) sumEntryDays(days []entryDay, where string, args []any) error {
 	if len(days) == 0 {
@@ -371,6 +428,7 @@ func parseCursor(s string) (start, id int64, err error) {
 type entryForm struct {
 	ID          int64
 	Project     string
+	Todo        string
 	Start, End  string
 	Description string
 	Billable    string
@@ -403,12 +461,13 @@ func (p entryPage) BackDay() string {
 	return day
 }
 
-// renderEntry offers storedProject ("" = none) even when it no longer receives new time.
-func (a *App) renderEntry(w http.ResponseWriter, r *http.Request, status int, page entryPage, storedProject string) {
-	storedID, _ := strconv.ParseInt(storedProject, 10, 64)
+// renderEntry offers stored's project and todo even when they no longer receive new time.
+func (a *App) renderEntry(w http.ResponseWriter, r *http.Request, status int, page entryPage, stored entryForm) {
+	project, _ := strconv.ParseInt(stored.Project, 10, 64)
+	todo, _ := strconv.ParseInt(stored.Todo, 10, 64)
 	var err error
 	page.Return = r.FormValue("return")
-	if page.Customers, err = a.loadPicker(storedID); err != nil {
+	if page.Customers, err = a.loadPicker(project, todo); err != nil {
 		a.serverError(w, r, err)
 		return
 	}
@@ -416,20 +475,47 @@ func (a *App) renderEntry(w http.ResponseWriter, r *http.Request, status int, pa
 }
 
 func (a *App) entryNew(w http.ResponseWriter, r *http.Request) {
-	a.renderEntry(w, r, http.StatusOK, entryPage{}, "")
+	a.renderEntry(w, r, http.StatusOK, entryPage{}, entryForm{})
 }
 
 type savedEntry struct {
 	project    sql.NullInt64
+	todo       sql.NullInt64
 	start, end int64
 	billable   sql.NullBool
 }
 
 // validateEntry checks f inside tx and returns what to store, or validation errors as catalog keys.
-// storedProject ("" = none) stays allowed after it was archived.
-func validateEntry(tx *sql.Tx, u *User, f entryForm, loc *time.Location, storedProject string) (savedEntry, []string, error) {
+// stored's project and todo stay allowed after they stopped receiving new time.
+// A newly picked todo sets f's project; otherwise a project other than the todo's clears f's todo.
+func validateEntry(tx *sql.Tx, u *User, f *entryForm, loc *time.Location, stored entryForm) (savedEntry, []string, error) {
 	var s savedEntry
 	var errs []string
+	if f.Todo != "" {
+		id, err := strconv.ParseInt(f.Todo, 10, 64)
+		var project int64
+		if err == nil {
+			if f.Todo == stored.Todo {
+				err = tx.QueryRow(`SELECT project_id FROM todo WHERE id = ?`, id).Scan(&project)
+			} else {
+				project, err = openTodoProject(tx, id)
+			}
+			if err != nil && !errors.Is(err, sql.ErrNoRows) {
+				return s, nil, err
+			}
+		}
+		switch todoProject := strconv.FormatInt(project, 10); {
+		case err != nil:
+			errs = append(errs, "entries.error.todo")
+		case f.Todo != stored.Todo:
+			f.Project = todoProject
+			s.todo = sql.NullInt64{Int64: id, Valid: true}
+		case f.Project != todoProject:
+			f.Todo = ""
+		default:
+			s.todo = sql.NullInt64{Int64: id, Valid: true}
+		}
+	}
 	start, err := parseInput(f.Start, loc)
 	if err != nil {
 		errs = append(errs, "entries.error.start")
@@ -453,7 +539,7 @@ func validateEntry(tx *sql.Tx, u *User, f entryForm, loc *time.Location, storedP
 		errs = append(errs, "entries.error.project")
 	} else {
 		var def bool
-		if f.Project == storedProject {
+		if f.Project == stored.Project {
 			err = tx.QueryRow(`SELECT billable FROM project WHERE id = ?`, id).Scan(&def)
 		} else {
 			def, err = activeProjectBillable(tx, id)
@@ -492,6 +578,7 @@ func parseInput(s string, loc *time.Location) (time.Time, error) {
 func entryFromForm(r *http.Request) entryForm {
 	return entryForm{
 		Project:     r.PostFormValue("project"),
+		Todo:        r.PostFormValue("todo"),
 		Start:       r.PostFormValue("start"),
 		End:         r.PostFormValue("end"),
 		Description: strings.TrimSpace(r.PostFormValue("description")),
@@ -513,17 +600,17 @@ func (a *App) entryCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer func() { _ = tx.Rollback() }()
-	s, errs, err := validateEntry(tx, u, f, loc, "")
+	s, errs, err := validateEntry(tx, u, &f, loc, entryForm{})
 	if err != nil {
 		a.serverError(w, r, err)
 		return
 	}
 	if errs != nil {
-		a.renderEntry(w, r, http.StatusUnprocessableEntity, entryPage{Entry: f, Errors: errs}, "")
+		a.renderEntry(w, r, http.StatusUnprocessableEntity, entryPage{Entry: f, Errors: errs}, entryForm{})
 		return
 	}
-	if _, err := tx.Exec(`INSERT INTO time_entry (user_id, project_id, start_time, end_time, description, billable) VALUES (?, ?, ?, ?, ?, ?)`,
-		u.ID, s.project, s.start, s.end, f.Description, s.billable); err != nil {
+	if _, err := tx.Exec(`INSERT INTO time_entry (user_id, project_id, todo_id, start_time, end_time, description, billable) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		u.ID, s.project, s.todo, s.start, s.end, f.Description, s.billable); err != nil {
 		a.serverError(w, r, err)
 		return
 	}
@@ -551,12 +638,12 @@ func (a *App) entryFromPath(w http.ResponseWriter, r *http.Request, loc *time.Lo
 	}
 	f.ID = id
 	var userID, start, end int64
-	var project, invoice sql.NullInt64
+	var project, todo, invoice sql.NullInt64
 	var number sql.NullString
 	var billable sql.NullBool
-	err = a.db.QueryRow(`SELECT e.user_id, e.project_id, e.start_time, e.end_time, e.description, e.billable, ci.id, ci.number
+	err = a.db.QueryRow(`SELECT e.user_id, e.project_id, e.todo_id, e.start_time, e.end_time, e.description, e.billable, ci.id, ci.number
 		FROM time_entry e`+claimJoin+` WHERE e.id = ? AND e.end_time IS NOT NULL`, id).
-		Scan(&userID, &project, &start, &end, &f.Description, &billable, &invoice, &number)
+		Scan(&userID, &project, &todo, &start, &end, &f.Description, &billable, &invoice, &number)
 	if errors.Is(err, sql.ErrNoRows) {
 		a.notFound(w, r)
 		return f, false, false
@@ -567,6 +654,9 @@ func (a *App) entryFromPath(w http.ResponseWriter, r *http.Request, loc *time.Lo
 	}
 	if project.Valid {
 		f.Project = strconv.FormatInt(project.Int64, 10)
+	}
+	if todo.Valid {
+		f.Todo = strconv.FormatInt(todo.Int64, 10)
 	}
 	f.Start, f.End = formatInput(time.Unix(start, 0), loc), formatInput(time.Unix(end, 0), loc)
 	switch {
@@ -602,7 +692,7 @@ func (a *App) entryEdit(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	a.renderEntry(w, r, http.StatusOK, entryPage{Entry: f, ReadOnly: !mine || f.Invoice != nil}, f.Project)
+	a.renderEntry(w, r, http.StatusOK, entryPage{Entry: f, ReadOnly: !mine || f.Invoice != nil}, f)
 }
 
 func (a *App) entryUpdate(w http.ResponseWriter, r *http.Request) {
@@ -626,18 +716,18 @@ func (a *App) entryUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer func() { _ = tx.Rollback() }()
-	s, errs, err := validateEntry(tx, currentUser(r), f, loc, stored.Project)
+	s, errs, err := validateEntry(tx, currentUser(r), &f, loc, stored)
 	if err != nil {
 		a.serverError(w, r, err)
 		return
 	}
 	if errs != nil {
-		a.renderEntry(w, r, http.StatusUnprocessableEntity, entryPage{Entry: f, Errors: errs}, stored.Project)
+		a.renderEntry(w, r, http.StatusUnprocessableEntity, entryPage{Entry: f, Errors: errs}, stored)
 		return
 	}
-	res, err := tx.Exec(`UPDATE time_entry SET project_id = ?, start_time = ?, end_time = ?, description = ?, billable = ?
+	res, err := tx.Exec(`UPDATE time_entry SET project_id = ?, todo_id = ?, start_time = ?, end_time = ?, description = ?, billable = ?
 		WHERE id = ? AND invoice_line_id IS NULL`,
-		s.project, s.start, s.end, f.Description, s.billable, f.ID)
+		s.project, s.todo, s.start, s.end, f.Description, s.billable, f.ID)
 	if !a.wroteUnclaimed(w, r, res, err) {
 		return
 	}
@@ -693,6 +783,32 @@ func (a *App) entryAssignSelected(w http.ResponseWriter, r *http.Request) {
 			}
 			in, args := inList(ids)
 			_, err = tx.Exec(`UPDATE time_entry SET project_id = ?, billable = ifnull(billable, ?) WHERE id`+in, append([]any{project, def}, args...)...)
+			return "", err
+		})
+}
+
+// entryTodoSelected attaches the selected entries to a todo that may receive new time, and so to its project;
+// those without a billable flag take the project's default.
+func (a *App) entryTodoSelected(w http.ResponseWriter, r *http.Request) {
+	a.editSelected(w, r, "entries.error.edit_blocked", func(e entryRow) bool { return !e.Selectable() },
+		func(tx *sql.Tx, ids []int64) (string, error) {
+			todo, err := strconv.ParseInt(r.PostFormValue("todo"), 10, 64)
+			if err != nil {
+				return "entries.error.todo", nil
+			}
+			project, err := openTodoProject(tx, todo)
+			var def bool
+			if err == nil {
+				def, err = activeProjectBillable(tx, project)
+			}
+			if errors.Is(err, sql.ErrNoRows) {
+				return "entries.error.todo", nil
+			} else if err != nil {
+				return "", err
+			}
+			in, args := inList(ids)
+			_, err = tx.Exec(`UPDATE time_entry SET project_id = ?, todo_id = ?, billable = ifnull(billable, ?) WHERE id`+in,
+				append([]any{project, todo, def}, args...)...)
 			return "", err
 		})
 }

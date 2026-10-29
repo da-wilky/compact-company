@@ -78,19 +78,19 @@ func (a *App) loadTimerBar(userID int64) (*timerBar, error) {
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
-	bar.Customers, err = a.loadPicker(0)
+	bar.Customers, err = a.loadPicker(0, 0)
 	return bar, err
 }
 
 // loadPicker lists the projects that may receive new time, plus storedProject, grouped by customer,
-// each with its todos that may receive new time.
-func (a *App) loadPicker(storedProject int64) ([]pickerCustomer, error) {
+// each with its todos that may receive new time, plus storedTodo.
+func (a *App) loadPicker(storedProject, storedTodo int64) ([]pickerCustomer, error) {
 	rows, err := a.db.Query(`
 		SELECT c.name, p.id, p.name, t.id, t.title FROM project p JOIN customer c ON c.id = p.customer_id
-			LEFT JOIN todo t ON t.project_id = p.id AND p.archived = 0 AND c.archived = 0
-				AND t.status_id IN (SELECT id FROM todo_status WHERE done = 0)
+			LEFT JOIN todo t ON t.project_id = p.id AND ((p.archived = 0 AND c.archived = 0
+				AND t.status_id IN (SELECT id FROM todo_status WHERE done = 0)) OR t.id = ?)
 		WHERE (p.archived = 0 AND c.archived = 0) OR p.id = ?
-		ORDER BY c.name, c.id, p.name, p.id, t.priority DESC, t.due_date IS NULL, t.due_date, t.created_at, t.id`, storedProject)
+		ORDER BY c.name, c.id, p.name, p.id, t.priority DESC, t.due_date IS NULL, t.due_date, t.created_at, t.id`, storedTodo, storedProject)
 	if err != nil {
 		return nil, err
 	}

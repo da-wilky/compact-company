@@ -182,9 +182,9 @@ parallel_entries = true
 	c.postForm("/timers/2/stop", nil).wantStatus(t, http.StatusSeeOther)
 	c.get(project).wantBody(t, "2:00 h")
 
-	c.postForm("/entries/1", entryForm(website, "2026-10-26T09:00", "2026-10-26T10:00", "kept")).wantStatus(t, http.StatusSeeOther)
+	c.postForm("/entries/1", withTodo(entryForm(website, "2026-10-26T09:00", "2026-10-26T10:00", "kept"), todo)).wantStatus(t, http.StatusSeeOther)
 	c.get(project).wantBody(t, "2:00 h")
-	c.postForm("/entries/1", entryForm(hosting, "2026-10-26T09:00", "2026-10-26T10:00", "moved")).wantStatus(t, http.StatusSeeOther)
+	c.postForm("/entries/1", withTodo(entryForm(hosting, "2026-10-26T09:00", "2026-10-26T10:00", "moved"), todo)).wantStatus(t, http.StatusSeeOther)
 	c.massEdit("assign", "?day=2026-10-26", url.Values{"project": {hosting}}, "/entries/2").wantStatus(t, http.StatusOK)
 	c.postForm("/entries/1", entryForm(website, "2026-10-26T09:00", "2026-10-26T10:00", "back")).wantStatus(t, http.StatusSeeOther)
 

@@ -101,7 +101,7 @@ def seed(api):
     seed_open_invoices(api, customer, business)
     # Time after the drafts were made, so the overview shows unbilled time both on a draft and on no invoice.
     last_friday = monday - datetime.timedelta(days=3)
-    api.post(f"{base}/entries", form={"project": projects["Website relaunch"], "start": f"{last_friday}T09:00", "end": f"{last_friday}T12:30", "description": "Content migration", "billable": ""})
+    api.post(f"{base}/entries", form={"project": projects["Website relaunch"], "start": f"{last_friday}T09:00", "end": f"{last_friday}T12:30", "description": "Content migration", "billable": "", "todo": "2"})
     api.post(f"{base}/customers", form={"name": "Nordlicht Logistik GmbH", "address": "Am Hafen 5\n20457 Hamburg", "email": "rechnung@nordlicht.example", "currency": "EUR", "invoice_language": "de", "timezone": "Europe/Berlin", "hourly_rate": "90"})
     other = max(map(int, re.findall(r'href="/customers/(\d+)/projects"', api.get(f"{base}/customers").text())))
     api.post(f"{base}/customers/{other}/projects", form={"name": "Fleet dashboard", "hourly_rate": "", "billable": "on"})

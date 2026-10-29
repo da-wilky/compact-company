@@ -144,11 +144,12 @@ h1 { margin: 0 0 1rem; font-size: 1.75rem; font-weight: 650; letter-spacing: -.0
 .entry-day h2 { display: flex; align-items: baseline; gap: .75rem; margin: 1.25rem 0 .5rem; font-size: 1rem; font-weight: 650; }
 .entry-day h2 .sum { margin-left: auto; color: var(--muted); font-weight: 600; font-variant-numeric: tabular-nums; }
 .entry-day thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
-.entry-day table { table-layout: fixed; min-width: 40rem; }
+.entry-day table { table-layout: fixed; min-width: 48rem; }
 .entry-day .c-user { width: 9rem; }
 .entry-day .c-time { width: 8.5rem; }
 .entry-day .c-dur { width: 5.5rem; }
-.entry-day .c-project { width: 30%; }
+.entry-day .c-project { width: 24%; }
+.entry-day .c-todo { width: 20%; }
 .entry-day .c-bill { width: 7rem; }
 .entry-day td { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .selection input[type=checkbox], input[type=checkbox][form] { width: 1.1rem; height: 1.1rem; margin: 0; padding: 0; vertical-align: middle; accent-color: var(--accent); }
