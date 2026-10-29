@@ -27,7 +27,7 @@ func (c *client) trackedTodo() (todo, website, hosting string) {
 	c.postForm("/timers/2/stop", nil).wantStatus(c.t, http.StatusSeeOther)
 	internal := entryForm(website, "2026-10-26T09:00", "2026-10-26T10:00", "internal")
 	internal.Set("billable", "no")
-	c.postForm("/entries/2", internal).wantStatus(c.t, http.StatusSeeOther)
+	c.postForm("/entries/2", withTodo(internal, todo)).wantStatus(c.t, http.StatusSeeOther)
 	c.get(project).wantBody(c.t, "2:00 h")
 	return todo, website, hosting
 }
@@ -73,8 +73,8 @@ func TestMovingATodoMovesItsEntriesWithTheirTodoAndBillableFlags(t *testing.T) {
 	wantCards(t, board.column(t, "In progress"), "Write copy")
 	wantInOrder(t, board.column(t, "In progress").text(), "Write copy", "2:00 h")
 	entries := c.get("/entries?day=2026-10-26")
-	entries.wantRow(t, "", "09:00–10:00", "1:00", "acme · hosting", "", "yes")
-	entries.wantRow(t, "", "09:00–10:00", "1:00", "acme · hosting", "internal", "no")
+	entries.wantRow(t, "", "09:00–10:00", "1:00", "acme · hosting", "Write copy", "", "yes")
+	entries.wantRow(t, "", "09:00–10:00", "1:00", "acme · hosting", "Write copy", "internal", "no")
 	entries.wantNoBody(t, "acme · website")
 }
 
