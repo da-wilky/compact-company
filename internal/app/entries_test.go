@@ -146,7 +146,7 @@ func TestEntryFiltersShowTheProjectAndKeepEachOther(t *testing.T) {
 
 	res := c.get("/entries?day=2026-10-26&project=" + project)
 
-	res.wantBody(t, `acme · website <a href="/entries?day=2026-10-26"`)
+	res.wantBody(t, `<option value="`+project+`" selected>website</option>`)
 	res.wantBody(t, `href="/entries?day=2026-10-26&amp;everyone=1&amp;project=`+project+`">Team</a>`)
 	res.wantBody(t, `href="/entries?project=`+project+`">All time entries</a>`)
 	res.wantNoBody(t, ">Today</a>")

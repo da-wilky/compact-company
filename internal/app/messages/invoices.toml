@@ -8,10 +8,7 @@
 "invoices.gross" = { en = "Gross", de = "Brutto" }
 "invoices.status" = { en = "Status", de = "Status" }
 "invoices.paid" = { en = "Paid", de = "Bezahlt" }
-"invoices.show" = { en = "Show", de = "Anzeigen" }
-"invoices.all" = { en = "All", de = "Alle" }
 "invoices.all_customers" = { en = "All customers", de = "Alle Kunden" }
-"invoices.filter" = { en = "Filter", de = "Filtern" }
 "invoices.status.draft" = { en = "Draft", de = "Entwurf" }
 "invoices.status.issued" = { en = "Issued", de = "Gestellt" }
 "invoices.status.paid" = { en = "Paid", de = "Bezahlt" }

@@ -51,7 +51,7 @@ Build it from the shared components in `app.css`:
 | `.crumb` | back link above the `h1`, with `icon-arrow-left` |
 | `.page-head` | title row: `h1` (plus `.hint` subtitle) left, `.pager` right; no action pills |
 | `.pager` | navigation: `.prev` / `.next` links, a `form.jump` with a date input (`app.js` turns it into the calendar picker), outlined `.pill` shortcuts (no icons) before `.prev` |
-| `.filters` | filter row under the header: `.label`, `.seg` toggle (`aria-current` marks the active option; archived is **Active / All**), removable `.chip` |
+| `.filters` | filter row under the header on every list page: one `filter.show` `.label` first, then `filter-seg` toggles (`[]filterOption` built in Go; archived is **Active / All**), `filter-select` value filters (`filterSelect`: auto-submits, first option names the filter, archived marked), page size last. Every URL and hidden input keeps the other filters and drops the cursor |
 | `.actions` | row of filled pill links with icons |
 | `.status-card` | `aside` beside the table in `.invoice-body`: `.status`, `.due` amount, a `.pill.primary` action, forms, a `.danger` link |
 | `.form` | the form card; hints are sibling `p.hint`s linked via `aria-describedby`; a read-only form is a disabled `fieldset` with Save hidden |

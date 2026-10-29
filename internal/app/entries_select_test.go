@@ -229,7 +229,7 @@ func TestAssigningOffersOnlyProjectsThatReceiveTime(t *testing.T) {
 	page := c.get("/entries")
 
 	page.wantBody(t, `<optgroup label="acme"><option value="`+website+`">website</option></optgroup>`)
-	page.wantNoBody(t, `value="`+hosting+`"`)
+	page.wantNoBody(t, `value="`+hosting+`">hosting</option>`)
 }
 
 func TestAssigningToAnArchivedProjectChangesNothing(t *testing.T) {

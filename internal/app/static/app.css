@@ -136,9 +136,9 @@ h1 { margin: 0 0 1rem; font-size: 1.75rem; font-weight: 650; letter-spacing: -.0
 .seg a { padding: .2rem .8rem; border-radius: 999px; color: var(--muted); font-size: .85rem; font-weight: 500; }
 .seg a:hover { color: var(--fg); text-decoration: none; }
 .seg a[aria-current] { background: var(--accent); color: var(--accent-fg); }
-.chip { display: inline-flex; align-items: center; gap: .35rem; padding: .2rem .35rem .2rem .75rem; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: .85rem; font-weight: 500; }
-.chip a { display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; color: inherit; }
-.chip a:hover { background: var(--surface); text-decoration: none; }
+.filter-select { display: flex; gap: .4rem; min-width: 0; margin: 0; }
+.filter-select select { min-width: 0; max-width: 16rem; padding: .25rem .6rem; border-radius: 999px; font-size: .85rem; }
+.filter-select button { padding: .25rem .8rem; font-size: .85rem; }
 
 .entry-day { margin-bottom: .75rem; }
 .entry-day h2 { display: flex; align-items: baseline; gap: .75rem; margin: 1.25rem 0 .5rem; font-size: 1rem; font-weight: 650; }
@@ -166,9 +166,6 @@ h1 { margin: 0 0 1rem; font-size: 1.75rem; font-weight: 650; letter-spacing: -.0
 .selection-blocked { margin: 0 0 1rem; }
 .selection-blocked p { margin: 0 0 .25rem; font-weight: 600; }
 .selection-blocked ul { margin: 0; padding-left: 1.1rem; }
-.filter-form { display: flex; gap: .4rem; margin: 0; }
-.filter-form select { padding: .25rem .6rem; border-radius: 999px; font-size: .85rem; }
-.filter-form button { padding: .25rem .8rem; font-size: .85rem; }
 .invoice-list td:nth-child(2) { white-space: nowrap; }
 .invoice-lines { min-width: 40rem; }
 .invoice-lines td { vertical-align: top; }
@@ -183,7 +180,6 @@ h1 { margin: 0 0 1rem; font-size: 1.75rem; font-weight: 650; letter-spacing: -.0
 .invoice-header .hint { margin: 0; }
 svg.icon { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 :is(a, button):has(> svg.icon) { display: inline-flex; align-items: center; justify-content: center; gap: .4rem; }
-.chip svg.icon { width: 14px; height: 14px; }
 button.icon svg.icon { width: 12px; height: 12px; fill: currentColor; }
 .crumb { margin-bottom: .35rem; color: var(--muted); font-size: .85rem; font-weight: 500; }
 .crumb:hover { color: var(--accent); text-decoration: none; }

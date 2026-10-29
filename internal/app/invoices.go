@@ -63,30 +63,35 @@ func (r invoiceRow) Selectable() bool {
 
 type invoicesPage struct {
 	Rows      []invoiceRow
-	Customers []customerOption
 	Customer  int64
 	Status    string
-	Statuses  []string
+	Statuses  []filterOption
+	Customers filterSelect
 	DeleteURL string
 	selectionRefusal[invoiceRow]
 }
 
 type customerOption struct {
-	ID   int64
-	Name string
+	ID       int64
+	Name     string
+	Archived bool
 }
 
 var invoiceStatuses = []string{"draft", "issued", "paid", "cancelled"}
 
-// StatusLink is the list URL for status, keeping the customer filter.
-func (p invoicesPage) StatusLink(status string) string {
+// invoicesQuery is the list's query for customer and status; 0 and "" mean all.
+func invoicesQuery(customer int64, status string) url.Values {
 	q := url.Values{}
-	if p.Customer != 0 {
-		q.Set("customer", strconv.FormatInt(p.Customer, 10))
+	if customer != 0 {
+		q.Set("customer", strconv.FormatInt(customer, 10))
 	}
 	if status != "" {
 		q.Set("status", status)
 	}
+	return q
+}
+
+func invoicesURL(q url.Values) string {
 	if len(q) == 0 {
 		return "/invoices"
 	}
@@ -99,17 +104,30 @@ func (a *App) invoiceList(w http.ResponseWriter, r *http.Request) {
 
 // listInvoices renders the listing r asks for, with the selection a refused mass action leaves behind.
 func (a *App) listInvoices(w http.ResponseWriter, r *http.Request, status int, refused selectionRefusal[invoiceRow]) {
-	page := invoicesPage{Statuses: invoiceStatuses, selectionRefusal: refused}
+	page := invoicesPage{selectionRefusal: refused}
 	page.Customer, _ = strconv.ParseInt(r.FormValue("customer"), 10, 64)
 	if s := r.FormValue("status"); slices.Contains(invoiceStatuses, s) {
 		page.Status = s
 	}
-	page.DeleteURL = "/invoices/delete" + strings.TrimPrefix(page.StatusLink(page.Status), "/invoices")
-	var err error
-	if page.Customers, err = a.customerOptions(); err != nil {
+	page.DeleteURL = "/invoices/delete" + strings.TrimPrefix(invoicesURL(invoicesQuery(page.Customer, page.Status)), "/invoices")
+	for _, s := range append([]string{""}, invoiceStatuses...) {
+		label := "filter.all"
+		if s != "" {
+			label = "invoices.status." + s
+		}
+		page.Statuses = append(page.Statuses, filterOption{label, invoicesURL(invoicesQuery(page.Customer, s)), s == page.Status})
+	}
+	customers, err := a.customerOptions()
+	if err != nil {
 		a.serverError(w, r, err)
 		return
 	}
+	var options []filterSelectOption
+	for _, c := range customers {
+		options = append(options, filterSelectOption{Value: strconv.FormatInt(c.ID, 10), Name: c.Name, Archived: c.Archived, Selected: c.ID == page.Customer})
+	}
+	page.Customers = filterSelect{Action: "/invoices", Name: "customer", Label: "invoices.customer", All: "invoices.all_customers",
+		Hidden: hiddenFields(invoicesQuery(page.Customer, page.Status), "customer"), Groups: []filterGroup{{Options: options}}}
 	// Issued rows show their snapshot, so later customer or business changes don't reach them.
 	rows, err := a.db.Query(`SELECT * FROM (SELECT i.id, ifnull(i.number, '') number, ifnull(i.snapshot ->> '$.customer.name', c.name),
 		ifnull(i.issue_date, '') issue_date, ifnull(i.paid_date, '') paid_date, i.currency, i.gross,
@@ -162,7 +180,7 @@ func (a *App) listInvoices(w http.ResponseWriter, r *http.Request, status int, r
 
 // customerOptions lists every customer, archived ones included: finished work can still be billed.
 func (a *App) customerOptions() ([]customerOption, error) {
-	rows, err := a.db.Query(`SELECT id, name FROM customer ORDER BY name, id`)
+	rows, err := a.db.Query(`SELECT id, name, archived FROM customer ORDER BY name, id`)
 	if err != nil {
 		return nil, err
 	}
@@ -170,7 +188,7 @@ func (a *App) customerOptions() ([]customerOption, error) {
 	var opts []customerOption
 	for rows.Next() {
 		var o customerOption
-		if err := rows.Scan(&o.ID, &o.Name); err != nil {
+		if err := rows.Scan(&o.ID, &o.Name, &o.Archived); err != nil {
 			return nil, err
 		}
 		opts = append(opts, o)

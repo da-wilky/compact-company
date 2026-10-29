@@ -1,0 +1,7 @@
+"filter.show" = { en = "Show", de = "Anzeigen" }
+"filter.mine" = { en = "Mine", de = "Meine" }
+"filter.team" = { en = "Team", de = "Team" }
+"filter.all" = { en = "All", de = "Alle" }
+"filter.active" = { en = "Active", de = "Aktiv" }
+"filter.per_page" = { en = "Per page", de = "Pro Seite" }
+"filter.go" = { en = "Go", de = "Los" }

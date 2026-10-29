@@ -9,7 +9,8 @@
 "entries.empty_mine" = { en = "You have no time entries yet.", de = "Du hast noch keine Zeiteinträge." }
 "entries.empty_day" = { en = "No time entries on this day.", de = "Keine Zeiteinträge an diesem Tag." }
 "entries.empty_day_mine" = { en = "You have no time entries on this day.", de = "Du hast an diesem Tag keine Zeiteinträge." }
-"entries.empty_filtered" = { en = "No time entries match this filter.", de = "Keine Zeiteinträge passen zu diesem Filter." }
+"entries.empty_filtered" = { en = "No time entries match these filters.", de = "Keine Zeiteinträge passen zu diesen Filtern." }
+"entries.all_projects" = { en = "All projects", de = "Alle Projekte" }
 "entries.time" = { en = "Time", de = "Zeit" }
 "entries.duration" = { en = "Duration", de = "Dauer" }
 "entries.project" = { en = "Project", de = "Projekt" }
@@ -28,18 +29,12 @@
 "entries.claimed" = { en = "This time entry is on an invoice and can't change.", de = "Dieser Zeiteintrag steht auf einer Rechnung und kann nicht geändert werden." }
 "entries.error.claimed" = { en = "This time entry is on an invoice: remove it from the draft or cancel the line first.", de = "Dieser Zeiteintrag steht auf einer Rechnung: Entferne ihn aus dem Entwurf oder storniere zuerst die Position." }
 "entries.user" = { en = "User", de = "Benutzer" }
-"entries.mine" = { en = "Mine", de = "Meine" }
-"entries.everyone" = { en = "Team", de = "Team" }
-"entries.show" = { en = "Show", de = "Anzeigen" }
 "entries.day" = { en = "Day", de = "Tag" }
-"entries.jump" = { en = "Go", de = "Los" }
 "entries.today" = { en = "Today", de = "Heute" }
 "entries.all" = { en = "All time entries", de = "Alle Zeiteinträge" }
 "entries.more" = { en = "Load more", de = "Mehr laden" }
-"entries.clear_project" = { en = "Remove project filter", de = "Projektfilter entfernen" }
 "entries.confirm_delete" = { en = "Delete the time entry of %s %s?", de = "Zeiteintrag vom %s %s löschen?" }
 "entries.confirm_delete_described" = { en = "Delete the time entry of %s %s “%s”?", de = "Zeiteintrag vom %s %s „%s“ löschen?" }
-"entries.per_page" = { en = "Per page", de = "Pro Seite" }
 "entries.select" = { en = "Select the time entry of %s %s", de = "Zeiteintrag vom %s %s auswählen" }
 "entries.confirm_delete_one" = { en = "Delete 1 time entry?", de = "1 Zeiteintrag löschen?" }
 "entries.confirm_delete_many" = { en = "Delete %s time entries?", de = "%s Zeiteinträge löschen?" }

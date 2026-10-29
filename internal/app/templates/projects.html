@@ -5,8 +5,8 @@
 <h1>{{template "title" $}}</h1>
 <p class="actions"><a href="/customers/{{.Customer.ID}}/projects/new">{{template "icon-plus"}}{{t "projects.new"}}</a></p>
 <div class="filters">
-<span class="label">{{t "archive.show"}}</span>
-<span class="seg"><a href="/customers/{{.Customer.ID}}/projects"{{if not .ShowArchived}} aria-current="true"{{end}}>{{t "archive.active"}}</a><a href="/customers/{{.Customer.ID}}/projects?archived=1"{{if .ShowArchived}} aria-current="true"{{end}}>{{t "archive.all"}}</a></span>
+<span class="label">{{t "filter.show"}}</span>
+{{template "filter-seg" .Shown}}
 </div>
 <div id="project-list">
 {{with .Blocked}}<div class="errors selection-blocked" role="alert"><p>{{t $.Data.Refusal}}</p>

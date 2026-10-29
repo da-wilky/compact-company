@@ -142,9 +142,11 @@ type blockedRow struct {
 	Name, Reason string
 }
 
-// archiveActions are the URLs a customer or project list's selection posts to, keeping its archived filter.
+// archiveActions are the URLs a customer or project list's selection posts to, keeping its archived filter,
+// and the list's Active / All toggle.
 type archiveActions struct {
 	ArchiveURL, UnarchiveURL, DeleteURL string
+	Shown                               []filterOption
 }
 
 // hidesArchived reports whether a list that hides archived rows is empty only because of that; archived selects them.
@@ -162,7 +164,8 @@ func newArchiveActions(base string, showArchived bool) archiveActions {
 	if showArchived {
 		q = "?archived=1"
 	}
-	return archiveActions{base + "/archive" + q, base + "/unarchive" + q, base + "/delete" + q}
+	return archiveActions{base + "/archive" + q, base + "/unarchive" + q, base + "/delete" + q,
+		[]filterOption{{"filter.active", base, !showArchived}, {"filter.all", base + "?archived=1", showArchived}}}
 }
 
 func (a *App) customersWrite(rw rowWrite, blocked string) http.HandlerFunc {

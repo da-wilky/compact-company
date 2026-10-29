@@ -3,6 +3,7 @@ package app
 import (
 	"database/sql"
 	"net/http"
+	"net/url"
 	"slices"
 	"time"
 )
@@ -45,6 +46,7 @@ type weekPage struct {
 	Prev, Next string
 	Current    bool
 	Everyone   bool
+	Whose      []filterOption
 }
 
 func mondayOf(day time.Time) time.Time {
@@ -69,6 +71,10 @@ func (a *App) week(w http.ResponseWriter, r *http.Request) {
 	var bounds [8]time.Time
 	page := weekPage{Prev: monday.AddDate(0, 0, -7).Format(dayLayout), Next: monday.AddDate(0, 0, 7).Format(dayLayout), Everyone: r.FormValue("everyone") != ""}
 	page.Unassigned.Project = "none"
+	q := url.Values{"week": {monday.Format(dayLayout)}}
+	mine := "/week?" + q.Encode()
+	q.Set("everyone", "1")
+	page.Whose = []filterOption{{"filter.mine", mine, !page.Everyone}, {"filter.team", "/week?" + q.Encode(), page.Everyone}}
 	for i := range bounds {
 		bounds[i] = time.Date(monday.Year(), monday.Month(), monday.Day()+i, 0, 0, 0, 0, loc)
 		if i < 7 {
