@@ -78,6 +78,7 @@ main { width: 100%; min-width: 0; max-width: 72rem; padding: 2rem 2.5rem 4rem; }
 h1 { margin: 0 0 1rem; font-size: 1.75rem; font-weight: 650; letter-spacing: -.02em; line-height: 1.2; }
 .hint { color: var(--muted); font-size: .85rem; }
 .actions { display: flex; flex-wrap: wrap; gap: .5rem; margin: 0 0 1.5rem; }
+.table-wrap + .actions { margin-top: .75rem; }
 .actions a { padding: .35rem .9rem; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: .9rem; font-weight: 500; }
 .actions a:hover { text-decoration: none; filter: brightness(.97); }
 .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: .75rem; margin: 0 0 1.5rem; }
