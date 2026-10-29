@@ -1,5 +1,7 @@
 """Render every page in English and German at desktop and phone width in light and dark, fail on layout breakage, save screenshots.
 
+Tabbing through each page (English, light) fails on any element that takes focus without an outline or box-shadow.
+
 Usage: ui_check.py <base-url> <database> <screenshot-dir> <chromium> [path… | --changed <git-ref>], against a fresh dev-mode instance (it seeds data).
 Paths render only those pages; the seed is deterministic, so e.g. /invoices/1 is the draft with lines, /invoices/4 the empty one without a range
 and /invoices/5 to /invoices/8 open invoices, the even ones overdue; /todos/1 is an overdue todo. --changed renders only the pages whose template differs from <git-ref>.
@@ -49,6 +51,27 @@ FIND_BREAKAGE = """() => {
   }
   return problems;
 }"""
+
+# The element Tab just focused, and whether it shows focus (an outline or a box-shadow); null once focus leaves the page.
+FOCUSED = """() => {
+  const el = document.activeElement;
+  if (!el || el === document.body) return null;
+  const s = getComputedStyle(el);
+  const name = el.getAttribute("aria-label") || el.textContent.trim().slice(0, 30) || el.getAttribute("name") || "";
+  return {index: [...document.querySelectorAll("*")].indexOf(el), shown: (s.outlineStyle !== "none" && parseFloat(s.outlineWidth) > 0) || s.boxShadow !== "none",
+          name: `${el.tagName.toLowerCase()} ${JSON.stringify(name)}`};
+}"""
+
+
+def unfocusable(page):
+    """Tabs through the page and names every element that takes focus without showing it."""
+    problems, seen = [], set()
+    while (el := (page.keyboard.press("Tab"), page.evaluate(FOCUSED))[1]) and el["index"] not in seen:
+        seen.add(el["index"])
+        if not el["shown"]:
+            problems.append(f"no visible focus: {el['name']}")
+    return problems
+
 
 # Selects the first row the list doesn't offer for selection, as a stale page would post it, so the action is refused.
 SELECT_UNSELECTABLE = """([form, link]) => {
@@ -168,6 +191,9 @@ def main():
                         name = re.sub(r"[^a-z0-9]+", "-", path.lower()).strip("-") or "home"
                         page.screenshot(path=f"{out}/{lang}-{viewport}-{scheme}-{name}.png", full_page=True)
                         failures += [f"{lang} {viewport} {scheme} {path}: {p}" for p in page.evaluate(FIND_BREAKAGE)]
+                        # Focus styles don't vary by language or scheme, only by which elements a width shows.
+                        if lang == "en" and scheme == "light":
+                            failures += [f"{viewport} {path}: {p}" for p in unfocusable(page)]
                     if not only:
                         page.goto(base + "/week")
                         page.click("button[aria-haspopup=dialog]")
