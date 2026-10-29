@@ -56,6 +56,18 @@ func TestStartingATimerMovesATodoFromTheFirstStatusToTheWorkingStatus(t *testing
 	wantCards(t, board.column(t, "In progress"), "Write copy")
 }
 
+func TestStartingATimerLeavesATodoInTheFirstStatusWithoutAWorkingStatus(t *testing.T) {
+	ta := newTestApp(t, devConfig)
+	c := ta.client()
+	project := c.websitePath()
+	c.createTodo(project, todoForm("Write copy"))
+	wantRedirect(t, c.postForm("/settings/working-status", url.Values{"status": {""}}), "/settings#statuses")
+
+	c.hxPost("/timers", startOn(c.todoPath(project, "Write copy"))).wantStatus(t, http.StatusOK)
+
+	wantCards(t, c.get(project).column(t, "Open"), "Write copy")
+}
+
 func TestStartingATimerLeavesATodoInAnyOtherStatus(t *testing.T) {
 	ta := newTestApp(t, devConfig)
 	c := ta.client()
