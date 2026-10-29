@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -70,8 +71,14 @@ type board struct {
 	ShowProjects bool
 }
 
+// numberedParam finds ?1-style placeholders, which SQLite would number against loadBoard's own leading ?.
+var numberedParam = regexp.MustCompile(`\?\d`)
+
 // loadBoard loads the todos matching where (todo t, project p, customer c), sorted as every board shows them.
 func (a *App) loadBoard(r *http.Request, ret, where string, args ...any) (board, error) {
+	if numberedParam.MatchString(where) {
+		panic("loadBoard: where must use plain ? placeholders: " + where)
+	}
 	b := board{Return: ret, Empty: true}
 	loc, err := a.viewerLocation(r)
 	if err != nil {
