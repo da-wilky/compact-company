@@ -203,13 +203,16 @@ button.icon svg.icon { width: 12px; height: 12px; fill: currentColor; }
 .board-column h3 { margin: 0; padding: 0 .25rem; color: var(--muted); font-size: .75rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
 .cards { display: grid; gap: .5rem; margin: 0; padding: 0; list-style: none; }
 .card { display: grid; gap: .4rem; padding: .7rem .8rem; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
-.card > a { color: var(--fg); font-weight: 550; overflow-wrap: anywhere; }
-.card > a:hover { color: var(--accent); }
+.card-head { display: flow-root; }
+.card-foot { display: flex; align-items: flex-end; justify-content: space-between; gap: .5rem; }
+.card-head > a { color: var(--fg); font-weight: 550; overflow-wrap: anywhere; }
+.card-head > a:hover { color: var(--accent); }
 .card-meta { display: flex; flex-wrap: wrap; align-items: center; gap: .3rem .5rem; margin: 0; color: var(--muted); font-size: .8rem; }
-.card-actions { display: flex; align-items: center; gap: .4rem; }
-.card-actions > form:first-child { flex: 1; min-width: 0; }
 .card form { display: flex; gap: .4rem; margin: 0; }
-.card select { min-width: 0; padding: .2rem .5rem; font-size: .8rem; }
+.card-status { position: relative; float: right; margin: 0 0 .2rem .5rem; }
+.card-status::after { content: ""; position: absolute; top: 50%; right: .55rem; width: .3rem; height: .3rem; border-right: 1.5px solid var(--muted); border-bottom: 1.5px solid var(--muted); transform: translateY(-70%) rotate(45deg); pointer-events: none; }
+.card-status select { max-width: 8.5rem; field-sizing: content; padding: .1rem 1.35rem .1rem .6rem; appearance: none; border-radius: 999px; background: var(--bg); color: var(--fg); font-size: .72rem; font-weight: 550; text-overflow: ellipsis; cursor: pointer; }
+.card-status select:hover { border-color: var(--accent); }
 .card[draggable] { cursor: grab; }
 .card.dragging { opacity: .5; }
 .board-column.drop-target { outline: 2px dashed var(--accent); outline-offset: -2px; }

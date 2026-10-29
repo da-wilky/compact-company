@@ -1,6 +1,8 @@
 package app
 
 import (
+	"database/sql"
+	"errors"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -9,6 +11,8 @@ import (
 func init() {
 	routes = append(routes, func(a *App, mux *http.ServeMux) {
 		mux.HandleFunc("GET /todos", a.authed(a.todoBoard))
+		mux.HandleFunc("GET /todos/new", a.authed(a.todoNewOnTodos))
+		mux.HandleFunc("POST /todos", a.authed(a.todoCreateOnTodos))
 	})
 }
 
@@ -44,6 +48,7 @@ func (f todosFilter) selectFor(name, label, all string) filterSelect {
 
 type todosPage struct {
 	Board    board
+	NewURL   string
 	Filtered bool
 	// OnlyArchived: the unfiltered board is empty, yet todos exist in archived projects.
 	OnlyArchived                             bool
@@ -82,7 +87,10 @@ func (a *App) todoBoard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	b.ShowProjects = true
-	page := todosPage{Board: b, Filtered: len(f.query()) > 0}
+	page := todosPage{Board: b, NewURL: "/todos/new", Filtered: len(f.query()) > 0}
+	if f.Project != 0 {
+		page.NewURL += "?" + url.Values{"project": {strconv.FormatInt(f.Project, 10)}}.Encode()
+	}
 	if b.Empty && !page.Filtered {
 		if err := a.db.QueryRow(`SELECT EXISTS (SELECT 1 FROM todo)`).Scan(&page.OnlyArchived); err != nil {
 			a.serverError(w, r, err)
@@ -102,32 +110,11 @@ func (a *App) todoFilters(page *todosPage, f todosFilter) error {
 	page.Assignees = f.selectFor("assignee", "todos.assignee", "todos.everyone")
 	page.Statuses = f.selectFor("status", "todos.status", "todos.all_statuses")
 
-	customers := filterGroup{}
-	rows, err := a.db.Query(`SELECT c.id, c.name, p.id, p.name FROM project p JOIN customer c ON c.id = p.customer_id
-		WHERE NOT p.archived AND NOT c.archived ORDER BY c.name, c.id, p.name, p.id`)
+	customers, projects, err := a.activeProjects(f.Customer, f.Project)
 	if err != nil {
 		return err
 	}
-	defer func() { _ = rows.Close() }()
-	var lastCustomer int64
-	for rows.Next() {
-		var customer, project int64
-		var customerName, projectName string
-		if err := rows.Scan(&customer, &customerName, &project, &projectName); err != nil {
-			return err
-		}
-		if customer != lastCustomer {
-			customers.Options = append(customers.Options, filterSelectOption{Value: strconv.FormatInt(customer, 10), Name: customerName, Selected: customer == f.Customer})
-			page.Projects.Groups = append(page.Projects.Groups, filterGroup{Label: customerName})
-			lastCustomer = customer
-		}
-		last := &page.Projects.Groups[len(page.Projects.Groups)-1]
-		last.Options = append(last.Options, filterSelectOption{Value: strconv.FormatInt(project, 10), Name: projectName, Selected: project == f.Project})
-	}
-	if err := rows.Err(); err != nil {
-		return err
-	}
-	page.Customers.Groups = []filterGroup{customers}
+	page.Customers.Groups, page.Projects.Groups = []filterGroup{customers}, projects
 
 	users, err := a.userOptions()
 	if err != nil {
@@ -146,4 +133,54 @@ func (a *App) todoFilters(page *todosPage, f todosFilter) error {
 	}
 	page.Statuses.Groups = []filterGroup{statuses}
 	return nil
+}
+
+// activeProjects returns the active customers, and their active projects grouped by customer.
+func (a *App) activeProjects(selectedCustomer, selectedProject int64) (filterGroup, []filterGroup, error) {
+	var customers filterGroup
+	var projects []filterGroup
+	rows, err := a.db.Query(`SELECT c.id, c.name, p.id, p.name FROM project p JOIN customer c ON c.id = p.customer_id
+		WHERE NOT p.archived AND NOT c.archived ORDER BY c.name, c.id, p.name, p.id`)
+	if err != nil {
+		return customers, nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	var lastCustomer int64
+	for rows.Next() {
+		var customer, project int64
+		var customerName, projectName string
+		if err := rows.Scan(&customer, &customerName, &project, &projectName); err != nil {
+			return customers, nil, err
+		}
+		if customer != lastCustomer {
+			customers.Options = append(customers.Options, filterSelectOption{Value: strconv.FormatInt(customer, 10), Name: customerName, Selected: customer == selectedCustomer})
+			projects = append(projects, filterGroup{Label: customerName})
+			lastCustomer = customer
+		}
+		last := &projects[len(projects)-1]
+		last.Options = append(last.Options, filterSelectOption{Value: strconv.FormatInt(project, 10), Name: projectName, Selected: project == selectedProject})
+	}
+	return customers, projects, rows.Err()
+}
+
+func (a *App) todoNewOnTodos(w http.ResponseWriter, r *http.Request) {
+	project, _ := strconv.ParseInt(r.FormValue("project"), 10, 64)
+	a.renderTodo(w, r, http.StatusOK, todoPage{Project: todoProject{ID: project}, Todo: todo{Priority: normalPriority}, OnTodos: true})
+}
+
+func (a *App) todoCreateOnTodos(w http.ResponseWriter, r *http.Request) {
+	page := todoPage{OnTodos: true}
+	projectErr := "todos.error.project"
+	if id, err := strconv.ParseInt(r.PostFormValue("project"), 10, 64); err == nil {
+		p, err := a.todoProjectByID(id)
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+		case err != nil:
+			a.serverError(w, r, err)
+			return
+		case !p.Archived:
+			page.Project, projectErr = p, ""
+		}
+	}
+	a.insertTodo(w, r, page, projectErr, "/todos")
 }

@@ -40,5 +40,6 @@
 "todos.move_hint" = { en = "Its time entries move with it.", de = "Ihre Zeiteinträge werden mitverschoben." }
 "todos.move" = { en = "Move", de = "Verschieben" }
 "todos.error.status" = { en = "Invalid status.", de = "Ungültiger Status." }
+"todos.error.project" = { en = "Choose an active project.", de = "Wähle ein aktives Projekt." }
 "todos.start" = { en = "Start timer on %s", de = "Timer für %s starten" }
 "todos.tracked" = { en = "%s h", de = "%s h" }

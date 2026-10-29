@@ -127,3 +127,42 @@ func TestTodosPageRendersInGerman(t *testing.T) {
 	res.wantBody(t, `href="/todos">`)
 	wantInOrder(t, res.text(), "Aufgaben", "Alle Kunden", "Alle Projekte", "Ich", "Alle Status", "Keine Aufgaben passen zu diesen Filtern.")
 }
+
+func TestTodosPageCreatesATodoInAChosenProject(t *testing.T) {
+	ta := newTestApp(t, devConfig)
+	c := ta.client()
+	website := c.websiteProject()
+	c.get("/todos").wantBody(t, `href="/todos/new"`)
+	c.get("/todos?project="+website).wantBody(t, `href="/todos/new?project=`+website+`"`)
+	c.get("/todos/new?project="+website).wantBody(t, `<option value="`+website+`" selected>website</option>`)
+
+	form := todoForm("Write copy")
+	form.Set("project", website)
+	wantRedirect(t, c.postForm("/todos", form), "/todos")
+
+	res := c.get("/todos").column(t, "Open")
+	wantCards(t, res, "Write copy")
+	wantInOrder(t, res.text(), "Write copy", "website")
+}
+
+func TestTodosPageNewTodoRefusesMissingAndArchivedProjects(t *testing.T) {
+	ta := newTestApp(t, devConfig)
+	c := ta.client()
+	website := c.websiteProject()
+
+	for _, project := range []string{"", "x", "999"} {
+		form := todoForm("Write copy")
+		form.Set("project", project)
+		res := c.postForm("/todos", form)
+		res.wantStatus(t, http.StatusUnprocessableEntity)
+		res.wantBody(t, "Choose an active project.")
+	}
+	c.postForm("/projects/"+website+"/archive", nil).wantStatus(t, http.StatusSeeOther)
+	c.get("/todos/new").wantNoBody(t, ">website</option>")
+	form := todoForm("Write copy")
+	form.Set("project", website)
+	res := c.postForm("/todos", form)
+	res.wantStatus(t, http.StatusUnprocessableEntity)
+	res.wantBody(t, "Choose an active project.")
+	c.get("/todos").wantBody(t, "No todos yet.")
+}

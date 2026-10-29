@@ -353,3 +353,44 @@ func TestTodosRenderInGerman(t *testing.T) {
 	wantInOrder(t, board.column(t, "Open").text(), "Texte schreiben", "Hoch", "Fällig 25.10.2026", "Überfällig")
 	c.get(c.todoPath(project, "Texte schreiben")).wantBody(t, "Aufgabe bearbeiten")
 }
+
+func TestEditPageChangesTheStatus(t *testing.T) {
+	ta := newTestApp(t, devConfig)
+	c := ta.client()
+	project := c.websitePath()
+	c.createTodo(project, todoForm("Write copy"))
+	todo := c.todoPath(project, "Write copy")
+	waiting := statusID(t, c.get(todo), "Waiting")
+
+	form := todoForm("Write copy")
+	form.Set("status", waiting)
+	wantRedirect(t, c.postForm(todo, form), project)
+
+	wantCards(t, c.get(project).column(t, "Waiting"), "Write copy")
+	c.get(todo).wantBody(t, `<option value="`+waiting+`" selected>Waiting</option>`)
+}
+
+func TestEditPageRefusesUnknownStatusesAndStatusChangesInArchivedProjects(t *testing.T) {
+	ta := newTestApp(t, devConfig)
+	c := ta.client()
+	project := c.websitePath()
+	c.createTodo(project, todoForm("Write copy"))
+	todo := c.todoPath(project, "Write copy")
+	done := statusID(t, c.get(todo), "Done")
+	open := statusID(t, c.get(todo), "Open")
+
+	form := todoForm("Write copy")
+	form.Set("status", "999")
+	c.postForm(todo, form).wantStatus(t, http.StatusUnprocessableEntity)
+
+	c.postForm(project+"/archive", nil).wantStatus(t, http.StatusSeeOther)
+	c.get(todo).wantNoBody(t, `name="status"`)
+	form.Set("status", done)
+	res := c.postForm(todo, form)
+	res.wantStatus(t, http.StatusUnprocessableEntity)
+	res.wantBody(t, "This project is archived, so its todos keep their status.")
+	form.Set("status", open)
+	form.Set("title", "Write landing copy")
+	wantRedirect(t, c.postForm(todo, form), project)
+	wantCards(t, c.get(project).column(t, "Open"), "Write landing copy")
+}

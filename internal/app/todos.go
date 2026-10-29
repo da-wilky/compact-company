@@ -78,22 +78,14 @@ func (a *App) loadBoard(r *http.Request, ret, where string, args ...any) (board,
 		return b, err
 	}
 	today := a.now().In(loc).Format(time.DateOnly)
-	statuses, err := a.db.Query(`SELECT id, name, done FROM todo_status ORDER BY position`)
+	statuses, err := a.todoStatuses()
 	if err != nil {
 		return b, err
 	}
-	defer func() { _ = statuses.Close() }()
 	column := map[int64]int{}
-	for statuses.Next() {
-		var s todoStatus
-		if err := statuses.Scan(&s.ID, &s.Name, &s.Done); err != nil {
-			return b, err
-		}
+	for _, s := range statuses {
 		column[s.ID] = len(b.Columns)
 		b.Columns = append(b.Columns, boardColumn{Status: s})
-	}
-	if err := statuses.Err(); err != nil {
-		return b, err
 	}
 	now := a.now().Unix()
 	rows, err := a.db.Query(`SELECT t.id, t.title, p.name, ifnull(u.display_name, ''), t.priority, ifnull(t.due_date, ''), t.status_id, p.archived OR c.archived,
@@ -119,6 +111,34 @@ func (a *App) loadBoard(r *http.Request, ret, where string, args ...any) (board,
 		b.Empty = false
 	}
 	return b, rows.Err()
+}
+
+func (a *App) todoStatuses() ([]todoStatus, error) {
+	rows, err := a.db.Query(`SELECT id, name, done FROM todo_status ORDER BY position`)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	var statuses []todoStatus
+	for rows.Next() {
+		var s todoStatus
+		if err := rows.Scan(&s.ID, &s.Name, &s.Done); err != nil {
+			return nil, err
+		}
+		statuses = append(statuses, s)
+	}
+	return statuses, rows.Err()
+}
+
+// postedStatus parses a posted status id and reports whether that status exists.
+func (a *App) postedStatus(s string) (int64, bool, error) {
+	id, err := strconv.ParseInt(s, 10, 64)
+	if err != nil {
+		return 0, false, nil
+	}
+	var exists bool
+	err = a.db.QueryRow(`SELECT EXISTS (SELECT 1 FROM todo_status WHERE id = ?)`, id).Scan(&exists)
+	return id, exists, err
 }
 
 // openTodoProject returns the project of a todo that may receive new time: one not done.
@@ -163,14 +183,19 @@ type todo struct {
 	AssigneeID  int64
 	Priority    int
 	DueDate     string
+	StatusID    int64
 	Entries     int
 }
 
+// todoPage is the todo form; OnTodos is the Todos page's new todo, which picks its project from Projects.
 type todoPage struct {
 	Project     todoProject
 	Todo        todo
+	OnTodos     bool
+	Projects    []filterGroup
 	Users       []userOption
 	Priorities  []string
+	Statuses    []todoStatus
 	MoveTargets []todoProject
 	Errors      []string
 }
@@ -181,17 +206,28 @@ func (a *App) renderTodo(w http.ResponseWriter, r *http.Request, status int, pag
 		a.serverError(w, r, err)
 		return
 	}
+	if page.OnTodos {
+		if _, page.Projects, err = a.activeProjects(0, page.Project.ID); err != nil {
+			a.serverError(w, r, err)
+			return
+		}
+	}
 	if page.Todo.ID != 0 {
 		if page.MoveTargets, err = a.moveTargets(page.Project.ID); err != nil {
 			a.serverError(w, r, err)
 			return
+		}
+		if !page.Project.Archived {
+			if page.Statuses, err = a.todoStatuses(); err != nil {
+				a.serverError(w, r, err)
+				return
+			}
 		}
 	}
 	page.Priorities = priorityKeys
 	a.render(w, r, status, "todo", page)
 }
 
-// moveTarget selects (id, name) of each other active project, aliased dest, of project ?1's customer.
 // moveTarget selects (dest.id, dest.name) of the other active projects of project ?1's customer.
 const moveTarget = `SELECT dest.id, dest.name FROM project p JOIN project dest ON dest.customer_id = p.customer_id JOIN customer c ON c.id = dest.customer_id
 	WHERE p.id = ?1 AND dest.id <> p.id AND NOT dest.archived AND NOT c.archived`
@@ -237,9 +273,7 @@ func (a *App) todoProjectFromPath(w http.ResponseWriter, r *http.Request) (todoP
 		a.notFound(w, r)
 		return todoProject{}, false
 	}
-	p := todoProject{ID: id}
-	err = a.db.QueryRow(`SELECT p.name, p.archived OR c.archived FROM project p JOIN customer c ON c.id = p.customer_id WHERE p.id = ?`, id).
-		Scan(&p.Name, &p.Archived)
+	p, err := a.todoProjectByID(id)
 	if errors.Is(err, sql.ErrNoRows) {
 		a.notFound(w, r)
 		return p, false
@@ -249,6 +283,13 @@ func (a *App) todoProjectFromPath(w http.ResponseWriter, r *http.Request) (todoP
 		return p, false
 	}
 	return p, true
+}
+
+func (a *App) todoProjectByID(id int64) (todoProject, error) {
+	p := todoProject{ID: id}
+	err := a.db.QueryRow(`SELECT p.name, p.archived OR c.archived FROM project p JOIN customer c ON c.id = p.customer_id WHERE p.id = ?`, id).
+		Scan(&p.Name, &p.Archived)
+	return p, err
 }
 
 func (a *App) todoNew(w http.ResponseWriter, r *http.Request) {
@@ -312,25 +353,35 @@ func (a *App) todoCreate(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	var projectErr string
+	if p.Archived {
+		projectErr = "todos.error.archived"
+	}
+	a.insertTodo(w, r, todoPage{Project: p}, projectErr, "/projects/"+strconv.FormatInt(p.ID, 10))
+}
+
+// insertTodo saves the posted todo in page.Project in the first status, unless projectErr or the form refuse it.
+func (a *App) insertTodo(w http.ResponseWriter, r *http.Request, page todoPage, projectErr, back string) {
 	t, assignee, due, errs, err := a.todoFromForm(r)
 	if err != nil {
 		a.serverError(w, r, err)
 		return
 	}
-	if p.Archived {
-		errs = append([]string{"todos.error.archived"}, errs...)
+	if projectErr != "" {
+		errs = append([]string{projectErr}, errs...)
 	}
 	if errs != nil {
-		a.renderTodo(w, r, http.StatusUnprocessableEntity, todoPage{Project: p, Todo: t, Errors: errs})
+		page.Todo, page.Errors = t, errs
+		a.renderTodo(w, r, http.StatusUnprocessableEntity, page)
 		return
 	}
 	if _, err := a.db.Exec(`INSERT INTO todo (project_id, title, description, status_id, assignee_id, priority, due_date, created_at)
 		VALUES (?, ?, ?, `+firstStatus+`, ?, ?, ?, ?)`,
-		p.ID, t.Title, t.Description, assignee, t.Priority, due, a.now().Unix()); err != nil {
+		page.Project.ID, t.Title, t.Description, assignee, t.Priority, due, a.now().Unix()); err != nil {
 		a.serverError(w, r, err)
 		return
 	}
-	http.Redirect(w, r, "/projects/"+strconv.FormatInt(p.ID, 10), http.StatusSeeOther)
+	http.Redirect(w, r, back, http.StatusSeeOther)
 }
 
 // todoFromPath writes 404 or 500 itself when ok is false.
@@ -343,9 +394,9 @@ func (a *App) todoFromPath(w http.ResponseWriter, r *http.Request) (todoProject,
 	t := todo{ID: id}
 	var p todoProject
 	err = a.db.QueryRow(`SELECT p.id, p.name, p.archived OR c.archived, t.title, t.description, ifnull(t.assignee_id, 0), t.priority, ifnull(t.due_date, ''),
-			(SELECT count(*) FROM time_entry WHERE todo_id = t.id)
+			t.status_id, (SELECT count(*) FROM time_entry WHERE todo_id = t.id)
 		FROM todo t JOIN project p ON p.id = t.project_id JOIN customer c ON c.id = p.customer_id WHERE t.id = ?`, id).
-		Scan(&p.ID, &p.Name, &p.Archived, &t.Title, &t.Description, &t.AssigneeID, &t.Priority, &t.DueDate, &t.Entries)
+		Scan(&p.ID, &p.Name, &p.Archived, &t.Title, &t.Description, &t.AssigneeID, &t.Priority, &t.DueDate, &t.StatusID, &t.Entries)
 	if errors.Is(err, sql.ErrNoRows) {
 		a.notFound(w, r)
 		return p, t, false
@@ -374,13 +425,29 @@ func (a *App) todoUpdate(w http.ResponseWriter, r *http.Request) {
 		a.serverError(w, r, err)
 		return
 	}
-	t.ID, t.Entries = stored.ID, stored.Entries
+	t.ID, t.Entries, t.StatusID = stored.ID, stored.Entries, stored.StatusID
+	// A form without a status, like an archived project's, keeps the stored one.
+	if s := r.PostFormValue("status"); s != "" {
+		status, exists, err := a.postedStatus(s)
+		if err != nil {
+			a.serverError(w, r, err)
+			return
+		}
+		switch {
+		case !exists:
+			errs = append(errs, "todos.error.status")
+		case p.Archived && status != stored.StatusID:
+			errs = append(errs, "todos.error.archived_status")
+		default:
+			t.StatusID = status
+		}
+	}
 	if errs != nil {
 		a.renderTodo(w, r, http.StatusUnprocessableEntity, todoPage{Project: p, Todo: t, Errors: errs})
 		return
 	}
-	if _, err := a.db.Exec(`UPDATE todo SET title = ?, description = ?, assignee_id = ?, priority = ?, due_date = ? WHERE id = ?`,
-		t.Title, t.Description, assignee, t.Priority, due, t.ID); err != nil {
+	if _, err := a.db.Exec(`UPDATE todo SET title = ?, description = ?, assignee_id = ?, priority = ?, due_date = ?, status_id = ? WHERE id = ?`,
+		t.Title, t.Description, assignee, t.Priority, due, t.StatusID, t.ID); err != nil {
 		a.serverError(w, r, err)
 		return
 	}
@@ -464,13 +531,10 @@ func (a *App) todoSetStatus(w http.ResponseWriter, r *http.Request) {
 		a.notFound(w, r)
 		return
 	}
-	status, err := strconv.ParseInt(r.PostFormValue("status"), 10, 64)
-	var exists bool
-	if err == nil {
-		if err := a.db.QueryRow(`SELECT EXISTS (SELECT 1 FROM todo_status WHERE id = ?)`, status).Scan(&exists); err != nil {
-			a.serverError(w, r, err)
-			return
-		}
+	status, exists, err := a.postedStatus(r.PostFormValue("status"))
+	if err != nil {
+		a.serverError(w, r, err)
+		return
 	}
 	if !exists {
 		a.errorPage(w, r, http.StatusBadRequest, "todos.error.status")

@@ -144,7 +144,7 @@ def main():
                      ("entries", f"/entries?day={today}&project={project}"), ("entry", "/entries/new"), ("entry", entry),
                      ("customers", "/customers"), ("customer", "/customers/new"), ("customer", f"/customers/{customer}"),
                      ("projects", f"/customers/{customer}/projects"), ("project", f"/projects/{project}"), ("project", f"/projects/{legacy}"),
-                     ("todo", f"/projects/{project}/todos/new"), ("todo", "/todos/1"), ("todos", "/todos"), ("todos", "/todos?assignee=me"),
+                     ("todo", f"/projects/{project}/todos/new"), ("todo", "/todos/1"), ("todos", "/todos"), ("todos", "/todos?assignee=me"), ("todo", "/todos/new"),
                      ("invoices", "/invoices"), ("invoice_new", "/invoices/new"), ("invoice", draft), ("invoice", f"{draft}/preview"),
                      ("invoice_line", f"{draft}/lines/new"), ("invoice_line", line), ("invoice_refresh", f"{draft}/refresh"),
                      ("invoice_issue", f"{draft}/issue"), ("invoice_issued", issued), ("invoice_cancel", f"{issued}/cancel"),
