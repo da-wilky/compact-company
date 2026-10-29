@@ -49,6 +49,26 @@ type weekPage struct {
 	Whose      []filterOption
 }
 
+// WeekURL is the week starting on monday ("" = this week), keeping Everyone.
+func (p weekPage) WeekURL(monday string) string {
+	q := url.Values{}
+	if monday != "" {
+		q.Set("week", monday)
+	}
+	if p.Everyone {
+		q.Set("everyone", "1")
+	}
+	if len(q) == 0 {
+		return "/week"
+	}
+	return "/week?" + q.Encode()
+}
+
+// EntriesURL lists day's entries of project ("" = every project), keeping Everyone.
+func (p weekPage) EntriesURL(day, project string) string {
+	return entriesFilter{Day: day, Everyone: p.Everyone, Project: project, PerPage: entryPageSizes[0]}.url("")
+}
+
 func mondayOf(day time.Time) time.Time {
 	return time.Date(day.Year(), day.Month(), day.Day()-(int(day.Weekday())+6)%7, 0, 0, 0, 0, day.Location())
 }
@@ -71,10 +91,8 @@ func (a *App) week(w http.ResponseWriter, r *http.Request) {
 	var bounds [8]time.Time
 	page := weekPage{Prev: monday.AddDate(0, 0, -7).Format(dayLayout), Next: monday.AddDate(0, 0, 7).Format(dayLayout), Everyone: r.FormValue("everyone") != ""}
 	page.Unassigned.Project = "none"
-	q := url.Values{"week": {monday.Format(dayLayout)}}
-	mine := "/week?" + q.Encode()
-	q.Set("everyone", "1")
-	page.Whose = []filterOption{{"filter.mine", mine, !page.Everyone}, {"filter.team", "/week?" + q.Encode(), page.Everyone}}
+	m := monday.Format(dayLayout)
+	page.Whose = []filterOption{{"filter.mine", weekPage{}.WeekURL(m), !page.Everyone}, {"filter.team", weekPage{Everyone: true}.WeekURL(m), page.Everyone}}
 	for i := range bounds {
 		bounds[i] = time.Date(monday.Year(), monday.Month(), monday.Day()+i, 0, 0, 0, 0, loc)
 		if i < 7 {

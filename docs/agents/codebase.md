@@ -33,7 +33,7 @@ func init() {
 
 ## Add a page
 
-`internal/app/templates/<page>.html` defines `"title"` and `"content"`. Strings via `{{t "key" args…}}`.
+`internal/app/templates/<page>.html` defines `"title"` and `"content"`. Strings via `{{t "key" args…}}`. Shared markup lives in `templates/partials/*.html`, parsed into every page. A URL with more than one query parameter is built in Go (`url.Values`), never joined in the template.
 
 Page anatomy, top to bottom (`templates_test.go` checks the mechanical parts):
 
@@ -117,9 +117,11 @@ wantStartupError(t, toml, "substring")
 
 The harness injects `data_dir`; test configs leave it out. OIDC tests use the stub issuer in `issuer_test.go`.
 
+A link's `aria-current` sits between its `href` and `>`, so match `href="…">Label</a>` on a link that isn't the current one. Go-built URLs render with sorted keys and `&amp;`: `href="/entries?day=…&amp;project=…"`.
+
 ## Checks
 
-While working, run `nix run .#check`: formatting, lint, the markup-assertion, table-wrap and CSS-rule checks and tests, on the working tree. Run it as its own Bash call and write files with Write/Edit: worktree-isolated agents get chained shell (`&&`, `;`, `sh -c`, heredocs) refused.
+While working, run `nix run .#check`: formatting, lint, the markup-assertion, table-wrap, CSS-rule and template-URL checks and tests, on the working tree. Run it as its own Bash call and write files with Write/Edit: worktree-isolated agents get chained shell (`&&`, `;`, `sh -c`, heredocs) refused.
 
 `nix flake check -L` is what CI runs: the same checks from git-tracked files only, so `git add` new files first.
 

@@ -20,6 +20,7 @@
         sh scripts/markup_assertions.sh
         sh scripts/table_wrap.sh
         sh scripts/css_rules.sh
+        sh scripts/template_urls.sh
       '';
     in
     {
@@ -146,6 +147,11 @@
         css-rules = pkgs.runCommand "compact-company-css-rules" { } ''
           cd ${./.}
           sh scripts/css_rules.sh
+          touch $out
+        '';
+        template-urls = pkgs.runCommand "compact-company-template-urls" { } ''
+          cd ${./.}
+          sh scripts/template_urls.sh
           touch $out
         '';
       });

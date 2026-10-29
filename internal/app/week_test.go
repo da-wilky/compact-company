@@ -28,11 +28,11 @@ func TestWeekGroupsByProjectWithDailyAndWeeklyTotals(t *testing.T) {
 	res.wantBody(t, `href="/entries?day=2026-10-26">`)
 	res.wantBody(t, `href="/entries?day=2026-11-01">`)
 	res.wantRow(t, "website", "1:45", "", "0:30", "", "", "", "1:59", "4:15")
-	res.wantBody(t, `href="/entries?day=2026-10-26&project=`+project+`">1:45</a>`)
-	res.wantBody(t, `href="/entries?day=2026-10-28&project=`+project+`">0:30</a>`)
-	res.wantBody(t, `href="/entries?day=2026-11-01&project=`+project+`">1:59</a>`)
+	res.wantBody(t, `href="/entries?day=2026-10-26&amp;project=`+project+`">1:45</a>`)
+	res.wantBody(t, `href="/entries?day=2026-10-28&amp;project=`+project+`">0:30</a>`)
+	res.wantBody(t, `href="/entries?day=2026-11-01&amp;project=`+project+`">1:59</a>`)
 	res.wantRow(t, "Unassigned", "", "", "0:29", "", "", "", "", "0:29")
-	res.wantBody(t, `href="/entries?day=2026-10-28&project=none">0:29</a>`)
+	res.wantBody(t, `href="/entries?day=2026-10-28&amp;project=none">0:29</a>`)
 	res.wantRow(t, "Total", "1:45", "0:00", "1:00", "0:00", "0:00", "0:00", "1:59", "4:45")
 }
 
@@ -84,11 +84,11 @@ timezone = "Europe/Berlin"
 
 	dst.wantBody(t, "Week of 2026-10-19")
 	dst.wantRow(t, "Unassigned", "1:00", "", "", "", "", "", "1:15", "2:15")
-	dst.wantBody(t, `href="/entries?day=2026-10-19&project=none">1:00</a>`)
-	dst.wantBody(t, `href="/entries?day=2026-10-25&project=none">1:15</a>`)
+	dst.wantBody(t, `href="/entries?day=2026-10-19&amp;project=none">1:00</a>`)
+	dst.wantBody(t, `href="/entries?day=2026-10-25&amp;project=none">1:15</a>`)
 	next.wantBody(t, "Week of 2026-10-26")
 	next.wantRow(t, "Unassigned", "0:10", "", "", "", "", "", "", "0:10")
-	next.wantBody(t, `href="/entries?day=2026-10-26&project=none">0:10</a>`)
+	next.wantBody(t, `href="/entries?day=2026-10-26&amp;project=none">0:10</a>`)
 }
 
 func TestWeekCountsRunningTimersUpToNow(t *testing.T) {
@@ -97,9 +97,9 @@ func TestWeekCountsRunningTimersUpToNow(t *testing.T) {
 	c.startTimer(url.Values{})
 	ta.clock.Advance(2*time.Hour + 30*time.Minute)
 
-	c.get("/week").wantBody(t, `<a href="/entries?day=2026-10-26&project=none">2:30</a>`)
+	c.get("/week").wantBody(t, `<a href="/entries?day=2026-10-26&amp;project=none">2:30</a>`)
 	ta.clock.Advance(15 * time.Minute)
-	c.get("/week").wantBody(t, `<a href="/entries?day=2026-10-26&project=none">2:45</a>`)
+	c.get("/week").wantBody(t, `<a href="/entries?day=2026-10-26&amp;project=none">2:45</a>`)
 }
 
 func TestWeekNavigatesToPreviousAndNextWeek(t *testing.T) {
@@ -136,12 +136,12 @@ timezone = "Europe/Berlin"
 	mine := bob.get("/week")
 	everyone := bob.get("/week?everyone=1")
 
-	mine.wantBody(t, `<a href="/entries?day=2026-10-27&project=none">1:00</a>`)
+	mine.wantBody(t, `<a href="/entries?day=2026-10-27&amp;project=none">1:00</a>`)
 	mine.wantNoBody(t, "0:30")
 	mine.wantBody(t, `href="/week?everyone=1&amp;week=2026-10-26">Team</a>`)
-	everyone.wantBody(t, `<a href="/entries?day=2026-10-26&project=none&everyone=1">0:30</a>`)
-	everyone.wantBody(t, `<a href="/entries?day=2026-10-27&project=none&everyone=1">1:00</a>`)
-	everyone.wantBody(t, `href="/week?week=2026-11-02&everyone=1">Next week</a>`)
+	everyone.wantBody(t, `<a href="/entries?day=2026-10-26&amp;everyone=1&amp;project=none">0:30</a>`)
+	everyone.wantBody(t, `<a href="/entries?day=2026-10-27&amp;everyone=1&amp;project=none">1:00</a>`)
+	everyone.wantBody(t, `href="/week?everyone=1&amp;week=2026-11-02">Next week</a>`)
 	everyone.wantBody(t, `href="/week?week=2026-10-26">Mine</a>`)
 }
 
