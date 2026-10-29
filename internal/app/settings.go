@@ -22,6 +22,7 @@ type settingsPage struct {
 	Languages []languageOption
 	Error     string
 	Business  businessPage
+	Statuses  statusSettings
 }
 
 func (a *App) storedDefaults() (config.Defaults, error) {
@@ -66,8 +67,12 @@ func (a *App) loadSettings() (settingsPage, error) {
 	if err != nil {
 		return settingsPage{}, err
 	}
+	s, err := a.loadStatusSettings()
+	if err != nil {
+		return settingsPage{}, err
+	}
 	return settingsPage{Defaults: d, Managed: a.cfg.DefaultsManaged, Languages: languageOptions(),
-		Business: a.businessSection(businessPage{Business: b, VATRate: strconv.Itoa(b.VATRate)})}, nil
+		Business: a.businessSection(businessPage{Business: b, VATRate: strconv.Itoa(b.VATRate)}), Statuses: s}, nil
 }
 
 func (a *App) settingsPage(w http.ResponseWriter, r *http.Request) {
