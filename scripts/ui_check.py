@@ -129,7 +129,7 @@ def main():
             page = browser.new_page()
             page.goto(f"{base}/profile")
             page.select_option("select[name=language]", lang)
-            page.click("form.settings button")
+            page.click("form.form button")
             page.close()
             for viewport, (width, height) in VIEWPORTS.items():
                 for scheme in ("light", "dark"):
