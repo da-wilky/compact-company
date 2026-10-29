@@ -57,10 +57,9 @@ type projectPage struct {
 	Board    board
 }
 
-// renderProject shows a stored project's page with its board.
 func (a *App) renderProject(w http.ResponseWriter, r *http.Request, status int, page projectPage) {
 	var err error
-	if page.Board, err = a.projectBoard(r, page.Project.ID); err != nil {
+	if page.Board, err = a.loadBoard(r, "/projects/"+strconv.FormatInt(page.Project.ID, 10), `t.project_id = ?`, page.Project.ID); err != nil {
 		a.serverError(w, r, err)
 		return
 	}

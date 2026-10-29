@@ -91,7 +91,7 @@ func TestMovingATodoOutsideTheCustomersActiveProjectsIsRefused(t *testing.T) {
 	c.createTodo("/projects/"+website, todoForm("Write copy"))
 	todo := c.todoPath("/projects/"+website, "Write copy")
 
-	for _, target := range []string{intranet[len("/projects/"):], legacy[len("/projects/"):], website, "999", ""} {
+	for _, target := range []string{intranet[len("/projects/"):], legacy[len("/projects/"):], website, "999", "", "x"} {
 		res := c.postForm(todo+"/move", url.Values{"project": {target}})
 		res.wantStatus(t, http.StatusUnprocessableEntity)
 		res.wantBody(t, "Choose another active project of the same customer.")

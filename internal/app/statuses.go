@@ -54,16 +54,6 @@ func (a *App) loadStatusSettings() (statusSettings, error) {
 	return s, rows.Err()
 }
 
-func (a *App) statusRefused(w http.ResponseWriter, r *http.Request, key string) {
-	p, err := a.loadSettings()
-	if err != nil {
-		a.serverError(w, r, err)
-		return
-	}
-	p.Error = key
-	a.render(w, r, http.StatusUnprocessableEntity, "settings", p)
-}
-
 // errStatusRule carries the catalog key of the status rule a change breaks.
 type errStatusRule string
 
@@ -103,7 +93,13 @@ func (a *App) changeStatuses(w http.ResponseWriter, r *http.Request, change func
 	var rule errStatusRule
 	switch {
 	case errors.As(err, &rule):
-		a.statusRefused(w, r, string(rule))
+		p, err := a.loadSettings()
+		if err != nil {
+			a.serverError(w, r, err)
+			return
+		}
+		p.Error = string(rule)
+		a.render(w, r, http.StatusUnprocessableEntity, "settings", p)
 	case errors.Is(err, sql.ErrNoRows):
 		a.notFound(w, r)
 	case err != nil:
@@ -133,16 +129,22 @@ func (a *App) statusCreate(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// statusID reads the path's status id; an unparsable one is as unknown as a missing one.
-func statusID(r *http.Request) int64 {
-	id, _ := strconv.ParseInt(r.PathValue("id"), 10, 64)
-	return id
+// statusID reads the path's status id; an unparsable one is not found, like a missing one.
+func statusID(r *http.Request) (int64, error) {
+	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	if err != nil {
+		return 0, sql.ErrNoRows
+	}
+	return id, nil
 }
 
 func (a *App) statusUpdate(w http.ResponseWriter, r *http.Request) {
 	a.changeStatuses(w, r, func(tx *sql.Tx) error {
-		var id int64
-		if err := tx.QueryRow(`SELECT id FROM todo_status WHERE id = ?`, statusID(r)).Scan(&id); err != nil {
+		id, err := statusID(r)
+		if err != nil {
+			return err
+		}
+		if err := tx.QueryRow(`SELECT id FROM todo_status WHERE id = ?`, id).Scan(&id); err != nil {
 			return err
 		}
 		name, done, err := statusFromForm(r)
@@ -162,13 +164,16 @@ func (a *App) statusMove(step int) http.HandlerFunc {
 	}
 	return func(w http.ResponseWriter, r *http.Request) {
 		a.changeStatuses(w, r, func(tx *sql.Tx) error {
-			id := statusID(r)
+			id, err := statusID(r)
+			if err != nil {
+				return err
+			}
 			var pos int64
 			if err := tx.QueryRow(`SELECT position FROM todo_status WHERE id = ?`, id).Scan(&pos); err != nil {
 				return err
 			}
 			var otherID, otherPos int64
-			err := tx.QueryRow(neighbour, pos).Scan(&otherID, &otherPos)
+			err = tx.QueryRow(neighbour, pos).Scan(&otherID, &otherPos)
 			if errors.Is(err, sql.ErrNoRows) {
 				return nil
 			}
@@ -188,10 +193,13 @@ func (a *App) statusMove(step int) http.HandlerFunc {
 
 func (a *App) statusDelete(w http.ResponseWriter, r *http.Request) {
 	a.changeStatuses(w, r, func(tx *sql.Tx) error {
-		var id int64
+		id, err := statusID(r)
+		if err != nil {
+			return err
+		}
 		var used, working bool
-		if err := tx.QueryRow(`SELECT id, EXISTS (SELECT 1 FROM todo WHERE status_id = s.id), EXISTS (SELECT 1 FROM defaults WHERE working_status_id = s.id)
-			FROM todo_status s WHERE id = ?`, statusID(r)).Scan(&id, &used, &working); err != nil {
+		if err := tx.QueryRow(`SELECT EXISTS (SELECT 1 FROM todo WHERE status_id = s.id), EXISTS (SELECT 1 FROM defaults WHERE working_status_id = s.id)
+			FROM todo_status s WHERE id = ?`, id).Scan(&used, &working); err != nil {
 			return err
 		}
 		switch {
@@ -200,7 +208,7 @@ func (a *App) statusDelete(w http.ResponseWriter, r *http.Request) {
 		case working:
 			return errStatusRule("settings.error.status_working")
 		}
-		_, err := tx.Exec(`DELETE FROM todo_status WHERE id = ?`, id)
+		_, err = tx.Exec(`DELETE FROM todo_status WHERE id = ?`, id)
 		return err
 	})
 }

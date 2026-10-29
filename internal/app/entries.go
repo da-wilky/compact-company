@@ -504,13 +504,13 @@ func validateEntry(tx *sql.Tx, u *User, f *entryForm, loc *time.Location, stored
 				return s, nil, err
 			}
 		}
-		switch todoProject := strconv.FormatInt(project, 10); {
+		switch todoProjectID := strconv.FormatInt(project, 10); {
 		case err != nil:
 			errs = append(errs, "entries.error.todo")
 		case f.Todo != stored.Todo:
-			f.Project = todoProject
+			f.Project = todoProjectID
 			s.todo = sql.NullInt64{Int64: id, Valid: true}
-		case f.Project != todoProject:
+		case f.Project != todoProjectID:
 			f.Todo = ""
 		default:
 			s.todo = sql.NullInt64{Int64: id, Valid: true}

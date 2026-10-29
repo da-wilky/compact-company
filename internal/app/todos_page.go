@@ -96,7 +96,6 @@ func (a *App) todoBoard(w http.ResponseWriter, r *http.Request) {
 	a.render(w, r, http.StatusOK, "todos", page)
 }
 
-// todoFilters offers the active customers and projects, every user and every status.
 func (a *App) todoFilters(page *todosPage, f todosFilter) error {
 	page.Customers = f.selectFor("customer", "todos.customer", "todos.all_customers")
 	page.Projects = f.selectFor("project", "todos.project", "todos.all_projects")
@@ -130,7 +129,7 @@ func (a *App) todoFilters(page *todosPage, f todosFilter) error {
 	}
 	page.Customers.Groups = []filterGroup{customers}
 
-	users, err := a.todoUsers()
+	users, err := a.userOptions()
 	if err != nil {
 		return err
 	}

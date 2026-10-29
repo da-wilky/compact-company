@@ -241,7 +241,7 @@ func TestUnknownStatusIsNotFound(t *testing.T) {
 	ta := newTestApp(t, devConfig)
 	c := ta.client()
 
-	for _, path := range []string{"/settings/statuses/99", "/settings/statuses/99/up", "/settings/statuses/99/delete"} {
+	for _, path := range []string{"/settings/statuses/99", "/settings/statuses/99/up", "/settings/statuses/99/delete", "/settings/statuses/x", "/settings/statuses/x/down", "/settings/statuses/x/delete"} {
 		c.postForm(path, statusForm("X", false)).wantStatus(t, http.StatusNotFound)
 	}
 }

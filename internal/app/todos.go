@@ -33,16 +33,15 @@ type todoStatus struct {
 }
 
 type todoCard struct {
-	ID       int64
-	Title    string
-	Project  string
-	Assignee string
-	Priority int
-	DueDate  string
-	Overdue  bool
-	StatusID int64
-	Tracked  time.Duration
-	// Archived: the todo's project or customer is archived, which freezes its status.
+	ID        int64
+	Title     string
+	Project   string
+	Assignee  string
+	Priority  int
+	DueDate   string
+	Overdue   bool
+	StatusID  int64
+	Tracked   time.Duration
 	Archived  bool
 	Startable bool
 }
@@ -138,10 +137,6 @@ func startWork(tx *sql.Tx, id int64) error {
 	return err
 }
 
-func (a *App) projectBoard(r *http.Request, projectID int64) (board, error) {
-	return a.loadBoard(r, "/projects/"+strconv.FormatInt(projectID, 10), `t.project_id = ?`, projectID)
-}
-
 // boardReturn is where a status change from a board goes back to: a board page, else fallback.
 func boardReturn(to, fallback string) string {
 	if strings.HasPrefix(to, "/projects/") || to == "/todos" || strings.HasPrefix(to, "/todos?") {
@@ -156,7 +151,7 @@ type todoProject struct {
 	Archived bool
 }
 
-type todoUser struct {
+type userOption struct {
 	ID   int64
 	Name string
 }
@@ -172,18 +167,17 @@ type todo struct {
 }
 
 type todoPage struct {
-	Project    todoProject
-	Todo       todo
-	Users      []todoUser
-	Priorities []string
-	// MoveTargets are the projects the todo may move to.
+	Project     todoProject
+	Todo        todo
+	Users       []userOption
+	Priorities  []string
 	MoveTargets []todoProject
 	Errors      []string
 }
 
 func (a *App) renderTodo(w http.ResponseWriter, r *http.Request, status int, page todoPage) {
 	var err error
-	if page.Users, err = a.todoUsers(); err != nil {
+	if page.Users, err = a.userOptions(); err != nil {
 		a.serverError(w, r, err)
 		return
 	}
@@ -197,12 +191,13 @@ func (a *App) renderTodo(w http.ResponseWriter, r *http.Request, status int, pag
 	a.render(w, r, status, "todo", page)
 }
 
-// moveTarget selects (project id, name) of the other active projects of project ?1's customer.
-const moveTarget = `SELECT t.id, t.name FROM project p JOIN project t ON t.customer_id = p.customer_id JOIN customer c ON c.id = t.customer_id
-	WHERE p.id = ?1 AND t.id <> p.id AND NOT t.archived AND NOT c.archived`
+// moveTarget selects (id, name) of each other active project, aliased dest, of project ?1's customer.
+// moveTarget selects (dest.id, dest.name) of the other active projects of project ?1's customer.
+const moveTarget = `SELECT dest.id, dest.name FROM project p JOIN project dest ON dest.customer_id = p.customer_id JOIN customer c ON c.id = dest.customer_id
+	WHERE p.id = ?1 AND dest.id <> p.id AND NOT dest.archived AND NOT c.archived`
 
 func (a *App) moveTargets(projectID int64) ([]todoProject, error) {
-	rows, err := a.db.Query(moveTarget+` ORDER BY t.name, t.id`, projectID)
+	rows, err := a.db.Query(moveTarget+` ORDER BY dest.name, dest.id`, projectID)
 	if err != nil {
 		return nil, err
 	}
@@ -218,15 +213,15 @@ func (a *App) moveTargets(projectID int64) ([]todoProject, error) {
 	return targets, rows.Err()
 }
 
-func (a *App) todoUsers() ([]todoUser, error) {
+func (a *App) userOptions() ([]userOption, error) {
 	rows, err := a.db.Query(`SELECT id, display_name FROM user ORDER BY display_name, id`)
 	if err != nil {
 		return nil, err
 	}
 	defer func() { _ = rows.Close() }()
-	var users []todoUser
+	var users []userOption
 	for rows.Next() {
-		var u todoUser
+		var u userOption
 		if err := rows.Scan(&u.ID, &u.Name); err != nil {
 			return nil, err
 		}
@@ -417,8 +412,6 @@ func (a *App) todoMove(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	// An unparsable id is 0, which is no move target.
-	target, _ := strconv.ParseInt(r.PostFormValue("project"), 10, 64)
 	tx, err := a.db.Begin()
 	if err != nil {
 		a.serverError(w, r, err)
@@ -426,9 +419,12 @@ func (a *App) todoMove(w http.ResponseWriter, r *http.Request) {
 	}
 	defer func() { _ = tx.Rollback() }()
 	var allowed, claimed bool
-	if err := tx.QueryRow(`SELECT EXISTS (`+moveTarget+` AND t.id = ?2)`, p.ID, target).Scan(&allowed); err != nil {
-		a.serverError(w, r, err)
-		return
+	target, err := strconv.ParseInt(r.PostFormValue("project"), 10, 64)
+	if err == nil {
+		if err := tx.QueryRow(`SELECT EXISTS (`+moveTarget+` AND dest.id = ?2)`, p.ID, target).Scan(&allowed); err != nil {
+			a.serverError(w, r, err)
+			return
+		}
 	}
 	if err := tx.QueryRow(`SELECT EXISTS (SELECT 1 FROM time_entry WHERE todo_id = ? AND invoice_line_id IS NOT NULL)`, t.ID).Scan(&claimed); err != nil {
 		a.serverError(w, r, err)
