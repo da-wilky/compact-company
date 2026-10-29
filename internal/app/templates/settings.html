@@ -52,5 +52,31 @@
 {{if not .Managed}}<button>{{template "icon-save"}}{{t "common.save"}}</button>{{end}}
 </form>
 {{end}}
+{{with .Statuses}}
+<h2 id="statuses">{{t "settings.statuses"}}</h2>
+<p class="hint">{{t "settings.statuses_hint"}}</p>
+<div class="table-wrap"><table class="statuses">
+<thead><tr><th>{{t "settings.status_name"}}</th><th>{{t "settings.status_done_short"}}</th><th></th></tr></thead>
+<tbody>
+{{range .Statuses}}<tr><td><input name="name" value="{{.Name}}" form="status-{{.ID}}" required aria-label="{{t "settings.status_name_of" .Name}}"></td>
+<td><input type="checkbox" name="done" form="status-{{.ID}}"{{if .Done}} checked{{end}} aria-label="{{t "settings.status_done_of" .Name}}"></td>
+<td class="line-actions"><form id="status-{{.ID}}" method="post" action="/settings/statuses/{{.ID}}"><button class="ghost" aria-label="{{t "settings.save_status" .Name}}" title="{{t "settings.save_status" .Name}}">{{template "icon-save"}}</button></form>{{if not .First}}<form method="post" action="/settings/statuses/{{.ID}}/up"><button class="ghost" aria-label="{{t "settings.move_status_up" .Name}}" title="{{t "settings.move_status_up" .Name}}">{{template "icon-arrow-up"}}</button></form>{{end}}{{if not .Last}}<form method="post" action="/settings/statuses/{{.ID}}/down"><button class="ghost" aria-label="{{t "settings.move_status_down" .Name}}" title="{{t "settings.move_status_down" .Name}}">{{template "icon-arrow-down"}}</button></form>{{end}}<form method="post" action="/settings/statuses/{{.ID}}/delete" data-confirm="{{t "settings.confirm_delete_status" .Name}}"><button class="ghost danger" aria-label="{{t "settings.delete_status" .Name}}" title="{{t "settings.delete_status" .Name}}">{{template "icon-trash"}}</button></form></td></tr>
+{{end}}</tbody>
+</table></div>
+<form method="post" action="/settings/statuses" class="form">
+<label>{{t "settings.new_status"}} <input name="name" required></label>
+<label><input type="checkbox" name="done"> {{t "settings.status_done"}}</label>
+<button>{{template "icon-plus"}}{{t "settings.add_status"}}</button>
+</form>
+<form method="post" action="/settings/working-status" class="form">
+<label>{{t "settings.working_status"}}
+<select name="status" aria-describedby="working-hint"><option value=""{{if not .Working}} selected{{end}}>{{t "settings.working_none"}}</option>
+{{range .Statuses}}{{if not .Done}}<option value="{{.ID}}"{{if eq .ID $.Data.Statuses.Working}} selected{{end}}>{{.Name}}</option>
+{{end}}{{end}}</select>
+</label>
+<p class="hint" id="working-hint">{{t "settings.working_status_hint"}}</p>
+<button>{{template "icon-save"}}{{t "common.save"}}</button>
+</form>
+{{end}}
 {{end}}
 {{end}}
