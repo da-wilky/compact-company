@@ -135,7 +135,7 @@ func TestIssuingIsRefusedWhileBusinessDataIsMissing(t *testing.T) {
 
 	res.wantStatus(t, http.StatusConflict)
 	res.wantBody(t, "Invoices can&#39;t be previewed or issued until these are set: Name, Address, Tax number")
-	res.wantBody(t, `<form method="post" action="`+draft+`/issue"`)
+	res.wantBody(t, `<form method="post" action="`+draft+`/issue"`) // markup is the behaviour
 	c.get(draft).wantBody(t, "Draft for acme")
 	c.postForm("/settings/business", businessForm()).wantStatus(t, http.StatusSeeOther)
 	wantRedirect(t, c.issue(draft), draft)

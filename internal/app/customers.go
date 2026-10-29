@@ -77,11 +77,9 @@ func (a *App) listCustomers(w http.ResponseWriter, r *http.Request, status int, 
 		a.serverError(w, r, err)
 		return
 	}
-	if !show && page.Customers == nil {
-		if err := a.db.QueryRow(`SELECT EXISTS (SELECT 1 FROM customer WHERE archived = 1)`).Scan(&page.HidesArchived); err != nil {
-			a.serverError(w, r, err)
-			return
-		}
+	if page.HidesArchived, err = a.hidesArchived(show, page.Customers == nil, `SELECT 1 FROM customer WHERE archived = 1`); err != nil {
+		a.serverError(w, r, err)
+		return
 	}
 	a.render(w, r, status, "customers", page)
 }

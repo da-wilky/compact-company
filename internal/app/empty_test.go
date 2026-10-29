@@ -7,7 +7,8 @@ func TestEmptyListsSayNothingExistsYet(t *testing.T) {
 	c := ta.client()
 
 	c.get("/customers").wantBody(t, "No customers yet.")
-	c.get("/entries").wantBody(t, "No time entries yet.")
+	c.get("/entries").wantBody(t, "You have no time entries yet.")
+	c.get("/entries?everyone=1").wantBody(t, "No time entries yet.")
 	c.get("/invoices").wantBody(t, "No invoices yet.")
 	c.createCustomer(customerForm("acme", "85"))
 	c.get(c.customerPath("acme")+"/projects").wantBody(t, "No projects yet.")
@@ -23,7 +24,9 @@ func TestEmptyListsNameTheFilterThatHidesEverything(t *testing.T) {
 
 	c.get("/customers").wantBody(t, "No active customers.")
 	c.get(cust+"/projects").wantBody(t, "No active projects.")
-	c.get("/entries?day=2026-10-27").wantBody(t, "No time entries on this day.")
+	c.get("/entries?day=2026-10-27").wantBody(t, "You have no time entries on this day.")
+	c.get("/entries?day=2026-10-27&everyone=1").wantBody(t, "No time entries on this day.")
+	c.get("/entries?day=2026-10-26&project=none").wantBody(t, "No time entries match this filter.")
 	c.get("/entries?project=none").wantBody(t, "No time entries match this filter.")
 	c.get("/invoices?status=paid").wantBody(t, "No invoices match these filters.")
 }

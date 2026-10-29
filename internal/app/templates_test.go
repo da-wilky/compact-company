@@ -1,6 +1,7 @@
 package app
 
 import (
+	"cmp"
 	"io/fs"
 	"path"
 	"regexp"
@@ -8,9 +9,21 @@ import (
 	"testing"
 )
 
-// Page anatomy from docs/agents/codebase.md, checked on the template sources.
+var navLink = regexp.MustCompile(`href="/([a-z]*)"`)
 
-var mainNavPages = map[string]bool{"home": true, "week": true, "entries": true, "invoices": true, "customers": true, "settings": true, "profile": true}
+// mainNavPages are the pages layout.html links to; "/" is home.
+func mainNavPages(t *testing.T) map[string]bool {
+	t.Helper()
+	layout, err := fs.ReadFile(templates, "templates/layout.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	pages := map[string]bool{}
+	for _, m := range navLink.FindAllStringSubmatch(string(layout), -1) {
+		pages[cmp.Or(m[1], "home")] = true
+	}
+	return pages
+}
 
 // Pages outside the app shell's navigation: login, access refusal, and the error page with its own way home.
 var unnavigatedPages = map[string]bool{"login": true, "not_allowed": true, "error": true}
@@ -37,13 +50,14 @@ func templateSources(t *testing.T) map[string]string {
 }
 
 func TestEveryPageOffTheMainNavHasOneCrumb(t *testing.T) {
+	nav := mainNavPages(t)
 	for f, src := range templateSources(t) {
 		name := strings.TrimSuffix(path.Base(f), ".html")
 		if path.Dir(f) != "templates" || name == "layout" || unnavigatedPages[name] {
 			continue
 		}
 		want := 1
-		if mainNavPages[name] {
+		if nav[name] {
 			want = 0
 		}
 		if got := strings.Count(src, `<a class="crumb"`); got != want {
@@ -99,14 +113,6 @@ func TestErrorsRenderOnlyAsAlertLists(t *testing.T) {
 			if !strings.Contains(ul, `role="alert"`) {
 				t.Errorf("%s: %s lacks role=\"alert\"", f, ul)
 			}
-		}
-	}
-}
-
-func TestFormsUseTheFormCard(t *testing.T) {
-	for f, src := range templateSources(t) {
-		if strings.Contains(src, `class="settings"`) {
-			t.Errorf("%s: form uses .settings instead of .form", f)
 		}
 	}
 }

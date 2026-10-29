@@ -133,11 +133,9 @@ func (a *App) listProjects(w http.ResponseWriter, r *http.Request, status int, c
 		a.serverError(w, r, err)
 		return
 	}
-	if !show && page.Projects == nil {
-		if err := a.db.QueryRow(`SELECT EXISTS (SELECT 1 FROM project WHERE customer_id = ? AND archived = 1)`, c.ID).Scan(&page.HidesArchived); err != nil {
-			a.serverError(w, r, err)
-			return
-		}
+	if page.HidesArchived, err = a.hidesArchived(show, page.Projects == nil, `SELECT 1 FROM project WHERE customer_id = ? AND archived = 1`, c.ID); err != nil {
+		a.serverError(w, r, err)
+		return
 	}
 	a.render(w, r, status, "projects", page)
 }

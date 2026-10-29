@@ -34,7 +34,7 @@
 <button class="danger" formnovalidate data-confirm-one="{{t "entries.confirm_delete_one"}}" data-confirm-many="{{t "entries.confirm_delete_many" "{n}"}}" data-confirm-ok="{{t "common.delete"}}">{{template "icon-trash"}}{{t "selection.delete"}}</button></span>
 </form>
 {{template "entry-days" $}}{{else}}
-<p class="hint">{{if .Day}}{{t "entries.empty_day"}}{{else if .Project}}{{t "entries.empty_filtered"}}{{else}}{{t "entries.empty"}}{{end}}</p>
+<p class="hint">{{if .Project}}{{t "entries.empty_filtered"}}{{else if and .Day .Everyone}}{{t "entries.empty_day"}}{{else if .Day}}{{t "entries.empty_day_mine"}}{{else if .Everyone}}{{t "entries.empty"}}{{else}}{{t "entries.empty_mine"}}{{end}}</p>
 {{end}}</div>
 {{end}}
 {{end}}
@@ -45,7 +45,7 @@
 <colgroup><col class="c-select">{{if $.Data.Everyone}}<col class="c-user">{{end}}<col class="c-time"><col class="c-dur"><col class="c-project"><col><col class="c-bill"></colgroup>
 <thead><tr><td></td>{{if $.Data.Everyone}}<th>{{t "entries.user"}}</th>{{end}}<th>{{t "entries.time"}}</th><th class="num">{{t "entries.duration"}}</th><th>{{t "entries.project"}}</th><th>{{t "entries.description"}}</th><th>{{t "entries.billable"}}</th></tr></thead>
 <tbody>
-{{range .Entries}}<tr><td>{{if .Selectable}}<input type="checkbox" name="id" value="{{.ID}}" form="entry-selection" aria-label="{{t "entries.select" (date .Start) (clock .Start)}}"{{if index $.Data.Selected .ID}} checked{{end}}>{{end}}</td>{{if $.Data.Everyone}}<td>{{.User}}</td>{{end}}<td>{{if and .Own (not .Running)}}<a href="/entries/{{.ID}}?return={{$.Data.Self}}">{{end}}{{clock .Start}}–{{if .Running}}{{t "entries.running"}}{{else}}{{clock .End}}{{end}}{{if and .Own (not .Running)}}</a>{{end}}</td><td class="num">{{duration .Duration}}</td><td>{{if .Project}}{{.Project}}{{else}}{{t "timers.unassigned"}}{{end}}</td><td>{{.Description}}{{with .Invoice}} {{template "invoice-badge" .}}{{end}}</td><td>{{if .Billable.Valid}}{{if .Billable.Bool}}{{t "entries.yes"}}{{else}}{{t "entries.no"}}{{end}}{{end}}</td></tr>
+{{range .Entries}}<tr><td>{{if .Selectable}}<input type="checkbox" name="id" value="{{.ID}}" form="entry-selection" aria-label="{{t "entries.select" (date .Start) (clock .Start)}}"{{if index $.Data.Selected .ID}} checked{{end}}>{{end}}</td>{{if $.Data.Everyone}}<td>{{.User}}</td>{{end}}<td>{{if and .Own (not .Running)}}<a href="/entries/{{.ID}}?return={{$.Data.Self}}">{{end}}{{clock .Start}}–{{if .Running}}{{t "entries.running"}}{{else}}{{clock .End}}{{end}}{{if and .Own (not .Running)}}</a>{{end}}</td><td class="num">{{duration .Duration}}</td><td>{{if .Project}}{{.Project}}{{else}}{{t "timers.unassigned"}}{{end}}</td><td>{{.Description}}{{with .Invoice}} {{template "invoice-badge" .}}{{end}}</td><td>{{if .Billable.Valid}}{{if .Billable.Bool}}{{t "common.yes"}}{{else}}{{t "common.no"}}{{end}}{{end}}</td></tr>
 {{end}}</tbody>
 </table></div>
 </section>

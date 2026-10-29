@@ -5,6 +5,7 @@
 {{with .Data.Draft}}
 <a class="crumb" href="/invoices/{{.ID}}">{{template "icon-arrow-left"}}{{template "parent" $}}</a>
 <h1>{{template "title" $}}</h1>
+{{template "render-errors" $.Data}}
 <form method="post" action="/invoices/{{.ID}}/refresh" class="form">
 <p>{{t "invoices.refresh_warning"}}</p>
 <p class="hint">{{if .Header.From}}{{t "invoices.from"}} {{day .Header.From}} · {{t "invoices.to"}} {{day .Header.To}}{{else}}{{t "invoices.no_range"}}{{end}}</p>

@@ -22,7 +22,7 @@
 <div class="table-wrap"><table class="selectable">
 <thead><tr><td class="c-select"></td><th>{{t "projects.name"}}</th><th>{{t "projects.billable"}}</th><th class="num">{{t "projects.effective_rate"}}</th></tr></thead>
 <tbody>
-{{range .}}<tr><td><input type="checkbox" name="id" value="{{.ID}}" form="project-selection" data-state="{{if .Archived}}archived{{else}}active{{end}}" aria-label="{{t "projects.select" .Name}}"{{if index $.Data.Selected .ID}} checked{{end}}></td><td><a href="/projects/{{.ID}}">{{.Name}}</a>{{if .Archived}} <span class="hint">({{t "archive.archived"}})</span>{{end}}</td><td>{{if .Billable}}{{t "projects.yes"}}{{else}}{{t "projects.no"}}{{end}}</td><td class="num">{{.EffectiveRate}} {{$.Data.Customer.Currency}}{{if not .HourlyRate}} <span class="hint">({{t "projects.customer_rate"}})</span>{{end}}</td></tr>
+{{range .}}<tr><td><input type="checkbox" name="id" value="{{.ID}}" form="project-selection" data-state="{{if .Archived}}archived{{else}}active{{end}}" aria-label="{{t "projects.select" .Name}}"{{if index $.Data.Selected .ID}} checked{{end}}></td><td><a href="/projects/{{.ID}}">{{.Name}}</a>{{if .Archived}} <span class="hint">({{t "archive.archived"}})</span>{{end}}</td><td>{{if .Billable}}{{t "common.yes"}}{{else}}{{t "common.no"}}{{end}}</td><td class="num">{{.EffectiveRate}} {{$.Data.Customer.Currency}}{{if not .HourlyRate}} <span class="hint">({{t "projects.customer_rate"}})</span>{{end}}</td></tr>
 {{end}}</tbody>
 </table></div>
 {{else}}

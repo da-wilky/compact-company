@@ -126,9 +126,9 @@ func (a *App) issueDraft(w http.ResponseWriter, r *http.Request) {
 
 // renderDraftFailure shows on page why d couldn't be rendered.
 func (a *App) renderDraftFailure(w http.ResponseWriter, r *http.Request, page string, d draft, err error) {
-	p := draftPage{Draft: d}
-	if status, ok := p.explain(err); ok {
-		a.render(w, r, status, page, p)
+	data := draftPage{Draft: d}
+	if status, ok := data.explain(err); ok {
+		a.render(w, r, status, page, data)
 		return
 	}
 	a.serverError(w, r, err)

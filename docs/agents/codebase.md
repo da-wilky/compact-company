@@ -68,7 +68,7 @@ To preview while tests are red (`nix run` builds with tests and fails), use `go 
 "customers.title" = { en = "Customers", de = "Kunden" }
 ```
 
-A plain Save or Delete uses `common.save` / `common.delete`; a label that says more ("Delete draft") keeps its own key.
+A plain Save, Delete, yes or no uses `common.save` / `common.delete` / `common.yes` / `common.no`; a label that says more ("Delete draft") keeps its own key.
 
 Startup, and so every test, fails if a key is duplicated or lacks `en` or `de`. Language is the user's own, else the default (`a.defaults()`: the stored row with config's `[defaults]` keys laid over it); `Accept-Language` is never read.
 

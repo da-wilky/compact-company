@@ -6,8 +6,6 @@
 "projects.name" = { en = "Name", de = "Name" }
 "projects.billable" = { en = "Billable", de = "Abrechenbar" }
 "projects.billable_default" = { en = "Billable by default", de = "Standardmäßig abrechenbar" }
-"projects.yes" = { en = "yes", de = "ja" }
-"projects.no" = { en = "no", de = "nein" }
 "projects.effective_rate" = { en = "Hourly rate", de = "Stundensatz" }
 "projects.customer_rate" = { en = "customer default", de = "Kundenstandard" }
 "projects.hourly_rate" = { en = "Hourly rate override (%s)", de = "Abweichender Stundensatz (%s)" }

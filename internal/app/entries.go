@@ -348,12 +348,22 @@ type entryPage struct {
 	Return    string
 }
 
-// Back is the listing the entry was opened from, as redirectBack accepts it.
+// Back is the listing the entry was opened from.
 func (p entryPage) Back() string {
-	if strings.HasPrefix(p.Return, "/entries?") {
-		return p.Return
+	return entriesReturn(p.Return, "/entries")
+}
+
+// BackDay is the day Back shows, "" when it lists every day.
+func (p entryPage) BackDay() string {
+	u, err := url.Parse(p.Back())
+	if err != nil {
+		return ""
 	}
-	return "/entries"
+	day := u.Query().Get("day")
+	if _, err := time.Parse(dayLayout, day); err != nil {
+		return ""
+	}
+	return day
 }
 
 // renderEntry offers storedProject ("" = none) even when it no longer receives new time.
@@ -722,9 +732,13 @@ func (a *App) wroteUnclaimed(w http.ResponseWriter, r *http.Request, res sql.Res
 
 // redirectBack returns to the listing the entry was opened from, else to the given day.
 func redirectBack(w http.ResponseWriter, r *http.Request, day string) {
-	to := r.PostFormValue("return")
-	if !strings.HasPrefix(to, "/entries?") {
-		to = "/entries?day=" + day
+	http.Redirect(w, r, entriesReturn(r.PostFormValue("return"), "/entries?day="+day), http.StatusSeeOther)
+}
+
+// entriesReturn is to when it is an /entries listing, so a posted return can't leave the app; fallback otherwise.
+func entriesReturn(to, fallback string) string {
+	if strings.HasPrefix(to, "/entries?") {
+		return to
 	}
-	http.Redirect(w, r, to, http.StatusSeeOther)
+	return fallback
 }

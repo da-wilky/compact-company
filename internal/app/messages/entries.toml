@@ -6,7 +6,9 @@
 "entries.new" = { en = "New time entry", de = "Neuer Zeiteintrag" }
 "entries.edit" = { en = "Edit time entry", de = "Zeiteintrag bearbeiten" }
 "entries.empty" = { en = "No time entries yet.", de = "Noch keine Zeiteinträge." }
+"entries.empty_mine" = { en = "You have no time entries yet.", de = "Du hast noch keine Zeiteinträge." }
 "entries.empty_day" = { en = "No time entries on this day.", de = "Keine Zeiteinträge an diesem Tag." }
+"entries.empty_day_mine" = { en = "You have no time entries on this day.", de = "Du hast an diesem Tag keine Zeiteinträge." }
 "entries.empty_filtered" = { en = "No time entries match this filter.", de = "Keine Zeiteinträge passen zu diesem Filter." }
 "entries.time" = { en = "Time", de = "Zeit" }
 "entries.duration" = { en = "Duration", de = "Dauer" }
@@ -14,8 +16,6 @@
 "entries.description" = { en = "Description", de = "Beschreibung" }
 "entries.billable" = { en = "Billable", de = "Abrechenbar" }
 "entries.billable_default" = { en = "Project default", de = "Projektstandard" }
-"entries.yes" = { en = "yes", de = "ja" }
-"entries.no" = { en = "no", de = "nein" }
 "entries.running" = { en = "running", de = "läuft" }
 "entries.start" = { en = "Start", de = "Beginn" }
 "entries.end" = { en = "End", de = "Ende" }
@@ -34,7 +34,7 @@
 "entries.day" = { en = "Day", de = "Tag" }
 "entries.jump" = { en = "Go", de = "Los" }
 "entries.today" = { en = "Today", de = "Heute" }
-"entries.all" = { en = "All entries", de = "Alle Einträge" }
+"entries.all" = { en = "All time entries", de = "Alle Zeiteinträge" }
 "entries.more" = { en = "Load more", de = "Mehr laden" }
 "entries.clear_project" = { en = "Remove project filter", de = "Projektfilter entfernen" }
 "entries.confirm_delete" = { en = "Delete the time entry of %s %s?", de = "Zeiteintrag vom %s %s löschen?" }
