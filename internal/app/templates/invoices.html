@@ -4,11 +4,9 @@
 <h1>{{template "title" $}}</h1>
 <p class="actions"><a href="/invoices/new">{{template "icon-plus"}}{{t "invoices.new"}}</a></p>
 <div class="filters">
-<span class="label">{{t "invoices.show"}}</span>
-<span class="seg"><a href="{{.StatusLink ""}}"{{if not .Status}} aria-current="true"{{end}}>{{t "invoices.all"}}</a>{{range .Statuses}}<a href="{{$.Data.StatusLink .}}"{{if eq . $.Data.Status}} aria-current="true"{{end}}>{{t (print "invoices.status." .)}}</a>{{end}}</span>
-<form class="filter-form" action="/invoices">{{with .Status}}<input type="hidden" name="status" value="{{.}}">{{end}}
-<select name="customer" aria-label="{{t "invoices.customer"}}"><option value="">{{t "invoices.all_customers"}}</option>{{range .Customers}}<option value="{{.ID}}"{{if eq .ID $.Data.Customer}} selected{{end}}>{{.Name}}</option>{{end}}</select>
-<button>{{t "invoices.filter"}}</button></form>
+<span class="label">{{t "filter.show"}}</span>
+{{template "filter-seg" .Statuses}}
+{{template "filter-select" .Customers}}
 </div>
 <div id="invoice-list">
 {{with .Blocked}}<div class="errors selection-blocked" role="alert"><p>{{t $.Data.Refusal}}</p>

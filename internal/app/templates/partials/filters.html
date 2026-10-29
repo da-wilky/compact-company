@@ -1,0 +1,5 @@
+{{define "filter-seg"}}<span class="seg">{{range .}}<a href="{{.URL}}"{{if .Current}} aria-current="true"{{end}}>{{t .Label}}</a>{{end}}</span>{{end}}
+{{define "filter-select"}}<form class="filter-select" action="{{.Action}}">{{range .Hidden}}<input type="hidden" name="{{.Name}}" value="{{.Value}}">{{end}}
+<select name="{{.Name}}" aria-label="{{t .Label}}"><option value="">{{t .All}}</option>
+{{range .Groups}}{{if .Label}}<optgroup label="{{.Label}}">{{end}}{{range .Options}}<option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{with .Key}}{{t .}}{{else}}{{.Name}}{{end}}{{if .Archived}} ({{t "archive.archived"}}){{end}}</option>{{end}}{{if .Label}}</optgroup>{{end}}
+{{end}}</select><noscript><button>{{t "filter.go"}}</button></noscript></form>{{end}}

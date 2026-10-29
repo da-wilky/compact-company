@@ -4,8 +4,8 @@
 <h1>{{template "title" $}}</h1>
 <p class="actions"><a href="/customers/new">{{template "icon-plus"}}{{t "customers.new"}}</a></p>
 <div class="filters">
-<span class="label">{{t "archive.show"}}</span>
-<span class="seg"><a href="/customers"{{if not .ShowArchived}} aria-current="true"{{end}}>{{t "archive.active"}}</a><a href="/customers?archived=1"{{if .ShowArchived}} aria-current="true"{{end}}>{{t "archive.all"}}</a></span>
+<span class="label">{{t "filter.show"}}</span>
+{{template "filter-seg" .Shown}}
 </div>
 <div id="customer-list">
 {{with .Blocked}}<div class="errors selection-blocked" role="alert"><p>{{t $.Data.Refusal}}</p>

@@ -138,7 +138,7 @@ timezone = "Europe/Berlin"
 
 	mine.wantBody(t, `<a href="/entries?day=2026-10-27&project=none">1:00</a>`)
 	mine.wantNoBody(t, "0:30")
-	mine.wantBody(t, `href="/week?week=2026-10-26&everyone=1">Team</a>`)
+	mine.wantBody(t, `href="/week?everyone=1&amp;week=2026-10-26">Team</a>`)
 	everyone.wantBody(t, `<a href="/entries?day=2026-10-26&project=none&everyone=1">0:30</a>`)
 	everyone.wantBody(t, `<a href="/entries?day=2026-10-27&project=none&everyone=1">1:00</a>`)
 	everyone.wantBody(t, `href="/week?week=2026-11-02&everyone=1">Next week</a>`)

@@ -65,12 +65,6 @@ func entryPageSize(s string) int {
 	return entryPageSizes[0]
 }
 
-type entryPageSizeLink struct {
-	Size    int
-	URL     string
-	Current bool
-}
-
 type entryDay struct {
 	Weekday   string
 	Date      time.Time
@@ -89,6 +83,14 @@ type entriesFilter struct {
 }
 
 func (f entriesFilter) url(before string) string {
+	q := f.query(before)
+	if len(q) == 0 {
+		return "/entries"
+	}
+	return "/entries?" + q.Encode()
+}
+
+func (f entriesFilter) query(before string) url.Values {
 	q := url.Values{}
 	if f.Day != "" {
 		q.Set("day", f.Day)
@@ -105,10 +107,7 @@ func (f entriesFilter) url(before string) string {
 	if before != "" {
 		q.Set("before", before)
 	}
-	if len(q) == 0 {
-		return "/entries"
-	}
-	return "/entries?" + q.Encode()
+	return q
 }
 
 // CustomPerPage is PerPage unless it is the default, then 0.
@@ -126,18 +125,18 @@ func (f entriesFilter) with(change func(*entriesFilter)) string {
 
 type entriesPage struct {
 	entriesFilter
-	From                  time.Time
-	IsToday               bool
-	ProjectName           string
-	Self                  string
-	Prev, Next, Today     string
-	All, Mine, Team, Bare string
-	More                  string
-	DeleteURL, AssignURL  string
-	BillableURL           string
-	PageSizes             []entryPageSizeLink
-	Days                  []entryDay
-	Customers             []pickerCustomer
+	From                 time.Time
+	IsToday              bool
+	Self                 string
+	Prev, Next, Today    string
+	All                  string
+	More                 string
+	DeleteURL, AssignURL string
+	BillableURL          string
+	Whose, PageSizes     []filterOption
+	Projects             filterSelect
+	Days                 []entryDay
+	Customers            []pickerCustomer
 	selectionRefusal[entryRow]
 }
 
@@ -171,13 +170,13 @@ func (a *App) listEntries(w http.ResponseWriter, r *http.Request, status int, re
 			a.errorPage(w, r, http.StatusBadRequest, "error.invalid_project")
 			return
 		}
-		err = a.db.QueryRow(`SELECT c.name || ' · ' || p.name FROM project p JOIN customer c ON c.id = p.customer_id WHERE p.id = ?`, id).Scan(&page.ProjectName)
-		if errors.Is(err, sql.ErrNoRows) {
-			a.errorPage(w, r, http.StatusBadRequest, "error.invalid_project")
+		var exists bool
+		if err := a.db.QueryRow(`SELECT EXISTS (SELECT 1 FROM project WHERE id = ?)`, id).Scan(&exists); err != nil {
+			a.serverError(w, r, err)
 			return
 		}
-		if err != nil {
-			a.serverError(w, r, err)
+		if !exists {
+			a.errorPage(w, r, http.StatusBadRequest, "error.invalid_project")
 			return
 		}
 		where += " AND e.project_id = ?"
@@ -216,16 +215,21 @@ func (a *App) listEntries(w http.ResponseWriter, r *http.Request, status int, re
 		}
 		limit = fmt.Sprintf(" LIMIT %d", f.PerPage+1)
 		for _, n := range entryPageSizes {
-			page.PageSizes = append(page.PageSizes, entryPageSizeLink{Size: n, URL: f.with(func(f *entriesFilter) { f.PerPage = n }), Current: n == f.PerPage})
+			page.PageSizes = append(page.PageSizes, filterOption{strconv.Itoa(n), f.with(func(f *entriesFilter) { f.PerPage = n }), n == f.PerPage})
 		}
 	}
 	page.entriesFilter = f
 	page.Self = f.url("")
 	query := strings.TrimPrefix(f.url(before), "/entries")
 	page.DeleteURL, page.AssignURL, page.BillableURL = "/entries/delete"+query, "/entries/assign"+query, "/entries/billable"+query
-	page.Mine = f.with(func(f *entriesFilter) { f.Everyone = false })
-	page.Team = f.with(func(f *entriesFilter) { f.Everyone = true })
-	page.Bare = f.with(func(f *entriesFilter) { f.Project = "" })
+	page.Whose = []filterOption{
+		{"filter.mine", f.with(func(f *entriesFilter) { f.Everyone = false }), !f.Everyone},
+		{"filter.team", f.with(func(f *entriesFilter) { f.Everyone = true }), f.Everyone},
+	}
+	if page.Projects, err = a.projectFilter(f); err != nil {
+		a.serverError(w, r, err)
+		return
+	}
 
 	rows, err := a.db.Query(`
 		SELECT e.id, e.user_id, u.display_name, ifnull(c.name || ' · ' || p.name, ''), e.start_time, e.end_time, e.description, e.billable, ci.id, ci.number
@@ -285,6 +289,37 @@ func (a *App) listEntries(w http.ResponseWriter, r *http.Request, status int, re
 		return
 	}
 	a.render(w, r, status, "entries", page)
+}
+
+// projectFilter offers every project, archived ones included, grouped by customer.
+func (a *App) projectFilter(f entriesFilter) (filterSelect, error) {
+	s := filterSelect{Action: "/entries", Name: "project", Label: "entries.project", All: "entries.all_projects",
+		Hidden: hiddenFields(f.query(""), "project"),
+		Groups: []filterGroup{{Options: []filterSelectOption{{Value: "none", Key: "timers.unassigned", Selected: f.Project == "none"}}}}}
+	rows, err := a.db.Query(`SELECT c.id, c.name, p.id, p.name, p.archived FROM project p JOIN customer c ON c.id = p.customer_id
+		ORDER BY c.name, c.id, p.name, p.id`)
+	if err != nil {
+		return s, err
+	}
+	defer func() { _ = rows.Close() }()
+	var lastCustomer int64
+	for rows.Next() {
+		var customer, project int64
+		var customerName string
+		var o filterSelectOption
+		if err := rows.Scan(&customer, &customerName, &project, &o.Name, &o.Archived); err != nil {
+			return s, err
+		}
+		if customer != lastCustomer {
+			s.Groups = append(s.Groups, filterGroup{Label: customerName})
+			lastCustomer = customer
+		}
+		o.Value = strconv.FormatInt(project, 10)
+		o.Selected = o.Value == f.Project
+		last := &s.Groups[len(s.Groups)-1]
+		last.Options = append(last.Options, o)
+	}
+	return s, rows.Err()
 }
 
 // sumEntryDays totals each day over all its matching entries, not only the ones on this page.

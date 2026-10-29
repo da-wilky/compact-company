@@ -221,6 +221,7 @@ setInterval(tickTimers, 1000);
 document.addEventListener("htmx:afterSwap", tickTimers);
 markCurrentNav();
 document.querySelectorAll(".jump input[type=date]").forEach(datePicker);
+for (const s of document.querySelectorAll(".filter-select select")) s.addEventListener("change", () => s.form.requestSubmit());
 timezoneSelects();
 confirmForms();
 selections();

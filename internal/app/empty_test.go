@@ -26,7 +26,7 @@ func TestEmptyListsNameTheFilterThatHidesEverything(t *testing.T) {
 	c.get(cust+"/projects").wantBody(t, "No active projects.")
 	c.get("/entries?day=2026-10-27").wantBody(t, "You have no time entries on this day.")
 	c.get("/entries?day=2026-10-27&everyone=1").wantBody(t, "No time entries on this day.")
-	c.get("/entries?day=2026-10-26&project=none").wantBody(t, "No time entries match this filter.")
-	c.get("/entries?project=none").wantBody(t, "No time entries match this filter.")
+	c.get("/entries?day=2026-10-26&project=none").wantBody(t, "No time entries match these filters.")
+	c.get("/entries?project=none").wantBody(t, "No time entries match these filters.")
 	c.get("/invoices?status=paid").wantBody(t, "No invoices match these filters.")
 }
