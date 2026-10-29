@@ -117,7 +117,7 @@ func TestEntriesPageSizeOffersFourSizesAndSurvivesFilters(t *testing.T) {
 	res.wantBody(t, `href="/entries?per_page=100">100</a>`)
 	res.wantBody(t, `href="/entries">10</a>`)
 	day := c.get("/entries?day=2026-10-26&per_page=50")
-	day.wantBody(t, `href="/entries?per_page=50">All entries</a>`)
+	day.wantBody(t, `href="/entries?per_page=50">All time entries</a>`)
 }
 
 func TestInvalidEntriesPageSizeFallsBackToTen(t *testing.T) {
@@ -148,7 +148,7 @@ func TestEntryFiltersShowTheProjectAndKeepEachOther(t *testing.T) {
 
 	res.wantBody(t, `acme · website <a href="/entries?day=2026-10-26"`)
 	res.wantBody(t, `href="/entries?day=2026-10-26&amp;everyone=1&amp;project=`+project+`">Team</a>`)
-	res.wantBody(t, `href="/entries?project=`+project+`">All entries</a>`)
+	res.wantBody(t, `href="/entries?project=`+project+`">All time entries</a>`)
 	res.wantNoBody(t, ">Today</a>")
 	c.get("/entries?day=2026-10-25").wantBody(t, `href="/entries?day=2026-10-26">Today</a>`)
 	c.get("/entries?project=999").wantStatus(t, http.StatusBadRequest)
@@ -212,11 +212,11 @@ func TestOwnerCanFullyEditAnEntry(t *testing.T) {
 	res := c.postForm(entry, edit)
 
 	wantRedirect(t, res, "/entries?day=2026-10-27")
-	c.get("/entries?day=2026-10-26").wantBody(t, "No entries.")
+	c.get("/entries?day=2026-10-26").wantBody(t, "You have no time entries on this day.")
 	c.get("/entries?day=2026-10-27").wantRow(t, "", "10:00–10:20", "0:20", "Unassigned", "moved", "")
 	clash := c.postForm(entry, entryForm("", "2026-10-27T08:30", "2026-10-27T10:20", "moved"))
 	clash.wantStatus(t, http.StatusUnprocessableEntity)
-	clash.wantBody(t, "This entry overlaps another of your entries.")
+	clash.wantBody(t, "This time entry overlaps another of your time entries.")
 	c.postForm(other, entryForm("", "2026-10-27T08:00", "2026-10-27T09:30", "longer")).wantStatus(t, http.StatusSeeOther)
 }
 
@@ -308,7 +308,7 @@ func TestUnassignedEntryCannotBeMarkedBillable(t *testing.T) {
 	res := c.postForm("/entries", form)
 
 	res.wantStatus(t, http.StatusUnprocessableEntity)
-	res.wantBody(t, "An entry without a project can&#39;t be billable")
+	res.wantBody(t, "An unassigned time entry can&#39;t be billable")
 	res.wantBody(t, `value="orphan"`)
 	c.get("/entries?day=2026-10-26").wantNoBody(t, "orphan")
 }
@@ -323,7 +323,7 @@ func TestEntryEndingBeforeItStartsIsRefused(t *testing.T) {
 	res.wantBody(t, "End must not be before start.")
 	res.wantBody(t, `value="2026-10-26T10:00"`)
 	c.postForm("/entries", entryForm("", "2026-10-26T10:00", "", "")).wantBody(t, "End must be a date and time.")
-	c.get("/entries?day=2026-10-26").wantBody(t, "No entries.")
+	c.get("/entries?day=2026-10-26").wantBody(t, "You have no time entries on this day.")
 }
 
 func TestOverlappingEntriesAreRefusedWithParallelEntriesOff(t *testing.T) {
@@ -334,12 +334,12 @@ func TestOverlappingEntriesAreRefusedWithParallelEntriesOff(t *testing.T) {
 	res := alice.postForm("/entries", entryForm("", "2026-10-26T06:30", "2026-10-26T07:30", "clash"))
 
 	res.wantStatus(t, http.StatusUnprocessableEntity)
-	res.wantBody(t, "This entry overlaps another of your entries.")
+	res.wantBody(t, "This time entry overlaps another of your time entries.")
 	alice.postForm("/entries", entryForm("", "2026-10-26T07:00", "2026-10-26T08:00", "adjacent")).wantStatus(t, http.StatusSeeOther)
 	bob.postForm("/entries", entryForm("", "2026-10-26T06:30", "2026-10-26T07:30", "bob")).wantStatus(t, http.StatusSeeOther)
 	alice.startTimer(url.Values{})
 	alice.postForm("/entries", entryForm("", "2026-10-26T08:30", "2026-10-26T09:30", "into timer")).
-		wantBody(t, "This entry overlaps another of your entries.")
+		wantBody(t, "This time entry overlaps another of your time entries.")
 	alice.postForm("/entries", entryForm("", "2026-10-26T08:00", "2026-10-26T09:00", "before timer")).wantStatus(t, http.StatusSeeOther)
 }
 

@@ -1,9 +1,8 @@
-{{define "title"}}{{if .Data.Day}}{{t "entries.title" (date .Data.From)}}{{else}}{{t "entries.nav"}}{{end}}{{end}}
+{{define "title"}}{{if .Data.Day}}{{t "entries.title" (date .Data.From)}}{{else}}{{t "entries.heading"}}{{end}}{{end}}
 {{define "content"}}
 {{with .Data}}
 <div class="page-head">
-<div class="title"><h1>{{if .Day}}{{t "entries.title" (date .From)}}{{else}}{{t "entries.nav"}}{{end}}</h1>
-<a class="pill" href="/entries/new">{{template "icon-plus"}}{{t "entries.new"}}</a></div>
+<h1>{{template "title" $}}</h1>
 <nav class="pager" aria-label="{{t "entries.nav"}}">
 {{if .Day}}{{if not .IsToday}}<a class="pill" href="{{.Today}}">{{t "entries.today"}}</a>{{end}}
 <a class="pill" href="{{.All}}">{{t "entries.all"}}</a>
@@ -13,6 +12,7 @@
 {{if .Day}}<a class="next" href="{{.Next}}">{{t "entries.next"}}</a>{{end}}
 </nav>
 </div>
+<p class="actions"><a href="/entries/new">{{template "icon-plus"}}{{t "entries.new"}}</a></p>
 <div class="filters">
 <span class="label">{{t "entries.show"}}</span>
 <span class="seg"><a href="{{.Mine}}"{{if not .Everyone}} aria-current="true"{{end}}>{{t "entries.mine"}}</a><a href="{{.Team}}"{{if .Everyone}} aria-current="true"{{end}}>{{t "entries.everyone"}}</a></span>
@@ -28,13 +28,13 @@
 <span class="selection-actions"><span data-count="{{t "selection.count" "{n}"}}"></span>
 <span class="group"><select name="project" required aria-label="{{t "entries.assign_project"}}"><option value="">{{t "entries.assign_project"}}</option>
 {{range .Customers}}<optgroup label="{{.Name}}">{{range .Projects}}<option value="{{.ID}}">{{.Name}}</option>{{end}}</optgroup>{{end}}</select>
-<button formaction="{{.AssignURL}}" data-confirm-neutral data-confirm-one="{{t "entries.confirm_assign_one"}}" data-confirm-many="{{t "entries.confirm_assign_many" "{n}"}}" data-confirm-ok="{{t "entries.assign"}}">{{template "icon-folder-input"}}{{t "entries.assign"}}</button></span>
-<button formaction="{{.BillableURL}}" formnovalidate name="billable" value="yes" data-confirm-neutral data-confirm-one="{{t "entries.confirm_billable_one"}}" data-confirm-many="{{t "entries.confirm_billable_many" "{n}"}}" data-confirm-ok="{{t "entries.mark_billable"}}">{{template "icon-check"}}{{t "entries.mark_billable"}}</button>
-<button formaction="{{.BillableURL}}" formnovalidate name="billable" value="no" data-confirm-neutral data-confirm-one="{{t "entries.confirm_not_billable_one"}}" data-confirm-many="{{t "entries.confirm_not_billable_many" "{n}"}}" data-confirm-ok="{{t "entries.mark_not_billable"}}">{{template "icon-x"}}{{t "entries.mark_not_billable"}}</button>
-<button class="danger" formnovalidate data-confirm-one="{{t "entries.confirm_delete_one"}}" data-confirm-many="{{t "entries.confirm_delete_many" "{n}"}}" data-confirm-ok="{{t "entries.delete"}}">{{template "icon-trash"}}{{t "entries.delete"}}</button></span>
+<button formaction="{{.AssignURL}}">{{template "icon-folder-input"}}{{t "entries.assign"}}</button></span>
+<button formaction="{{.BillableURL}}" formnovalidate name="billable" value="yes">{{template "icon-check"}}{{t "entries.mark_billable"}}</button>
+<button formaction="{{.BillableURL}}" formnovalidate name="billable" value="no">{{template "icon-x"}}{{t "entries.mark_not_billable"}}</button>
+<button class="danger" formnovalidate data-confirm-one="{{t "entries.confirm_delete_one"}}" data-confirm-many="{{t "entries.confirm_delete_many" "{n}"}}" data-confirm-ok="{{t "common.delete"}}">{{template "icon-trash"}}{{t "selection.delete"}}</button></span>
 </form>
 {{template "entry-days" $}}{{else}}
-<p>{{t "entries.empty"}}</p>
+<p class="hint">{{if .Project}}{{t "entries.empty_filtered"}}{{else if and .Day .Everyone}}{{t "entries.empty_day"}}{{else if .Day}}{{t "entries.empty_day_mine"}}{{else if .Everyone}}{{t "entries.empty"}}{{else}}{{t "entries.empty_mine"}}{{end}}</p>
 {{end}}</div>
 {{end}}
 {{end}}
@@ -45,7 +45,7 @@
 <colgroup><col class="c-select">{{if $.Data.Everyone}}<col class="c-user">{{end}}<col class="c-time"><col class="c-dur"><col class="c-project"><col><col class="c-bill"></colgroup>
 <thead><tr><td></td>{{if $.Data.Everyone}}<th>{{t "entries.user"}}</th>{{end}}<th>{{t "entries.time"}}</th><th class="num">{{t "entries.duration"}}</th><th>{{t "entries.project"}}</th><th>{{t "entries.description"}}</th><th>{{t "entries.billable"}}</th></tr></thead>
 <tbody>
-{{range .Entries}}<tr><td>{{if .Selectable}}<input type="checkbox" name="id" value="{{.ID}}" form="entry-selection" aria-label="{{t "entries.select" (date .Start) (clock .Start)}}"{{if index $.Data.Selected .ID}} checked{{end}}>{{end}}</td>{{if $.Data.Everyone}}<td>{{.User}}</td>{{end}}<td>{{if and .Own (not .Running)}}<a href="/entries/{{.ID}}?return={{$.Data.Self}}">{{end}}{{clock .Start}}–{{if .Running}}{{t "entries.running"}}{{else}}{{clock .End}}{{end}}{{if and .Own (not .Running)}}</a>{{end}}</td><td class="num">{{duration .Duration}}</td><td>{{if .Project}}{{.Project}}{{else}}{{t "timers.unassigned"}}{{end}}</td><td>{{.Description}}{{with .Invoice}} {{template "invoice-badge" .}}{{end}}</td><td>{{if .Billable.Valid}}{{if .Billable.Bool}}{{t "projects.yes"}}{{else}}{{t "projects.no"}}{{end}}{{end}}</td></tr>
+{{range .Entries}}<tr><td>{{if .Selectable}}<input type="checkbox" name="id" value="{{.ID}}" form="entry-selection" aria-label="{{t "entries.select" (date .Start) (clock .Start)}}"{{if index $.Data.Selected .ID}} checked{{end}}>{{end}}</td>{{if $.Data.Everyone}}<td>{{.User}}</td>{{end}}<td>{{if and .Own (not .Running)}}<a href="/entries/{{.ID}}?return={{$.Data.Self}}">{{end}}{{clock .Start}}–{{if .Running}}{{t "entries.running"}}{{else}}{{clock .End}}{{end}}{{if and .Own (not .Running)}}</a>{{end}}</td><td class="num">{{duration .Duration}}</td><td>{{if .Project}}{{.Project}}{{else}}{{t "timers.unassigned"}}{{end}}</td><td>{{.Description}}{{with .Invoice}} {{template "invoice-badge" .}}{{end}}</td><td>{{if .Billable.Valid}}{{if .Billable.Bool}}{{t "common.yes"}}{{else}}{{t "common.no"}}{{end}}{{end}}</td></tr>
 {{end}}</tbody>
 </table></div>
 </section>

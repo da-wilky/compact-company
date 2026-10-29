@@ -1,19 +1,17 @@
 {{define "title"}}{{t "invoices.draft_for" .Data.Draft.CustomerName}}{{end}}
 {{define "content"}}
 {{with .Data}}{{with .Draft}}
-<div class="page-head">
-<h1>{{t "invoices.draft_for" .CustomerName}}</h1>
-</div>
-<p class="actions"><a href="/invoices">{{template "icon-arrow-left"}}{{t "invoices.title"}}</a> <a href="/invoices/{{.ID}}/refresh">{{template "icon-refresh-cw"}}{{t "invoices.refresh"}}</a> <a href="/invoices/{{.ID}}/preview">{{template "icon-eye"}}{{t "invoices.preview"}}</a> <a href="/invoices/{{.ID}}/issue">{{template "icon-send"}}{{t "invoices.issue"}}</a></p>
-{{with $.Data.MissingBusiness}}<p class="error">{{t "business.missing"}} {{range $i, $k := .}}{{if $i}}, {{end}}{{t $k}}{{end}}<br><a href="/settings#business">{{t "business.link"}}</a></p>{{end}}
-{{with $.Data.TypstError}}<div class="error"><p>{{t "invoices.typst_error"}}</p><pre class="typst-error">{{.}}</pre></div>{{end}}
+<a class="crumb" href="/invoices">{{template "icon-arrow-left"}}{{t "invoices.title"}}</a>
+<h1>{{template "title" $}}</h1>
+{{template "render-errors" $.Data}}
+<p class="actions"><a href="/invoices/{{.ID}}/refresh">{{template "icon-refresh-cw"}}{{t "invoices.refresh"}}</a> <a href="/invoices/{{.ID}}/preview">{{template "icon-eye"}}{{t "invoices.preview"}}</a> <a href="/invoices/{{.ID}}/issue">{{template "icon-send"}}{{t "invoices.issue"}}</a></p>
 {{if .Lines}}
 <div class="table-wrap"><table class="invoice-lines">
 <thead><tr><th>{{t "invoices.description"}}</th><th class="num">{{t "invoices.quantity"}}</th><th>{{t "invoices.unit"}}</th><th class="num">{{t "invoices.price"}}</th><th class="num">{{t "invoices.total"}}</th><th></th></tr></thead>
 <tbody>
 {{range .Sections}}{{with .Project}}<tr class="section"><th colspan="6">{{.}}</th></tr>
 {{end}}{{$s := .}}{{range $i, $l := .Lines}}<tr{{if $s.Project}} class="in-section"{{end}}><td><a href="/invoices/{{$.Data.Draft.ID}}/lines/{{.ID}}">{{.Description}}</a>{{if .Generated}} <span class="tag">{{t "invoices.generated"}}</span>{{end}}{{with .Detail}}<br><span class="hint">{{.}}</span>{{end}}</td><td class="num">{{.Quantity}}</td><td>{{.Unit}}</td><td class="num">{{.UnitPrice}}</td><td class="num">{{.Total}}</td>
-<td class="line-actions">{{if $i}}<form method="post" action="/invoices/{{$.Data.Draft.ID}}/lines/{{.ID}}/up"><button class="ghost" aria-label="{{t "invoices.move_up"}}" title="{{t "invoices.move_up"}}">{{template "icon-arrow-up"}}</button></form>{{end}}{{if gt (len (slice $s.Lines $i)) 1}}<form method="post" action="/invoices/{{$.Data.Draft.ID}}/lines/{{.ID}}/down"><button class="ghost" aria-label="{{t "invoices.move_down"}}" title="{{t "invoices.move_down"}}">{{template "icon-arrow-down"}}</button></form>{{end}}<form method="post" action="/invoices/{{$.Data.Draft.ID}}/lines/{{.ID}}/delete" data-confirm="{{t "invoices.confirm_delete_line" .Description}}"><button class="ghost" aria-label="{{t "invoices.delete_line"}}" title="{{t "invoices.delete_line"}}">{{template "icon-trash"}}</button></form></td></tr>
+<td class="line-actions">{{if $i}}<form method="post" action="/invoices/{{$.Data.Draft.ID}}/lines/{{.ID}}/up"><button class="ghost" aria-label="{{t "invoices.move_up"}}" title="{{t "invoices.move_up"}}">{{template "icon-arrow-up"}}</button></form>{{end}}{{if gt (len (slice $s.Lines $i)) 1}}<form method="post" action="/invoices/{{$.Data.Draft.ID}}/lines/{{.ID}}/down"><button class="ghost" aria-label="{{t "invoices.move_down"}}" title="{{t "invoices.move_down"}}">{{template "icon-arrow-down"}}</button></form>{{end}}<form method="post" action="/invoices/{{$.Data.Draft.ID}}/lines/{{.ID}}/delete" data-confirm="{{t "invoices.confirm_delete_line" .Description}}"><button class="ghost danger" aria-label="{{t "invoices.delete_line"}}" title="{{t "invoices.delete_line"}}">{{template "icon-trash"}}</button></form></td></tr>
 {{end}}{{end}}<tr class="add-line"><td colspan="6"><a href="/invoices/{{.ID}}/lines/new">{{template "icon-plus"}}{{t "invoices.add_line"}}</a></td></tr>
 </tbody>
 <tfoot>
@@ -23,10 +21,9 @@
 </tfoot>
 </table></div>
 {{else}}
-<p>{{t "invoices.no_lines"}}</p>
+<p class="hint">{{t "invoices.no_lines"}}</p>
 <p class="add-line"><a href="/invoices/{{.ID}}/lines/new">{{template "icon-plus"}}{{t "invoices.add_line"}}</a></p>
 {{end}}
-{{with $.Data.Errors}}<ul class="errors">{{range .}}<li>{{t .}}</li>{{end}}</ul>{{end}}
 <form method="post" action="/invoices/{{.ID}}" class="form invoice-header">
 <p class="hint">{{.CustomerNumber}} {{.CustomerName}} · {{t (print "invoices.grouping." .Grouping)}} · {{if .RoundingMinutes}}{{t "invoices.rounding.minutes" .RoundingMinutes}}{{else}}{{t "invoices.rounding.none"}}{{end}}<br>{{t "invoices.projects"}}: {{if .AllProjects}}{{t "invoices.all_projects"}}{{else}}{{range $i, $p := .Projects}}{{if $i}}, {{end}}{{$p}}{{else}}{{t "invoices.projects_none"}}{{end}}{{end}}</p>
 <label>{{t "invoices.from"}} <input type="date" name="from" value="{{.Header.From}}"></label>
@@ -36,8 +33,8 @@
 <label>{{t "invoices.service_to"}} <input type="date" name="service_to" value="{{.Header.ServiceTo}}" aria-describedby="service-hint"></label>
 <p class="hint" id="service-hint">{{t "invoices.service_hint"}}</p>{{end}}
 <label>{{t "invoices.payment_days"}} <input name="payment_days" value="{{.Header.PaymentDays}}" required inputmode="numeric"></label>
-<button>{{t "invoices.save"}}</button>
+<button>{{template "icon-save"}}{{t "common.save"}}</button>
 </form>
-<form method="post" action="/invoices/{{.ID}}/delete" data-confirm="{{t "invoices.confirm_delete" .CustomerNumber .CustomerName}}"><button>{{template "icon-trash"}}{{t "invoices.delete"}}</button></form>
+<form method="post" action="/invoices/{{.ID}}/delete" data-confirm="{{t "invoices.confirm_delete" .CustomerNumber .CustomerName}}"><button class="danger">{{template "icon-trash"}}{{t "invoices.delete"}}</button></form>
 {{end}}{{end}}
 {{end}}

@@ -1,0 +1,3 @@
+#!/bin/sh
+# Lints the working tree, so a commit chained after a masked failure is still refused.
+exec nix run .#lint

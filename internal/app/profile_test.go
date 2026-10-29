@@ -116,6 +116,6 @@ func TestNewUsersCopyTheParallelEntriesDefault(t *testing.T) {
 
 	wantRedirect(t, alice.postForm("/settings/defaults", defaultsForm("en", "UTC", "EUR", false)), "/settings")
 
-	alice.get("/profile").wantBody(t, `<input type="checkbox" name="parallel_entries">`)
-	carol.get("/profile").wantBody(t, `<input type="checkbox" name="parallel_entries" checked>`)
+	alice.get("/profile").wantNoBody(t, `name="parallel_entries" checked`)
+	carol.get("/profile").wantBody(t, `name="parallel_entries" checked`)
 }

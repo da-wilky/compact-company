@@ -158,8 +158,13 @@ func TestEditingFromADrilledInCellReturnsToIt(t *testing.T) {
 		t.Fatalf("edit links = %v", links)
 	}
 	self := "/entries?day=2026-10-26&amp;everyone=1&amp;project=" + project
-	c.get(links[0][1]).wantBody(t, `<input type="hidden" name="return" value="`+self+`">`)
+	form := c.get(links[0][1])
+	form.wantBody(t, `<input type="hidden" name="return" value="`+self+`">`)
+	form.wantBody(t, `href="`+self+`"`)
+	form.wantBody(t, "Time entries on 2026-10-26</a>")
+	c.get("/entries/new").wantBody(t, "Time entries</a>")
 	edit, del := links[1][2], links[0][2]
+	c.get(edit+"?return=https://evil.test/entries").wantNoBody(t, `href="https://evil.test`)
 	update := entryForm(project, "2026-10-26T06:00", "2026-10-26T06:30", "first")
 	update.Set("return", cell)
 	wantRedirect(t, c.postForm(edit, update), cell)
@@ -178,7 +183,7 @@ func TestWeekAndDayDatesFollowTheLanguage(t *testing.T) {
 	week.wantBody(t, "Woche ab 26.10.2026")
 	week.wantRow(t, "", "Mo 26.10.2026", "Di 27.10.2026", "Mi 28.10.2026", "Do 29.10.2026", "Fr 30.10.2026", "Sa 31.10.2026", "So 01.11.2026", "Summe")
 	week.wantBody(t, `href="/week?week=2026-11-02">Nächste Woche</a>`)
-	day.wantBody(t, "Einträge am 28.10.2026")
+	day.wantBody(t, "Zeiteinträge am 28.10.2026")
 	day.wantBody(t, `href="/entries?day=2026-10-29">Nächster Tag</a>`)
 }
 

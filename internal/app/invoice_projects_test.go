@@ -86,7 +86,7 @@ func TestDraftRefusesAnotherCustomersProjectAndAnEmptyChoice(t *testing.T) {
 			res.wantBody(t, "Tick at least one of the customer")
 		})
 	}
-	c.get("/invoices").wantBody(t, "No invoices.")
+	c.get("/invoices").wantBody(t, "No invoices yet.")
 }
 
 func TestChosenProjectWithoutEntriesStaysChosenUntilDeleted(t *testing.T) {

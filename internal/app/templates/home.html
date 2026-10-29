@@ -1,18 +1,18 @@
 {{define "title"}}{{t "home.title"}}{{end}}
 {{define "content"}}
 {{with .Data}}
-<h1>{{t "home.title"}}</h1>
+<h1>{{template "title" $}}</h1>
 <dl class="stats">
-<div><dt>{{t "home.week"}}</dt><dd><b>{{t "home.hours" (hours .Week.Total)}}</b> · {{t "home.billable" (hours .Week.Billable)}}</dd></div>
-<div><dt>{{t "home.month"}}</dt><dd><b>{{t "home.hours" (hours .Month.Total)}}</b> · {{t "home.billable" (hours .Month.Billable)}}</dd></div>
+<div><dt>{{t "home.week"}}</dt><dd><b>{{t "home.hours" (duration .Week.Total)}}</b> · {{t "home.billable" (duration .Week.Billable)}}</dd></div>
+<div><dt>{{t "home.month"}}</dt><dd><b>{{t "home.hours" (duration .Month.Total)}}</b> · {{t "home.billable" (duration .Month.Billable)}}</dd></div>
 </dl>
-{{if .Unassigned}}<p class="actions"><a href="/entries?project=none">{{if eq .Unassigned 1}}{{t "home.unassigned_one" (hours .UnassignedHours)}}{{else}}{{t "home.unassigned" .Unassigned (hours .UnassignedHours)}}{{end}}</a></p>{{end}}
+{{if .Unassigned}}<p class="actions"><a href="/entries?project=none">{{if eq .Unassigned 1}}{{t "home.unassigned_one" (duration .UnassignedHours)}}{{else}}{{t "home.unassigned" .Unassigned (duration .UnassignedHours)}}{{end}}</a></p>{{end}}
 {{with .Unbilled}}
 <h2>{{t "home.unbilled"}}</h2>
 <div class="table-wrap"><table>
 <thead><tr><th>{{t "invoices.customer"}}</th><th class="num">{{t "home.not_invoiced"}}</th><th class="num">{{t "home.on_draft"}}</th><th>{{t "home.oldest"}}</th><th></th></tr></thead>
 <tbody>
-{{range .}}<tr><td>{{.Name}}</td><td class="num">{{with .NotInvoiced}}{{t "home.hours" (hours .)}}{{end}}</td><td class="num">{{range $i, $d := .OnDrafts}}{{if $i}}, {{end}}<a href="/invoices/{{.ID}}">{{t "home.hours" (hours .Tracked)}}</a>{{end}}</td><td>{{day .OldestDate}}</td><td>{{if .NotInvoiced}}<a href="/invoices/new?customer={{.ID}}">{{template "icon-plus"}}{{t "invoices.create"}}</a>{{end}}</td></tr>
+{{range .}}<tr><td>{{.Name}}</td><td class="num">{{with .NotInvoiced}}{{t "home.hours" (duration .)}}{{end}}</td><td class="num">{{range $i, $d := .OnDrafts}}{{if $i}}, {{end}}<a href="/invoices/{{.ID}}">{{t "home.hours" (duration .Tracked)}}</a>{{end}}</td><td>{{day .OldestDate}}</td><td>{{if .NotInvoiced}}<a href="/invoices/new?customer={{.ID}}">{{template "icon-plus"}}{{t "invoices.create"}}</a>{{end}}</td></tr>
 {{end}}</tbody>
 </table></div>
 {{end}}

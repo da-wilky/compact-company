@@ -13,6 +13,14 @@
         "aarch64-darwin"
       ];
       forAll = f: nixpkgs.lib.genAttrs systems (system: f nixpkgs.legacyPackages.${system});
+      lint = ''
+        [ -f go.mod ] || { echo "run from the repository root" >&2; exit 1; }
+        golangci-lint fmt --diff ./...
+        golangci-lint run ./...
+        sh scripts/markup_assertions.sh
+        sh scripts/table_wrap.sh
+        sh scripts/css_rules.sh
+      '';
     in
     {
       packages = forAll (pkgs: {
@@ -44,6 +52,7 @@
                 runtimeInputs = [
                   pkgs.go
                   pkgs.curl
+                  pkgs.git
                   pkgs.typst
                   (pkgs.python3.withPackages (p: [ p.playwright ]))
                 ];
@@ -78,15 +87,21 @@
                   pkgs.golangci-lint
                   pkgs.typst
                 ];
-                text = ''
-                  [ -f go.mod ] || { echo "run from the repository root" >&2; exit 1; }
-                  golangci-lint fmt --diff ./...
-                  golangci-lint run ./...
-                  sh scripts/markup_assertions.sh
-                  sh scripts/table_wrap.sh
-                  sh scripts/css_rules.sh
-                  go test ./...
-                '';
+                text = lint + "go test ./...\n";
+              }
+            );
+          };
+          # The pre-commit hook: everything in check but the tests.
+          lint = {
+            type = "app";
+            program = pkgs.lib.getExe (
+              pkgs.writeShellApplication {
+                name = "lint";
+                runtimeInputs = [
+                  pkgs.go
+                  pkgs.golangci-lint
+                ];
+                text = lint;
               }
             );
           };
@@ -147,6 +162,7 @@
           ];
           # Debug builds compile cgo at -O0, which Nix's _FORTIFY_SOURCE hardening turns into an error; nothing here needs cgo.
           CGO_ENABLED = "0";
+          shellHook = "git config core.hooksPath .githooks";
         };
       });
     };

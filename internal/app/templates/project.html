@@ -1,17 +1,22 @@
-{{define "title"}}{{with .Data.Project.ID}}{{$.Data.Project.Name}}{{else}}{{t "projects.new"}}{{end}}{{end}}
+{{define "title"}}{{if .Data.Project.ID}}{{t "projects.edit"}}{{else}}{{t "projects.new"}}{{end}}{{end}}
+{{define "parent"}}{{t "projects.title" .Data.Customer.Name}}{{end}}
+{{define "tab"}}{{template "title" .}} · {{template "parent" .}}{{end}}
 {{define "content"}}
 {{with .Data}}
-<h1>{{with .Project.ID}}{{t "projects.edit" $.Data.Project.Name}}{{else}}{{t "projects.new"}}{{end}}</h1>
-<p class="actions"><a href="/customers/{{.Customer.ID}}/projects">{{template "icon-arrow-left"}}{{t "projects.title" .Customer.Name}}</a></p>
-{{with .Errors}}<ul class="errors">{{range .}}<li>{{t .}}</li>{{end}}</ul>{{end}}
+<a class="crumb" href="/customers/{{.Customer.ID}}/projects">{{template "icon-arrow-left"}}{{template "parent" $}}</a>
+<div class="page-head">
+<div><h1>{{template "title" $}}</h1>
+{{with .Project.ID}}<p class="hint">{{$.Data.Project.Name}}</p>{{end}}</div>
+</div>
+{{with .Errors}}<ul class="errors" role="alert">{{range .}}<li>{{t .}}</li>{{end}}</ul>{{end}}
 <form method="post" action="{{with .Project.ID}}/projects/{{.}}{{else}}/customers/{{$.Data.Customer.ID}}/projects{{end}}" class="form">
 <label>{{t "projects.name"}} <input name="name" value="{{.Project.Name}}" required></label>
-<label>{{t "projects.hourly_rate" .Customer.Currency}} <input name="hourly_rate" value="{{.Project.HourlyRate}}" inputmode="decimal" placeholder="{{.Customer.HourlyRate}}">
-<span class="hint">{{t "projects.hourly_rate_hint" .Customer.HourlyRate .Customer.Currency}}</span></label>
+<label>{{t "projects.hourly_rate" .Customer.Currency}} <input name="hourly_rate" value="{{.Project.HourlyRate}}" inputmode="decimal" placeholder="{{.Customer.HourlyRate}}" aria-describedby="rate-hint"></label>
+<p class="hint" id="rate-hint">{{t "projects.hourly_rate_hint" .Customer.HourlyRate .Customer.Currency}}</p>
 <label><input type="checkbox" name="billable"{{if .Project.Billable}} checked{{end}}> {{t "projects.billable_default"}}</label>
-<button>{{t "projects.save"}}</button>
+<button>{{template "icon-save"}}{{t "common.save"}}</button>
 </form>
 {{with .Project.ID}}{{if $.Data.Project.Archived}}<form method="post" action="/projects/{{.}}/unarchive"><button>{{template "icon-archive-restore"}}{{t "archive.unarchive"}}</button></form>{{else}}<form method="post" action="/projects/{{.}}/archive"><button>{{template "icon-archive"}}{{t "archive.archive"}}</button></form>{{end}}
-<form method="post" action="/projects/{{.}}/delete" data-confirm="{{t "projects.confirm_delete" $.Data.Project.Name}}"><button>{{template "icon-trash"}}{{t "archive.delete"}}</button></form>{{end}}
+<form method="post" action="/projects/{{.}}/delete" data-confirm="{{t "projects.confirm_delete" $.Data.Project.Name}}"><button class="danger">{{template "icon-trash"}}{{t "common.delete"}}</button></form>{{end}}
 {{end}}
 {{end}}

@@ -68,7 +68,7 @@ func parsePages() (map[string]*template.Template, error) {
 			continue
 		}
 		// "t" is rebound per request to the viewer's language in render.
-		t, err := template.New(name).Funcs(template.FuncMap{"t": fmt.Sprintf, "datetime": time.Time.String, "clock": time.Time.String, "date": time.Time.String, "day": strings.Clone, "duration": formatDuration, "hours": formatHours}).
+		t, err := template.New(name).Funcs(template.FuncMap{"t": fmt.Sprintf, "datetime": time.Time.String, "clock": time.Time.String, "date": time.Time.String, "day": strings.Clone, "duration": formatDuration}).
 			ParseFS(templates, "templates/layout.html", "templates/partials/*.html", f)
 		if err != nil {
 			return nil, err

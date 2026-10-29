@@ -6,6 +6,7 @@
 <div><h1>{{template "title" $}}</h1>
 <p class="hint">{{.Customer.Number}} {{.Customer.Name}}</p></div>
 </div>
+{{with $.Data.Errors}}<ul class="errors" role="alert">{{range .}}<li>{{t .}}</li>{{end}}</ul>{{end}}
 {{with .Cancels}}<p>{{t "invoices.cancels"}} <a href="/invoices/{{$.Data.CancelsID}}">{{.Number}}</a> · {{day .IssueDate}}{{with $.Data.Snapshot.Reason}} · {{t "invoices.reason"}}: {{.}}{{end}}</p>{{end}}
 <p class="hint">{{t "invoices.issue_date"}} {{day .IssueDate}}{{if not $.Data.CancelsID}} · {{t "invoices.due_date"}} {{day .DueDate}}{{end}} · {{if eq .ServicePeriod.From .ServicePeriod.To}}{{t "invoices.service_date"}} {{day .ServicePeriod.From}}{{else}}{{t "invoices.service_period"}} {{day .ServicePeriod.From}} – {{day .ServicePeriod.To}}{{end}}</p>
 <div class="invoice-body">
@@ -13,14 +14,13 @@
 <p class="status">{{t (print "invoices.status." $.Data.Status)}}</p>
 <p class="due">{{or $.Data.AmountDue .Totals.Gross}} {{.Currency}}</p>
 <a class="pill primary" href="/invoices/{{$.Data.ID}}/pdf">{{template "icon-download"}}{{t "invoices.download"}}</a>
-{{with $.Data.Errors}}<ul class="errors">{{range .}}<li>{{t .}}</li>{{end}}</ul>{{end}}
-{{if $.Data.PaidDate}}<form method="post" action="/invoices/{{$.Data.ID}}/unpaid">
+{{if $.Data.PaidDate}}<form method="post" action="/invoices/{{$.Data.ID}}/unpaid" data-confirm="{{t "invoices.confirm_undo_paid" $.Data.Number}}" data-confirm-ok="{{t "invoices.undo_paid"}}" data-confirm-neutral>
 <p>{{t "invoices.paid_on" (day $.Data.PaidDate)}}</p>
-<button>{{template "icon-undo-2"}}{{t "invoices.undo_paid"}}</button>
+<button class="primary">{{template "icon-undo-2"}}{{t "invoices.undo_paid"}}</button>
 </form>
 {{else if $.Data.Cancellable}}<form method="post" action="/invoices/{{$.Data.ID}}/paid">
 <label>{{t "invoices.paid_date"}} <input type="date" name="paid_date" value="{{$.Data.PaidForm}}" required></label>
-<button>{{template "icon-check"}}{{t "invoices.mark_paid"}}</button>
+<button class="primary">{{template "icon-check"}}{{t "invoices.mark_paid"}}</button>
 </form>{{end}}
 {{if $.Data.Cancellable}}<a class="danger" href="/invoices/{{$.Data.ID}}/cancel">{{template "icon-file-x"}}{{t "invoices.cancel"}}</a>{{end}}
 </aside>

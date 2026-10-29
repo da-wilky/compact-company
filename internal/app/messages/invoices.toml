@@ -1,6 +1,7 @@
 "invoices.title" = { en = "Invoices", de = "Rechnungen" }
 "invoices.new" = { en = "New draft", de = "Neuer Entwurf" }
-"invoices.empty" = { en = "No invoices.", de = "Keine Rechnungen." }
+"invoices.empty" = { en = "No invoices yet.", de = "Noch keine Rechnungen." }
+"invoices.empty_filtered" = { en = "No invoices match these filters.", de = "Keine Rechnungen passen zu diesen Filtern." }
 "invoices.number" = { en = "Number", de = "Nummer" }
 "invoices.customer" = { en = "Customer", de = "Kunde" }
 "invoices.issue_date" = { en = "Issue date", de = "Rechnungsdatum" }
@@ -15,8 +16,8 @@
 "invoices.status.issued" = { en = "Issued", de = "Gestellt" }
 "invoices.status.paid" = { en = "Paid", de = "Bezahlt" }
 "invoices.draft_for" = { en = "Draft for %s", de = "Entwurf für %s" }
-"invoices.from" = { en = "Entries from", de = "Einträge von" }
-"invoices.to" = { en = "Entries to", de = "Einträge bis" }
+"invoices.from" = { en = "Time entries from", de = "Zeiteinträge von" }
+"invoices.to" = { en = "Time entries to", de = "Zeiteinträge bis" }
 "invoices.service_from" = { en = "Service period from", de = "Leistungszeitraum von" }
 "invoices.service_to" = { en = "Service period to", de = "Leistungszeitraum bis" }
 "invoices.service_hint" = { en = "Leave the service period empty if the service date is the issue date.", de = "Leistungszeitraum leer lassen, wenn das Leistungsdatum dem Rechnungsdatum entspricht." }
@@ -30,17 +31,16 @@
 "invoices.projects_none" = { en = "none", de = "keine" }
 "invoices.grouping" = { en = "Lines from time", de = "Positionen aus Zeiten" }
 "invoices.grouping.project" = { en = "One line per project", de = "Eine Position je Projekt" }
-"invoices.grouping.entry" = { en = "One line per entry", de = "Eine Position je Eintrag" }
+"invoices.grouping.entry" = { en = "One line per time entry", de = "Eine Position je Zeiteintrag" }
 "invoices.rounding" = { en = "Round time to", de = "Zeit runden auf" }
 "invoices.rounding.none" = { en = "No rounding", de = "Nicht runden" }
 "invoices.rounding.minutes" = { en = "%d minutes", de = "%d Minuten" }
 "invoices.create" = { en = "Create draft", de = "Entwurf anlegen" }
-"invoices.save" = { en = "Save", de = "Speichern" }
 "invoices.delete" = { en = "Delete draft", de = "Entwurf löschen" }
 "invoices.no_lines" = { en = "No lines yet.", de = "Noch keine Positionen." }
 "invoices.add_line" = { en = "Add line", de = "Position hinzufügen" }
 "invoices.edit_line" = { en = "Edit line", de = "Position bearbeiten" }
-"invoices.back" = { en = "Back to draft", de = "Zurück zum Entwurf" }
+"invoices.new_line" = { en = "New line", de = "Neue Position" }
 "invoices.generated" = { en = "from time", de = "aus Zeiten" }
 "invoices.working_time" = { en = "Working time", de = "Arbeitszeit" }
 "invoices.description" = { en = "Description", de = "Beschreibung" }
@@ -59,12 +59,12 @@
 "invoices.delete_line" = { en = "Delete line", de = "Position löschen" }
 "invoices.badge.draft" = { en = "On a draft", de = "Im Entwurf" }
 "invoices.badge.issued" = { en = "Invoice %s", de = "Rechnung %s" }
-"invoices.line_entries" = { en = "Entries on this line", de = "Einträge dieser Position" }
+"invoices.line_entries" = { en = "Time entries on this line", de = "Zeiteinträge dieser Position" }
 "invoices.entry_date" = { en = "Date", de = "Datum" }
 "invoices.entry_user" = { en = "User", de = "Benutzer" }
 "invoices.entry_duration" = { en = "Duration", de = "Dauer" }
-"invoices.refresh" = { en = "Refresh entries", de = "Einträge aktualisieren" }
-"invoices.refresh_warning" = { en = "Refreshing deletes every line generated from time and generates them again from the entries in the saved range. Changes to those lines are lost; free lines are kept.", de = "Beim Aktualisieren werden alle aus Zeiten erzeugten Positionen gelöscht und aus den Einträgen im gespeicherten Zeitraum neu erzeugt. Änderungen an diesen Positionen gehen verloren; freie Positionen bleiben erhalten." }
+"invoices.refresh" = { en = "Refresh time entries", de = "Zeiteinträge aktualisieren" }
+"invoices.refresh_warning" = { en = "Refreshing deletes every line generated from time and generates them again from the time entries in the saved range. Changes to those lines are lost; free lines are kept.", de = "Beim Aktualisieren werden alle aus Zeiten erzeugten Positionen gelöscht und aus den Zeiteinträgen im gespeicherten Zeitraum neu erzeugt. Änderungen an diesen Positionen gehen verloren; freie Positionen bleiben erhalten." }
 "invoices.error.customer" = { en = "Choose a customer.", de = "Bitte einen Kunden wählen." }
 "invoices.error.range" = { en = "Enter a valid date range.", de = "Bitte einen gültigen Zeitraum angeben." }
 "invoices.error.service_period" = { en = "Enter a valid service period.", de = "Bitte einen gültigen Leistungszeitraum angeben." }
@@ -91,7 +91,6 @@
 "invoices.status.cancelled" = { en = "Cancelled", de = "Storniert" }
 "invoices.status.partially_cancelled" = { en = "Partially cancelled", de = "Teilweise storniert" }
 "invoices.cancel" = { en = "Cancel lines", de = "Positionen stornieren" }
-"invoices.cancel_title" = { en = "Cancel lines of invoice %s", de = "Positionen der Rechnung %s stornieren" }
 "invoices.cancel_lines" = { en = "Lines to cancel", de = "Zu stornierende Positionen" }
 "invoices.cancel_warning" = { en = "Cancelling issues a cancellation invoice right away, with the next invoice number, reversing the ticked lines. Their time entries can be billed again. A cancelled line can't be restored.", de = "Beim Stornieren wird sofort eine Stornorechnung mit der nächsten Rechnungsnummer gestellt, die die angekreuzten Positionen aufhebt. Ihre Zeiteinträge können erneut abgerechnet werden. Eine stornierte Position lässt sich nicht wiederherstellen." }
 "invoices.cancel_issue" = { en = "Issue cancellation invoice", de = "Stornorechnung stellen" }
@@ -99,18 +98,17 @@
 "invoices.cancels" = { en = "Cancels invoice", de = "Storniert Rechnung" }
 "invoices.reason" = { en = "Reason", de = "Grund" }
 "invoices.amount_due" = { en = "Amount still due", de = "Noch offener Betrag" }
-"invoices.back_to_invoice" = { en = "Back to invoice", de = "Zurück zur Rechnung" }
 "invoices.error.cancel_lines" = { en = "Tick at least one line of this invoice that isn't cancelled yet.", de = "Bitte mindestens eine noch nicht stornierte Position dieser Rechnung ankreuzen." }
 "invoices.paid_on" = { en = "Paid on %s", de = "Bezahlt am %s" }
 "invoices.paid_date" = { en = "Payment date", de = "Zahlungsdatum" }
 "invoices.mark_paid" = { en = "Mark paid", de = "Als bezahlt markieren" }
 "invoices.undo_paid" = { en = "Undo paid", de = "Bezahlt zurücknehmen" }
+"invoices.confirm_undo_paid" = { en = "Undo the payment of invoice %s?", de = "Zahlung der Rechnung %s zurücknehmen?" }
 "invoices.error.paid_date" = { en = "Enter a valid payment date.", de = "Bitte ein gültiges Zahlungsdatum angeben." }
 "invoices.error.paid_cancelled" = { en = "Every line of this invoice is cancelled, so it can't be marked paid.", de = "Alle Positionen dieser Rechnung sind storniert, sie kann nicht als bezahlt markiert werden." }
 "invoices.confirm_delete" = { en = "Delete the draft for %s %s?", de = "Entwurf für %s %s löschen?" }
 "invoices.confirm_delete_line" = { en = "Delete the line “%s”?", de = "Position „%s“ löschen?" }
 "invoices.select" = { en = "Select the draft for %s", de = "Entwurf für %s auswählen" }
-"invoices.delete_selected" = { en = "Delete", de = "Löschen" }
 "invoices.confirm_delete_one" = { en = "Delete 1 draft?", de = "1 Entwurf löschen?" }
 "invoices.confirm_delete_many" = { en = "Delete %s drafts?", de = "%s Entwürfe löschen?" }
 "invoices.error.delete_blocked" = { en = "Nothing was deleted. Only drafts can be deleted, not:", de = "Nichts wurde gelöscht. Nur Entwürfe können gelöscht werden, nicht:" }

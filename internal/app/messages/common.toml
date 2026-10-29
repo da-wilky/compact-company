@@ -1,0 +1,4 @@
+"common.save" = { en = "Save", de = "Speichern" }
+"common.delete" = { en = "Delete", de = "Löschen" }
+"common.yes" = { en = "yes", de = "ja" }
+"common.no" = { en = "no", de = "nein" }

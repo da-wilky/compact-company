@@ -1,5 +1,5 @@
 {{define "title"}}{{t .Data}}{{end}}
 {{define "content"}}
-<h1>{{t .Data}}</h1>
+<h1>{{template "title" .}}</h1>
 <p class="actions"><a href="/">{{template "icon-arrow-left"}}{{t "error.home"}}</a></p>
 {{end}}

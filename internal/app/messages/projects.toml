@@ -1,18 +1,15 @@
 "projects.title" = { en = "Projects of %s", de = "Projekte von %s" }
-"projects.customer" = { en = "Customer %s", de = "Kunde %s" }
 "projects.new" = { en = "New project", de = "Neues Projekt" }
-"projects.edit" = { en = "Project %s", de = "Projekt %s" }
+"projects.edit" = { en = "Edit project", de = "Projekt bearbeiten" }
 "projects.empty" = { en = "No projects yet.", de = "Noch keine Projekte." }
+"projects.empty_active" = { en = "No active projects.", de = "Keine aktiven Projekte." }
 "projects.name" = { en = "Name", de = "Name" }
 "projects.billable" = { en = "Billable", de = "Abrechenbar" }
 "projects.billable_default" = { en = "Billable by default", de = "Standardmäßig abrechenbar" }
-"projects.yes" = { en = "yes", de = "ja" }
-"projects.no" = { en = "no", de = "nein" }
 "projects.effective_rate" = { en = "Hourly rate", de = "Stundensatz" }
 "projects.customer_rate" = { en = "customer default", de = "Kundenstandard" }
 "projects.hourly_rate" = { en = "Hourly rate override (%s)", de = "Abweichender Stundensatz (%s)" }
 "projects.hourly_rate_hint" = { en = "Leave empty to use the customer's default of %s %s.", de = "Leer lassen für den Kundenstandard von %s %s." }
-"projects.save" = { en = "Save", de = "Speichern" }
 "projects.error.name" = { en = "Name is required.", de = "Name ist erforderlich." }
 "projects.error.hourly_rate" = { en = "Hourly rate must be a non-negative decimal with no more decimals than the currency allows.", de = "Stundensatz muss eine nicht negative Dezimalzahl mit höchstens so vielen Nachkommastellen sein, wie die Währung erlaubt." }
 "projects.error.timer_running" = { en = "A timer is running on this project.", de = "Auf diesem Projekt läuft ein Timer." }
@@ -20,10 +17,6 @@
 "projects.error.on_invoice" = { en = "This project is on an invoice.", de = "Dieses Projekt steht auf einer Rechnung." }
 "projects.confirm_delete" = { en = "Delete project %s?", de = "Projekt %s löschen?" }
 "projects.select" = { en = "Select project %s", de = "Projekt %s auswählen" }
-"projects.confirm_archive_one" = { en = "Archive 1 project?", de = "1 Projekt archivieren?" }
-"projects.confirm_archive_many" = { en = "Archive %s projects?", de = "%s Projekte archivieren?" }
-"projects.confirm_unarchive_one" = { en = "Unarchive 1 project?", de = "1 Projekt wiederherstellen?" }
-"projects.confirm_unarchive_many" = { en = "Unarchive %s projects?", de = "%s Projekte wiederherstellen?" }
 "projects.confirm_delete_one" = { en = "Delete 1 project?", de = "1 Projekt löschen?" }
 "projects.confirm_delete_many" = { en = "Delete %s projects?", de = "%s Projekte löschen?" }
 "projects.error.archive_blocked" = { en = "Nothing was archived. These projects can't be archived:", de = "Nichts wurde archiviert. Diese Projekte können nicht archiviert werden:" }

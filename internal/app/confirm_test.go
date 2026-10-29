@@ -51,7 +51,7 @@ func TestDeletingAnEntryAsksForConfirmationNamingItsStartAndDescription(t *testi
 	project := c.websiteProject()
 	entry := c.createEntry(entryForm(project, "2026-10-26T08:00", "2026-10-26T09:00", "kickoff"))
 
-	wantConfirmation(t, c.get(entry).confirmation(t, entry+"/delete"), "Delete the entry of 2026-10-26 08:00 “kickoff”?")
+	wantConfirmation(t, c.get(entry).confirmation(t, entry+"/delete"), "Delete the time entry of 2026-10-26 08:00 “kickoff”?")
 }
 
 func TestDeletingADraftOrItsLineAsksForConfirmation(t *testing.T) {
@@ -72,5 +72,15 @@ func TestDeletingAnEntryWithoutDescriptionAsksInGerman(t *testing.T) {
 	c := ta.client()
 	entry := c.createEntry(entryForm("", "2026-10-26T08:00", "2026-10-26T09:00", ""))
 
-	wantConfirmation(t, c.get(entry).confirmation(t, entry+"/delete"), "Eintrag vom 26.10.2026 08:00 löschen?")
+	wantConfirmation(t, c.get(entry).confirmation(t, entry+"/delete"), "Zeiteintrag vom 26.10.2026 08:00 löschen?")
+}
+
+func TestUndoingPaidAsksForConfirmation(t *testing.T) {
+	ta := newTestApp(t, devConfig)
+	c := ta.client()
+	invoice := c.issuableDraft()
+	wantRedirect(t, c.issue(invoice), invoice)
+	wantRedirect(t, c.markPaid(invoice, "2026-11-03"), invoice)
+
+	wantConfirmation(t, c.get(invoice).confirmation(t, invoice+"/unpaid"), "Undo the payment of invoice 2026-001?")
 }

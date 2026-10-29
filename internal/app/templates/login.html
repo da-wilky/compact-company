@@ -1,5 +1,5 @@
 {{define "title"}}{{t "login.title"}}{{end}}
 {{define "content"}}
-<h1>{{t "login.title"}}</h1>
-<form method="post" action="/login"><button>{{t "login.submit"}}</button></form>
+<h1>{{template "title" .}}</h1>
+<form method="post" action="/login"><button class="primary">{{template "icon-log-in"}}{{t "login.submit"}}</button></form>
 {{end}}

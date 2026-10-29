@@ -1,8 +1,12 @@
-{{define "title"}}{{with .Data.Customer.Number}}{{.}}{{else}}{{t "customers.new"}}{{end}}{{end}}
+{{define "title"}}{{if .Data.Customer.ID}}{{t "customers.edit"}}{{else}}{{t "customers.new"}}{{end}}{{end}}
 {{define "content"}}
 {{with .Data}}
-<h1>{{with .Customer.Number}}{{t "customers.edit" .}}{{else}}{{t "customers.new"}}{{end}}</h1>
-{{with .Errors}}<ul class="errors">{{range .}}<li>{{t .}}</li>{{end}}</ul>{{end}}
+<a class="crumb" href="/customers">{{template "icon-arrow-left"}}{{t "customers.title"}}</a>
+<div class="page-head">
+<div><h1>{{template "title" $}}</h1>
+{{with .Customer.ID}}<p class="hint">{{$.Data.Customer.Number}} {{$.Data.Customer.Name}}</p>{{end}}</div>
+</div>
+{{with .Errors}}<ul class="errors" role="alert">{{range .}}<li>{{t .}}</li>{{end}}</ul>{{end}}
 <form method="post" action="/customers{{with .Customer.ID}}/{{.}}{{end}}" class="form">
 <label>{{t "customers.name"}} <input name="name" value="{{.Customer.Name}}" required></label>
 <label>{{t "customers.address"}} <textarea name="address" rows="4">{{.Customer.Address}}</textarea></label>
@@ -14,9 +18,9 @@
 </select></label>
 <label>{{t "customers.timezone"}} <input name="timezone" value="{{.Customer.Timezone}}" required></label>
 <label>{{t "customers.note"}} <textarea name="note" rows="3">{{.Customer.Note}}</textarea></label>
-<button>{{t "customers.save"}}</button>
+<button>{{template "icon-save"}}{{t "common.save"}}</button>
 </form>
 {{with .Customer.ID}}{{if $.Data.Customer.Archived}}<form method="post" action="/customers/{{.}}/unarchive"><button>{{template "icon-archive-restore"}}{{t "archive.unarchive"}}</button></form>{{else}}<form method="post" action="/customers/{{.}}/archive"><button>{{template "icon-archive"}}{{t "archive.archive"}}</button></form>{{end}}
-<form method="post" action="/customers/{{.}}/delete" data-confirm="{{t "customers.confirm_delete" $.Data.Customer.Number $.Data.Customer.Name}}"><button>{{template "icon-trash"}}{{t "archive.delete"}}</button></form>{{end}}
+<form method="post" action="/customers/{{.}}/delete" data-confirm="{{t "customers.confirm_delete" $.Data.Customer.Number $.Data.Customer.Name}}"><button class="danger">{{template "icon-trash"}}{{t "common.delete"}}</button></form>{{end}}
 {{end}}
 {{end}}

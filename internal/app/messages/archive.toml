@@ -1,6 +1,6 @@
-"archive.show" = { en = "Show archived", de = "Archivierte anzeigen" }
-"archive.hide" = { en = "Hide archived", de = "Archivierte ausblenden" }
+"archive.show" = { en = "Show", de = "Anzeigen" }
+"archive.active" = { en = "Active", de = "Aktiv" }
+"archive.all" = { en = "All", de = "Alle" }
 "archive.archived" = { en = "archived", de = "archiviert" }
 "archive.archive" = { en = "Archive", de = "Archivieren" }
 "archive.unarchive" = { en = "Unarchive", de = "Wiederherstellen" }
-"archive.delete" = { en = "Delete", de = "Löschen" }

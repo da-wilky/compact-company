@@ -2,4 +2,3 @@
 "layout.logout" = { en = "Log out", de = "Abmelden" }
 "layout.business" = { en = "Business", de = "Unternehmen" }
 "layout.cancel" = { en = "Cancel", de = "Abbrechen" }
-"layout.delete" = { en = "Delete", de = "Löschen" }

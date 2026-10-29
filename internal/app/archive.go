@@ -147,6 +147,16 @@ type archiveActions struct {
 	ArchiveURL, UnarchiveURL, DeleteURL string
 }
 
+// hidesArchived reports whether a list that hides archived rows is empty only because of that; archived selects them.
+func (a *App) hidesArchived(show, empty bool, archived string, args ...any) (bool, error) {
+	if show || !empty {
+		return false, nil
+	}
+	var hides bool
+	err := a.db.QueryRow(`SELECT EXISTS (`+archived+`)`, args...).Scan(&hides)
+	return hides, err
+}
+
 func newArchiveActions(base string, showArchived bool) archiveActions {
 	q := ""
 	if showArchived {

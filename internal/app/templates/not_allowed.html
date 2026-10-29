@@ -1,5 +1,5 @@
 {{define "title"}}{{t "login.not_allowed.title"}}{{end}}
 {{define "content"}}
-<h1>{{t "login.not_allowed.title"}}</h1>
+<h1>{{template "title" .}}</h1>
 <p>{{t "login.not_allowed.body" .Data}}</p>
 {{end}}

@@ -94,7 +94,7 @@ func TestDraftKeepsWhatItWasCreatedWith(t *testing.T) {
 	res.wantBody(t, `name="service_from" value=""`)
 	res.wantBody(t, `name="service_to" value=""`)
 	res.wantBody(t, `name="payment_days" value="21"`)
-	res.wantBody(t, "One line per entry")
+	res.wantBody(t, "One line per time entry")
 	res.wantBody(t, "15 minutes")
 }
 
@@ -383,7 +383,7 @@ func TestInvoiceListShowsDraftsNewestFirstAndFilters(t *testing.T) {
 
 	issued := c.get("/invoices?status=issued")
 	issued.wantNoBody(t, `href="`+acme+`"`)
-	issued.wantBody(t, "No invoices.")
+	issued.wantBody(t, "No invoices match these filters.")
 	c.get("/invoices?status=draft").wantBody(t, `href="`+acme+`"`)
 }
 

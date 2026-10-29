@@ -35,17 +35,26 @@ func init() {
 
 `internal/app/templates/<page>.html` defines `"title"` and `"content"`. Strings via `{{t "key" args…}}`.
 
-Build the page from the shared components in `app.css`:
+Page anatomy, top to bottom (`templates_test.go` checks the mechanical parts):
+
+- **Crumb:** pages linked from `layout.html` have none; every other page has exactly one `.crumb`, pointing at its hierarchical parent and labelled with that page's `h1`.
+- **Heading:** the `h1` renders `{{template "title" $}}`. New/edit pages read "New X" / "Edit X", the record's identity as a `.hint` subtitle. A page whose crumb names a record also defines `"parent"` (the crumb label) and `"tab"` (`{{template "title" .}} · {{template "parent" .}}`) for `<title>`.
+- **Errors:** one `ul.errors role="alert"` directly under the heading holds every error of the page; pages that render invoices use the `render-errors` partial for missing business data and Typst failures.
+- **Actions:** "New …" and other page actions are a `p.actions` row under the heading, below the whole `.page-head` when there is a pager.
+- **Empty lists:** a `p.hint`: "No X yet." when nothing exists, wording that names the filter when a filter hides everything.
+- **Buttons:** a form's main submit is accent with an icon (`.form > button`, `button.primary` elsewhere); destructive buttons and links are `.danger`; no Cancel buttons.
+
+Build it from the shared components in `app.css`:
 
 | Class | For |
 |---|---|
 | `.crumb` | back link above the `h1`, with `icon-arrow-left` |
-| `.page-head` | title row: `h1` (plus `.hint` subtitle or a `.pill` action) left, `.pager` right |
-| `.pager` | navigation: `.prev` / `.next` links, a `form.jump` with a date input (`app.js` turns it into the calendar picker), `.pill` shortcuts before `.prev` |
-| `.filters` | filter row under `.page-head`: `.label`, `.seg` toggle (`aria-current` marks the active option), removable `.chip` |
-| `.actions` | row of pill links |
+| `.page-head` | title row: `h1` (plus `.hint` subtitle) left, `.pager` right; no action pills |
+| `.pager` | navigation: `.prev` / `.next` links, a `form.jump` with a date input (`app.js` turns it into the calendar picker), outlined `.pill` shortcuts (no icons) before `.prev` |
+| `.filters` | filter row under the header: `.label`, `.seg` toggle (`aria-current` marks the active option; archived is **Active / All**), removable `.chip` |
+| `.actions` | row of filled pill links with icons |
 | `.status-card` | `aside` beside the table in `.invoice-body`: `.status`, `.due` amount, a `.pill.primary` action, forms, a `.danger` link |
-| `.form`, `.settings` | form cards; a `.hint` inside a label stays muted |
+| `.form` | the form card; hints are sibling `p.hint`s linked via `aria-describedby`; a read-only form is a disabled `fieldset` with Save hidden |
 
 Strings that `app.js` needs come from the catalog as `data-*` attributes on `<body>` in `layout.html`.
 
@@ -58,6 +67,8 @@ To preview while tests are red (`nix run` builds with tests and fails), use `go 
 ```toml
 "customers.title" = { en = "Customers", de = "Kunden" }
 ```
+
+A plain Save, Delete, yes or no uses `common.save` / `common.delete` / `common.yes` / `common.no`; a label that says more ("Delete draft") keeps its own key.
 
 Startup, and so every test, fails if a key is duplicated or lacks `en` or `de`. Language is the user's own, else the default (`a.defaults()`: the stored row with config's `[defaults]` keys laid over it); `Accept-Language` is never read.
 
@@ -84,8 +95,8 @@ Reuse these instead of re-deriving them:
 Selecting rows and acting on all of them (entries, invoices, customers, projects) is one mechanism; a new list or action plugs into it.
 
 - **Server:** `massWrite` in `selection.go` takes a `massAction` (row loader, blocking rule, write, list renderer). It writes all rows or none: unknown id → 404; a blocked row or refused write → 422 with the list re-rendered, the selection kept and `selectionRefusal.Blocked` named. The page embeds `selectionRefusal[T]`; action URLs are built in Go and carry the list's query.
-- **Markup** (`customers.html` is the smallest example): a hidden `form.selection` with `hx-post`, `hx-target`/`hx-select` on the list wrapper; `input[data-select-all]`; `.selection-actions` holding `[data-count]` and one button per action (`formaction`, `data-confirm-one`/`data-confirm-many` with `{n}`, `data-confirm-ok`, optional `data-only-state`). Row checkboxes: `name="id"`, `form=` the selection's id, `data-state` when actions depend on it. Only actionable rows get a checkbox; the table carries `class="selectable"`, refusals render as `.errors.selection-blocked`.
-- **Confirmation:** any form or submit button with `data-confirm` opens the `dialog.confirm` in `layout.html` (`confirmForms` in `app.js`); `data-confirm-ok` names the button, `data-confirm-neutral` makes it accent instead of danger.
+- **Markup** (`customers.html` is the smallest example): a hidden `form.selection` with `hx-post`, `hx-target`/`hx-select` on the list wrapper; `input[data-select-all]`; `.selection-actions` holding `[data-count]` and one button per action (`formaction`, optional `data-only-state`; a delete adds `data-confirm-one`/`data-confirm-many` with `{n}` and `data-confirm-ok`). Row checkboxes: `name="id"`, `form=` the selection's id, `data-state` when actions depend on it. Only actionable rows get a checkbox; the table carries `class="selectable"`, refusals render as `.errors.selection-blocked`.
+- **Confirmation:** only for hard-to-reverse actions (delete, undo paid). Any form or submit button with `data-confirm` opens the `dialog.confirm` in `layout.html` (`confirmForms` in `app.js`); `data-confirm-ok` names the button, `data-confirm-neutral` makes it accent instead of danger.
 
 ## Tests
 
@@ -112,7 +123,7 @@ While working, run `nix run .#check`: formatting, lint, the markup-assertion, ta
 
 `nix flake check -L` is what CI runs: the same checks from git-tracked files only, so `git add` new files first.
 
-After any template or CSS change, run `nix run .#ui-check` (Linux): it seeds a throwaway instance, renders every page in English and German at 1280 and 390 px in light and dark, fails on horizontal overflow, invisible or cut-off text, and prints a directory of screenshots. Each run takes a free port, so parallel runs are fine. Look at the screenshots of the pages you touched; the check can't judge alignment or wrapping. New pages go into `pages` in `scripts/ui_check.py`. To iterate on a few pages, pass their paths: `nix run .#ui-check -- /invoices/1` (seeded ids are listed in the script's docstring).
+After any template or CSS change, run `nix run .#ui-check` (Linux): it seeds a throwaway instance, renders every page in English and German at 1280 and 390 px in light and dark, fails on horizontal overflow, invisible or cut-off text, and prints a directory of screenshots. Each run takes a free port, so parallel runs are fine. Look at the screenshots of the pages you touched; the check can't judge alignment or wrapping. New pages go into `pages` in `scripts/ui_check.py`. To iterate on a few pages, pass their paths: `nix run .#ui-check -- /invoices/1` (seeded ids are listed in the script's docstring), or `-- --changed main` for the pages whose template changed; read the phone shots first, they are the smallest.
 
 ## Nix
 

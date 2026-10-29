@@ -1,7 +1,8 @@
 "customers.title" = { en = "Customers", de = "Kunden" }
 "customers.new" = { en = "New customer", de = "Neuer Kunde" }
-"customers.edit" = { en = "Customer %s", de = "Kunde %s" }
+"customers.edit" = { en = "Edit customer", de = "Kunde bearbeiten" }
 "customers.empty" = { en = "No customers yet.", de = "Noch keine Kunden." }
+"customers.empty_active" = { en = "No active customers.", de = "Keine aktiven Kunden." }
 "customers.number" = { en = "Number", de = "Nummer" }
 "customers.name" = { en = "Name", de = "Name" }
 "customers.address" = { en = "Address", de = "Anschrift" }
@@ -12,7 +13,6 @@
 "customers.timezone" = { en = "Timezone", de = "Zeitzone" }
 "customers.note" = { en = "Note", de = "Notiz" }
 "customers.projects" = { en = "Projects", de = "Projekte" }
-"customers.save" = { en = "Save", de = "Speichern" }
 "customers.error.name" = { en = "Name is required.", de = "Name ist erforderlich." }
 "customers.error.currency" = { en = "Currency must be an ISO 4217 code such as EUR.", de = "Währung muss ein ISO-4217-Code wie EUR sein." }
 "customers.error.hourly_rate_required" = { en = "Default hourly rate is required.", de = "Standard-Stundensatz ist erforderlich." }
@@ -25,11 +25,7 @@
 "customers.error.currency_invoiced" = { en = "The currency of a customer with invoices can't change.", de = "Die Währung eines Kunden mit Rechnungen kann nicht geändert werden." }
 "customers.confirm_delete" = { en = "Delete customer %s %s?", de = "Kunde %s %s löschen?" }
 "customers.select" = { en = "Select customer %s %s", de = "Kunde %s %s auswählen" }
-"customers.confirm_archive_one" = { en = "Archive 1 customer and its projects?", de = "1 Kunden samt Projekten archivieren?" }
-"customers.confirm_archive_many" = { en = "Archive %s customers and their projects?", de = "%s Kunden samt Projekten archivieren?" }
-"customers.confirm_unarchive_one" = { en = "Unarchive 1 customer?", de = "1 Kunden wiederherstellen?" }
-"customers.confirm_unarchive_many" = { en = "Unarchive %s customers?", de = "%s Kunden wiederherstellen?" }
-"customers.confirm_delete_one" = { en = "Delete 1 customer?", de = "1 Kunden löschen?" }
+"customers.confirm_delete_one" = { en = "Delete 1 customer?", de = "1 Kunde löschen?" }
 "customers.confirm_delete_many" = { en = "Delete %s customers?", de = "%s Kunden löschen?" }
 "customers.error.archive_blocked" = { en = "Nothing was archived. These customers can't be archived:", de = "Nichts wurde archiviert. Diese Kunden können nicht archiviert werden:" }
 "customers.error.delete_blocked" = { en = "Nothing was deleted. These customers can't be deleted:", de = "Nichts wurde gelöscht. Diese Kunden können nicht gelöscht werden:" }

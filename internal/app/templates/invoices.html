@@ -1,10 +1,8 @@
 {{define "title"}}{{t "invoices.title"}}{{end}}
 {{define "content"}}
 {{with .Data}}
-<div class="page-head">
-<div class="title"><h1>{{t "invoices.title"}}</h1>
-<a class="pill" href="/invoices/new">{{template "icon-plus"}}{{t "invoices.new"}}</a></div>
-</div>
+<h1>{{template "title" $}}</h1>
+<p class="actions"><a href="/invoices/new">{{template "icon-plus"}}{{t "invoices.new"}}</a></p>
 <div class="filters">
 <span class="label">{{t "invoices.show"}}</span>
 <span class="seg"><a href="{{.StatusLink ""}}"{{if not .Status}} aria-current="true"{{end}}>{{t "invoices.all"}}</a>{{range .Statuses}}<a href="{{$.Data.StatusLink .}}"{{if eq . $.Data.Status}} aria-current="true"{{end}}>{{t (print "invoices.status." .)}}</a>{{end}}</span>
@@ -19,7 +17,7 @@
 <form id="invoice-selection" class="selection" method="post" action="{{$.Data.DeleteURL}}" hx-post="{{$.Data.DeleteURL}}" hx-target="#invoice-list" hx-select="#invoice-list" hx-swap="outerHTML" hidden>
 <label><input type="checkbox" data-select-all>{{t "selection.all"}}</label>
 <span class="selection-actions"><span data-count="{{t "selection.count" "{n}"}}"></span>
-<button class="danger" data-confirm-one="{{t "invoices.confirm_delete_one"}}" data-confirm-many="{{t "invoices.confirm_delete_many" "{n}"}}" data-confirm-ok="{{t "invoices.delete_selected"}}">{{template "icon-trash"}}{{t "invoices.delete_selected"}}</button></span>
+<button class="danger" data-confirm-one="{{t "invoices.confirm_delete_one"}}" data-confirm-many="{{t "invoices.confirm_delete_many" "{n}"}}" data-confirm-ok="{{t "common.delete"}}">{{template "icon-trash"}}{{t "selection.delete"}}</button></span>
 </form>
 <div class="table-wrap"><table class="invoice-list selectable">
 <thead><tr><td class="c-select"></td><th>{{t "invoices.number"}}</th><th>{{t "invoices.customer"}}</th><th>{{t "invoices.issue_date"}}</th><th class="num">{{t "invoices.gross"}}</th><th>{{t "invoices.status"}}</th><th>{{t "invoices.paid"}}</th></tr></thead>
@@ -28,7 +26,7 @@
 {{end}}</tbody>
 </table></div>
 {{else}}
-<p>{{t "invoices.empty"}}</p>
+<p class="hint">{{if or .Status .Customer}}{{t "invoices.empty_filtered"}}{{else}}{{t "invoices.empty"}}{{end}}</p>
 {{end}}</div>
 {{end}}
 {{end}}

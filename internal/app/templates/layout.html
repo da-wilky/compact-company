@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{{template "title" .}} · compact-company</title>
+<title>{{block "tab" .}}{{template "title" .}}{{end}} · compact-company</title>
 <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/static/app.css">
 <script src="/static/htmx.min.js" defer></script>
@@ -36,7 +36,7 @@
 {{if .User}}<dialog class="confirm" aria-labelledby="confirm-text">
 <form method="dialog">
 <p id="confirm-text"></p>
-<div class="confirm-actions"><button value="cancel" autofocus>{{t "layout.cancel"}}</button><button value="ok" class="danger" data-label="{{t "layout.delete"}}">{{t "layout.delete"}}</button></div>
+<div class="confirm-actions"><button value="cancel" autofocus>{{t "layout.cancel"}}</button><button value="ok" class="danger" data-label="{{t "common.delete"}}">{{t "common.delete"}}</button></div>
 </form>
 </dialog>{{end}}
 </body>

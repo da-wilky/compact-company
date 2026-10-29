@@ -118,17 +118,17 @@ func (a *App) issueDraft(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		a.renderDraftFailure(w, r, d, err)
+		a.renderDraftFailure(w, r, "invoice_issue", d, err)
 		return
 	}
 	http.Redirect(w, r, draftPath(d.ID), http.StatusSeeOther)
 }
 
-// renderDraftFailure shows why d couldn't be rendered on the draft's page.
-func (a *App) renderDraftFailure(w http.ResponseWriter, r *http.Request, d draft, err error) {
-	page := draftPage{Draft: d}
-	if status, ok := page.explain(err); ok {
-		a.render(w, r, status, "invoice", page)
+// renderDraftFailure shows on page why d couldn't be rendered.
+func (a *App) renderDraftFailure(w http.ResponseWriter, r *http.Request, page string, d draft, err error) {
+	data := draftPage{Draft: d}
+	if status, ok := data.explain(err); ok {
+		a.render(w, r, status, page, data)
 		return
 	}
 	a.serverError(w, r, err)

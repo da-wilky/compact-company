@@ -2,7 +2,7 @@
 {{define "content"}}
 {{with .Data}}
 <div class="page-head">
-<div><h1>{{t "week.title" (date (index .Days 0).Time)}}</h1>
+<div><h1>{{template "title" $}}</h1>
 <p class="hint">{{t "week.subtitle"}}</p></div>
 <nav class="pager" aria-label="{{t "week.nav"}}">
 {{if not .Current}}<a class="pill" href="/week{{if .Everyone}}?everyone=1{{end}}">{{t "week.this"}}</a>{{end}}

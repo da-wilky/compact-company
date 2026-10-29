@@ -1,5 +1,5 @@
 {{define "timers"}}<div id="timers" class="timers" hx-target="this" hx-swap="outerHTML">
-{{with .Timers}}{{with .Error}}<p class="error" role="alert">{{t .}}</p>{{end}}
+{{with .Timers}}{{with .Error}}<ul class="errors" role="alert"><li>{{t .}}</li></ul>{{end}}
 {{range .Running}}<div class="timer">
 <div class="timer-top"><span class="pulse" aria-hidden="true"></span>
 <span class="project">{{if .Project}}{{.Project}}{{else}}{{t "timers.unassigned"}}{{end}}</span>
@@ -20,7 +20,7 @@
 <div class="timer-top"><input name="description" placeholder="{{t "timers.description"}}" aria-label="{{t "timers.description"}}">
 <button class="icon go" aria-label="{{t "timers.start"}}" title="{{t "timers.start"}}">{{template "icon-play"}}</button></div>
 <select name="project" aria-label="{{t "timers.project"}}">
-<option value="">{{t "timers.no_project"}}</option>
+<option value="">{{t "timers.unassigned"}}</option>
 {{range .Customers}}<optgroup label="{{.Name}}">
 {{range .Projects}}<option value="{{.ID}}">{{.Name}}</option>
 {{end}}</optgroup>
