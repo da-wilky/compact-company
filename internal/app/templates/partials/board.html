@@ -1,7 +1,7 @@
 {{define "board"}}<div id="board" class="board">
-{{range .Columns}}<section class="board-column" aria-labelledby="status-{{.Status.ID}}">
+{{range .Columns}}<section class="board-column" aria-labelledby="status-{{.Status.ID}}" data-status="{{.Status.ID}}">
 <h3 id="status-{{.Status.ID}}">{{.Status.Name}}</h3>
-<ul class="cards">{{range .Todos}}{{$status := .StatusID}}<li class="card">
+<ul class="cards">{{range .Todos}}{{$status := .StatusID}}<li class="card" draggable="true">
 <a href="/todos/{{.ID}}">{{.Title}}</a>
 <p class="card-meta"><span class="tag">{{t .PriorityKey}}</span>{{with .Assignee}}<span>{{.}}</span>{{end}}{{with .DueDate}}<span>{{t "todos.due_on" (day .)}}</span>{{end}}{{if .Overdue}}<span class="badge">{{t "todos.overdue"}}</span>{{end}}</p>
 <form method="post" action="/todos/{{.ID}}/status" hx-post="/todos/{{.ID}}/status" hx-trigger="change" hx-target="#board" hx-select="#board" hx-swap="outerHTML">

@@ -92,7 +92,7 @@ Reuse these instead of re-deriving them:
 
 ## Todo boards
 
-Every board is the `board` partial (`partials/board.html`) fed by `loadBoard` in `todos.go`: all statuses as columns, cards in the one board order. A status change, whatever triggers it, posts `status` and `return` to `POST /todos/{id}/status`, which redirects to `return` (a board page, checked by `boardReturn`); htmx swaps `#board` out of the page that redirect lands on. A new board page passes its own URL as `return` and adds its prefix to `boardReturn`.
+Every board is the `board` partial (`partials/board.html`) fed by `loadBoard` in `todos.go`: all statuses as columns, cards in the one board order. A status change, whatever triggers it, posts `status` and `return` to `POST /todos/{id}/status`, which redirects to `return` (a board page, checked by `boardReturn`); htmx swaps `#board` out of the page that redirect lands on. A new board page passes its own URL as `return` and adds its prefix to `boardReturn`. Dragging a card onto another column (`data-status`) only picks that status in the card's dropdown, so drag and dropdown send the same request; a refused change resets the dropdown and `app.js` shows the error page's heading above the board.
 
 ## Mass actions and confirmation
 

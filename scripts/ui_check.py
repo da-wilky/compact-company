@@ -222,6 +222,21 @@ def main():
                         page.uncheck("input[name=all_projects]")
                         page.screenshot(path=f"{out}/{lang}-{viewport}-{scheme}-invoices-new-projects.png", full_page=True)
                         failures += [f"{lang} {viewport} {scheme} /invoices/new (projects shown): {p}" for p in page.evaluate(FIND_BREAKAGE)]
+                    if f"/projects/{project}" in pages:
+                        # A column whose status no longer exists, as on a page loaded before the status was deleted.
+                        page.goto(f"{base}/projects/{project}")
+                        column = page.locator("[data-status]").last
+                        column.evaluate("c => c.dataset.status = '0'")
+                        # Dispatched rather than dragged by mouse, since the target column may sit outside the board's scrolled view.
+                        drag = {"dataTransfer": page.evaluate_handle("new DataTransfer()")}
+                        card = page.locator("[draggable]").first
+                        card.dispatch_event("dragstart", drag)
+                        column.dispatch_event("dragover", drag)
+                        column.dispatch_event("drop", drag)
+                        card.dispatch_event("dragend", drag)
+                        page.wait_for_selector("main [role=alert]")
+                        page.screenshot(path=f"{out}/{lang}-{viewport}-{scheme}-project-drag-refused.png", full_page=True)
+                        failures += [f"{lang} {viewport} {scheme} /projects/{project} (drag refused): {p}" for p in page.evaluate(FIND_BREAKAGE)]
                     page.close()
         browser.close()
     print(f"screenshots: {out}")
