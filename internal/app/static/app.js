@@ -275,6 +275,95 @@ function boards() {
   });
 }
 
+// A card's status select becomes a button opening one shared menu; choosing sets the select and fires its
+// change, so the post is the dropdown's own. The menu is a popover because the scrolling board would clip it.
+function statusMenus() {
+  const menu = document.createElement("div");
+  menu.className = "status-menu";
+  menu.setAttribute("role", "menu");
+  menu.popover = "manual";
+  document.body.append(menu);
+  let trigger = null, select = null;
+  const items = () => [...menu.querySelectorAll("[role=menuitemradio]")];
+
+  function enhance() {
+    for (const s of document.querySelectorAll(".card-status select:not([hidden])")) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "status-trigger";
+      b.setAttribute("aria-haspopup", "menu");
+      b.setAttribute("aria-expanded", "false");
+      b.setAttribute("aria-label", s.getAttribute("aria-label"));
+      b.textContent = s.selectedOptions[0]?.text ?? "";
+      s.hidden = true;
+      s.after(b);
+    }
+  }
+
+  function open(b) {
+    trigger = b;
+    select = b.parentElement.querySelector("select");
+    menu.setAttribute("aria-label", select.getAttribute("aria-label"));
+    menu.replaceChildren(...[...select.options].map((o) => {
+      const item = document.createElement("button");
+      item.type = "button";
+      item.tabIndex = -1;
+      item.setAttribute("role", "menuitemradio");
+      item.setAttribute("aria-checked", String(o.selected));
+      item.dataset.value = o.value;
+      item.textContent = o.text;
+      return item;
+    }));
+    menu.showPopover();
+    const r = b.getBoundingClientRect();
+    menu.style.top = `${r.bottom + 4}px`;
+    menu.style.left = `${Math.max(8, Math.min(r.right - menu.offsetWidth, innerWidth - menu.offsetWidth - 8))}px`;
+    b.setAttribute("aria-expanded", "true");
+    (items().find((i) => i.getAttribute("aria-checked") === "true") ?? items()[0]).focus({ preventScroll: true });
+  }
+
+  function close(refocus) {
+    if (!menu.matches(":popover-open")) return;
+    menu.hidePopover();
+    trigger.setAttribute("aria-expanded", "false");
+    if (refocus) trigger.focus();
+  }
+
+  document.addEventListener("click", (e) => {
+    const b = e.target.closest?.(".status-trigger");
+    const item = e.target.closest?.(".status-menu [role=menuitemradio]");
+    if (item) {
+      close(true);
+      if (item.dataset.value === select.value) return;
+      select.value = item.dataset.value;
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+    } else if (b) {
+      const again = b === trigger && menu.matches(":popover-open");
+      close(again);
+      if (!again) open(b);
+    } else if (!menu.contains(e.target)) close(false);
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.target.matches?.(".status-trigger") && (e.key === "ArrowDown" || e.key === "ArrowUp")) {
+      e.preventDefault();
+      open(e.target);
+    }
+  });
+  menu.addEventListener("keydown", (e) => {
+    const all = items(), i = all.indexOf(document.activeElement);
+    const to = { ArrowDown: i + 1, ArrowUp: i - 1, Home: 0, End: all.length - 1 }[e.key];
+    if (to !== undefined) all[(to + all.length) % all.length].focus();
+    else if (e.key === "Escape") close(true);
+    else if (e.key === "Tab") close(true);
+    else return;
+    e.preventDefault();
+  });
+  addEventListener("scroll", () => close(false), true);
+  addEventListener("resize", () => close(false));
+  document.addEventListener("htmx:afterSwap", enhance);
+  enhance();
+}
+
 tickTimers();
 setInterval(tickTimers, 1000);
 document.addEventListener("htmx:afterSwap", tickTimers);
@@ -285,3 +374,4 @@ timezoneSelects();
 confirmForms();
 selections();
 boards();
+statusMenus();

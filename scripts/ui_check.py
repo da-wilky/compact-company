@@ -227,6 +227,12 @@ def main():
                         page.uncheck("input[name=all_projects]")
                         page.screenshot(path=f"{out}/{lang}-{viewport}-{scheme}-invoices-new-projects.png", full_page=True)
                         failures += [f"{lang} {viewport} {scheme} /invoices/new (projects shown): {p}" for p in page.evaluate(FIND_BREAKAGE)]
+                    if "/todos" in pages:
+                        page.goto(base + "/todos")
+                        page.locator("[aria-haspopup=menu]").first.click()
+                        page.wait_for_selector("[role=menu]:popover-open")
+                        page.screenshot(path=f"{out}/{lang}-{viewport}-{scheme}-todos-status-menu.png")
+                        failures += [f"{lang} {viewport} {scheme} /todos (status menu open): {p}" for p in page.evaluate(FIND_BREAKAGE)]
                     if f"/projects/{project}" in pages:
                         # A column whose status no longer exists, as on a page loaded before the status was deleted.
                         page.goto(f"{base}/projects/{project}")
