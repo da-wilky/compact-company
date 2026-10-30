@@ -1,0 +1,34 @@
+{{define "title"}}{{.Data.Snapshot.Subject}}{{end}}
+{{define "content"}}
+{{with .Data}}{{with .Snapshot}}
+<a class="crumb" href="/quotes">{{template "icon-arrow-left"}}{{t "quotes.title"}}</a>
+<div class="page-head">
+<div><h1>{{template "title" $}}</h1>
+<p class="hint">{{t "quotes.sent_for" $.Data.Number .Customer.Number .Customer.Name}}</p></div>
+</div>
+<p class="actions"><a href="/quotes/{{$.Data.ID}}/pdf">{{template "icon-download"}}{{t "invoices.download"}}</a> <a href="/quotes/{{$.Data.ID}}/duplicate">{{template "icon-copy"}}{{t "quotes.duplicate"}}</a></p>
+<p class="hint">{{t "quotes.sent_on" (day .IssueDate)}} · {{t "quotes.valid_until"}} {{day .ValidUntil}} · {{t (print "quotes.pricing." .Pricing)}}{{with .Project}} · {{t "quotes.project"}} {{.}}{{end}}</p>
+{{if .Lines}}
+<div class="table-wrap"><table class="invoice-lines">
+<thead><tr><th>{{t "invoices.description"}}</th><th class="num">{{t "invoices.quantity"}}</th><th>{{t "invoices.unit"}}</th><th class="num">{{t "invoices.price"}}</th><th>{{t "quotes.interval"}}</th><th class="num">{{t "invoices.total"}}</th></tr></thead>
+<tbody>
+{{range .Lines}}<tr><td>{{.Description}}{{with .Detail}}<br><span class="hint">{{.}}</span>{{end}}</td><td class="num">{{.Quantity}}</td><td>{{.Unit}}</td><td class="num">{{.UnitPrice}}</td><td>{{t (print "quotes.interval." .Interval)}}</td><td class="num">{{.Total}}</td></tr>
+{{end}}</tbody>
+</table></div>
+<div class="table-wrap"><table class="quote-totals">
+<thead><tr><td></td><th class="num">{{t "invoices.net"}}</th>{{if not .Tax.SmallBusiness}}<th class="num">{{t "invoices.vat" .Tax.VATRate}}</th>{{end}}<th class="num">{{t "invoices.gross"}}</th></tr></thead>
+<tbody>
+{{range $.Data.Totals}}<tr><th>{{t (print "quotes.total." .Interval)}}</th><td class="num">{{.Net}} {{$.Data.Snapshot.Currency}}</td>{{if not $.Data.Snapshot.Tax.SmallBusiness}}<td class="num">{{.VAT}} {{$.Data.Snapshot.Currency}}</td>{{end}}<td class="num">{{.Gross}} {{$.Data.Snapshot.Currency}}</td></tr>
+{{end}}</tbody>
+</table></div>
+{{else}}<p class="hint">{{t "quotes.sent_no_lines"}}</p>
+{{end}}
+{{if .Sections}}<h2>{{t "quotes.sections"}}</h2>
+{{range .Sections}}<section class="quote-section">
+{{with .Heading}}<div class="quote-section-head"><h3>{{.}}</h3></div>{{end}}
+<pre class="quote-body">{{.Body}}</pre>
+</section>
+{{end}}{{end}}
+<p class="hint sha">{{t "invoices.sha256"}}: {{$.Data.SHA256}}</p>
+{{end}}{{end}}
+{{end}}

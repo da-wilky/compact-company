@@ -3,7 +3,6 @@ package app_test
 import (
 	"net/http"
 	"net/url"
-	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -102,14 +101,9 @@ func TestDuplicateRescalesPricesToTheNewCustomersCurrency(t *testing.T) {
 func TestASentQuoteCanBeDuplicated(t *testing.T) {
 	ta := newTestApp(t, devConfig)
 	c := ta.client()
+	c.postForm("/settings/business", businessForm()).wantStatus(t, http.StatusSeeOther)
 	quote := c.fullQuote()
-	id, err := strconv.ParseInt(strings.TrimPrefix(quote, "/quotes/"), 10, 64)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := ta.app.SendQuoteForTest(id, "A-2026-001", "2026-10-26"); err != nil {
-		t.Fatal(err)
-	}
+	wantRedirect(t, c.send(quote), quote)
 
 	c.get(quote+"/duplicate").wantStatus(t, http.StatusOK)
 	res := c.get(c.duplicateQuote(quote, c.customerPath("acme")))

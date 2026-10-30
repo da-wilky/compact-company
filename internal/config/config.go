@@ -75,7 +75,8 @@ type Invoice struct {
 }
 
 type Quote struct {
-	ValidityDays int `toml:"validity_days"`
+	NumberFormat string `toml:"number_format"`
+	ValidityDays int    `toml:"validity_days"`
 }
 
 type Defaults struct {
@@ -97,7 +98,7 @@ func Load(path string) (Config, error) {
 		CustomerNumberFormat: "K-{seq:03}",
 		Auth:                 Auth{SessionIdleTimeout: 14 * 24 * time.Hour},
 		Invoice:              Invoice{NumberFormat: "{year}-{seq:03}", PaymentDays: 14},
-		Quote:                Quote{ValidityDays: 30},
+		Quote:                Quote{NumberFormat: "A-{year}-{seq:03}", ValidityDays: 30},
 	}
 	md, err := decodeStrict(path, &cfg)
 	if err != nil {

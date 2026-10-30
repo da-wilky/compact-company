@@ -72,3 +72,9 @@
 "quotes.error.valid_until" = { en = "Enter a valid date.", de = "Bitte ein gültiges Datum angeben." }
 "quotes.error.interval" = { en = "Choose an interval.", de = "Bitte ein Intervall wählen." }
 "quotes.error.body" = { en = "Text is required.", de = "Text ist erforderlich." }
+"quotes.error.sections_fail" = { en = "A section doesn't compile. Fix it on the quote before sending.", de = "Ein Abschnitt lässt sich nicht kompilieren. Vor dem Versenden im Angebot korrigieren." }
+"quotes.send" = { en = "Send quote", de = "Angebot versenden" }
+"quotes.send_warning" = { en = "Sending gives the draft the next quote number, dated today, and renders its PDF once. A sent quote can never be edited or deleted.", de = "Beim Versenden erhält der Entwurf die nächste Angebotsnummer mit dem heutigen Datum, und sein PDF wird einmalig erzeugt. Ein versendetes Angebot kann nie mehr bearbeitet oder gelöscht werden." }
+"quotes.sent_for" = { en = "Quote %s for %s %s", de = "Angebot %s für %s %s" }
+"quotes.sent_on" = { en = "Sent %s", de = "Versendet am %s" }
+"quotes.sent_no_lines" = { en = "No lines. This quote states no price.", de = "Keine Positionen. Dieses Angebot nennt keinen Preis." }

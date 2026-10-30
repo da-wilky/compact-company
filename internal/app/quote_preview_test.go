@@ -3,7 +3,6 @@ package app_test
 import (
 	"encoding/json"
 	"net/http"
-	"path/filepath"
 	"reflect"
 	"strconv"
 	"strings"
@@ -92,11 +91,7 @@ func TestQuotePreviewIsRefusedWhileBusinessDataIsMissing(t *testing.T) {
 }
 
 func TestQuotePreviewNeedsQuoteTypInTheTemplateDirectory(t *testing.T) {
-	dir, err := filepath.Abs("testdata/boom")
-	if err != nil {
-		t.Fatal(err)
-	}
-	ta := newTestApp(t, devConfig+"[invoice]\ntemplate_dir = "+strconv.Quote(dir)+"\n"+businessConfig)
+	ta := newTestApp(t, devConfig+"[invoice]\ntemplate_dir = "+strconv.Quote(t.TempDir())+"\n"+businessConfig)
 	c := ta.client()
 	quote := c.acmeQuote()
 

@@ -266,9 +266,30 @@ func (a *App) renderQuoteFailure(w http.ResponseWriter, r *http.Request, q quote
 }
 
 func (a *App) quoteShow(w http.ResponseWriter, r *http.Request) {
-	if q, ok := a.quoteFromPath(w, r); ok {
-		a.renderQuote(w, r, http.StatusOK, q, nil)
+	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	if err != nil {
+		a.notFound(w, r)
+		return
 	}
+	q, err := a.loadQuoteDraft(id)
+	if err == nil {
+		a.renderQuote(w, r, http.StatusOK, q, nil)
+		return
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		a.serverError(w, r, err)
+		return
+	}
+	sent, err := a.loadSentQuote(id)
+	if errors.Is(err, sql.ErrNoRows) {
+		a.notFound(w, r)
+		return
+	}
+	if err != nil {
+		a.serverError(w, r, err)
+		return
+	}
+	a.render(w, r, http.StatusOK, "quote_sent", sent)
 }
 
 func (a *App) quoteUpdate(w http.ResponseWriter, r *http.Request) {
@@ -328,9 +349,10 @@ type quoteList struct {
 }
 
 // loadQuoteRows lists the quotes meeting cond (quote aliased q, ? placeholders), newest first: drafts, then by send date.
+// A sent quote's one-off total is its snapshot's, so a later VAT change doesn't alter it.
 func (a *App) loadQuoteRows(cond string, args ...any) ([]quoteRow, error) {
 	rows, err := a.db.Query(`SELECT * FROM (SELECT q.id, ifnull(q.number, ''), c.name, q.subject, ifnull(q.send_date, '') send_date, q.currency,
-		`+quoteStatus+` status, q.number IS NOT NULL sent
+		`+quoteStatus+` status, q.number IS NOT NULL sent, ifnull(q.snapshot ->> '$.totals.once.gross', '')
 		FROM quote q JOIN customer c ON c.id = q.customer_id WHERE `+cond+`)
 		ORDER BY sent, send_date DESC, id DESC`, args...)
 	if err != nil {
@@ -341,7 +363,7 @@ func (a *App) loadQuoteRows(cond string, args ...any) ([]quoteRow, error) {
 	for rows.Next() {
 		var row quoteRow
 		var sent bool
-		if err := rows.Scan(&row.ID, &row.Number, &row.Customer, &row.Subject, &row.SendDate, &row.Currency, &row.Status, &sent); err != nil {
+		if err := rows.Scan(&row.ID, &row.Number, &row.Customer, &row.Subject, &row.SendDate, &row.Currency, &row.Status, &sent, &row.OneOff); err != nil {
 			return nil, err
 		}
 		found = append(found, row)
@@ -354,6 +376,9 @@ func (a *App) loadQuoteRows(cond string, args ...any) ([]quoteRow, error) {
 		return nil, err
 	}
 	for i := range found {
+		if found[i].OneOff != "" {
+			continue
+		}
 		unit := currency.MustParseISO(found[i].Currency)
 		_, totals, err := queryQuoteLines(a.db, found[i].ID, unit)
 		if err != nil {

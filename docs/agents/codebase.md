@@ -89,6 +89,7 @@ Reuse these instead of re-deriving them:
 - A time entry is claimed via `time_entry.invoice_line_id`; its invoice is a draft while `number IS NULL`.
 - Invoice dates are ISO dates in the customer's timezone; resolve timezones per query with `locationCache`.
 - Week and month windows: `mondayOf` in `week.go`.
+- Issuing an invoice and sending a quote share `issue.go`: `nextInSequence` (gapless yearly number inside the tx), `commitWithPDF` (stores the PDF and its SHA-256, commits, leaves no file on failure) and `serveStoredPDF` for the download.
 
 ## Typst guards
 

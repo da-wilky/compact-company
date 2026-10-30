@@ -54,6 +54,7 @@ template_dir = "/etc/compact-company/invoice-template"  # optional; default: bun
 font_paths = ["/etc/compact-company/fonts"]             # optional; extra Typst font dirs
 
 [quote]
+number_format = "A-{year}-{seq:03}"  # default; {year} and {seq} once each; no "/" or ".."
 validity_days = 30                 # default; positive; new quotes are valid until today plus this
 ```
 

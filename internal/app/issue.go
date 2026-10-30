@@ -21,14 +21,16 @@ func init() {
 	routes = append(routes, func(a *App, mux *http.ServeMux) {
 		mux.HandleFunc("GET /invoices/{id}/issue", a.authed(a.issueConfirm))
 		mux.HandleFunc("POST /invoices/{id}/issue", a.authed(a.issueDraft))
-		mux.HandleFunc("GET /invoices/{id}/pdf", a.authed(a.invoicePDF))
+		mux.HandleFunc("GET /invoices/{id}/pdf", a.authed(func(w http.ResponseWriter, r *http.Request) {
+			a.serveStoredPDF(w, r, `SELECT number, pdf_path FROM invoice WHERE id = ? AND number IS NOT NULL`)
+		}))
 	})
 }
 
 // issue gives invoice id the next number of its issue year, stores the snapshot, renders the PDF
 // once into the data dir with its SHA-256 and commits tx. On any failure the caller's rollback
 // leaves the number unused, and no file is left behind. sql.ErrNoRows: id was already issued.
-func (a *App) issue(ctx context.Context, tx *sql.Tx, id int64) (err error) {
+func (a *App) issue(ctx context.Context, tx *sql.Tx, id int64) error {
 	issueDate, err := a.issueDate(tx, id)
 	if err != nil {
 		return err
@@ -37,9 +39,8 @@ func (a *App) issue(ctx context.Context, tx *sql.Tx, id int64) (err error) {
 	if err != nil {
 		return err
 	}
-	var seq int64
-	if err := tx.QueryRow(`INSERT INTO sequence (name, year, last_value) VALUES ('invoice', ?, 1)
-		ON CONFLICT DO UPDATE SET last_value = last_value + 1 RETURNING last_value`, year).Scan(&seq); err != nil {
+	seq, err := nextInSequence(tx, "invoice", year)
+	if err != nil {
 		return err
 	}
 	number, err := a.cfg.Invoice.Number(year, seq)
@@ -55,6 +56,26 @@ func (a *App) issue(ctx context.Context, tx *sql.Tx, id int64) (err error) {
 		return err
 	}
 	rel := filepath.Join("invoices", strconv.Itoa(year), number+".pdf")
+	return a.commitWithPDF(tx, rel, pdf, func(sha256 string) (sql.Result, error) {
+		return tx.Exec(`UPDATE invoice SET number = ?1, issue_date = ?2, due_date = date(?2, '+' || payment_days || ' days'),
+			service_from = ?3 ->> '$.service_period.from', service_to = ?3 ->> '$.service_period.to',
+			snapshot = ?3, gross = ?4, pdf_path = ?5, pdf_sha256 = ?6,
+			timezone = (SELECT c.timezone FROM customer c WHERE c.id = invoice.customer_id) WHERE id = ?7 AND number IS NULL`,
+			number, issueDate, string(data), gross, rel, sha256, id)
+	})
+}
+
+// nextInSequence counts up name's sequence for year; gapless because a rollback of tx takes the number back.
+func nextInSequence(tx *sql.Tx, name string, year int) (seq int64, err error) {
+	err = tx.QueryRow(`INSERT INTO sequence (name, year, last_value) VALUES (?, ?, 1)
+		ON CONFLICT DO UPDATE SET last_value = last_value + 1 RETURNING last_value`, name, year).Scan(&seq)
+	return seq, err
+}
+
+// commitWithPDF writes pdf to rel in the data dir, stores it through update, which gets its SHA-256 and
+// must change exactly one row, and commits tx. On any failure no file is left behind; an update that
+// changes no row is sql.ErrNoRows.
+func (a *App) commitWithPDF(tx *sql.Tx, rel string, pdf []byte, update func(sha256 string) (sql.Result, error)) (err error) {
 	path := filepath.Join(a.cfg.DataDir, rel)
 	if err := writeNewFile(path, pdf); err != nil {
 		return err
@@ -65,11 +86,7 @@ func (a *App) issue(ctx context.Context, tx *sql.Tx, id int64) (err error) {
 		}
 	}()
 	sum := sha256.Sum256(pdf)
-	res, err := tx.Exec(`UPDATE invoice SET number = ?1, issue_date = ?2, due_date = date(?2, '+' || payment_days || ' days'),
-		service_from = ?3 ->> '$.service_period.from', service_to = ?3 ->> '$.service_period.to',
-		snapshot = ?3, gross = ?4, pdf_path = ?5, pdf_sha256 = ?6,
-		timezone = (SELECT c.timezone FROM customer c WHERE c.id = invoice.customer_id) WHERE id = ?7 AND number IS NULL`,
-		number, issueDate, string(data), gross, rel, hex.EncodeToString(sum[:]), id)
+	res, err := update(hex.EncodeToString(sum[:]))
 	if err != nil {
 		return err
 	}
@@ -79,7 +96,7 @@ func (a *App) issue(ctx context.Context, tx *sql.Tx, id int64) (err error) {
 	return tx.Commit()
 }
 
-// writeNewFile never overwrites: an existing file is some other invoice's stored PDF.
+// writeNewFile never overwrites: an existing file is some other document's stored PDF.
 func writeNewFile(path string, content []byte) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
 		return err
@@ -280,15 +297,16 @@ func (a *App) invoiceShow(w http.ResponseWriter, r *http.Request) {
 	a.render(w, r, http.StatusOK, "invoice_issued", inv)
 }
 
-// invoicePDF serves the PDF stored at issuing, never a fresh rendering.
-func (a *App) invoicePDF(w http.ResponseWriter, r *http.Request) {
+// serveStoredPDF serves the PDF stored at issuing or sending, never a fresh rendering.
+// query selects number and pdf_path of the path's id; no row is a 404.
+func (a *App) serveStoredPDF(w http.ResponseWriter, r *http.Request, query string) {
 	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil {
 		a.notFound(w, r)
 		return
 	}
 	var number, rel string
-	err = a.db.QueryRow(`SELECT number, pdf_path FROM invoice WHERE id = ? AND number IS NOT NULL`, id).Scan(&number, &rel)
+	err = a.db.QueryRow(query, id).Scan(&number, &rel)
 	if errors.Is(err, sql.ErrNoRows) {
 		a.notFound(w, r)
 		return
