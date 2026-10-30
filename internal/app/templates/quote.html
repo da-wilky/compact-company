@@ -6,7 +6,8 @@
 <div><h1>{{template "title" $}}</h1>
 <p class="hint">{{t "quotes.draft_for" .CustomerNumber .CustomerName}}</p></div>
 </div>
-{{with $.Data.Errors}}<ul class="errors" role="alert">{{range .}}<li>{{t .}}</li>{{end}}</ul>{{end}}
+{{template "render-errors" $.Data}}
+<p class="actions"><a href="/quotes/{{.ID}}/preview">{{template "icon-eye"}}{{t "invoices.preview"}}</a></p>
 {{if .Lines}}
 <div class="table-wrap"><table class="invoice-lines">
 <thead><tr><th>{{t "invoices.description"}}</th><th class="num">{{t "invoices.quantity"}}</th><th>{{t "invoices.unit"}}</th><th class="num">{{t "invoices.price"}}</th><th>{{t "quotes.interval"}}</th><th class="num">{{t "invoices.total"}}</th><th></th></tr></thead>

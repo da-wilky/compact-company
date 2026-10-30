@@ -25,8 +25,8 @@ type quoteSection struct {
 	Heading, Body string
 }
 
-func (a *App) quoteSections(quoteID int64) ([]quoteSection, error) {
-	rows, err := a.db.Query(`SELECT id, heading, body FROM quote_section WHERE quote_id = ? ORDER BY position, id`, quoteID)
+func quoteSections(q querier, quoteID int64) ([]quoteSection, error) {
+	rows, err := q.Query(`SELECT id, heading, body FROM quote_section WHERE quote_id = ? ORDER BY position, id`, quoteID)
 	if err != nil {
 		return nil, err
 	}

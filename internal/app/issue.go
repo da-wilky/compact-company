@@ -50,7 +50,7 @@ func (a *App) issue(ctx context.Context, tx *sql.Tx, id int64) (err error) {
 	if err != nil {
 		return err
 	}
-	pdf, err := a.renderPDF(ctx, data)
+	pdf, err := a.renderPDF(ctx, "invoice.typ", data)
 	if err != nil {
 		return err
 	}
@@ -134,20 +134,25 @@ func (a *App) renderDraftFailure(w http.ResponseWriter, r *http.Request, page st
 	a.serverError(w, r, err)
 }
 
-// renderFailure is why an invoice couldn't be rendered, for the page that asked.
+// renderFailure is why an invoice or quote couldn't be rendered, for the page that asked.
 type renderFailure struct {
 	MissingBusiness []string
+	MissingEntry    string
 	TypstError      string
 }
 
 // explain records err and returns the status to answer with; ok is false unless err is a render failure.
 func (f *renderFailure) explain(err error) (status int, ok bool) {
 	var missing *missingBusinessError
+	var noEntry *missingEntryError
 	var failed *typstError
 	switch {
 	case errors.As(err, &missing):
 		f.MissingBusiness = missing.fields
 		return http.StatusConflict, true
+	case errors.As(err, &noEntry):
+		f.MissingEntry = noEntry.entry
+		return http.StatusInternalServerError, true
 	case errors.As(err, &failed):
 		f.TypstError = failed.message
 		return http.StatusInternalServerError, true

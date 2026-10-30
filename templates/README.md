@@ -1,6 +1,6 @@
-# Invoice templates
+# Invoice and quote templates
 
-compact-company renders invoices with [Typst](https://typst.app). A template is a directory with an `invoice.typ` entry point; point `invoice.template_dir` at it, or leave it unset to use the bundled `default/` (English and German).
+compact-company renders invoices and quotes with [Typst](https://typst.app). A template is a directory with an `invoice.typ` entry point for invoices and a `quote.typ` entry point for quotes; point `invoice.template_dir` at it, or leave it unset to use the bundled `default/` (English and German). A directory without `quote.typ` still renders invoices; previewing or sending a quote then fails with a message naming the missing file.
 
 ```toml
 [invoice]
@@ -11,7 +11,7 @@ font_paths = ["/etc/compact-company/fonts"]   # optional
 ## Invocation
 
 ```
-typst compile --root <template_dir> [--font-path <p> …] --input data=<json> <template_dir>/invoice.typ <out.pdf>
+typst compile --root <template_dir> [--font-path <p> …] --input data=<json> <template_dir>/<invoice.typ|quote.typ> <out.pdf>
 ```
 
 The template reads its data with:
@@ -20,11 +20,11 @@ The template reads its data with:
 #let data = json(bytes(sys.inputs.data))
 ```
 
-Everything about the invoice is in that JSON; a template needs no other source. Files outside `template_dir` can't be read. Fonts come from `font_paths`, the system and Typst's embedded fonts.
+Everything about the invoice or quote is in that JSON; a template needs no other source. Files outside `template_dir` can't be read. Fonts come from `font_paths`, the system and Typst's embedded fonts.
 
-A failing compile (a `panic`, a missing font, a syntax error) is shown to the user as Typst reported it, and nothing is issued.
+A failing compile (a `panic`, a missing font, a syntax error) is shown to the user as Typst reported it, and nothing is issued or sent.
 
-## Contract, version 1
+## Invoice contract, version 1
 
 ```json
 {
@@ -93,6 +93,60 @@ A failing compile (a `panic`, a missing font, a syntax error) is shown to the us
 - Money and quantities are decimal strings with `.` as separator and an optional leading `-` (`"1083.75"`, `"-12.75"`, `"1.5"`); amounts carry the currency's minor-unit digits, quantities up to 3 decimals without trailing zeros. Formatting them is the template's job.
 - An issued invoice stores exactly this JSON as its snapshot, so its PDF can be rendered again from it.
 - Parse amounts with Typst's `decimal()`, not `float()`, so sums and VAT stay exact.
+
+## Quote contract, version 1
+
+`quote.typ` receives the same `version`, `draft`, `language`, `currency`, `business`, `tax` and `customer` as an invoice, and lines with the invoice's `description`, `detail`, `quantity`, `unit`, `unit_price` and `total`:
+
+```json
+{
+  "version": 1,
+  "kind": "quote",
+  "draft": false,
+  "number": "A-2026-001",
+  "issue_date": "2026-10-27",
+  "valid_until": "2026-11-26",
+  "subject": "Website relaunch",
+  "pricing": "fixed",
+  "project": "Website relaunch",
+  "language": "de",
+  "currency": "EUR",
+  "business": { "…": "as for invoices" },
+  "tax": { "small_business": false, "vat_rate": 19 },
+  "customer": { "number": "K-001", "name": "Genossenschaft Aufwind eG", "address": ["Windweg 3", "54321 Hamburg"] },
+  "lines": [
+    { "description": "Design", "detail": "Three page layouts", "quantity": "1", "unit": "flat", "unit_price": "1200.00", "interval": "once", "total": "1200.00" },
+    { "description": "Hosting", "detail": "", "quantity": "1", "unit": "month", "unit_price": "20.00", "interval": "monthly", "total": "20.00" }
+  ],
+  "sections": [
+    { "heading": "Scope", "body": "We build *three* pages:\n\n+ Home\n+ About\n+ Contact" },
+    { "heading": "", "body": "Delivery within four weeks of acceptance." }
+  ],
+  "totals": {
+    "once": { "net": "1200.00", "vat": "228.00", "gross": "1428.00" },
+    "monthly": { "net": "20.00", "vat": "3.80", "gross": "23.80" },
+    "yearly": null
+  }
+}
+```
+
+| Field | Meaning |
+|---|---|
+| `kind` | `quote`. |
+| `number` | Quote number; `null` while `draft`. |
+| `issue_date` | The send date; today for a preview. |
+| `valid_until` | The last day the quote can be accepted. |
+| `subject` | The quote's subject line; never empty. |
+| `pricing` | `fixed`: the total is what will be invoiced. `effort`: the total is an estimate, the time actually spent is invoiced. It changes wording only, never the amounts. |
+| `project` | The name of the customer's project the quote is for, or `null` for new work. |
+| `language` | The quote's language, `en` or `de`; it may differ from the customer's invoice language. |
+| `tax` | The business's tax mode when the quote is rendered. |
+| `lines` | In order; may be empty, for a quote that states no price. |
+| `lines[].interval` | `once`, `monthly` or `yearly`: a recurring line's `total` is per month or per year. |
+| `sections` | In order. `heading` may be empty, for a plain paragraph. `body` is Typst markup; render it with `eval(section.body, mode: "markup")`. |
+| `totals` | Per interval: `net` is the sum of that interval's line totals, `vat` is rounded once on it, `gross = net + vat`; `null` for an interval without lines. Intervals are never added together. |
+
+A sent quote stores exactly this JSON as its snapshot, like an issued invoice; the same date and money rules apply.
 
 ## Comparing with a reference PDF
 

@@ -181,7 +181,7 @@ def main():
                      ("invoice_line", f"{draft}/lines/new"), ("invoice_line", line), ("invoice_refresh", f"{draft}/refresh"),
                      ("invoice_issue", f"{draft}/issue"), ("invoice_issued", issued), ("invoice_cancel", f"{issued}/cancel"),
                      ("invoice_issued", cancellation), ("invoice", empty), ("invoice_refresh", f"{empty}/refresh"),
-                     ("quotes", "/quotes"), ("quote_new", "/quotes/new"), ("quote", quote), ("quote", "/quotes/2"),
+                     ("quotes", "/quotes"), ("quote_new", "/quotes/new"), ("quote", quote), ("quote", f"{quote}/preview"), ("quote", "/quotes/2"),
                      ("quote_line", f"{quote}/lines/new"), ("quote_line", quote_line), ("quote_section", f"{quote}/sections/new"), ("quote_section", quote_section),
                      ("settings", "/settings"), ("profile", "/profile"), ("error", "/no-such-page")]
         if changed:

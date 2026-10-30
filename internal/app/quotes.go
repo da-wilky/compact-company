@@ -184,6 +184,7 @@ type quotePage struct {
 	Quote quoteDraft
 	quoteFormOptions
 	Errors []string
+	renderFailure
 }
 
 // Form is what the shared quote field partials show.
@@ -213,7 +214,7 @@ func (a *App) loadQuoteDraft(id int64) (quoteDraft, error) {
 		return q, err
 	}
 	q.Totals = intervalTotalsOf(totals, q.VATPercent, q.unit)
-	q.Sections, err = a.quoteSections(id)
+	q.Sections, err = quoteSections(a.db, id)
 	return q, err
 }
 
@@ -237,12 +238,27 @@ func (a *App) quoteFromPath(w http.ResponseWriter, r *http.Request) (quoteDraft,
 }
 
 func (a *App) renderQuote(w http.ResponseWriter, r *http.Request, status int, q quoteDraft, errs []string) {
-	opts, err := a.quoteFormOptions(q.Header.Customer)
-	if err != nil {
+	a.renderQuotePage(w, r, status, quotePage{Quote: q, Errors: errs})
+}
+
+func (a *App) renderQuotePage(w http.ResponseWriter, r *http.Request, status int, p quotePage) {
+	var err error
+	if p.quoteFormOptions, err = a.quoteFormOptions(p.Quote.Header.Customer); err != nil {
 		a.serverError(w, r, err)
 		return
 	}
-	a.render(w, r, status, "quote", quotePage{Quote: q, quoteFormOptions: opts, Errors: errs})
+	a.render(w, r, status, "quote", p)
+}
+
+// renderQuoteFailure shows on the quote's page why q couldn't be rendered.
+func (a *App) renderQuoteFailure(w http.ResponseWriter, r *http.Request, q quoteDraft, err error) {
+	p := quotePage{Quote: q}
+	status, ok := p.explain(err)
+	if !ok {
+		a.serverError(w, r, err)
+		return
+	}
+	a.renderQuotePage(w, r, status, p)
 }
 
 func (a *App) quoteShow(w http.ResponseWriter, r *http.Request) {
