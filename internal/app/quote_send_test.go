@@ -164,6 +164,8 @@ func TestSentQuotesTheirLinesAndSectionsCantBeChanged(t *testing.T) {
 	} {
 		c.postForm(path, form).wantStatus(t, http.StatusNotFound)
 	}
+	c.createSnippet(snippetForm("Extra terms", "en", "Extra", "More."))
+	c.insertSnippet(quote, "Extra terms").wantStatus(t, http.StatusNotFound)
 	for _, path := range []string{quote + "/lines/new", line, quote + "/sections/new", section, quote + "/send", quote + "/preview"} {
 		c.get(path).wantStatus(t, http.StatusNotFound)
 	}

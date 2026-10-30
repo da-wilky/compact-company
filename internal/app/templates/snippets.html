@@ -1,0 +1,14 @@
+{{define "title"}}{{t "snippets.title"}}{{end}}
+{{define "content"}}
+<a class="crumb" href="/quotes">{{template "icon-arrow-left"}}{{t "quotes.title"}}</a>
+<h1>{{template "title" $}}</h1>
+<p class="actions"><a href="/snippets/new">{{template "icon-plus"}}{{t "snippets.new"}}</a></p>
+{{with .Data}}<div class="table-wrap"><table>
+<thead><tr><th>{{t "snippets.name"}}</th><th>{{t "quotes.language"}}</th><th>{{t "quotes.heading"}}</th></tr></thead>
+<tbody>
+{{range .}}<tr><td><a href="/snippets/{{.ID}}">{{.Name}}</a></td><td>{{.LanguageName}}</td><td>{{or .Heading (t "quotes.no_heading")}}</td></tr>
+{{end}}</tbody>
+</table></div>
+{{else}}<p class="hint">{{t "snippets.empty"}}</p>
+{{end}}
+{{end}}

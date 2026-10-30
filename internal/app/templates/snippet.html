@@ -1,0 +1,26 @@
+{{define "title"}}{{if .Data.Snippet.ID}}{{t "snippets.edit"}}{{else}}{{t "snippets.new"}}{{end}}{{end}}
+{{define "content"}}
+{{with .Data}}
+<a class="crumb" href="/snippets">{{template "icon-arrow-left"}}{{t "snippets.title"}}</a>
+<div class="page-head">
+<div><h1>{{template "title" $}}</h1>
+{{with .Snippet.ID}}<p class="hint">{{$.Data.Snippet.Name}}</p>{{end}}</div>
+</div>
+{{if or .Errors .Failure}}<ul class="errors" role="alert">{{range .Errors}}<li>{{t .}}</li>{{end}}{{with .Failure}}<li>{{template "typst-failure" .}}</li>{{end}}</ul>{{end}}
+<div class="typst-editor">
+<form method="post" action="/snippets{{with .Snippet.ID}}/{{.}}{{end}}" class="form quote-section-form">
+<label>{{t "snippets.name"}} <input name="name" value="{{.Snippet.Name}}" required></label>
+<label>{{t "quotes.language"}} <select name="language" aria-describedby="language-hint">
+{{range .Languages}}<option value="{{.Value}}"{{if eq .Value $.Data.Snippet.Language}} selected{{end}}>{{.Name}}</option>
+{{end}}</select></label>
+<p class="hint" id="language-hint">{{t "snippets.language_hint"}}</p>
+<label>{{t "quotes.heading"}} <input name="heading" value="{{.Snippet.Heading}}" aria-describedby="heading-hint"></label>
+<p class="hint" id="heading-hint">{{t "quotes.heading_hint"}}</p>
+{{template "typst-body" .Typst}}
+<button>{{template "icon-save"}}{{t "common.save"}}</button>
+</form>
+{{template "typst-cheat-sheet"}}
+</div>
+{{with .Snippet.ID}}<form method="post" action="/snippets/{{.}}/delete" data-confirm="{{t "snippets.confirm_delete" $.Data.Snippet.Name}}"><button class="danger">{{template "icon-trash"}}{{t "common.delete"}}</button></form>{{end}}
+{{end}}
+{{end}}

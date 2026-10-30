@@ -5,7 +5,8 @@ Tabbing through each page (English, light) fails on any element that takes focus
 Usage: ui_check.py <base-url> <database> <screenshot-dir> <chromium> [path… | --changed <git-ref>], against a fresh dev-mode instance (it seeds data).
 Paths render only those pages; the seed is deterministic, so e.g. /invoices/1 is the draft with lines, /invoices/4 the empty one without a range
 and /invoices/5 to /invoices/8 open invoices, the even ones overdue; /todos/1 is an overdue todo; /quotes/1 is the draft quote with
-lines and sections, /quotes/2 the empty one, /quotes/3 one whose section fails to compile, /quotes/4 a sent one. --changed renders only the pages whose template differs from <git-ref>.
+lines and sections, /quotes/2 the empty one, /quotes/3 one whose section fails to compile, /quotes/4 a sent one;
+/snippets/1 is a German snippet, so /quotes/1 offers two in its picker. --changed renders only the pages whose template differs from <git-ref>.
 Interactions select by route, data-* or ARIA attributes, so renaming a styling class can't break them.
 """
 
@@ -154,6 +155,10 @@ def seed(api):
     api.post(f"{base}/settings/business", form=business)
     api.post(f"{base}{sent}/send")
     api.post(f"{base}/settings/business", form=business | {"name": ""})
+    for name, language, heading, body in [("Zahlungsbedingungen", "de", "Zahlung", "Zahlbar innerhalb von *14 Tagen* ohne Abzug."),
+                                          ("Payment terms", "en", "Payment", "Payable within *14 days* without deduction."),
+                                          ("Ablauf und Termine für Relaunch-Projekte mit Shop-Anbindung", "de", "", "+ Auftakt\n+ Entwurf\n+ Umsetzung")]:
+        api.post(f"{base}/snippets", form={"name": name, "language": language, "heading": heading, "body": body})
     return customer, projects["Website relaunch"], draft, line, entry, issued, cancellation, empty, legacy, quote, quote_line, quote_section, broken, broken_section, sent
 
 
@@ -196,6 +201,7 @@ def main():
                      ("quote", broken), ("quote_section", broken_section),
                      ("quote_duplicate", f"{quote}/duplicate"), ("quote_send", f"{quote}/send"), ("quote_send", f"{broken}/send"),
                      ("quote_sent", sent), ("quote_duplicate", f"{sent}/duplicate"),
+                     ("snippets", "/snippets"), ("snippet", "/snippets/new"), ("snippet", "/snippets/1"),
                      ("settings", "/settings"), ("profile", "/profile"), ("error", "/no-such-page")]
         if changed:
             only[:] = [path for name, path in templates if name in changed]

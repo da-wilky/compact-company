@@ -35,7 +35,11 @@
 <pre class="quote-body">{{.Body}}</pre>
 </section>
 {{else}}<p class="hint">{{t "quotes.no_sections"}}</p>
-{{end}}<p class="add-line"><a href="/quotes/{{.ID}}/sections/new">{{template "icon-plus"}}{{t "quotes.add_section"}}</a></p>
+{{end}}<div class="add-line section-add"><a href="/quotes/{{.ID}}/sections/new">{{template "icon-plus"}}{{t "quotes.add_section"}}</a>
+{{with $.Data.Snippets}}<form method="post" action="/quotes/{{$.Data.Quote.ID}}/snippets" class="snippet-picker"><select name="snippet" aria-label="{{t "snippets.title"}}">
+{{range .}}<option value="{{.ID}}">{{.Name}}</option>
+{{end}}</select><button>{{template "icon-plus"}}{{t "snippets.insert"}}</button></form>{{end}}
+<a href="/snippets">{{template "icon-text"}}{{t "snippets.title"}}</a></div>
 <form method="post" action="/quotes/{{.ID}}" class="form invoice-header">
 <label>{{t "quotes.subject"}} <input name="subject" value="{{.Header.Subject}}" required></label>
 {{template "quote-fields" $.Data}}
