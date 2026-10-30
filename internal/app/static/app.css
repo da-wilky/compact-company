@@ -187,6 +187,18 @@ h1 { margin: 0 0 1rem; font-size: 1.75rem; font-weight: 650; letter-spacing: -.0
 .quote-section-head .line-actions { flex: none; width: auto; }
 .quote-body { margin: .5rem 0 0; font: inherit; font-size: .9rem; white-space: pre-wrap; overflow-wrap: anywhere; }
 .quote-section-form { max-width: 48rem; }
+.quote-section .errors { margin: .5rem 0 0; padding-left: 1.1rem; font-size: .9rem; }
+.typst-editor { display: grid; grid-template-columns: minmax(0, 34rem) 17rem; gap: 1.25rem; align-items: start; }
+.typst-body { display: grid; gap: inherit; }
+.typst-lint { display: grid; gap: .5rem; margin: 0; padding: 0; list-style: none; font-size: .85rem; }
+.typst-lint li { display: flex; flex-wrap: wrap; align-items: center; gap: .3rem .6rem; padding-left: .6rem; border-left: 3px solid var(--accent); overflow-wrap: anywhere; }
+.typst-lint button { padding: .2rem .7rem; border-color: var(--field); font-size: .85rem; overflow-wrap: anywhere; }
+.cheat-sheet { padding: 1.1rem; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); font-size: .85rem; }
+.cheat-sheet h2 { margin: 0 0 .5rem; font-size: 1rem; }
+.cheat-sheet dl { margin: 0; }
+.cheat-sheet dt { margin-top: .6rem; color: var(--muted); font-weight: 550; }
+.cheat-sheet dd { margin: .15rem 0 0; }
+.cheat-sheet pre { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font-size: .8rem; }
 .form-fields { display: grid; gap: inherit; }
 .invoice-header { margin-top: 1.5rem; }
 .invoice-header .hint { margin: 0; }
@@ -325,6 +337,7 @@ button.icon:hover { filter: brightness(1.1); }
   .page-head .pager { width: 100%; flex-wrap: wrap; }
   .invoice-body { grid-template-columns: minmax(0, 1fr); }
   .invoice-body > .table-wrap { grid-row: auto; }
+  .typst-editor { grid-template-columns: minmax(0, 1fr); }
   .pager .pill { order: 1; }
   .seg a { padding: .2rem .6rem; }
   .selection { position: static; }

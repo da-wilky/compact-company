@@ -8,13 +8,15 @@
 <div><h1>{{template "title" $}}</h1>
 {{with .Section.ID}}<p class="hint">{{or $.Data.Section.Heading (t "quotes.no_heading")}}</p>{{end}}</div>
 </div>
-{{with .Errors}}<ul class="errors" role="alert">{{range .}}<li>{{t .}}</li>{{end}}</ul>{{end}}
+{{if or .Errors .Section.Failure}}<ul class="errors" role="alert">{{range .Errors}}<li>{{t .}}</li>{{end}}{{with .Section.Failure}}<li>{{template "typst-failure" .}}</li>{{end}}</ul>{{end}}
+<div class="typst-editor">
 <form method="post" action="/quotes/{{.Quote.ID}}/sections{{with .Section.ID}}/{{.}}{{end}}" class="form quote-section-form">
 <label>{{t "quotes.heading"}} <input name="heading" value="{{.Section.Heading}}" aria-describedby="heading-hint"></label>
 <p class="hint" id="heading-hint">{{t "quotes.heading_hint"}}</p>
-<label>{{t "quotes.body"}} <textarea name="body" rows="14" required aria-describedby="body-hint">{{.Section.Body}}</textarea></label>
-<p class="hint" id="body-hint">{{t "quotes.body_hint"}}</p>
+{{template "typst-body" .Typst}}
 <button>{{template "icon-save"}}{{t "common.save"}}</button>
 </form>
+{{template "typst-cheat-sheet"}}
+</div>
 {{end}}
 {{end}}

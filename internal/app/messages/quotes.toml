@@ -39,7 +39,28 @@
 "quotes.heading" = { en = "Heading", de = "Überschrift" }
 "quotes.heading_hint" = { en = "Leave empty for a plain paragraph.", de = "Für einen einfachen Absatz leer lassen." }
 "quotes.body" = { en = "Text", de = "Text" }
-"quotes.body_hint" = { en = "Typst markup: *bold*, _italic_, - list items, + numbered items, a blank line between paragraphs.", de = "Typst-Markup: *fett*, _kursiv_, - Listenpunkte, + nummerierte Punkte, eine Leerzeile zwischen Absätzen." }
+"quotes.body_hint" = { en = "Typst markup, a blank line between paragraphs. Pitfalls show below as you type.", de = "Typst-Markup, eine Leerzeile zwischen Absätzen. Stolperfallen erscheinen beim Tippen darunter." }
+"quotes.lint.at" = { en = "“%s” reads as a reference.", de = "„%s“ wird als Verweis gelesen." }
+"quotes.lint.dollar" = { en = "“%s” starts a formula that never ends.", de = "„%s“ beginnt eine Formel, die nie endet." }
+"quotes.lint.strong" = { en = "“%s” starts bold text that never ends.", de = "„%s“ beginnt fetten Text, der nie endet." }
+"quotes.lint.emph" = { en = "“%s” starts italic text that never ends.", de = "„%s“ beginnt kursiven Text, der nie endet." }
+"quotes.lint.hash" = { en = "“%s” reads as code.", de = "„%s“ wird als Code gelesen." }
+"quotes.lint.escape" = { en = "Write %s", de = "Als %s schreiben" }
+"quotes.compile_failed" = { en = "Paragraph %d doesn't compile: %s", de = "Absatz %d lässt sich nicht kompilieren: %s" }
+"quotes.compile_failed_text" = { en = "The text doesn't compile: %s", de = "Der Text lässt sich nicht kompilieren: %s" }
+"quotes.cheat_sheet" = { en = "Cheat sheet", de = "Spickzettel" }
+"quotes.cheat.bold" = { en = "Bold", de = "Fett" }
+"quotes.cheat.bold_example" = { en = "*bold*", de = "*fett*" }
+"quotes.cheat.list" = { en = "List", de = "Liste" }
+"quotes.cheat.list_example" = { en = "- Design\n- Build", de = "- Entwurf\n- Umsetzung" }
+"quotes.cheat.numbered" = { en = "Numbered list", de = "Nummerierte Liste" }
+"quotes.cheat.numbered_example" = { en = "+ Kick-off\n+ Launch", de = "+ Auftakt\n+ Start" }
+"quotes.cheat.link" = { en = "Link", de = "Link" }
+"quotes.cheat.link_example" = { en = "#link(\"https://example.com\")[our site]", de = "#link(\"https://example.com\")[unsere Seite]" }
+"quotes.cheat.table" = { en = "Table", de = "Tabelle" }
+"quotes.cheat.table_example" = { en = "#table(columns: 2,\n  [Phase], [Weeks],\n  [Design], [2],\n)", de = "#table(columns: 2,\n  [Phase], [Wochen],\n  [Entwurf], [2],\n)" }
+"quotes.cheat.escape" = { en = "Escapes", de = "Maskieren" }
+"quotes.cheat.escape_example" = { en = "info\\@example.com\n5 \\$  \\*  \\_  \\#", de = "info\\@example.com\n5 \\$  \\*  \\_  \\#" }
 "quotes.duplicate" = { en = "Duplicate", de = "Duplizieren" }
 "quotes.duplicate_title" = { en = "Duplicate quote", de = "Angebot duplizieren" }
 "quotes.duplicate_hint" = { en = "The new draft copies subject, pricing, lines and sections. Language and validity start afresh for this customer; the project stays only for the same customer.", de = "Der neue Entwurf übernimmt Betreff, Preisart, Positionen und Abschnitte. Sprache und Gültigkeit beginnen für diesen Kunden neu; das Projekt bleibt nur beim selben Kunden." }

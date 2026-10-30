@@ -247,6 +247,10 @@ func (a *App) renderQuotePage(w http.ResponseWriter, r *http.Request, status int
 		a.serverError(w, r, err)
 		return
 	}
+	if err := checkSections(r.Context(), p.Quote.Sections); err != nil {
+		a.serverError(w, r, err)
+		return
+	}
 	a.render(w, r, status, "quote", p)
 }
 

@@ -31,6 +31,7 @@
 {{range $i, $s := .Sections}}<section class="quote-section">
 <div class="quote-section-head"><h3><a href="/quotes/{{$.Data.Quote.ID}}/sections/{{.ID}}">{{or .Heading (t "quotes.no_heading")}}</a></h3>
 <span class="line-actions">{{if $i}}<form method="post" action="/quotes/{{$.Data.Quote.ID}}/sections/{{.ID}}/up"><button class="ghost" aria-label="{{t "invoices.move_up"}}" title="{{t "invoices.move_up"}}">{{template "icon-arrow-up"}}</button></form>{{end}}{{if gt (len (slice $.Data.Quote.Sections $i)) 1}}<form method="post" action="/quotes/{{$.Data.Quote.ID}}/sections/{{.ID}}/down"><button class="ghost" aria-label="{{t "invoices.move_down"}}" title="{{t "invoices.move_down"}}">{{template "icon-arrow-down"}}</button></form>{{end}}<form method="post" action="/quotes/{{$.Data.Quote.ID}}/sections/{{.ID}}/delete" data-confirm="{{t "quotes.confirm_delete_section"}}"><button class="ghost danger" aria-label="{{t "quotes.delete_section"}}" title="{{t "quotes.delete_section"}}">{{template "icon-trash"}}</button></form></span></div>
+{{with .Failure}}<ul class="errors" role="alert"><li>{{template "typst-failure" .}}</li></ul>{{end}}
 <pre class="quote-body">{{.Body}}</pre>
 </section>
 {{else}}<p class="hint">{{t "quotes.no_sections"}}</p>

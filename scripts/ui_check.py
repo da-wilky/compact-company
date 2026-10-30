@@ -5,7 +5,7 @@ Tabbing through each page (English, light) fails on any element that takes focus
 Usage: ui_check.py <base-url> <database> <screenshot-dir> <chromium> [path… | --changed <git-ref>], against a fresh dev-mode instance (it seeds data).
 Paths render only those pages; the seed is deterministic, so e.g. /invoices/1 is the draft with lines, /invoices/4 the empty one without a range
 and /invoices/5 to /invoices/8 open invoices, the even ones overdue; /todos/1 is an overdue todo; /quotes/1 is the draft quote with
-lines and sections, /quotes/2 the empty one. --changed renders only the pages whose template differs from <git-ref>.
+lines and sections, /quotes/2 the empty one, /quotes/3 one whose section fails to compile. --changed renders only the pages whose template differs from <git-ref>.
 Interactions select by route, data-* or ARIA attributes, so renaming a styling class can't break them.
 """
 
@@ -144,7 +144,10 @@ def seed(api):
     quote_line = re.search(rf'href="({quote}/lines/\d+)"', api.get(f"{base}{quote}").text()).group(1)
     quote_section = re.search(rf'href="({quote}/sections/\d+)"', api.get(f"{base}{quote}").text()).group(1)
     api.post(f"{base}/quotes", form={"customer": other, "project": "", "subject": "Fleet dashboard", "language": "de", "pricing": "effort", "valid_until": str(today)})
-    return customer, projects["Website relaunch"], draft, line, entry, issued, cancellation, empty, legacy, quote, quote_line, quote_section
+    broken = api.post(f"{base}/quotes", form={"customer": customer, "project": "", "subject": "Shop maintenance", "language": "en", "pricing": "effort", "valid_until": str(today + datetime.timedelta(days=30))}, max_redirects=0).headers["location"]
+    api.post(f"{base}{broken}/sections", form={"heading": "Terms", "body": "Payment within 14 days.\n\nQuestions go to support@aufwind-example-mail.de, each reminder costs 5$."})
+    broken_section = re.search(rf'href="({broken}/sections/\d+)"', api.get(f"{base}{broken}").text()).group(1)
+    return customer, projects["Website relaunch"], draft, line, entry, issued, cancellation, empty, legacy, quote, quote_line, quote_section, broken, broken_section
 
 
 def seed_open_invoices(api, customer, business):
@@ -170,7 +173,7 @@ def main():
     with sync_playwright() as p:
         browser = p.chromium.launch(executable_path=chromium)
         api = browser.new_context().request
-        customer, project, draft, line, entry, issued, cancellation, empty, legacy, quote, quote_line, quote_section = seed(api)
+        customer, project, draft, line, entry, issued, cancellation, empty, legacy, quote, quote_line, quote_section, broken, broken_section = seed(api)
         today = datetime.date.today().isoformat()
         templates = [("home", "/"), ("week", "/week"), ("week", "/week?everyone=1"), ("entries", "/entries"),
                      ("entries", f"/entries?day={today}&project={project}"), ("entry", "/entries/new"), ("entry", entry),
@@ -183,6 +186,7 @@ def main():
                      ("invoice_issued", cancellation), ("invoice", empty), ("invoice_refresh", f"{empty}/refresh"),
                      ("quotes", "/quotes"), ("quote_new", "/quotes/new"), ("quote", quote), ("quote", f"{quote}/preview"), ("quote", "/quotes/2"),
                      ("quote_line", f"{quote}/lines/new"), ("quote_line", quote_line), ("quote_section", f"{quote}/sections/new"), ("quote_section", quote_section),
+                     ("quote", broken), ("quote_section", broken_section),
                      ("quote_duplicate", f"{quote}/duplicate"),
                      ("settings", "/settings"), ("profile", "/profile"), ("error", "/no-such-page")]
         if changed:
@@ -245,6 +249,16 @@ def main():
                         page.wait_for_selector("main [role=alert]")
                         page.screenshot(path=f"{out}/{lang}-{viewport}-{scheme}-invoices-blocked.png", full_page=True)
                         failures += [f"{lang} {viewport} {scheme} /invoices (delete refused): {p}" for p in page.evaluate(FIND_BREAKAGE)]
+                    if (path := f"{quote}/sections/new") in pages:
+                        page.goto(base + path)
+                        page.fill("textarea[name=body]", "Write to info@example.com, it costs 5$ and *more.")
+                        page.wait_for_selector("button[name=escape]")
+                        page.screenshot(path=f"{out}/{lang}-{viewport}-{scheme}-quote-section-lint.png", full_page=True)
+                        failures += [f"{lang} {viewport} {scheme} {path} (lint while typing): {p}" for p in page.evaluate(FIND_BREAKAGE)]
+                        page.click("button[name=escape]")
+                        page.wait_for_function("document.querySelectorAll('button[name=escape]').length == 2")
+                        if "info\\@example.com" not in page.input_value("textarea[name=body]"):
+                            failures.append(f"{lang} {viewport} {scheme} {path}: escaping the first finding left the text as it was")
                     # Every seeded customer and project is still in use, so the delete is refused and nothing goes.
                     for path in ("/customers", f"/customers/{customer}/projects"):
                         if path not in pages:

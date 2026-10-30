@@ -90,6 +90,13 @@ Reuse these instead of re-deriving them:
 - Invoice dates are ISO dates in the customer's timezone; resolve timezones per query with `locationCache`.
 - Week and month windows: `mondayOf` in `week.go`.
 
+## Typst guards
+
+Every field that stores Typst markup (quote sections, snippets) uses the guards of ADR 0007 in `typst_guards.go`:
+
+- **Lint:** `lintTypst(body) []typstFinding`, pure Go. The field is the `typst-body` partial (`partials/typst_body.html`, fed `newTypstBody(body)`): its textarea posts to `POST /typst/lint` while typing, and each finding's button posts `escape=<Pos>` there to escape it. `typst-cheat-sheet` goes next to the form.
+- **Compile check:** `checkTypst(ctx, body) (*typstFailure, error)` evaluates the body alone as `quote.typ` does; a non-nil failure names the first paragraph that fails on its own, the error is for typst not running. Show it with the `typst-failure` partial. `checkSections` runs it over a quote's sections.
+
 ## Todo boards
 
 - **Board:** every board is the `board` partial (`partials/board.html`) fed by `loadBoard` in `todos.go`: all statuses as columns, cards in the one board order (`boardOrder`; new todos get `firstStatus`, `overdue` decides the badge). Its `where` takes plain `?` placeholders only; `loadBoard` panics on `?1`, which SQLite would number against its own `?`.

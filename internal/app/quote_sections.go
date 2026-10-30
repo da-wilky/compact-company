@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"net/http"
 	"slices"
 	"strconv"
@@ -20,9 +21,23 @@ func init() {
 }
 
 // quoteSection is a heading, which may be empty, over a body of Typst markup.
+// Failure is set by checkSections.
 type quoteSection struct {
 	ID            int64
 	Heading, Body string
+	Failure       *typstFailure
+}
+
+// checkSections compiles each section's body and records why it fails.
+func checkSections(ctx context.Context, sections []quoteSection) error {
+	for i := range sections {
+		f, err := checkTypst(ctx, sections[i].Body)
+		if err != nil {
+			return err
+		}
+		sections[i].Failure = f
+	}
+	return nil
 }
 
 func quoteSections(q querier, quoteID int64) ([]quoteSection, error) {
@@ -48,6 +63,8 @@ type quoteSectionPage struct {
 	Errors  []string
 }
 
+func (p quoteSectionPage) Typst() typstBody { return newTypstBody(p.Section.Body) }
+
 func (a *App) quoteSectionNew(w http.ResponseWriter, r *http.Request) {
 	if q, ok := a.quoteFromPath(w, r); ok {
 		a.render(w, r, http.StatusOK, "quote_section", quoteSectionPage{Quote: q})
@@ -69,9 +86,16 @@ func (a *App) quoteSectionFromPath(w http.ResponseWriter, r *http.Request) (quot
 }
 
 func (a *App) quoteSectionEdit(w http.ResponseWriter, r *http.Request) {
-	if q, s, ok := a.quoteSectionFromPath(w, r); ok {
-		a.render(w, r, http.StatusOK, "quote_section", quoteSectionPage{Quote: q, Section: s})
+	q, s, ok := a.quoteSectionFromPath(w, r)
+	if !ok {
+		return
 	}
+	var err error
+	if s.Failure, err = checkTypst(r.Context(), s.Body); err != nil {
+		a.serverError(w, r, err)
+		return
+	}
+	a.render(w, r, http.StatusOK, "quote_section", quoteSectionPage{Quote: q, Section: s})
 }
 
 // quoteSectionForm keeps the body as typed: Typst gives whitespace meaning. It writes 422 itself when ok is false.
