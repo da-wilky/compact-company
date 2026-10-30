@@ -183,7 +183,8 @@ type quoteDraft struct {
 type quotePage struct {
 	Quote quoteDraft
 	quoteFormOptions
-	Errors []string
+	Snippets []snippet
+	Errors   []string
 	renderFailure
 }
 
@@ -244,6 +245,11 @@ func (a *App) renderQuote(w http.ResponseWriter, r *http.Request, status int, q 
 func (a *App) renderQuotePage(w http.ResponseWriter, r *http.Request, status int, p quotePage) {
 	var err error
 	if p.quoteFormOptions, err = a.quoteFormOptions(p.Quote.Header.Customer); err != nil {
+		a.serverError(w, r, err)
+		return
+	}
+	if p.Snippets, err = a.snippets(`SELECT s.id, s.name, s.language, s.heading FROM snippet s JOIN quote q ON q.language = s.language
+		WHERE q.id = ? ORDER BY s.name, s.id`, p.Quote.ID); err != nil {
 		a.serverError(w, r, err)
 		return
 	}

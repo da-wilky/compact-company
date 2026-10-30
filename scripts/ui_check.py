@@ -5,7 +5,8 @@ Tabbing through each page (English, light) fails on any element that takes focus
 Usage: ui_check.py <base-url> <database> <screenshot-dir> <chromium> [path… | --changed <git-ref>], against a fresh dev-mode instance (it seeds data).
 Paths render only those pages; the seed is deterministic, so e.g. /invoices/1 is the draft with lines, /invoices/4 the empty one without a range
 and /invoices/5 to /invoices/8 open invoices, the even ones overdue; /todos/1 is an overdue todo; /quotes/1 is the draft quote with
-lines and sections, /quotes/2 the empty one, /quotes/3 one whose section fails to compile. --changed renders only the pages whose template differs from <git-ref>.
+lines and sections, /quotes/2 the empty one, /quotes/3 one whose section fails to compile;
+/snippets/1 is a German snippet, so /quotes/1 offers two in its picker. --changed renders only the pages whose template differs from <git-ref>.
 Interactions select by route, data-* or ARIA attributes, so renaming a styling class can't break them.
 """
 
@@ -147,6 +148,10 @@ def seed(api):
     broken = api.post(f"{base}/quotes", form={"customer": customer, "project": "", "subject": "Shop maintenance", "language": "en", "pricing": "effort", "valid_until": str(today + datetime.timedelta(days=30))}, max_redirects=0).headers["location"]
     api.post(f"{base}{broken}/sections", form={"heading": "Terms", "body": "Payment within 14 days.\n\nQuestions go to support@aufwind-example-mail.de, each reminder costs 5$."})
     broken_section = re.search(rf'href="({broken}/sections/\d+)"', api.get(f"{base}{broken}").text()).group(1)
+    for name, language, heading, body in [("Zahlungsbedingungen", "de", "Zahlung", "Zahlbar innerhalb von *14 Tagen* ohne Abzug."),
+                                          ("Payment terms", "en", "Payment", "Payable within *14 days* without deduction."),
+                                          ("Ablauf und Termine für Relaunch-Projekte mit Shop-Anbindung", "de", "", "+ Auftakt\n+ Entwurf\n+ Umsetzung")]:
+        api.post(f"{base}/snippets", form={"name": name, "language": language, "heading": heading, "body": body})
     return customer, projects["Website relaunch"], draft, line, entry, issued, cancellation, empty, legacy, quote, quote_line, quote_section, broken, broken_section
 
 
@@ -187,7 +192,7 @@ def main():
                      ("quotes", "/quotes"), ("quote_new", "/quotes/new"), ("quote", quote), ("quote", f"{quote}/preview"), ("quote", "/quotes/2"),
                      ("quote_line", f"{quote}/lines/new"), ("quote_line", quote_line), ("quote_section", f"{quote}/sections/new"), ("quote_section", quote_section),
                      ("quote", broken), ("quote_section", broken_section),
-                     ("quote_duplicate", f"{quote}/duplicate"),
+                     ("quote_duplicate", f"{quote}/duplicate"), ("snippets", "/snippets"), ("snippet", "/snippets/new"), ("snippet", "/snippets/1"),
                      ("settings", "/settings"), ("profile", "/profile"), ("error", "/no-such-page")]
         if changed:
             only[:] = [path for name, path in templates if name in changed]

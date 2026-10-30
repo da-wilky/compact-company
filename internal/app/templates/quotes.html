@@ -2,7 +2,7 @@
 {{define "content"}}
 {{with .Data}}
 <h1>{{template "title" $}}</h1>
-<p class="actions"><a href="/quotes/new">{{template "icon-plus"}}{{t "quotes.new"}}</a></p>
+<p class="actions"><a href="/quotes/new">{{template "icon-plus"}}{{t "quotes.new"}}</a> <a href="/snippets">{{template "icon-text"}}{{t "snippets.title"}}</a></p>
 <div class="filters">
 <span class="label">{{t "filter.show"}}</span>
 {{template "filter-seg" .Statuses}}

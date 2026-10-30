@@ -1,0 +1,10 @@
+"snippets.title" = { en = "Snippets", de = "Textbausteine" }
+"snippets.new" = { en = "New snippet", de = "Neuer Textbaustein" }
+"snippets.edit" = { en = "Edit snippet", de = "Textbaustein bearbeiten" }
+"snippets.empty" = { en = "No snippets yet.", de = "Noch keine Textbausteine." }
+"snippets.name" = { en = "Name", de = "Name" }
+"snippets.language_hint" = { en = "Offered only in quotes of this language.", de = "Wird nur in Angeboten dieser Sprache angeboten." }
+"snippets.confirm_delete" = { en = "Delete the snippet “%s”? Quotes keep their copies.", de = "Den Textbaustein „%s“ löschen? Angebote behalten ihre Kopien." }
+"snippets.insert" = { en = "Insert snippet", de = "Textbaustein einfügen" }
+"snippets.error.language" = { en = "Choose a snippet in the quote’s language.", de = "Bitte einen Textbaustein in der Sprache des Angebots wählen." }
+"snippets.error.name" ={ en = "Name is required.", de = "Name ist erforderlich." }
