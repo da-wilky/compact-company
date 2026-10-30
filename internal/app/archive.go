@@ -29,6 +29,7 @@ var (
 		[]guard{
 			{`SELECT EXISTS (SELECT 1 FROM project WHERE customer_id = ?)`, "customers.error.has_projects"},
 			{`SELECT EXISTS (SELECT 1 FROM invoice WHERE customer_id = ?)`, "customers.error.has_invoices"},
+			{`SELECT EXISTS (SELECT 1 FROM quote WHERE customer_id = ?)`, "customers.error.has_quotes"},
 		},
 		[]string{`DELETE FROM customer WHERE id = ?`}}
 	projectArchive = rowWrite{
@@ -39,6 +40,7 @@ var (
 		[]guard{
 			{`SELECT EXISTS (SELECT 1 FROM time_entry WHERE project_id = ?)`, "projects.error.has_entries"},
 			{`SELECT EXISTS (SELECT 1 FROM invoice_line WHERE project_id = ?)`, "projects.error.on_invoice"},
+			{`SELECT EXISTS (SELECT 1 FROM quote WHERE project_id = ?)`, "projects.error.on_quote"},
 			{`SELECT EXISTS (SELECT 1 FROM todo WHERE project_id = ?)`, "projects.error.has_todos"},
 		},
 		[]string{`DELETE FROM project WHERE id = ?`}}

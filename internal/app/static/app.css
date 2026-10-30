@@ -178,6 +178,16 @@ h1 { margin: 0 0 1rem; font-size: 1.75rem; font-weight: 650; letter-spacing: -.0
 .line-actions { width: 1%; white-space: nowrap; text-align: right; }
 .line-actions form { display: inline; margin: 0; }
 .line-actions button { width: 30px; height: 30px; padding: 0; border-radius: 8px; }
+.quote-totals { max-width: 34rem; margin-top: 1rem; }
+.quote-totals :is(th, td) { white-space: nowrap; }
+.quote-totals tbody th { font-weight: 650; }
+.quote-section { max-width: 48rem; margin-bottom: .75rem; padding: .9rem 1.1rem; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+.quote-section-head { display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
+.quote-section-head h3 { margin: 0; font-size: 1rem; overflow-wrap: anywhere; }
+.quote-section-head .line-actions { flex: none; width: auto; }
+.quote-body { margin: .5rem 0 0; font: inherit; font-size: .9rem; white-space: pre-wrap; overflow-wrap: anywhere; }
+.quote-section-form { max-width: 48rem; }
+.form-fields { display: grid; gap: inherit; }
 .invoice-header { margin-top: 1.5rem; }
 .invoice-header .hint { margin: 0; }
 svg.icon { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }

@@ -1,0 +1,45 @@
+{{define "title"}}{{.Data.Quote.Header.Subject}}{{end}}
+{{define "content"}}
+{{with .Data}}{{with .Quote}}
+<a class="crumb" href="/quotes">{{template "icon-arrow-left"}}{{t "quotes.title"}}</a>
+<div class="page-head">
+<div><h1>{{template "title" $}}</h1>
+<p class="hint">{{t "quotes.draft_for" .CustomerNumber .CustomerName}}</p></div>
+</div>
+{{with $.Data.Errors}}<ul class="errors" role="alert">{{range .}}<li>{{t .}}</li>{{end}}</ul>{{end}}
+{{if .Lines}}
+<div class="table-wrap"><table class="invoice-lines">
+<thead><tr><th>{{t "invoices.description"}}</th><th class="num">{{t "invoices.quantity"}}</th><th>{{t "invoices.unit"}}</th><th class="num">{{t "invoices.price"}}</th><th>{{t "quotes.interval"}}</th><th class="num">{{t "invoices.total"}}</th><th></th></tr></thead>
+<tbody>
+{{range $i, $l := .Lines}}<tr><td><a href="/quotes/{{$.Data.Quote.ID}}/lines/{{.ID}}">{{.Description}}</a>{{with .Detail}}<br><span class="hint">{{.}}</span>{{end}}</td><td class="num">{{.Quantity}}</td><td>{{.Unit}}</td><td class="num">{{.UnitPrice}}</td><td>{{t (print "quotes.interval." .Interval)}}</td><td class="num">{{.Total}}</td>
+<td class="line-actions">{{if $i}}<form method="post" action="/quotes/{{$.Data.Quote.ID}}/lines/{{.ID}}/up"><button class="ghost" aria-label="{{t "invoices.move_up"}}" title="{{t "invoices.move_up"}}">{{template "icon-arrow-up"}}</button></form>{{end}}{{if gt (len (slice $.Data.Quote.Lines $i)) 1}}<form method="post" action="/quotes/{{$.Data.Quote.ID}}/lines/{{.ID}}/down"><button class="ghost" aria-label="{{t "invoices.move_down"}}" title="{{t "invoices.move_down"}}">{{template "icon-arrow-down"}}</button></form>{{end}}<form method="post" action="/quotes/{{$.Data.Quote.ID}}/lines/{{.ID}}/delete" data-confirm="{{t "invoices.confirm_delete_line" .Description}}"><button class="ghost danger" aria-label="{{t "invoices.delete_line"}}" title="{{t "invoices.delete_line"}}">{{template "icon-trash"}}</button></form></td></tr>
+{{end}}<tr class="add-line"><td colspan="7"><a href="/quotes/{{.ID}}/lines/new">{{template "icon-plus"}}{{t "invoices.add_line"}}</a></td></tr>
+</tbody>
+</table></div>
+<div class="table-wrap"><table class="quote-totals">
+<thead><tr><td></td><th class="num">{{t "invoices.net"}}</th>{{if .VATPercent}}<th class="num">{{t "invoices.vat" .VATPercent}}</th>{{end}}<th class="num">{{t "invoices.gross"}}</th></tr></thead>
+<tbody>
+{{range .Totals}}<tr><th>{{t (print "quotes.total." .Interval)}}</th><td class="num">{{.Net}} {{$.Data.Quote.Currency}}</td>{{if $.Data.Quote.VATPercent}}<td class="num">{{.VAT}} {{$.Data.Quote.Currency}}</td>{{end}}<td class="num">{{.Gross}} {{$.Data.Quote.Currency}}</td></tr>
+{{end}}</tbody>
+</table></div>
+{{else}}
+<p class="hint">{{t "quotes.no_lines"}}</p>
+<p class="add-line"><a href="/quotes/{{.ID}}/lines/new">{{template "icon-plus"}}{{t "invoices.add_line"}}</a></p>
+{{end}}
+<h2>{{t "quotes.sections"}}</h2>
+{{range $i, $s := .Sections}}<section class="quote-section">
+<div class="quote-section-head"><h3><a href="/quotes/{{$.Data.Quote.ID}}/sections/{{.ID}}">{{or .Heading (t "quotes.no_heading")}}</a></h3>
+<span class="line-actions">{{if $i}}<form method="post" action="/quotes/{{$.Data.Quote.ID}}/sections/{{.ID}}/up"><button class="ghost" aria-label="{{t "invoices.move_up"}}" title="{{t "invoices.move_up"}}">{{template "icon-arrow-up"}}</button></form>{{end}}{{if gt (len (slice $.Data.Quote.Sections $i)) 1}}<form method="post" action="/quotes/{{$.Data.Quote.ID}}/sections/{{.ID}}/down"><button class="ghost" aria-label="{{t "invoices.move_down"}}" title="{{t "invoices.move_down"}}">{{template "icon-arrow-down"}}</button></form>{{end}}<form method="post" action="/quotes/{{$.Data.Quote.ID}}/sections/{{.ID}}/delete" data-confirm="{{t "quotes.confirm_delete_section"}}"><button class="ghost danger" aria-label="{{t "quotes.delete_section"}}" title="{{t "quotes.delete_section"}}">{{template "icon-trash"}}</button></form></span></div>
+<pre class="quote-body">{{.Body}}</pre>
+</section>
+{{else}}<p class="hint">{{t "quotes.no_sections"}}</p>
+{{end}}<p class="add-line"><a href="/quotes/{{.ID}}/sections/new">{{template "icon-plus"}}{{t "quotes.add_section"}}</a></p>
+<form method="post" action="/quotes/{{.ID}}" class="form invoice-header">
+<label>{{t "quotes.subject"}} <input name="subject" value="{{.Header.Subject}}" required></label>
+{{template "quote-fields" $.Data}}
+{{template "quote-terms" $.Data}}
+<button>{{template "icon-save"}}{{t "common.save"}}</button>
+</form>
+<form method="post" action="/quotes/{{.ID}}/delete" data-confirm="{{t "quotes.confirm_delete" .Header.Subject}}"><button class="danger">{{template "icon-trash"}}{{t "invoices.delete"}}</button></form>
+{{end}}{{end}}
+{{end}}

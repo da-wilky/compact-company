@@ -1,0 +1,50 @@
+"quotes.title" = { en = "Quotes", de = "Angebote" }
+"quotes.new" = { en = "New quote", de = "Neues Angebot" }
+"quotes.create" = { en = "Create draft", de = "Entwurf anlegen" }
+"quotes.empty" = { en = "No quotes yet.", de = "Noch keine Angebote." }
+"quotes.empty_filtered" = { en = "No quotes match these filters.", de = "Keine Angebote passen zu diesen Filtern." }
+"quotes.draft_for" = { en = "Draft for %s %s", de = "Entwurf für %s %s" }
+"quotes.number" = { en = "Number", de = "Nummer" }
+"quotes.customer" = { en = "Customer", de = "Kunde" }
+"quotes.subject" = { en = "Subject", de = "Betreff" }
+"quotes.date" = { en = "Date", de = "Datum" }
+"quotes.one_off" = { en = "One-off total", de = "Einmalig gesamt" }
+"quotes.status" = { en = "Status", de = "Status" }
+"quotes.status.draft" = { en = "Draft", de = "Entwurf" }
+"quotes.status.sent" = { en = "Sent", de = "Versendet" }
+"quotes.project" = { en = "Project", de = "Projekt" }
+"quotes.no_project" = { en = "No project", de = "Kein Projekt" }
+"quotes.project_hint" = { en = "Pick a project for existing work; leave it empty for new work.", de = "Für bestehende Arbeit ein Projekt wählen; für neue Arbeit leer lassen." }
+"quotes.language" = { en = "Language", de = "Sprache" }
+"quotes.pricing" = { en = "Pricing", de = "Preisart" }
+"quotes.pricing.fixed" = { en = "Fixed price", de = "Festpreis" }
+"quotes.pricing.effort" = { en = "By effort", de = "Nach Aufwand" }
+"quotes.valid_until" = { en = "Valid until", de = "Gültig bis" }
+"quotes.interval" = { en = "Interval", de = "Intervall" }
+"quotes.interval.once" = { en = "Once", de = "Einmalig" }
+"quotes.interval.monthly" = { en = "Monthly", de = "Monatlich" }
+"quotes.interval.yearly" = { en = "Yearly", de = "Jährlich" }
+"quotes.total.once" = { en = "One-off", de = "Einmalig" }
+"quotes.total.monthly" = { en = "Per month", de = "Pro Monat" }
+"quotes.total.yearly" = { en = "Per year", de = "Pro Jahr" }
+"quotes.no_lines" = { en = "No lines yet. A quote without lines states no price.", de = "Noch keine Positionen. Ein Angebot ohne Positionen nennt keinen Preis." }
+"quotes.sections" = { en = "Sections", de = "Abschnitte" }
+"quotes.no_sections" = { en = "No sections yet.", de = "Noch keine Abschnitte." }
+"quotes.add_section" = { en = "Add section", de = "Abschnitt hinzufügen" }
+"quotes.new_section" = { en = "New section", de = "Neuer Abschnitt" }
+"quotes.edit_section" = { en = "Edit section", de = "Abschnitt bearbeiten" }
+"quotes.delete_section" = { en = "Delete section", de = "Abschnitt löschen" }
+"quotes.confirm_delete_section" = { en = "Delete this section?", de = "Diesen Abschnitt löschen?" }
+"quotes.no_heading" = { en = "Paragraph without heading", de = "Absatz ohne Überschrift" }
+"quotes.heading" = { en = "Heading", de = "Überschrift" }
+"quotes.heading_hint" = { en = "Leave empty for a plain paragraph.", de = "Für einen einfachen Absatz leer lassen." }
+"quotes.body" = { en = "Text", de = "Text" }
+"quotes.body_hint" = { en = "Typst markup: *bold*, _italic_, - list items, + numbered items, a blank line between paragraphs.", de = "Typst-Markup: *fett*, _kursiv_, - Listenpunkte, + nummerierte Punkte, eine Leerzeile zwischen Absätzen." }
+"quotes.confirm_delete" = { en = "Delete the draft “%s”?", de = "Den Entwurf „%s“ löschen?" }
+"quotes.error.subject" = { en = "Subject is required.", de = "Betreff ist erforderlich." }
+"quotes.error.project" = { en = "Choose a project of this customer.", de = "Bitte ein Projekt dieses Kunden wählen." }
+"quotes.error.language" = { en = "Choose a language.", de = "Bitte eine Sprache wählen." }
+"quotes.error.pricing" = { en = "Choose fixed price or by effort.", de = "Bitte Festpreis oder nach Aufwand wählen." }
+"quotes.error.valid_until" = { en = "Enter a valid date.", de = "Bitte ein gültiges Datum angeben." }
+"quotes.error.interval" = { en = "Choose an interval.", de = "Bitte ein Intervall wählen." }
+"quotes.error.body" = { en = "Text is required.", de = "Text ist erforderlich." }

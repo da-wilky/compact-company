@@ -4,7 +4,8 @@ Tabbing through each page (English, light) fails on any element that takes focus
 
 Usage: ui_check.py <base-url> <database> <screenshot-dir> <chromium> [path… | --changed <git-ref>], against a fresh dev-mode instance (it seeds data).
 Paths render only those pages; the seed is deterministic, so e.g. /invoices/1 is the draft with lines, /invoices/4 the empty one without a range
-and /invoices/5 to /invoices/8 open invoices, the even ones overdue; /todos/1 is an overdue todo. --changed renders only the pages whose template differs from <git-ref>.
+and /invoices/5 to /invoices/8 open invoices, the even ones overdue; /todos/1 is an overdue todo; /quotes/1 is the draft quote with
+lines and sections, /quotes/2 the empty one. --changed renders only the pages whose template differs from <git-ref>.
 Interactions select by route, data-* or ARIA attributes, so renaming a styling class can't break them.
 """
 
@@ -135,7 +136,15 @@ def seed(api):
     legacy = re.search(r'href="/projects/(\d+)">Legacy portal<', api.get(f"{base}/customers/{other}/projects").text()).group(1)
     api.post(f"{base}/projects/{legacy}/todos", form={"title": "Export the old data", "description": "", "assignee": "1", "priority": "1", "due_date": ""})
     api.post(f"{base}/projects/{legacy}/archive")
-    return customer, projects["Website relaunch"], draft, line, entry, issued, cancellation, empty, legacy
+    quote = api.post(f"{base}/quotes", form={"customer": customer, "project": projects["Website relaunch"], "subject": "Relaunch of the company website with a new shop", "language": "de", "pricing": "fixed", "valid_until": str(today + datetime.timedelta(days=30))}, max_redirects=0).headers["location"]
+    for fields in [("Design and implementation", "Landing page, pricing and contact pages", "40", "h", "85", "once"), ("Hosting", "", "1", "month", "29.90", "monthly"), ("Domain", "", "1", "year", "15", "yearly")]:
+        api.post(f"{base}{quote}/lines", form=dict(zip(("description", "detail", "quantity", "unit", "unit_price", "interval"), fields)))
+    for heading, body in [("Scope", "We build *three* pages:\n\n- Home\n- Pricing\n- Contact"), ("", "We look forward to working with you.")]:
+        api.post(f"{base}{quote}/sections", form={"heading": heading, "body": body})
+    quote_line = re.search(rf'href="({quote}/lines/\d+)"', api.get(f"{base}{quote}").text()).group(1)
+    quote_section = re.search(rf'href="({quote}/sections/\d+)"', api.get(f"{base}{quote}").text()).group(1)
+    api.post(f"{base}/quotes", form={"customer": other, "project": "", "subject": "Fleet dashboard", "language": "de", "pricing": "effort", "valid_until": str(today)})
+    return customer, projects["Website relaunch"], draft, line, entry, issued, cancellation, empty, legacy, quote, quote_line, quote_section
 
 
 def seed_open_invoices(api, customer, business):
@@ -161,7 +170,7 @@ def main():
     with sync_playwright() as p:
         browser = p.chromium.launch(executable_path=chromium)
         api = browser.new_context().request
-        customer, project, draft, line, entry, issued, cancellation, empty, legacy = seed(api)
+        customer, project, draft, line, entry, issued, cancellation, empty, legacy, quote, quote_line, quote_section = seed(api)
         today = datetime.date.today().isoformat()
         templates = [("home", "/"), ("week", "/week"), ("week", "/week?everyone=1"), ("entries", "/entries"),
                      ("entries", f"/entries?day={today}&project={project}"), ("entry", "/entries/new"), ("entry", entry),
@@ -172,6 +181,8 @@ def main():
                      ("invoice_line", f"{draft}/lines/new"), ("invoice_line", line), ("invoice_refresh", f"{draft}/refresh"),
                      ("invoice_issue", f"{draft}/issue"), ("invoice_issued", issued), ("invoice_cancel", f"{issued}/cancel"),
                      ("invoice_issued", cancellation), ("invoice", empty), ("invoice_refresh", f"{empty}/refresh"),
+                     ("quotes", "/quotes"), ("quote_new", "/quotes/new"), ("quote", quote), ("quote", "/quotes/2"),
+                     ("quote_line", f"{quote}/lines/new"), ("quote_line", quote_line), ("quote_section", f"{quote}/sections/new"), ("quote_section", quote_section),
                      ("settings", "/settings"), ("profile", "/profile"), ("error", "/no-such-page")]
         if changed:
             only[:] = [path for name, path in templates if name in changed]

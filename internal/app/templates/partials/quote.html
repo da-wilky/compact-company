@@ -1,0 +1,20 @@
+{{define "quote-fields"}}<label>{{t "quotes.project"}} <select name="project" aria-describedby="quote-project-hint">
+<option value="">{{t "quotes.no_project"}}</option>
+{{range .Projects}}<option value="{{.ID}}"{{if eq (print .ID) $.Form.Project}} selected{{end}}>{{.Name}}{{if .Archived}} ({{t "archive.archived"}}){{end}}</option>
+{{end}}</select></label>
+<p class="hint" id="quote-project-hint">{{t "quotes.project_hint"}}</p>
+<label>{{t "quotes.language"}} <select name="language">
+{{range .Languages}}<option value="{{.Value}}"{{if eq .Value $.Form.Language}} selected{{end}}>{{.Name}}</option>
+{{end}}</select></label>{{end}}
+
+{{define "quote-terms"}}<label>{{t "quotes.pricing"}} <select name="pricing">
+{{range .Pricings}}<option value="{{.}}"{{if eq . $.Form.Pricing}} selected{{end}}>{{t (print "quotes.pricing." .)}}</option>
+{{end}}</select></label>
+<label>{{t "quotes.valid_until"}} <input type="date" name="valid_until" value="{{.Form.ValidUntil}}" required></label>{{end}}
+
+{{define "quote-list"}}<div class="table-wrap"><table>
+<thead><tr><th>{{t "quotes.number"}}</th>{{if .ShowCustomer}}<th>{{t "quotes.customer"}}</th>{{end}}<th>{{t "quotes.subject"}}</th><th>{{t "quotes.date"}}</th><th class="num">{{t "quotes.one_off"}}</th><th>{{t "quotes.status"}}</th></tr></thead>
+<tbody>
+{{range .Rows}}<tr><td><a href="/quotes/{{.ID}}">{{or .Number (t "quotes.status.draft")}}</a></td>{{if $.ShowCustomer}}<td>{{.Customer}}</td>{{end}}<td>{{.Subject}}</td><td>{{with .SendDate}}{{day .}}{{end}}</td><td class="num">{{.OneOff}} {{.Currency}}</td><td>{{t (print "quotes.status." .Status)}}</td></tr>
+{{end}}</tbody>
+</table></div>{{end}}
