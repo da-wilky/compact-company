@@ -5,7 +5,7 @@
 <p class="actions"><a href="/quotes/new">{{template "icon-plus"}}{{t "quotes.new"}}</a> <a href="/snippets">{{template "icon-text"}}{{t "snippets.title"}}</a></p>
 <div class="filters">
 <span class="label">{{t "filter.show"}}</span>
-{{template "filter-seg" .Statuses}}
+{{template "filter-select" .Statuses}}
 {{template "filter-select" .Customers}}
 </div>
 {{if .List.Rows}}{{template "quote-list" .List}}

@@ -332,10 +332,19 @@ func (a *App) quoteDelete(w http.ResponseWriter, r *http.Request) {
 	a.afterInvoiceWrite(w, r, res, err, "/quotes")
 }
 
-// quoteStatus derives a quote's status (quote aliased q); the outcomes come with marking them.
-const quoteStatus = `CASE WHEN q.number IS NULL THEN 'draft' ELSE 'sent' END`
+// quoteStatus derives a quote's status (quote aliased q) short of expired, which needs today in the customer's timezone: see expire.
+const quoteStatus = `CASE WHEN q.number IS NULL THEN 'draft' WHEN q.accepted_date IS NOT NULL THEN 'accepted'
+	WHEN q.declined_date IS NOT NULL THEN 'declined' ELSE 'sent' END`
 
-var quoteStatuses = []string{"draft", "sent"}
+var quoteStatuses = []string{"draft", "sent", "accepted", "declined", "expired"}
+
+// expire makes a sent quote's status expired once today is past validUntil.
+func expire(status, validUntil, today string) string {
+	if status == "sent" && validUntil < today {
+		return "expired"
+	}
+	return status
+}
 
 type quoteRow struct {
 	ID       int64
@@ -358,7 +367,7 @@ type quoteList struct {
 // A sent quote's one-off total is its snapshot's, so a later VAT change doesn't alter it.
 func (a *App) loadQuoteRows(cond string, args ...any) ([]quoteRow, error) {
 	rows, err := a.db.Query(`SELECT * FROM (SELECT q.id, ifnull(q.number, ''), c.name, q.subject, ifnull(q.send_date, '') send_date, q.currency,
-		`+quoteStatus+` status, q.number IS NOT NULL sent, ifnull(q.snapshot ->> '$.totals.once.gross', '')
+		`+quoteStatus+` status, q.valid_until, c.timezone, q.number IS NOT NULL sent, ifnull(q.snapshot ->> '$.totals.once.gross', '')
 		FROM quote q JOIN customer c ON c.id = q.customer_id WHERE `+cond+`)
 		ORDER BY sent, send_date DESC, id DESC`, args...)
 	if err != nil {
@@ -366,12 +375,19 @@ func (a *App) loadQuoteRows(cond string, args ...any) ([]quoteRow, error) {
 	}
 	defer func() { _ = rows.Close() }()
 	var found []quoteRow
+	locs := locationCache{}
 	for rows.Next() {
 		var row quoteRow
+		var validUntil, tz string
 		var sent bool
-		if err := rows.Scan(&row.ID, &row.Number, &row.Customer, &row.Subject, &row.SendDate, &row.Currency, &row.Status, &sent, &row.OneOff); err != nil {
+		if err := rows.Scan(&row.ID, &row.Number, &row.Customer, &row.Subject, &row.SendDate, &row.Currency, &row.Status, &validUntil, &tz, &sent, &row.OneOff); err != nil {
 			return nil, err
 		}
+		loc, err := locs.load(tz)
+		if err != nil {
+			return nil, err
+		}
+		row.Status = expire(row.Status, validUntil, a.now().In(loc).Format(time.DateOnly))
 		found = append(found, row)
 	}
 	if err := rows.Err(); err != nil {
@@ -399,7 +415,7 @@ type quotesPage struct {
 	List      quoteList
 	Customer  int64
 	Status    string
-	Statuses  []filterOption
+	Statuses  filterSelect
 	Customers filterSelect
 }
 
@@ -415,26 +431,18 @@ func quotesQuery(customer int64, status string) url.Values {
 	return q
 }
 
-func quotesURL(q url.Values) string {
-	if len(q) == 0 {
-		return "/quotes"
-	}
-	return "/quotes?" + q.Encode()
-}
-
 func (a *App) quoteList(w http.ResponseWriter, r *http.Request) {
 	page := quotesPage{List: quoteList{ShowCustomer: true}}
 	page.Customer, _ = strconv.ParseInt(r.FormValue("customer"), 10, 64)
 	if s := r.FormValue("status"); slices.Contains(quoteStatuses, s) {
 		page.Status = s
 	}
-	for _, s := range append([]string{""}, quoteStatuses...) {
-		label := "filter.all"
-		if s != "" {
-			label = "quotes.status." + s
-		}
-		page.Statuses = append(page.Statuses, filterOption{label, quotesURL(quotesQuery(page.Customer, s)), s == page.Status})
+	var statuses []filterSelectOption
+	for _, s := range quoteStatuses {
+		statuses = append(statuses, filterSelectOption{Value: s, Key: "quotes.status." + s, Selected: s == page.Status})
 	}
+	page.Statuses = filterSelect{Action: "/quotes", Name: "status", Label: "quotes.status", All: "quotes.all_statuses",
+		Hidden: hiddenFields(quotesQuery(page.Customer, page.Status), "status"), Groups: []filterGroup{{Options: statuses}}}
 	customers, err := a.customerOptions()
 	if err != nil {
 		a.serverError(w, r, err)
@@ -446,9 +454,10 @@ func (a *App) quoteList(w http.ResponseWriter, r *http.Request) {
 	}
 	page.Customers = filterSelect{Action: "/quotes", Name: "customer", Label: "quotes.customer", All: "invoices.all_customers",
 		Hidden: hiddenFields(quotesQuery(page.Customer, page.Status), "customer"), Groups: []filterGroup{{Options: options}}}
-	if page.List.Rows, err = a.loadQuoteRows(`(?1 = 0 OR q.customer_id = ?1) AND (?2 = '' OR ?2 = `+quoteStatus+`)`, page.Customer, page.Status); err != nil {
+	if page.List.Rows, err = a.loadQuoteRows(`?1 = 0 OR q.customer_id = ?1`, page.Customer); err != nil {
 		a.serverError(w, r, err)
 		return
 	}
+	page.List.Rows = slices.DeleteFunc(page.List.Rows, func(q quoteRow) bool { return page.Status != "" && q.Status != page.Status })
 	a.render(w, r, http.StatusOK, "quotes", page)
 }

@@ -43,7 +43,7 @@ func TestSendingNumbersQuotesGaplesslyPerSendYear(t *testing.T) {
 	res.wantBody(t, "Quote A-2027-001")
 	res.wantBody(t, "Sent 2027-01-01")
 	res = c.get("/quotes")
-	res.wantRow(t, "A-2026-001", "acme", "Website relaunch", "2026-10-26", "1190.00 EUR", "Sent")
+	res.wantRow(t, "A-2026-001", "acme", "Website relaunch", "2026-10-26", "1190.00 EUR", "Expired")
 	wantInOrder(t, res.body, "A-2027-001", "A-2026-002", "A-2026-001")
 }
 

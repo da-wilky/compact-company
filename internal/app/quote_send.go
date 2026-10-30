@@ -119,10 +119,15 @@ func (a *App) quoteSend(w http.ResponseWriter, r *http.Request) {
 }
 
 type sentQuote struct {
-	ID       int64
-	Number   string
-	SHA256   string
-	Snapshot quoteData
+	ID           int64
+	Number       string
+	SHA256       string
+	Snapshot     quoteData
+	Status       string
+	AcceptedDate string
+	DeclinedDate string
+	DateForm     string
+	Errors       []string
 }
 
 // Totals are the snapshot's totals of the intervals that have lines.
@@ -140,11 +145,16 @@ func (q sentQuote) Totals() []intervalTotals {
 // so later changes to business, customer or project data don't show.
 func (a *App) loadSentQuote(id int64) (sentQuote, error) {
 	q := sentQuote{ID: id}
-	var snapshot string
-	err := a.db.QueryRow(`SELECT number, snapshot, pdf_sha256 FROM quote WHERE id = ? AND number IS NOT NULL`, id).
-		Scan(&q.Number, &snapshot, &q.SHA256)
+	var snapshot, validUntil string
+	err := a.db.QueryRow(`SELECT q.number, q.snapshot, q.pdf_sha256, `+quoteStatus+`, q.valid_until,
+		ifnull(q.accepted_date, ''), ifnull(q.declined_date, '') FROM quote q WHERE q.id = ? AND q.number IS NOT NULL`, id).
+		Scan(&q.Number, &snapshot, &q.SHA256, &q.Status, &validUntil, &q.AcceptedDate, &q.DeclinedDate)
 	if err != nil {
 		return q, err
 	}
+	if q.DateForm, err = a.quoteToday(a.db, id); err != nil {
+		return q, err
+	}
+	q.Status = expire(q.Status, validUntil, q.DateForm)
 	return q, json.Unmarshal([]byte(snapshot), &q.Snapshot)
 }

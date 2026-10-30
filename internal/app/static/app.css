@@ -212,7 +212,7 @@ button.icon svg.icon { width: 12px; height: 12px; fill: currentColor; }
 .crumb { margin-bottom: .35rem; color: var(--muted); font-size: .85rem; font-weight: 500; }
 .crumb:hover { color: var(--accent); text-decoration: none; }
 .invoice-body { display: grid; grid-template-columns: minmax(0, 1fr) 17rem; gap: 1.25rem; align-items: start; }
-.invoice-body > .table-wrap { grid-row: 1; grid-column: 1; }
+.invoice-body > :not(.status-card) { grid-row: 1; grid-column: 1; min-width: 0; }
 .statuses { max-width: 34rem; }
 .statuses td:first-child, .statuses td:first-child input { width: 100%; }
 .statuses :is(th, td):nth-child(2) { width: 1%; padding-inline: .3rem; text-align: center; }
@@ -340,7 +340,7 @@ button.icon:hover { filter: brightness(1.1); }
   .form { padding: 1rem; }
   .page-head .pager { width: 100%; flex-wrap: wrap; }
   .invoice-body { grid-template-columns: minmax(0, 1fr); }
-  .invoice-body > .table-wrap { grid-row: auto; }
+  .invoice-body > :not(.status-card) { grid-row: auto; }
   .typst-editor { grid-template-columns: minmax(0, 1fr); }
   .pager .pill { order: 1; }
   .seg a { padding: .2rem .6rem; }

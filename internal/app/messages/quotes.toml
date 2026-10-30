@@ -12,6 +12,21 @@
 "quotes.status" = { en = "Status", de = "Status" }
 "quotes.status.draft" = { en = "Draft", de = "Entwurf" }
 "quotes.status.sent" = { en = "Sent", de = "Versendet" }
+"quotes.status.accepted" = { en = "Accepted", de = "Angenommen" }
+"quotes.status.declined" = { en = "Declined", de = "Abgelehnt" }
+"quotes.status.expired" = { en = "Expired", de = "Abgelaufen" }
+"quotes.all_statuses" = { en = "All statuses", de = "Alle Status" }
+"quotes.outcome_date" = { en = "Date", de = "Datum" }
+"quotes.accept" = { en = "Mark accepted", de = "Als angenommen markieren" }
+"quotes.decline" = { en = "Mark declined", de = "Als abgelehnt markieren" }
+"quotes.accepted_on" = { en = "Accepted on %s", de = "Angenommen am %s" }
+"quotes.declined_on" = { en = "Declined on %s", de = "Abgelehnt am %s" }
+"quotes.undo_accepted" = { en = "Undo accepted", de = "Annahme zurücknehmen" }
+"quotes.undo_declined" = { en = "Undo declined", de = "Ablehnung zurücknehmen" }
+"quotes.confirm_undo_accepted" = { en = "Undo the acceptance of quote %s?", de = "Annahme des Angebots %s zurücknehmen?" }
+"quotes.confirm_undo_declined" = { en = "Undo the decline of quote %s?", de = "Ablehnung des Angebots %s zurücknehmen?" }
+"quotes.late_acceptance" = { en = "A late acceptance is a new offer from the customer: mark it accepted only if you agree to it.", de = "Eine verspätete Annahme ist ein neues Angebot des Kunden: nur als angenommen markieren, wenn du zustimmst." }
+"quotes.error.outcome_date" = { en = "Enter a valid date.", de = "Bitte ein gültiges Datum angeben." }
 "quotes.project" = { en = "Project", de = "Projekt" }
 "quotes.no_project" = { en = "No project", de = "Kein Projekt" }
 "quotes.project_hint" = { en = "Pick a project for existing work; leave it empty for new work.", de = "Für bestehende Arbeit ein Projekt wählen; für neue Arbeit leer lassen." }

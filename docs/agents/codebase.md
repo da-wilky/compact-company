@@ -84,7 +84,7 @@ Tables are `STRICT`, ids `INTEGER PRIMARY KEY`, timestamps INTEGER unix seconds 
 
 Reuse these instead of re-deriving them:
 
-- Status is derived, never stored: `invoiceStatus` (SQL, invoice aliased `i`) in `issue.go`.
+- Status is derived, never stored: `invoiceStatus` (SQL, invoice aliased `i`) in `issue.go`. A quote's is `quoteStatus` (SQL, quote aliased `q`) in `quotes.go`, then `expire` with today in the customer's timezone, so filtering by it happens in Go.
 - What's still owed: `amountDue` in `open_invoices.go`.
 - A time entry is claimed via `time_entry.invoice_line_id`; its invoice is a draft while `number IS NULL`.
 - Invoice dates are ISO dates in the customer's timezone; resolve timezones per query with `locationCache`.
