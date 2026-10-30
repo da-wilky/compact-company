@@ -128,6 +128,9 @@ type sentQuote struct {
 	DeclinedDate string
 	DateForm     string
 	Errors       []string
+	// Project is the quote's project now, which creating one from the accepted quote may have set since sending.
+	Project  *projectRef
+	Invoices []invoiceRef
 }
 
 // Totals are the snapshot's totals of the intervals that have lines.
@@ -146,10 +149,19 @@ func (q sentQuote) Totals() []intervalTotals {
 func (a *App) loadSentQuote(id int64) (sentQuote, error) {
 	q := sentQuote{ID: id}
 	var snapshot, validUntil string
+	var projectID sql.NullInt64
+	var projectName sql.NullString
 	err := a.db.QueryRow(`SELECT q.number, q.snapshot, q.pdf_sha256, `+quoteStatus+`, q.valid_until,
-		ifnull(q.accepted_date, ''), ifnull(q.declined_date, '') FROM quote q WHERE q.id = ? AND q.number IS NOT NULL`, id).
-		Scan(&q.Number, &snapshot, &q.SHA256, &q.Status, &validUntil, &q.AcceptedDate, &q.DeclinedDate)
+		ifnull(q.accepted_date, ''), ifnull(q.declined_date, ''), p.id, p.name
+		FROM quote q LEFT JOIN project p ON p.id = q.project_id WHERE q.id = ? AND q.number IS NOT NULL`, id).
+		Scan(&q.Number, &snapshot, &q.SHA256, &q.Status, &validUntil, &q.AcceptedDate, &q.DeclinedDate, &projectID, &projectName)
 	if err != nil {
+		return q, err
+	}
+	if projectID.Valid {
+		q.Project = &projectRef{projectID.Int64, projectName.String}
+	}
+	if q.Invoices, err = a.quoteInvoices(id); err != nil {
 		return q, err
 	}
 	if q.DateForm, err = a.quoteToday(a.db, id); err != nil {

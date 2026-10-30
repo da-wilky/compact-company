@@ -22,6 +22,9 @@
 "quotes.accepted_on" = { en = "Accepted on %s", de = "Angenommen am %s" }
 "quotes.declined_on" = { en = "Declined on %s", de = "Abgelehnt am %s" }
 "quotes.undo_accepted" = { en = "Undo accepted", de = "Annahme zurücknehmen" }
+"quotes.invoices" = { en = "Invoices", de = "Rechnungen" }
+"quotes.create_invoice" = { en = "Create invoice", de = "Rechnung erstellen" }
+"quotes.create_project" = { en = "Create project", de = "Projekt anlegen" }
 "quotes.undo_declined" = { en = "Undo declined", de = "Ablehnung zurücknehmen" }
 "quotes.confirm_undo_accepted" = { en = "Undo the acceptance of quote %s?", de = "Annahme des Angebots %s zurücknehmen?" }
 "quotes.confirm_undo_declined" = { en = "Undo the decline of quote %s?", de = "Ablehnung des Angebots %s zurücknehmen?" }

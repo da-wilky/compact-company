@@ -184,6 +184,7 @@ type issuedInvoice struct {
 	PaidDate    string
 	SHA256      string
 	CancelsID   int64
+	Quote       *quoteRef
 	Cancellable bool
 	Snapshot    invoiceData
 	Lines       []issuedLine
@@ -222,13 +223,16 @@ func (a *App) loadIssued(id int64) (issuedInvoice, error) {
 	inv := issuedInvoice{ID: id}
 	var snapshot string
 	var due int64
+	var quoteID sql.NullInt64
+	var quoteNumber sql.NullString
 	err := a.db.QueryRow(`SELECT i.number, i.snapshot, i.pdf_sha256, ifnull(i.paid_date, ''), ifnull(i.cancels_id, 0), `+invoiceStatus+`,
-		`+amountDue+`
-		FROM invoice i WHERE i.id = ? AND i.number IS NOT NULL`, id).
-		Scan(&inv.Number, &snapshot, &inv.SHA256, &inv.PaidDate, &inv.CancelsID, &inv.Status, &due)
+		`+amountDue+`, i.quote_id, q.number
+		FROM invoice i LEFT JOIN quote q ON q.id = i.quote_id WHERE i.id = ? AND i.number IS NOT NULL`, id).
+		Scan(&inv.Number, &snapshot, &inv.SHA256, &inv.PaidDate, &inv.CancelsID, &inv.Status, &due, &quoteID, &quoteNumber)
 	if err != nil {
 		return inv, err
 	}
+	inv.Quote = quoteRefOrNil(quoteID, quoteNumber)
 	if err := json.Unmarshal([]byte(snapshot), &inv.Snapshot); err != nil {
 		return inv, err
 	}

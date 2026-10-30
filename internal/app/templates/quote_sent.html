@@ -8,14 +8,18 @@
 </div>
 {{with $.Data.Errors}}<ul class="errors" role="alert">{{range .}}<li>{{t .}}</li>{{end}}</ul>{{end}}
 <p class="actions"><a href="/quotes/{{$.Data.ID}}/pdf">{{template "icon-download"}}{{t "invoices.download"}}</a> <a href="/quotes/{{$.Data.ID}}/duplicate">{{template "icon-copy"}}{{t "quotes.duplicate"}}</a></p>
-<p class="hint">{{t "quotes.sent_on" (day .IssueDate)}} · {{t "quotes.valid_until"}} {{day .ValidUntil}} · {{t (print "quotes.pricing." .Pricing)}}{{with .Project}} · {{t "quotes.project"}} {{.}}{{end}}</p>
+<p class="hint">{{t "quotes.sent_on" (day .IssueDate)}} · {{t "quotes.valid_until"}} {{day .ValidUntil}} · {{t (print "quotes.pricing." .Pricing)}}{{with $.Data.Project}} · {{t "quotes.project"}} <a href="/projects/{{.ID}}">{{.Name}}</a>{{end}}</p>
 <div class="invoice-body">
 <aside class="status-card">
 <p class="status">{{t (print "quotes.status." $.Data.Status)}}</p>
 {{with .Totals.Once}}<p class="due">{{.Gross}} {{$.Data.Snapshot.Currency}}</p>{{end}}
-{{if $.Data.AcceptedDate}}<form method="post" action="/quotes/{{$.Data.ID}}/undo" data-confirm="{{t "quotes.confirm_undo_accepted" $.Data.Number}}" data-confirm-ok="{{t "quotes.undo_accepted"}}" data-confirm-neutral>
+{{with $.Data.Invoices}}<p>{{t "quotes.invoices"}}: {{range $i, $inv := .}}{{if $i}}, {{end}}<a href="/invoices/{{.ID}}">{{or .Number (t "invoices.status.draft")}}</a>{{end}}</p>{{end}}
+{{if $.Data.AcceptedDate}}<form method="post" action="/quotes/{{$.Data.ID}}/invoice">
+<p><button class="primary">{{template "icon-plus"}}{{t "quotes.create_invoice"}}</button>{{if not $.Data.Project}} <button formaction="/quotes/{{$.Data.ID}}/project">{{template "icon-plus"}}{{t "quotes.create_project"}}</button>{{end}}</p>
+</form>
+<form method="post" action="/quotes/{{$.Data.ID}}/undo" data-confirm="{{t "quotes.confirm_undo_accepted" $.Data.Number}}" data-confirm-ok="{{t "quotes.undo_accepted"}}" data-confirm-neutral>
 <p>{{t "quotes.accepted_on" (day $.Data.AcceptedDate)}}</p>
-<button class="primary">{{template "icon-undo-2"}}{{t "quotes.undo_accepted"}}</button>
+<p><button>{{template "icon-undo-2"}}{{t "quotes.undo_accepted"}}</button></p>
 </form>
 {{else if $.Data.DeclinedDate}}<form method="post" action="/quotes/{{$.Data.ID}}/undo" data-confirm="{{t "quotes.confirm_undo_declined" $.Data.Number}}" data-confirm-ok="{{t "quotes.undo_declined"}}" data-confirm-neutral>
 <p>{{t "quotes.declined_on" (day $.Data.DeclinedDate)}}</p>

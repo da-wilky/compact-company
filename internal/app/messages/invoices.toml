@@ -94,6 +94,7 @@
 "invoices.cancel_issue" = { en = "Issue cancellation invoice", de = "Stornorechnung stellen" }
 "invoices.cancelled_by" = { en = "Cancelled by %s", de = "Storniert durch %s" }
 "invoices.cancels" = { en = "Cancels invoice", de = "Storniert Rechnung" }
+"invoices.from_quote" = { en = "From quote", de = "Aus Angebot" }
 "invoices.reason" = { en = "Reason", de = "Grund" }
 "invoices.amount_due" = { en = "Amount still due", de = "Noch offener Betrag" }
 "invoices.error.cancel_lines" = { en = "Tick at least one line of this invoice that isn't cancelled yet.", de = "Bitte mindestens eine noch nicht stornierte Position dieser Rechnung ankreuzen." }
