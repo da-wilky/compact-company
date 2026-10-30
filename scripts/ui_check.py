@@ -183,6 +183,7 @@ def main():
                      ("invoice_issued", cancellation), ("invoice", empty), ("invoice_refresh", f"{empty}/refresh"),
                      ("quotes", "/quotes"), ("quote_new", "/quotes/new"), ("quote", quote), ("quote", f"{quote}/preview"), ("quote", "/quotes/2"),
                      ("quote_line", f"{quote}/lines/new"), ("quote_line", quote_line), ("quote_section", f"{quote}/sections/new"), ("quote_section", quote_section),
+                     ("quote_duplicate", f"{quote}/duplicate"),
                      ("settings", "/settings"), ("profile", "/profile"), ("error", "/no-such-page")]
         if changed:
             only[:] = [path for name, path in templates if name in changed]

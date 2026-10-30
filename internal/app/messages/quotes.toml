@@ -40,7 +40,10 @@
 "quotes.heading_hint" = { en = "Leave empty for a plain paragraph.", de = "Für einen einfachen Absatz leer lassen." }
 "quotes.body" = { en = "Text", de = "Text" }
 "quotes.body_hint" = { en = "Typst markup: *bold*, _italic_, - list items, + numbered items, a blank line between paragraphs.", de = "Typst-Markup: *fett*, _kursiv_, - Listenpunkte, + nummerierte Punkte, eine Leerzeile zwischen Absätzen." }
-"quotes.confirm_delete" = { en = "Delete the draft “%s”?", de = "Den Entwurf „%s“ löschen?" }
+"quotes.duplicate" = { en = "Duplicate", de = "Duplizieren" }
+"quotes.duplicate_title" = { en = "Duplicate quote", de = "Angebot duplizieren" }
+"quotes.duplicate_hint" = { en = "The new draft copies subject, pricing, lines and sections. Language and validity start afresh for this customer; the project stays only for the same customer.", de = "Der neue Entwurf übernimmt Betreff, Preisart, Positionen und Abschnitte. Sprache und Gültigkeit beginnen für diesen Kunden neu; das Projekt bleibt nur beim selben Kunden." }
+"quotes.confirm_delete" ={ en = "Delete the draft “%s”?", de = "Den Entwurf „%s“ löschen?" }
 "quotes.error.subject" = { en = "Subject is required.", de = "Betreff ist erforderlich." }
 "quotes.error.project" = { en = "Choose a project of this customer.", de = "Bitte ein Projekt dieses Kunden wählen." }
 "quotes.error.language" = { en = "Choose a language.", de = "Bitte eine Sprache wählen." }

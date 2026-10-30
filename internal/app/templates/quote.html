@@ -7,7 +7,7 @@
 <p class="hint">{{t "quotes.draft_for" .CustomerNumber .CustomerName}}</p></div>
 </div>
 {{template "render-errors" $.Data}}
-<p class="actions"><a href="/quotes/{{.ID}}/preview">{{template "icon-eye"}}{{t "invoices.preview"}}</a></p>
+<p class="actions"><a href="/quotes/{{.ID}}/preview">{{template "icon-eye"}}{{t "invoices.preview"}}</a> <a href="/quotes/{{.ID}}/duplicate">{{template "icon-copy"}}{{t "quotes.duplicate"}}</a></p>
 {{if .Lines}}
 <div class="table-wrap"><table class="invoice-lines">
 <thead><tr><th>{{t "invoices.description"}}</th><th class="num">{{t "invoices.quantity"}}</th><th>{{t "invoices.unit"}}</th><th class="num">{{t "invoices.price"}}</th><th>{{t "quotes.interval"}}</th><th class="num">{{t "invoices.total"}}</th><th></th></tr></thead>
