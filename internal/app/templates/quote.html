@@ -6,6 +6,7 @@
 <div><h1>{{template "title" $}}</h1>
 <p class="hint">{{t "quotes.draft_for" .CustomerNumber .CustomerName}}</p></div>
 </div>
+<p class="actions"><a href="/quotes/{{.ID}}/duplicate">{{template "icon-copy"}}{{t "quotes.duplicate"}}</a></p>
 {{with $.Data.Errors}}<ul class="errors" role="alert">{{range .}}<li>{{t .}}</li>{{end}}</ul>{{end}}
 {{if .Lines}}
 <div class="table-wrap"><table class="invoice-lines">
