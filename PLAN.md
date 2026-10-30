@@ -14,13 +14,14 @@ TimeTracker and similar tools are overloaded (CRM, pipelines, inventory, chat, â
 - Projects per customer, hourly rates (customer default, project override)
 - Time tracking: start/stop timer, manual entries, week view
 - Invoices from unbilled time entries plus free line items, rendered by a user-supplied Typst template, stored immutably
+- Quotes with priced lines and free Typst sections, rendered by the same template directory (#59)
 - Overview: open amounts, overdue invoices, hours per month
 - Single binary, SQLite, trivial backup, NixOS module
 
 ## Non-goals (for now)
 
 - Customer portal (maybe later, see "Later")
-- CRM, quotes, expenses
+- CRM, expenses
 - Todos and boards stay lean: no dependencies, subtasks, sprints, Gantt or workload planning
 - Multi-user teams, roles
 - E-invoicing (ZUGFeRD/XRechnung) â€“ Kleinunternehmer are exempt from issuing; revisit when needed
@@ -98,7 +99,7 @@ Specified in the Phase 2 PRD (#15) and, once built, documented in `templates/REA
 ## Later (not planned yet)
 
 - Customer portal: separate route prefix `/portal`, only that exposed publicly, email magic links with rate limiting, customer sees only own invoices
-- Quotes (Angebot) and other documents from corporate-design
+- Other documents from corporate-design (order confirmation, acceptance report)
 - E-invoice (ZUGFeRD) embedding
 - Recurring invoices (hosting/maintenance)
 

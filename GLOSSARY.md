@@ -79,7 +79,7 @@ When the billed work was done: from the start of the invoice's first time entry 
 _Avoid_: Billing period
 
 **Draft** (de: Entwurf):
-An invoice still being prepared: editable, unnumbered, and deletable.
+An invoice or quote still being prepared: editable, unnumbered, and deletable.
 
 **Issue** (de: stellen):
 To give a draft its invoice number and freeze it for good.
@@ -100,6 +100,36 @@ What the customer still owes on an issued invoice: its total less whatever its c
 **Open invoice** (de: offene Rechnung):
 An issued invoice, not a cancellation invoice, that is neither paid nor fully cancelled.
 _Avoid_: Outstanding, unpaid
+
+**Quote** (de: Angebot):
+An offer of work to one customer, optionally for one of its projects, that stays open until a validity date.
+_Avoid_: Offer, estimate, Kostenvoranschlag
+
+**Fixed price** (de: Festpreis):
+A quote whose total is what the customer will be invoiced.
+
+**By effort** (de: nach Aufwand):
+A quote whose total is an estimate; the customer is invoiced for the time actually spent at the quoted rates.
+_Avoid_: Estimate, Kostenvoranschlag
+
+**Snippet** (de: Textbaustein):
+A named, reusable section of quote text in one language, copied into a quote and independent of it afterwards.
+_Avoid_: Template, text block
+
+**Send** (de: versenden):
+To give a draft quote its quote number and freeze it for good.
+
+**Sent quote** (de: versendetes Angebot):
+A quote that has been sent; it can never be edited or deleted, only accepted, declined or left to expire.
+
+**Accepted** (de: angenommen):
+A sent quote the customer has agreed to.
+
+**Declined** (de: abgelehnt):
+A sent quote the customer has turned down.
+
+**Expired** (de: abgelaufen):
+A sent quote neither accepted nor declined whose validity date has passed.
 
 **Overdue** (de: überfällig):
 An open invoice, or a todo not yet done, whose due date has passed.
