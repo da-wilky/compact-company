@@ -84,11 +84,19 @@ Tables are `STRICT`, ids `INTEGER PRIMARY KEY`, timestamps INTEGER unix seconds 
 
 Reuse these instead of re-deriving them:
 
-- Status is derived, never stored: `invoiceStatus` (SQL, invoice aliased `i`) in `issue.go`.
+- Status is derived, never stored: `invoiceStatus` (SQL, invoice aliased `i`) in `issue.go`. A quote's is `quoteStatus` (SQL, quote aliased `q`) in `quotes.go`, then `expire` with today in the customer's timezone, so filtering by it happens in Go.
 - What's still owed: `amountDue` in `open_invoices.go`.
 - A time entry is claimed via `time_entry.invoice_line_id`; its invoice is a draft while `number IS NULL`.
 - Invoice dates are ISO dates in the customer's timezone; resolve timezones per query with `locationCache`.
 - Week and month windows: `mondayOf` in `week.go`.
+- Issuing an invoice and sending a quote share `issue.go`: `nextInSequence` (gapless yearly number inside the tx), `commitWithPDF` (stores the PDF and its SHA-256, commits, leaves no file on failure) and `serveStoredPDF` for the download.
+
+## Typst guards
+
+Every field that stores Typst markup (quote sections, snippets) uses the guards of ADR 0007 in `typst_guards.go`:
+
+- **Lint:** `lintTypst(body) []typstFinding`, pure Go. The field is the `typst-body` partial (`partials/typst_body.html`, fed `newTypstBody(body)`): its textarea posts to `POST /typst/lint` while typing, and each finding's button posts `escape=<Pos>` there to escape it. `typst-cheat-sheet` goes next to the form.
+- **Compile check:** `checkTypst(ctx, body) (*typstFailure, error)` evaluates the body alone as `quote.typ` does; a non-nil failure names the first paragraph that fails on its own, the error is for typst not running. Show it with the `typst-failure` partial. `checkSections` runs it over a quote's sections. A quote section saves even when it fails (sending refuses it); a snippet doesn't save at all, since nothing else would stop it reaching every quote.
 
 ## Todo boards
 

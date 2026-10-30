@@ -23,6 +23,8 @@
 "customers.error.has_projects" = { en = "This customer has projects.", de = "Dieser Kunde hat Projekte." }
 "customers.error.has_invoices" = { en = "This customer has invoices.", de = "Dieser Kunde hat Rechnungen." }
 "customers.error.currency_invoiced" = { en = "The currency of a customer with invoices can't change.", de = "Die Währung eines Kunden mit Rechnungen kann nicht geändert werden." }
+"customers.error.has_quotes" = { en = "This customer has quotes.", de = "Dieser Kunde hat Angebote." }
+"customers.error.currency_quoted" = { en = "The currency of a customer with quotes can't change.", de = "Die Währung eines Kunden mit Angeboten kann nicht geändert werden." }
 "customers.confirm_delete" = { en = "Delete customer %s %s?", de = "Kunde %s %s löschen?" }
 "customers.select" = { en = "Select customer %s %s", de = "Kunde %s %s auswählen" }
 "customers.confirm_delete_one" = { en = "Delete 1 customer?", de = "1 Kunde löschen?" }

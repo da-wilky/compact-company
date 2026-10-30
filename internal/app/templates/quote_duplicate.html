@@ -1,0 +1,20 @@
+{{define "title"}}{{t "quotes.duplicate_title"}}{{end}}
+{{define "parent"}}{{.Data.Quote.Subject}}{{end}}
+{{define "tab"}}{{template "title" .}} · {{template "parent" .}}{{end}}
+{{define "content"}}
+{{with .Data}}
+<a class="crumb" href="/quotes/{{.Quote.ID}}">{{template "icon-arrow-left"}}{{template "parent" $}}</a>
+<div class="page-head">
+<div><h1>{{template "title" $}}</h1>
+<p class="hint">{{.Quote.Subject}}</p></div>
+</div>
+{{with .Errors}}<ul class="errors" role="alert">{{range .}}<li>{{t .}}</li>{{end}}</ul>{{end}}
+<form method="post" action="/quotes/{{.Quote.ID}}/duplicate" class="form">
+<label>{{t "quotes.customer"}} <select name="customer" required aria-describedby="duplicate-hint">
+{{range .Customers}}<option value="{{.ID}}"{{if eq (print .ID) $.Data.Customer}} selected{{end}}>{{.Name}}{{if .Archived}} ({{t "archive.archived"}}){{end}}</option>
+{{end}}</select></label>
+<p class="hint" id="duplicate-hint">{{t "quotes.duplicate_hint"}}</p>
+<button>{{template "icon-copy"}}{{t "quotes.create"}}</button>
+</form>
+{{end}}
+{{end}}

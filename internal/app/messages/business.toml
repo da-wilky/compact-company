@@ -1,7 +1,7 @@
 "business.title" = { en = "Business", de = "Unternehmen" }
 "business.link" = { en = "Business data for invoices", de = "Unternehmensdaten für Rechnungen" }
 "business.managed" = { en = "Managed by config: change it in the configuration file.", de = "Durch die Konfiguration verwaltet: Änderungen bitte in der Konfigurationsdatei vornehmen." }
-"business.missing" = { en = "Invoices can't be previewed or issued until these are set:", de = "Rechnungen können erst in der Vorschau angezeigt oder ausgestellt werden, wenn Folgendes angegeben ist:" }
+"business.missing" = { en = "Invoices and quotes can't be previewed, issued or sent until these are set:", de = "Rechnungen und Angebote können erst in der Vorschau angezeigt, gestellt oder versendet werden, wenn Folgendes angegeben ist:" }
 "business.name" = { en = "Name", de = "Name" }
 "business.company" = { en = "Company", de = "Firma" }
 "business.address" = { en = "Address", de = "Anschrift" }

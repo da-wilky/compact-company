@@ -48,6 +48,7 @@ type customerPage struct {
 	Customer  customer
 	Errors    []string
 	Languages []string
+	Quotes    quoteList
 }
 
 func (a *App) customerList(w http.ResponseWriter, r *http.Request) {
@@ -98,7 +99,15 @@ func (a *App) renderCustomer(w http.ResponseWriter, r *http.Request, status int,
 	for i, tag := range languages {
 		langs[i] = tag.String()
 	}
-	a.render(w, r, status, "customer", customerPage{Customer: c, Errors: errs, Languages: langs})
+	page := customerPage{Customer: c, Errors: errs, Languages: langs}
+	if c.ID != 0 {
+		var err error
+		if page.Quotes.Rows, err = a.loadQuoteRows(`q.customer_id = ?`, c.ID); err != nil {
+			a.serverError(w, r, err)
+			return
+		}
+	}
+	a.render(w, r, status, "customer", page)
 }
 
 type storedRate struct {
@@ -248,14 +257,21 @@ func (a *App) customerUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if c.Currency != oldCurrency {
-		var invoiced bool
-		if err := tx.QueryRow(`SELECT EXISTS (SELECT 1 FROM invoice WHERE customer_id = ?)`, id).Scan(&invoiced); err != nil {
+		var invoiced, quoted bool
+		if err := tx.QueryRow(`SELECT EXISTS (SELECT 1 FROM invoice WHERE customer_id = ?1), EXISTS (SELECT 1 FROM quote WHERE customer_id = ?1)`, id).
+			Scan(&invoiced, &quoted); err != nil {
 			a.serverError(w, r, err)
 			return
 		}
+		refusal := ""
 		if invoiced {
+			refusal = "customers.error.currency_invoiced"
+		} else if quoted {
+			refusal = "customers.error.currency_quoted"
+		}
+		if refusal != "" {
 			_ = tx.Rollback()
-			a.renderCustomer(w, r, http.StatusUnprocessableEntity, c, []string{"customers.error.currency_invoiced"})
+			a.renderCustomer(w, r, http.StatusUnprocessableEntity, c, []string{refusal})
 			return
 		}
 	}

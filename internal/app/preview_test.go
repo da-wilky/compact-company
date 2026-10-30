@@ -165,7 +165,7 @@ func TestPreviewIsRefusedWhileBusinessDataIsMissing(t *testing.T) {
 	res := c.get(draft + "/preview")
 
 	res.wantStatus(t, http.StatusConflict)
-	res.wantBody(t, "Invoices can&#39;t be previewed or issued until these are set: Name, Address, Tax number")
+	res.wantBody(t, "Invoices and quotes can&#39;t be previewed, issued or sent until these are set: Name, Address, Tax number")
 }
 
 func TestDefaultTemplatePreviewsADraftWithoutIssuingIt(t *testing.T) {

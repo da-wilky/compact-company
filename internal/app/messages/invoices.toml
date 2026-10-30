@@ -74,7 +74,8 @@
 "invoices.error.unit_price" = { en = "Unit price must be a non-negative decimal with no more decimals than the currency allows.", de = "Einzelpreis muss eine nicht negative Dezimalzahl mit höchstens so vielen Nachkommastellen sein, wie die Währung erlaubt." }
 "invoices.error.line_project" = { en = "Choose one of the projects this invoice bills.", de = "Bitte eines der Projekte wählen, die diese Rechnung abrechnet." }
 "invoices.preview" = { en = "Preview PDF", de = "PDF-Vorschau" }
-"invoices.typst_error" = { en = "The invoice template failed to render:", de = "Die Rechnungsvorlage konnte nicht gerendert werden:" }
+"invoices.typst_error" = { en = "The template failed to render:", de = "Die Vorlage konnte nicht gerendert werden:" }
+"invoices.missing_entry" = { en = "The template directory has no %s.", de = "Das Vorlagenverzeichnis enthält keine %s." }
 "invoices.issue" = { en = "Issue invoice", de = "Rechnung stellen" }
 "invoices.issue_warning" = { en = "Issuing gives the draft the next invoice number, dated today, and renders its PDF once. An issued invoice can never be edited or deleted.", de = "Beim Stellen erhält der Entwurf die nächste Rechnungsnummer mit dem heutigen Datum, und sein PDF wird einmalig erzeugt. Eine gestellte Rechnung kann nie mehr bearbeitet oder gelöscht werden." }
 "invoices.invoice" = { en = "Invoice %s", de = "Rechnung %s" }
@@ -93,6 +94,7 @@
 "invoices.cancel_issue" = { en = "Issue cancellation invoice", de = "Stornorechnung stellen" }
 "invoices.cancelled_by" = { en = "Cancelled by %s", de = "Storniert durch %s" }
 "invoices.cancels" = { en = "Cancels invoice", de = "Storniert Rechnung" }
+"invoices.from_quote" = { en = "From quote", de = "Aus Angebot" }
 "invoices.reason" = { en = "Reason", de = "Grund" }
 "invoices.amount_due" = { en = "Amount still due", de = "Noch offener Betrag" }
 "invoices.error.cancel_lines" = { en = "Tick at least one line of this invoice that isn't cancelled yet.", de = "Bitte mindestens eine noch nicht stornierte Position dieser Rechnung ankreuzen." }

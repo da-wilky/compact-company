@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 
@@ -55,6 +56,9 @@ type projectPage struct {
 	Project  project
 	Errors   []string
 	Board    board
+	Quotes   quoteList
+	// NewQuoteURL opens a new quote for the project.
+	NewQuoteURL string
 }
 
 func (a *App) renderProject(w http.ResponseWriter, r *http.Request, status int, page projectPage) {
@@ -63,6 +67,11 @@ func (a *App) renderProject(w http.ResponseWriter, r *http.Request, status int, 
 		a.serverError(w, r, err)
 		return
 	}
+	if page.Quotes.Rows, err = a.loadQuoteRows(`q.project_id = ?`, page.Project.ID); err != nil {
+		a.serverError(w, r, err)
+		return
+	}
+	page.NewQuoteURL = "/quotes/new?" + url.Values{"customer": {strconv.FormatInt(page.Customer.ID, 10)}, "project": {strconv.FormatInt(page.Project.ID, 10)}}.Encode()
 	a.render(w, r, status, "project", page)
 }
 

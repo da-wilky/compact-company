@@ -22,6 +22,7 @@ type Config struct {
 	Auth                 Auth     `toml:"auth"`
 	Defaults             Defaults `toml:"defaults"`
 	Invoice              Invoice  `toml:"invoice"`
+	Quote                Quote    `toml:"quote"`
 	Business             Business `toml:"business"`
 	BusinessFile         string   `toml:"business_file"`
 	BusinessManaged      bool     `toml:"-"`
@@ -73,6 +74,11 @@ type Invoice struct {
 	FontPaths       []string `toml:"font_paths"`
 }
 
+type Quote struct {
+	NumberFormat string `toml:"number_format"`
+	ValidityDays int    `toml:"validity_days"`
+}
+
 type Defaults struct {
 	Currency        string `toml:"currency"`
 	Language        string `toml:"language"`
@@ -92,6 +98,7 @@ func Load(path string) (Config, error) {
 		CustomerNumberFormat: "K-{seq:03}",
 		Auth:                 Auth{SessionIdleTimeout: 14 * 24 * time.Hour},
 		Invoice:              Invoice{NumberFormat: "{year}-{seq:03}", PaymentDays: 14},
+		Quote:                Quote{NumberFormat: "A-{year}-{seq:03}", ValidityDays: 30},
 	}
 	md, err := decodeStrict(path, &cfg)
 	if err != nil {
@@ -170,6 +177,9 @@ func (c *Config) validate() error {
 	}
 	if c.Invoice.PaymentDays <= 0 {
 		return fmt.Errorf("invoice.payment_days must be positive, got %d", c.Invoice.PaymentDays)
+	}
+	if c.Quote.ValidityDays <= 0 {
+		return fmt.Errorf("quote.validity_days must be positive, got %d", c.Quote.ValidityDays)
 	}
 	if err := c.validateNumberFormats(); err != nil {
 		return err

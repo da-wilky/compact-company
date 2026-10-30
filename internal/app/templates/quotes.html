@@ -1,0 +1,15 @@
+{{define "title"}}{{t "quotes.title"}}{{end}}
+{{define "content"}}
+{{with .Data}}
+<h1>{{template "title" $}}</h1>
+<p class="actions"><a href="/quotes/new">{{template "icon-plus"}}{{t "quotes.new"}}</a> <a href="/snippets">{{template "icon-text"}}{{t "snippets.title"}}</a></p>
+<div class="filters">
+<span class="label">{{t "filter.show"}}</span>
+{{template "filter-select" .Statuses}}
+{{template "filter-select" .Customers}}
+</div>
+{{if .List.Rows}}{{template "quote-list" .List}}
+{{else}}<p class="hint">{{if or .Status .Customer}}{{t "quotes.empty_filtered"}}{{else}}{{t "quotes.empty"}}{{end}}</p>
+{{end}}
+{{end}}
+{{end}}

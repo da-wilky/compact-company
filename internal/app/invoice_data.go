@@ -157,27 +157,38 @@ func (a *App) issueDate(q querier, id int64) (string, error) {
 	return a.now().In(loc).Format(time.DateOnly), nil
 }
 
+// senderData is the business and its current tax as invoice and quote templates receive them;
+// it refuses while business data a render requires is unset.
+func (a *App) senderData() (businessData, taxData, error) {
+	b, err := a.loadBusiness()
+	if err != nil {
+		return businessData{}, taxData{}, err
+	}
+	if missing := missingBusinessFields(b); missing != nil {
+		return businessData{}, taxData{}, &missingBusinessError{fields: missing}
+	}
+	tax := taxData{SmallBusiness: b.TaxMode != config.TaxModeStandard}
+	if !tax.SmallBusiness {
+		tax.VATRate = int64(b.VATRate)
+	}
+	return businessData{Name: b.Name, Company: b.Company, Address: b.Address, Email: b.Email, Web: b.Web,
+		Phone: b.Phone, TaxNumber: b.TaxNumber, Bank: bankData{Name: b.Bank.Name, IBAN: b.Bank.IBAN, BIC: b.Bank.BIC}}, tax, nil
+}
+
 // invoiceJSON builds the template input for invoice id, and returns its gross in minor units; a nil number makes it a draft.
 // The bytes are what a snapshot stores, so a rendering can be reproduced from it.
 func (a *App) invoiceJSON(q querier, id int64, number *string, issueDate string) ([]byte, int64, error) {
-	b, err := a.loadBusiness()
+	business, tax, err := a.senderData()
 	if err != nil {
 		return nil, 0, err
-	}
-	if missing := missingBusinessFields(b); missing != nil {
-		return nil, 0, &missingBusinessError{fields: missing}
 	}
 	d := invoiceData{
 		Version:   1,
 		Draft:     number == nil,
 		Number:    number,
 		IssueDate: issueDate,
-		Business: businessData{Name: b.Name, Company: b.Company, Address: b.Address, Email: b.Email, Web: b.Web,
-			Phone: b.Phone, TaxNumber: b.TaxNumber, Bank: bankData{Name: b.Bank.Name, IBAN: b.Bank.IBAN, BIC: b.Bank.BIC}},
-		Tax: taxData{SmallBusiness: b.TaxMode != config.TaxModeStandard},
-	}
-	if !d.Tax.SmallBusiness {
-		d.Tax.VATRate = int64(b.VATRate)
+		Business:  business,
+		Tax:       tax,
 	}
 	var paymentDays int
 	var address string

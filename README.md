@@ -52,6 +52,10 @@ payment_days = 14                  # default; positive
 rounding_minutes = 0               # default; 0, 5, 10, 15 or 30
 template_dir = "/etc/compact-company/invoice-template"  # optional; default: bundled template
 font_paths = ["/etc/compact-company/fonts"]             # optional; extra Typst font dirs
+
+[quote]
+number_format = "A-{year}-{seq:03}"  # default; {year} and {seq} once each; no "/" or ".."
+validity_days = 30                 # default; positive; new quotes are valid until today plus this
 ```
 
 The template contract (data, invocation, fonts) is in [templates/README.md](templates/README.md).

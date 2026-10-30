@@ -1,0 +1,15 @@
+{{define "title"}}{{t "quotes.send"}}{{end}}
+{{define "parent"}}{{.Data.Quote.Header.Subject}}{{end}}
+{{define "tab"}}{{template "title" .}} · {{template "parent" .}}{{end}}
+{{define "content"}}
+{{with .Data.Quote}}
+<a class="crumb" href="/quotes/{{.ID}}">{{template "icon-arrow-left"}}{{template "parent" $}}</a>
+<h1>{{template "title" $}}</h1>
+{{template "render-errors" $.Data}}
+{{if not $.Data.Errors}}<form method="post" action="/quotes/{{.ID}}/send" class="form">
+<p>{{t "quotes.send_warning"}}</p>
+<p class="hint">{{.CustomerNumber}} {{.CustomerName}} · {{.Header.Subject}}</p>
+<button>{{template "icon-send"}}{{t "quotes.send"}}</button>
+</form>{{end}}
+{{end}}
+{{end}}

@@ -403,7 +403,9 @@ type draft struct {
 	AllProjects     bool
 	// Projects names the fixed choice of projects the draft bills, unless AllProjects.
 	Projects []string
-	Header   draftHeader
+	// Quote is the accepted quote the draft was created from, if any.
+	Quote  *quoteRef
+	Header draftHeader
 	// ServicePeriod is set while the draft claims entries, which then decide it.
 	ServicePeriod   *period
 	Lines           []invoiceLine
@@ -424,15 +426,18 @@ type draftPage struct {
 func (a *App) loadDraft(id int64) (draft, error) {
 	d := draft{ID: id}
 	var paymentDays int
+	var quoteID sql.NullInt64
+	var quoteNumber sql.NullString
 	err := a.db.QueryRow(`SELECT c.number, c.name, i.currency, i.grouping, i.rounding_minutes,
-		i.range_from, i.range_to, i.service_from, i.service_to, i.payment_days, i.all_projects
-		FROM invoice i JOIN customer c ON c.id = i.customer_id
+		i.range_from, i.range_to, i.service_from, i.service_to, i.payment_days, i.all_projects, i.quote_id, q.number
+		FROM invoice i JOIN customer c ON c.id = i.customer_id LEFT JOIN quote q ON q.id = i.quote_id
 		WHERE i.id = ? AND i.kind = ? AND i.number IS NULL`, id, kindInvoice).
 		Scan(&d.CustomerNumber, &d.CustomerName, &d.Currency, &d.Grouping, &d.RoundingMinutes,
-			&d.Header.From, &d.Header.To, &d.Header.ServiceFrom, &d.Header.ServiceTo, &paymentDays, &d.AllProjects)
+			&d.Header.From, &d.Header.To, &d.Header.ServiceFrom, &d.Header.ServiceTo, &paymentDays, &d.AllProjects, &quoteID, &quoteNumber)
 	if err != nil {
 		return d, err
 	}
+	d.Quote = quoteRefOrNil(quoteID, quoteNumber)
 	if d.Projects, err = a.draftProjects(id); err != nil {
 		return d, err
 	}

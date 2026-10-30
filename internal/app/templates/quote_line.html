@@ -1,0 +1,24 @@
+{{define "title"}}{{if .Data.Line.ID}}{{t "invoices.edit_line"}}{{else}}{{t "invoices.new_line"}}{{end}}{{end}}
+{{define "parent"}}{{.Data.Quote.Header.Subject}}{{end}}
+{{define "tab"}}{{template "title" .}} · {{template "parent" .}}{{end}}
+{{define "content"}}
+{{with .Data}}
+<a class="crumb" href="/quotes/{{.Quote.ID}}">{{template "icon-arrow-left"}}{{template "parent" $}}</a>
+<div class="page-head">
+<div><h1>{{template "title" $}}</h1>
+{{with .Line.ID}}<p class="hint">{{$.Data.Line.Description}}</p>{{end}}</div>
+</div>
+{{with .Errors}}<ul class="errors" role="alert">{{range .}}<li>{{t .}}</li>{{end}}</ul>{{end}}
+<form method="post" action="/quotes/{{.Quote.ID}}/lines{{with .Line.ID}}/{{.}}{{end}}" class="form">
+<label>{{t "invoices.description"}} <input name="description" value="{{.Line.Description}}" required></label>
+<label>{{t "invoices.detail"}} <input name="detail" value="{{.Line.Detail}}"></label>
+<label>{{t "invoices.quantity"}} <input name="quantity" value="{{.Line.Quantity}}" required inputmode="decimal"></label>
+<label>{{t "invoices.unit"}} <input name="unit" value="{{.Line.Unit}}"></label>
+<label>{{t "invoices.unit_price" .Quote.Currency}} <input name="unit_price" value="{{.Line.UnitPrice}}" required inputmode="decimal"></label>
+<label>{{t "quotes.interval"}} <select name="interval">
+{{range .Intervals}}<option value="{{.}}"{{if eq . $.Data.Line.Interval}} selected{{end}}>{{t (print "quotes.interval." .)}}</option>
+{{end}}</select></label>
+<button>{{template "icon-save"}}{{t "common.save"}}</button>
+</form>
+{{end}}
+{{end}}
