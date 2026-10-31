@@ -28,7 +28,7 @@
 {{else}}<form method="post" action="/quotes/{{$.Data.ID}}/accept">
 {{if eq $.Data.Status "expired"}}<p class="hint">{{t "quotes.late_acceptance"}}</p>{{end}}
 <label>{{t "quotes.outcome_date"}} <input type="date" name="date" value="{{$.Data.DateForm}}" required></label>
-<p><button class="primary">{{template "icon-check"}}{{t "quotes.accept"}}</button> <button formaction="/quotes/{{$.Data.ID}}/decline">{{template "icon-x"}}{{t "quotes.decline"}}</button></p>
+<p><button class="primary"{{if eq $.Data.Status "expired"}} data-confirm="{{t "quotes.confirm_late_acceptance" $.Data.Number}}" data-confirm-ok="{{t "quotes.accept"}}" data-confirm-neutral{{end}}>{{template "icon-check"}}{{t "quotes.accept"}}</button> <button formaction="/quotes/{{$.Data.ID}}/decline">{{template "icon-x"}}{{t "quotes.decline"}}</button></p>
 </form>{{end}}
 </aside>
 <div>

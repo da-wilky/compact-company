@@ -129,10 +129,13 @@ func TestAnExpiredQuoteCanStillBeAcceptedAfterAWarning(t *testing.T) {
 	ta := newTestApp(t, devConfig)
 	c := ta.client()
 	quote := c.sentQuote()
-	c.get(quote).wantNoBody(t, "A late acceptance is a new offer")
-	ta.clock.Advance(31 * 24 * time.Hour)
 	res := c.get(quote)
+	res.wantNoBody(t, "A late acceptance is a new offer")
+	res.wantNoBody(t, "has expired")
+	ta.clock.Advance(31 * 24 * time.Hour)
+	res = c.get(quote)
 	res.wantBody(t, "A late acceptance is a new offer from the customer: mark it accepted only if you agree to it.")
+	res.wantBody(t, `data-confirm="Quote A-2026-001 has expired. Mark it accepted anyway?"`) // markup is the behaviour: the warning step
 	res.wantBody(t, `action="`+quote+`/accept"`)
 
 	wantRedirect(t, c.markOutcome(quote, "accept", "2026-11-27"), quote)
