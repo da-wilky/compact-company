@@ -80,16 +80,19 @@ Tables are `STRICT`, ids `INTEGER PRIMARY KEY`, timestamps INTEGER unix seconds 
 
 `ADD COLUMN` checks a new CHECK against existing rows, so a constraint that needs a backfill becomes a trigger (`0008_invoice_timezone.sql`). Rebuilding a table drops its triggers: recreate them.
 
-## Invoice state
+## Invoice and quote state
 
 Reuse these instead of re-deriving them:
 
 - Status is derived, never stored: `invoiceStatus` (SQL, invoice aliased `i`) in `issue.go`. A quote's is `quoteStatus` (SQL, quote aliased `q`) in `quotes.go`, then `expire` with today in the customer's timezone, so filtering by it happens in Go.
 - What's still owed: `amountDue` in `open_invoices.go`.
 - A time entry is claimed via `time_entry.invoice_line_id`; its invoice is a draft while `number IS NULL`.
-- Invoice dates are ISO dates in the customer's timezone; resolve timezones per query with `locationCache`.
+- Invoice and quote dates are ISO dates in the customer's timezone: `customerToday(q, customer, args…)` for one record (`invoiceCustomer`, `quoteCustomer` or `"?"` with a customer id; `customerLocation` for the zone), `locationCache` across the rows of a list query.
 - Week and month windows: `mondayOf` in `week.go`.
 - Issuing an invoice and sending a quote share `issue.go`: `nextInSequence` (gapless yearly number inside the tx), `commitWithPDF` (stores the PDF and its SHA-256, commits, leaves no file on failure) and `serveStoredPDF` for the download.
+- Rendering either: `senderData` (business and tax for the template JSON, `missingBusinessError` while business data is unset), `renderPDF(ctx, entry, data)` (`missingEntryError` when the template directory lacks `invoice.typ`/`quote.typ`), `renderFailure.explain(err)` on the page struct to show either error or a Typst failure with the `render-errors` partial, and `writePDF` for a preview.
+- Invoice and quote lines share `lineFields`/`lineFieldsFromForm` (errors under `lines.*`) and `swapPosition` for up/down; a write that must match a draft row answers through `afterWrite` (404 when it matched none).
+- A record created from a quote links back with the `from-quote` partial.
 
 ## Typst guards
 
