@@ -6,7 +6,7 @@ Usage: ui_check.py <base-url> <database> <screenshot-dir> <chromium> [path… | 
 Paths render only those pages; the seed is deterministic, so e.g. /invoices/1 is the draft with lines, /invoices/4 the empty one without a range
 and /invoices/5 to /invoices/8 open invoices, the even ones overdue; /todos/1 is an overdue todo; /quotes/1 is the draft quote with
 lines and sections, /quotes/2 the empty one, /quotes/3 one whose section fails to compile, /quotes/4 a sent one,
-/quotes/5 to /quotes/7 sent ones accepted (with /invoices/9 created from it), declined and expired;
+/quotes/5 to /quotes/7 sent ones accepted (with /invoices/9 and a project created from it), declined and expired;
 /snippets/1 is a German snippet, so /quotes/1 offers two in its picker. --changed renders only the pages whose template differs from <git-ref>.
 Interactions select by route, data-* or ARIA attributes, so renaming a styling class can't break them.
 """
@@ -164,13 +164,14 @@ def seed(api):
             api.post(f"{base}{q}/{outcome}", form={"date": str(today)})
         if outcome == "accept":
             from_quote = api.post(f"{base}{q}/invoice", max_redirects=0).headers["location"]
+            quote_project = api.post(f"{base}{q}/project", max_redirects=0).headers["location"]
         outcomes.append(q)
     api.post(f"{base}/settings/business", form=business | {"name": ""})
     for name, language, heading, body in [("Zahlungsbedingungen", "de", "Zahlung", "Zahlbar innerhalb von *14 Tagen* ohne Abzug."),
                                           ("Payment terms", "en", "Payment", "Payable within *14 days* without deduction."),
                                           ("Ablauf und Termine für Relaunch-Projekte mit Shop-Anbindung", "de", "", "+ Auftakt\n+ Entwurf\n+ Umsetzung")]:
         api.post(f"{base}/snippets", form={"name": name, "language": language, "heading": heading, "body": body})
-    return customer, projects["Website relaunch"], draft, line, entry, issued, cancellation, empty, legacy, quote, quote_line, quote_section, broken, broken_section, sent, outcomes, from_quote
+    return customer, projects["Website relaunch"], draft, line, entry, issued, cancellation, empty, legacy, quote, quote_line, quote_section, broken, broken_section, sent, outcomes, from_quote, quote_project
 
 
 def seed_open_invoices(api, customer, business):
@@ -196,7 +197,7 @@ def main():
     with sync_playwright() as p:
         browser = p.chromium.launch(executable_path=chromium)
         api = browser.new_context().request
-        customer, project, draft, line, entry, issued, cancellation, empty, legacy, quote, quote_line, quote_section, broken, broken_section, sent, outcomes, from_quote = seed(api)
+        customer, project, draft, line, entry, issued, cancellation, empty, legacy, quote, quote_line, quote_section, broken, broken_section, sent, outcomes, from_quote, quote_project = seed(api)
         today = datetime.date.today().isoformat()
         templates = [("home", "/"), ("week", "/week"), ("week", "/week?everyone=1"), ("entries", "/entries"),
                      ("entries", f"/entries?day={today}&project={project}"), ("entry", "/entries/new"), ("entry", entry),
@@ -206,7 +207,7 @@ def main():
                      ("invoices", "/invoices"), ("invoice_new", "/invoices/new"), ("invoice", draft), ("invoice", f"{draft}/preview"),
                      ("invoice_line", f"{draft}/lines/new"), ("invoice_line", line), ("invoice_refresh", f"{draft}/refresh"),
                      ("invoice_issue", f"{draft}/issue"), ("invoice_issued", issued), ("invoice_cancel", f"{issued}/cancel"),
-                     ("invoice_issued", cancellation), ("invoice", empty), ("invoice_refresh", f"{empty}/refresh"), ("invoice", from_quote),
+                     ("invoice_issued", cancellation), ("invoice", empty), ("invoice_refresh", f"{empty}/refresh"), ("invoice", from_quote), ("project", quote_project),
                      ("quotes", "/quotes"), ("quote_new", "/quotes/new"), ("quote", quote), ("quote", f"{quote}/preview"), ("quote", "/quotes/2"),
                      ("quote_line", f"{quote}/lines/new"), ("quote_line", quote_line), ("quote_section", f"{quote}/sections/new"), ("quote_section", quote_section),
                      ("quote", broken), ("quote_section", broken_section),
