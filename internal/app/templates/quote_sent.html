@@ -1,0 +1,60 @@
+{{define "title"}}{{.Data.Snapshot.Subject}}{{end}}
+{{define "content"}}
+{{with .Data}}{{with .Snapshot}}
+<a class="crumb" href="/quotes">{{template "icon-arrow-left"}}{{t "quotes.title"}}</a>
+<div class="page-head">
+<div><h1>{{template "title" $}}</h1>
+<p class="hint">{{t "quotes.sent_for" $.Data.Number .Customer.Number .Customer.Name}}</p></div>
+</div>
+{{with $.Data.Errors}}<ul class="errors" role="alert">{{range .}}<li>{{t .}}</li>{{end}}</ul>{{end}}
+<p class="actions"><a href="/quotes/{{$.Data.ID}}/pdf">{{template "icon-download"}}{{t "invoices.download"}}</a> <a href="/quotes/{{$.Data.ID}}/duplicate">{{template "icon-copy"}}{{t "quotes.duplicate"}}</a></p>
+<p class="hint">{{t "quotes.sent_on" (day .IssueDate)}} · {{t "quotes.valid_until"}} {{day .ValidUntil}} · {{t (print "quotes.pricing." .Pricing)}}{{with $.Data.Project}} · {{t "quotes.project"}} <a href="/projects/{{.ID}}">{{.Name}}</a>{{end}}</p>
+<div class="invoice-body">
+<aside class="status-card">
+<p class="status">{{t (print "quotes.status." $.Data.Status)}}</p>
+{{with index .Totals "once"}}<p class="due">{{.Gross}} {{$.Data.Snapshot.Currency}}</p>{{end}}
+{{with $.Data.Invoices}}<p>{{t "quotes.invoices"}}: {{range $i, $inv := .}}{{if $i}}, {{end}}<a href="/invoices/{{.ID}}">{{or .Number (t "invoices.status.draft")}}</a>{{end}}</p>{{end}}
+{{if $.Data.AcceptedDate}}<form method="post" action="/quotes/{{$.Data.ID}}/invoice">
+<p><button class="primary">{{template "icon-plus"}}{{t "quotes.create_invoice"}}</button>{{if not $.Data.Project}} <button formaction="/quotes/{{$.Data.ID}}/project">{{template "icon-plus"}}{{t "quotes.create_project"}}</button>{{end}}</p>
+</form>
+<form method="post" action="/quotes/{{$.Data.ID}}/undo" data-confirm="{{t "quotes.confirm_undo_accepted" $.Data.Number}}" data-confirm-ok="{{t "quotes.undo_accepted"}}" data-confirm-neutral>
+<p>{{t "quotes.accepted_on" (day $.Data.AcceptedDate)}}</p>
+<p><button>{{template "icon-undo-2"}}{{t "quotes.undo_accepted"}}</button></p>
+</form>
+{{else if $.Data.DeclinedDate}}<form method="post" action="/quotes/{{$.Data.ID}}/undo" data-confirm="{{t "quotes.confirm_undo_declined" $.Data.Number}}" data-confirm-ok="{{t "quotes.undo_declined"}}" data-confirm-neutral>
+<p>{{t "quotes.declined_on" (day $.Data.DeclinedDate)}}</p>
+<button class="primary">{{template "icon-undo-2"}}{{t "quotes.undo_declined"}}</button>
+</form>
+{{else}}<form method="post" action="/quotes/{{$.Data.ID}}/accept">
+{{if eq $.Data.Status "expired"}}<p class="hint">{{t "quotes.late_acceptance"}}</p>{{end}}
+<label>{{t "quotes.outcome_date"}} <input type="date" name="date" value="{{$.Data.DateForm}}" required></label>
+<p><button class="primary"{{if eq $.Data.Status "expired"}} data-confirm="{{t "quotes.confirm_late_acceptance" $.Data.Number}}" data-confirm-ok="{{t "quotes.accept"}}" data-confirm-neutral{{end}}>{{template "icon-check"}}{{t "quotes.accept"}}</button> <button formaction="/quotes/{{$.Data.ID}}/decline">{{template "icon-x"}}{{t "quotes.decline"}}</button></p>
+</form>{{end}}
+</aside>
+<div>
+{{if .Lines}}
+<div class="table-wrap"><table class="invoice-lines">
+<thead><tr><th>{{t "invoices.description"}}</th><th class="num">{{t "invoices.quantity"}}</th><th>{{t "invoices.unit"}}</th><th class="num">{{t "invoices.price"}}</th><th>{{t "quotes.interval"}}</th><th class="num">{{t "invoices.total"}}</th></tr></thead>
+<tbody>
+{{range .Lines}}<tr><td>{{.Description}}{{with .Detail}}<br><span class="hint">{{.}}</span>{{end}}</td><td class="num">{{.Quantity}}</td><td>{{.Unit}}</td><td class="num">{{.UnitPrice}}</td><td>{{t (print "quotes.interval." .Interval)}}</td><td class="num">{{.Total}}</td></tr>
+{{end}}</tbody>
+</table></div>
+<div class="table-wrap"><table class="quote-totals">
+<thead><tr><td></td><th class="num">{{t "invoices.net"}}</th>{{if not .Tax.SmallBusiness}}<th class="num">{{t "invoices.vat" .Tax.VATRate}}</th>{{end}}<th class="num">{{t "invoices.gross"}}</th></tr></thead>
+<tbody>
+{{range $.Data.Totals}}<tr><th>{{t (print "quotes.total." .Interval)}}</th><td class="num">{{.Net}} {{$.Data.Snapshot.Currency}}</td>{{if not $.Data.Snapshot.Tax.SmallBusiness}}<td class="num">{{.VAT}} {{$.Data.Snapshot.Currency}}</td>{{end}}<td class="num">{{.Gross}} {{$.Data.Snapshot.Currency}}</td></tr>
+{{end}}</tbody>
+</table></div>
+{{else}}<p class="hint">{{t "quotes.sent_no_lines"}}</p>
+{{end}}
+</div>
+</div>
+{{if .Sections}}<h2>{{t "quotes.sections"}}</h2>
+{{range .Sections}}<section class="quote-section">
+{{with .Heading}}<div class="quote-section-head"><h3>{{.}}</h3></div>{{end}}
+<pre class="quote-body">{{.Body}}</pre>
+</section>
+{{end}}{{end}}
+<p class="hint sha">{{t "invoices.sha256"}}: {{$.Data.SHA256}}</p>
+{{end}}{{end}}
+{{end}}

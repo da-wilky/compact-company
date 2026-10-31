@@ -18,9 +18,17 @@ func (c Config) CustomerNumber(seq int64) (string, error) {
 }
 
 func (i Invoice) Number(year int, seq int64) (string, error) {
-	number, ok := substituteSeq(strings.Replace(i.NumberFormat, "{year}", strconv.Itoa(year), 1), seq)
-	if !ok || strings.Count(i.NumberFormat, "{year}") != 1 {
-		return "", fmt.Errorf("invoice.number_format: must contain {year} and {seq} or {seq:0N} exactly once each, got %q", i.NumberFormat)
+	return yearlyNumber("invoice.number_format", i.NumberFormat, year, seq)
+}
+
+func (q Quote) Number(year int, seq int64) (string, error) {
+	return yearlyNumber("quote.number_format", q.NumberFormat, year, seq)
+}
+
+func yearlyNumber(key, format string, year int, seq int64) (string, error) {
+	number, ok := substituteSeq(strings.Replace(format, "{year}", strconv.Itoa(year), 1), seq)
+	if !ok || strings.Count(format, "{year}") != 1 {
+		return "", fmt.Errorf("%s: must contain {year} and {seq} or {seq:0N} exactly once each, got %q", key, format)
 	}
 	return number, nil
 }
@@ -43,14 +51,16 @@ func (c Config) validateNumberFormats() error {
 	if _, err := c.CustomerNumber(1); err != nil {
 		return err
 	}
-	// Invoice numbers are file names under invoices/<year>/. Placeholders only ever yield digits,
-	// so one sample number speaks for all of them.
-	number, err := c.Invoice.Number(2026, 1)
-	if err != nil {
-		return err
-	}
-	if strings.Contains(number, "/") || strings.Contains(number, "..") {
-		return fmt.Errorf(`invoice.number_format: must not yield "/" or "..", got %q`, c.Invoice.NumberFormat)
+	// Invoice and quote numbers are file names under invoices/<year>/ and quotes/<year>/. Placeholders
+	// only ever yield digits, so one sample number speaks for all of them.
+	for _, f := range [][2]string{{"invoice.number_format", c.Invoice.NumberFormat}, {"quote.number_format", c.Quote.NumberFormat}} {
+		number, err := yearlyNumber(f[0], f[1], 2026, 1)
+		if err != nil {
+			return err
+		}
+		if strings.Contains(number, "/") || strings.Contains(number, "..") {
+			return fmt.Errorf(`%s: must not yield "/" or "..", got %q`, f[0], f[1])
+		}
 	}
 	return nil
 }

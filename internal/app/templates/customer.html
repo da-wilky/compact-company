@@ -21,6 +21,9 @@
 <button>{{template "icon-save"}}{{t "common.save"}}</button>
 </form>
 {{with .Customer.ID}}{{if $.Data.Customer.Archived}}<form method="post" action="/customers/{{.}}/unarchive"><button>{{template "icon-archive-restore"}}{{t "archive.unarchive"}}</button></form>{{else}}<form method="post" action="/customers/{{.}}/archive"><button>{{template "icon-archive"}}{{t "archive.archive"}}</button></form>{{end}}
-<form method="post" action="/customers/{{.}}/delete" data-confirm="{{t "customers.confirm_delete" $.Data.Customer.Number $.Data.Customer.Name}}"><button class="danger">{{template "icon-trash"}}{{t "common.delete"}}</button></form>{{end}}
+<form method="post" action="/customers/{{.}}/delete" data-confirm="{{t "customers.confirm_delete" $.Data.Customer.Number $.Data.Customer.Name}}"><button class="danger">{{template "icon-trash"}}{{t "common.delete"}}</button></form>
+<h2>{{t "quotes.title"}}</h2>
+<p class="actions"><a href="/quotes/new?customer={{.}}">{{template "icon-plus"}}{{t "quotes.new"}}</a></p>
+{{if $.Data.Quotes.Rows}}{{template "quote-list" $.Data.Quotes}}{{else}}<p class="hint">{{t "quotes.empty"}}</p>{{end}}{{end}}
 {{end}}
 {{end}}

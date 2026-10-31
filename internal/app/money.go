@@ -90,6 +90,10 @@ type invoiceTotals struct {
 	Net, VAT, Gross int64
 }
 
+func (t invoiceTotals) format(unit currency.Unit) totalsData {
+	return totalsData{Net: formatAmount(t.Net, unit), VAT: formatAmount(t.VAT, unit), Gross: formatAmount(t.Gross, unit)}
+}
+
 // totalsOf rounds VAT once on the net total rather than per line.
 func totalsOf(lineTotals []int64, vatPercent int64) invoiceTotals {
 	var t invoiceTotals

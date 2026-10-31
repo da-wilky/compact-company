@@ -39,7 +39,7 @@ func (a *App) markPaid(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	res, err := a.db.Exec(`UPDATE invoice SET paid_date = ? WHERE id = ? AND kind = ? AND number IS NOT NULL`, date, id, kindInvoice)
-	a.afterInvoiceWrite(w, r, res, err, draftPath(id))
+	a.afterWrite(w, r, res, err, draftPath(id))
 }
 
 func (a *App) markUnpaid(w http.ResponseWriter, r *http.Request) {
@@ -49,7 +49,7 @@ func (a *App) markUnpaid(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	res, err := a.db.Exec(`UPDATE invoice SET paid_date = NULL WHERE id = ? AND number IS NOT NULL`, id)
-	a.afterInvoiceWrite(w, r, res, err, draftPath(id))
+	a.afterWrite(w, r, res, err, draftPath(id))
 }
 
 // refusePaid shows issued invoice id with the submitted date and why it wasn't marked paid.

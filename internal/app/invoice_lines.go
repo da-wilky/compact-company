@@ -23,16 +23,45 @@ func init() {
 	})
 }
 
-// invoiceLine holds quantity and money as the decimals the user sees.
-type invoiceLine struct {
-	ID          int64
-	Generated   bool
+// lineFields are what invoice and quote lines share, quantity and money as the decimals the user sees.
+type lineFields struct {
 	Description string
 	Detail      string
 	Quantity    string
 	Unit        string
 	UnitPrice   string
 	Total       string
+}
+
+// lineFieldsFromForm returns the submitted line fields, the quantity in thousandths, the unit price
+// in minor units and any validation errors as catalog keys.
+func lineFieldsFromForm(r *http.Request, unit currency.Unit) (lineFields, int64, int64, []string) {
+	l := lineFields{
+		Description: strings.TrimSpace(r.PostFormValue("description")),
+		Detail:      strings.TrimSpace(r.PostFormValue("detail")),
+		Quantity:    strings.TrimSpace(r.PostFormValue("quantity")),
+		Unit:        strings.TrimSpace(r.PostFormValue("unit")),
+		UnitPrice:   strings.TrimSpace(r.PostFormValue("unit_price")),
+	}
+	var errs []string
+	if l.Description == "" {
+		errs = append(errs, "lines.error.description")
+	}
+	quantity, err := parseQuantity(l.Quantity)
+	if err != nil {
+		errs = append(errs, "lines.error.quantity")
+	}
+	unitPrice, err := parseAmount(l.UnitPrice, unit)
+	if err != nil {
+		errs = append(errs, "lines.error.unit_price")
+	}
+	return l, quantity, unitPrice, errs
+}
+
+type invoiceLine struct {
+	ID        int64
+	Generated bool
+	lineFields
 	// Project is "" and ProjectID 0 for a line without one.
 	Project   string
 	ProjectID int64
@@ -155,25 +184,8 @@ func (a *App) lineEdit(w http.ResponseWriter, r *http.Request) {
 // lineFromForm returns the submitted line, its quantity in thousandths, its unit price
 // in minor units and any validation errors as catalog keys. Its project must be one of projects.
 func lineFromForm(r *http.Request, unit currency.Unit, projects []projectOption) (invoiceLine, int64, int64, []string) {
-	l := invoiceLine{
-		Description: strings.TrimSpace(r.PostFormValue("description")),
-		Detail:      strings.TrimSpace(r.PostFormValue("detail")),
-		Quantity:    strings.TrimSpace(r.PostFormValue("quantity")),
-		Unit:        strings.TrimSpace(r.PostFormValue("unit")),
-		UnitPrice:   strings.TrimSpace(r.PostFormValue("unit_price")),
-	}
-	var errs []string
-	if l.Description == "" {
-		errs = append(errs, "invoices.error.description")
-	}
-	quantity, err := parseQuantity(l.Quantity)
-	if err != nil {
-		errs = append(errs, "invoices.error.quantity")
-	}
-	unitPrice, err := parseAmount(l.UnitPrice, unit)
-	if err != nil {
-		errs = append(errs, "invoices.error.unit_price")
-	}
+	fields, quantity, unitPrice, errs := lineFieldsFromForm(r, unit)
+	l := invoiceLine{lineFields: fields}
 	if s := r.PostFormValue("project"); s != "" {
 		id, err := strconv.ParseInt(s, 10, 64)
 		i := slices.IndexFunc(projects, func(p projectOption) bool { return p.ID == id })
@@ -224,7 +236,7 @@ func (a *App) lineCreate(w http.ResponseWriter, r *http.Request) {
 		SELECT id, (SELECT ifnull(max(position), 0) + 1 FROM invoice_line WHERE invoice_id = ?1), 0, ?2, ?3, ?4, ?5, ?6, ?7
 		FROM invoice WHERE id = ?1 AND number IS NULL`,
 		d.ID, l.Description, l.Detail, quantity, l.Unit, unitPrice, l.projectID())
-	a.afterInvoiceWrite(w, r, res, err, draftPath(d.ID))
+	a.afterWrite(w, r, res, err, draftPath(d.ID))
 }
 
 // A line moved to another project goes last, to the end of that project's section.
@@ -241,7 +253,7 @@ func (a *App) lineUpdate(w http.ResponseWriter, r *http.Request) {
 		position = CASE WHEN project_id IS ?6 THEN position ELSE (SELECT max(position) + 1 FROM invoice_line WHERE invoice_id = ?8) END
 		WHERE id = ?7 AND invoice_id IN (SELECT id FROM invoice WHERE id = ?8 AND number IS NULL)`,
 		l.Description, l.Detail, quantity, l.Unit, unitPrice, l.projectID(), l.ID, d.ID)
-	a.afterInvoiceWrite(w, r, res, err, draftPath(d.ID))
+	a.afterWrite(w, r, res, err, draftPath(d.ID))
 }
 
 // Entries claimed by the line are released by the foreign key's ON DELETE SET NULL.
@@ -252,7 +264,7 @@ func (a *App) lineDelete(w http.ResponseWriter, r *http.Request) {
 	}
 	res, err := a.db.Exec(`DELETE FROM invoice_line
 		WHERE id = ? AND invoice_id IN (SELECT id FROM invoice WHERE id = ? AND number IS NULL)`, l.ID, d.ID)
-	a.afterInvoiceWrite(w, r, res, err, draftPath(d.ID))
+	a.afterWrite(w, r, res, err, draftPath(d.ID))
 }
 
 // lineMove swaps the line with its neighbour in direction step (-1 up, +1 down); at the edge it does nothing.
@@ -262,7 +274,8 @@ func (a *App) lineMove(step int) http.HandlerFunc {
 		if !ok {
 			return
 		}
-		if err := a.swapLines(d.ID, l.ID, step); errors.Is(err, sql.ErrNoRows) {
+		// The neighbour is in the same project section, so sections keep their order.
+		if err := a.swapPosition("invoice_line", "invoice", d.ID, l.ID, step, "project_id"); errors.Is(err, sql.ErrNoRows) {
 			a.notFound(w, r)
 			return
 		} else if err != nil {
@@ -273,35 +286,39 @@ func (a *App) lineMove(step int) http.HandlerFunc {
 	}
 }
 
-func (a *App) swapLines(invoiceID, lineID int64, step int) error {
+// swapPosition swaps row id of table with its neighbour in direction step (-1 up, +1 down) on the draft
+// parentID of table parent (invoice or quote, column <parent>_id); at the edge it does nothing.
+// The neighbour shares column within with the row; pass the parent column for no further limit.
+// sql.ErrNoRows: no such row on a draft.
+func (a *App) swapPosition(table, parent string, parentID, id int64, step int, within string) error {
 	tx, err := a.db.Begin()
 	if err != nil {
 		return err
 	}
 	defer func() { _ = tx.Rollback() }()
+	parentColumn := parent + "_id"
 	var pos int64
-	var project sql.NullInt64
-	if err := tx.QueryRow(`SELECT l.position, l.project_id FROM invoice_line l JOIN invoice i ON i.id = l.invoice_id
-		WHERE l.id = ? AND i.id = ? AND i.number IS NULL`, lineID, invoiceID).Scan(&pos, &project); err != nil {
+	var group any
+	if err := tx.QueryRow(`SELECT r.position, r.`+within+` FROM `+table+` r JOIN `+parent+` p ON p.id = r.`+parentColumn+`
+		WHERE r.id = ? AND p.id = ? AND p.number IS NULL`, id, parentID).Scan(&pos, &group); err != nil {
 		return err
 	}
-	// The neighbour is in the same project section, so sections keep their order.
-	neighbour := `SELECT id, position FROM invoice_line WHERE invoice_id = ? AND project_id IS ? AND position > ? ORDER BY position LIMIT 1`
+	neighbour := `SELECT id, position FROM ` + table + ` WHERE ` + parentColumn + ` = ? AND ` + within + ` IS ? AND position > ? ORDER BY position LIMIT 1`
 	if step < 0 {
-		neighbour = `SELECT id, position FROM invoice_line WHERE invoice_id = ? AND project_id IS ? AND position < ? ORDER BY position DESC LIMIT 1`
+		neighbour = `SELECT id, position FROM ` + table + ` WHERE ` + parentColumn + ` = ? AND ` + within + ` IS ? AND position < ? ORDER BY position DESC LIMIT 1`
 	}
 	var otherID, otherPos int64
-	err = tx.QueryRow(neighbour, invoiceID, project, pos).Scan(&otherID, &otherPos)
+	err = tx.QueryRow(neighbour, parentID, group, pos).Scan(&otherID, &otherPos)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil
 	}
 	if err != nil {
 		return err
 	}
-	if _, err := tx.Exec(`UPDATE invoice_line SET position = ? WHERE id = ?`, otherPos, lineID); err != nil {
+	if _, err := tx.Exec(`UPDATE `+table+` SET position = ? WHERE id = ?`, otherPos, id); err != nil {
 		return err
 	}
-	if _, err := tx.Exec(`UPDATE invoice_line SET position = ? WHERE id = ?`, pos, otherID); err != nil {
+	if _, err := tx.Exec(`UPDATE `+table+` SET position = ? WHERE id = ?`, pos, otherID); err != nil {
 		return err
 	}
 	return tx.Commit()

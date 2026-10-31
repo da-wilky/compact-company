@@ -403,7 +403,9 @@ type draft struct {
 	AllProjects     bool
 	// Projects names the fixed choice of projects the draft bills, unless AllProjects.
 	Projects []string
-	Header   draftHeader
+	// Quote is the accepted quote the draft was created from, if any.
+	Quote  *quoteRef
+	Header draftHeader
 	// ServicePeriod is set while the draft claims entries, which then decide it.
 	ServicePeriod   *period
 	Lines           []invoiceLine
@@ -424,15 +426,18 @@ type draftPage struct {
 func (a *App) loadDraft(id int64) (draft, error) {
 	d := draft{ID: id}
 	var paymentDays int
+	var quoteID sql.NullInt64
+	var quoteNumber sql.NullString
 	err := a.db.QueryRow(`SELECT c.number, c.name, i.currency, i.grouping, i.rounding_minutes,
-		i.range_from, i.range_to, i.service_from, i.service_to, i.payment_days, i.all_projects
-		FROM invoice i JOIN customer c ON c.id = i.customer_id
+		i.range_from, i.range_to, i.service_from, i.service_to, i.payment_days, i.all_projects, i.quote_id, q.number
+		FROM invoice i JOIN customer c ON c.id = i.customer_id LEFT JOIN quote q ON q.id = i.quote_id
 		WHERE i.id = ? AND i.kind = ? AND i.number IS NULL`, id, kindInvoice).
 		Scan(&d.CustomerNumber, &d.CustomerName, &d.Currency, &d.Grouping, &d.RoundingMinutes,
-			&d.Header.From, &d.Header.To, &d.Header.ServiceFrom, &d.Header.ServiceTo, &paymentDays, &d.AllProjects)
+			&d.Header.From, &d.Header.To, &d.Header.ServiceFrom, &d.Header.ServiceTo, &paymentDays, &d.AllProjects, &quoteID, &quoteNumber)
 	if err != nil {
 		return d, err
 	}
+	d.Quote = quoteRefOrNil(quoteID, quoteNumber)
 	if d.Projects, err = a.draftProjects(id); err != nil {
 		return d, err
 	}
@@ -522,7 +527,7 @@ func (a *App) draftUpdate(w http.ResponseWriter, r *http.Request) {
 	res, err := a.db.Exec(`UPDATE invoice SET range_from = ?, range_to = ?, service_from = ?, service_to = ?, payment_days = ?
 		WHERE id = ? AND number IS NULL`,
 		d.Header.From, d.Header.To, d.Header.ServiceFrom, d.Header.ServiceTo, paymentDays, d.ID)
-	a.afterInvoiceWrite(w, r, res, err, draftPath(d.ID))
+	a.afterWrite(w, r, res, err, draftPath(d.ID))
 }
 
 // Deleting the draft cascades to its lines, which releases their entries.
@@ -533,7 +538,7 @@ func (a *App) draftDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	res, err := deleteDraft(a.db, id)
-	a.afterInvoiceWrite(w, r, res, err, "/invoices")
+	a.afterWrite(w, r, res, err, "/invoices")
 }
 
 // deleteDraft deletes invoice id if it is a draft; cascades drop its lines and chosen projects and release its entries.
@@ -578,9 +583,9 @@ func (a *App) draftDeleteSelected(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// afterInvoiceWrite redirects to done, or answers 404 when the write matched no row
-// because the invoice (or line) is gone or no longer in the state the write requires.
-func (a *App) afterInvoiceWrite(w http.ResponseWriter, r *http.Request, res sql.Result, err error, done string) {
+// afterWrite redirects to done, or answers 404 when the write matched no row
+// because the record (an invoice, quote, line or section) is gone or no longer in the state the write requires.
+func (a *App) afterWrite(w http.ResponseWriter, r *http.Request, res sql.Result, err error, done string) {
 	if err != nil {
 		a.serverError(w, r, err)
 		return

@@ -1,3 +1,4 @@
-{{define "render-errors"}}{{if or .Errors .MissingBusiness .TypstError}}<ul class="errors" role="alert">{{range .Errors}}<li>{{t .}}</li>{{end}}
+{{define "render-errors"}}{{if or .Errors .MissingBusiness .MissingEntry .TypstError}}<ul class="errors" role="alert">{{range .Errors}}<li>{{t .}}</li>{{end}}
 {{with .MissingBusiness}}<li>{{t "business.missing"}} {{range $i, $k := .}}{{if $i}}, {{end}}{{t $k}}{{end}} <a href="/settings#business">{{t "business.link"}}</a></li>{{end}}
+{{with .MissingEntry}}<li>{{t "invoices.missing_entry" .}}</li>{{end}}
 {{with .TypstError}}<li>{{t "invoices.typst_error"}}<pre class="typst-error">{{.}}</pre></li>{{end}}</ul>{{end}}{{end}}

@@ -3,6 +3,7 @@ package app
 import (
 	"bytes"
 	"context"
+	"errors"
 	"io/fs"
 	"os"
 	"os/exec"
@@ -31,19 +32,28 @@ type typstError struct{ message string }
 
 func (e *typstError) Error() string { return "typst: " + e.message }
 
-// renderPDF compiles the template's invoice.typ with data as sys.inputs.data (contract version 1).
-func (a *App) renderPDF(ctx context.Context, data []byte) ([]byte, error) {
+// missingEntryError is a template directory without the entry point a render needs.
+type missingEntryError struct{ entry string }
+
+func (e *missingEntryError) Error() string { return "template directory has no " + e.entry }
+
+// renderPDF compiles the template's entry point (invoice.typ or quote.typ) with data as sys.inputs.data (contract version 1).
+func (a *App) renderPDF(ctx context.Context, entry string, data []byte) ([]byte, error) {
+	src := filepath.Join(a.templateDir, entry)
+	if _, err := os.Stat(src); errors.Is(err, fs.ErrNotExist) {
+		return nil, &missingEntryError{entry: entry}
+	}
 	out, err := os.MkdirTemp("", "compact-company-render-")
 	if err != nil {
 		return nil, err
 	}
 	defer func() { _ = os.RemoveAll(out) }()
-	pdf := filepath.Join(out, "invoice.pdf")
+	pdf := filepath.Join(out, "out.pdf")
 	args := []string{"compile", "--root", a.templateDir}
 	for _, p := range a.cfg.Invoice.FontPaths {
 		args = append(args, "--font-path", p)
 	}
-	args = append(args, "--input", "data="+string(data), filepath.Join(a.templateDir, "invoice.typ"), pdf)
+	args = append(args, "--input", "data="+string(data), src, pdf)
 	cmd := exec.CommandContext(ctx, "typst", args...)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr

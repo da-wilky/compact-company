@@ -1,0 +1,22 @@
+{{define "title"}}{{if .Data.Section.ID}}{{t "quotes.edit_section"}}{{else}}{{t "quotes.new_section"}}{{end}}{{end}}
+{{define "parent"}}{{.Data.Quote.Header.Subject}}{{end}}
+{{define "tab"}}{{template "title" .}} · {{template "parent" .}}{{end}}
+{{define "content"}}
+{{with .Data}}
+<a class="crumb" href="/quotes/{{.Quote.ID}}">{{template "icon-arrow-left"}}{{template "parent" $}}</a>
+<div class="page-head">
+<div><h1>{{template "title" $}}</h1>
+{{with .Section.ID}}<p class="hint">{{or $.Data.Section.Heading (t "quotes.no_heading")}}</p>{{end}}</div>
+</div>
+{{if or .Errors .Section.Failure}}<ul class="errors" role="alert">{{range .Errors}}<li>{{t .}}</li>{{end}}{{with .Section.Failure}}<li>{{template "typst-failure" .}}</li>{{end}}</ul>{{end}}
+<div class="typst-editor">
+<form method="post" action="/quotes/{{.Quote.ID}}/sections{{with .Section.ID}}/{{.}}{{end}}" class="form quote-section-form">
+<label>{{t "quotes.heading"}} <input name="heading" value="{{.Section.Heading}}" aria-describedby="heading-hint"></label>
+<p class="hint" id="heading-hint">{{t "quotes.heading_hint"}}</p>
+{{template "typst-body" .Typst}}
+<button>{{template "icon-save"}}{{t "common.save"}}</button>
+</form>
+{{template "typst-cheat-sheet"}}
+</div>
+{{end}}
+{{end}}

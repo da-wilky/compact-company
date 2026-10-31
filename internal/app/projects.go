@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 
@@ -55,14 +56,32 @@ type projectPage struct {
 	Project  project
 	Errors   []string
 	Board    board
+	Quotes   quoteList
+	// NewQuoteURL opens a new quote for the project.
+	NewQuoteURL string
+	// Quote is the accepted quote the project was created from, if any.
+	Quote *quoteRef
 }
 
 func (a *App) renderProject(w http.ResponseWriter, r *http.Request, status int, page projectPage) {
+	var quoteID sql.NullInt64
+	var quoteNumber sql.NullString
+	if err := a.db.QueryRow(`SELECT p.quote_id, q.number FROM project p LEFT JOIN quote q ON q.id = p.quote_id WHERE p.id = ?`, page.Project.ID).
+		Scan(&quoteID, &quoteNumber); err != nil && !errors.Is(err, sql.ErrNoRows) {
+		a.serverError(w, r, err)
+		return
+	}
+	page.Quote = quoteRefOrNil(quoteID, quoteNumber)
 	var err error
 	if page.Board, err = a.loadBoard(r, "/projects/"+strconv.FormatInt(page.Project.ID, 10), `t.project_id = ?`, page.Project.ID); err != nil {
 		a.serverError(w, r, err)
 		return
 	}
+	if page.Quotes.Rows, err = a.loadQuoteRows(`q.project_id = ?`, page.Project.ID); err != nil {
+		a.serverError(w, r, err)
+		return
+	}
+	page.NewQuoteURL = "/quotes/new?" + url.Values{"customer": {strconv.FormatInt(page.Customer.ID, 10)}, "project": {strconv.FormatInt(page.Project.ID, 10)}}.Encode()
 	a.render(w, r, status, "project", page)
 }
 

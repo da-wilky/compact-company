@@ -78,7 +78,7 @@ func TestIssuingPassesTheNumberAndDatesToTheTemplate(t *testing.T) {
 	res := c.issue(draft)
 
 	res.wantStatus(t, http.StatusInternalServerError)
-	res.wantBody(t, "The invoice template failed to render")
+	res.wantBody(t, "The template failed to render")
 	input := res.templateInput(t).(map[string]any)
 	for key, want := range map[string]any{"number": "2026-001", "draft": false, "issue_date": "2026-10-27", "due_date": "2026-11-10"} {
 		if input[key] != want {
@@ -118,7 +118,7 @@ func TestFailingRenderIssuesNothingAndLeavesTheNumberUnused(t *testing.T) {
 	res := c.issue(broken)
 
 	res.wantStatus(t, http.StatusInternalServerError)
-	res.wantBody(t, "The invoice template failed to render")
+	res.wantBody(t, "The template failed to render")
 	res.wantBody(t, "boom line")
 	c.get(broken).wantBody(t, "Draft for acme")
 	c.get(broken+"/pdf").wantStatus(t, http.StatusNotFound)
@@ -134,7 +134,7 @@ func TestIssuingIsRefusedWhileBusinessDataIsMissing(t *testing.T) {
 	res := c.issue(draft)
 
 	res.wantStatus(t, http.StatusConflict)
-	res.wantBody(t, "Invoices can&#39;t be previewed or issued until these are set: Name, Address, Tax number")
+	res.wantBody(t, "Invoices and quotes can&#39;t be previewed, issued or sent until these are set: Name, Address, Tax number")
 	res.wantBody(t, `<form method="post" action="`+draft+`/issue"`)
 	c.get(draft).wantBody(t, "Draft for acme")
 	c.postForm("/settings/business", businessForm()).wantStatus(t, http.StatusSeeOther)

@@ -1,0 +1,18 @@
+{{define "typst-body"}}<div id="typst-body" class="typst-body">
+<label>{{t "quotes.body"}} <textarea name="body" rows="14" required aria-describedby="body-hint" hx-post="/typst/lint" hx-trigger="input changed delay:400ms" hx-target="#typst-lint" hx-select="#typst-lint" hx-swap="outerHTML">{{.Body}}</textarea></label>
+<p class="hint" id="body-hint">{{t "quotes.body_hint"}}</p>
+<div id="typst-lint" aria-live="polite">{{with .Findings}}<ul class="typst-lint">{{range .}}<li><span>{{t (print "quotes.lint." .Kind) .Text}}</span> <button type="button" name="escape" value="{{.Pos}}" hx-post="/typst/lint" hx-target="#typst-body" hx-select="#typst-body" hx-swap="outerHTML">{{t "quotes.lint.escape" .Escaped}}</button></li>{{end}}</ul>{{end}}</div>
+</div>{{end}}
+{{define "typst-lint"}}{{template "typst-body" .Data}}{{end}}
+{{define "typst-cheat-sheet"}}<aside class="cheat-sheet" aria-labelledby="cheat-sheet-title">
+<h2 id="cheat-sheet-title">{{t "quotes.cheat_sheet"}}</h2>
+<dl>
+<dt>{{t "quotes.cheat.bold"}}</dt><dd><pre>{{t "quotes.cheat.bold_example"}}</pre></dd>
+<dt>{{t "quotes.cheat.list"}}</dt><dd><pre>{{t "quotes.cheat.list_example"}}</pre></dd>
+<dt>{{t "quotes.cheat.numbered"}}</dt><dd><pre>{{t "quotes.cheat.numbered_example"}}</pre></dd>
+<dt>{{t "quotes.cheat.link"}}</dt><dd><pre>{{t "quotes.cheat.link_example"}}</pre></dd>
+<dt>{{t "quotes.cheat.table"}}</dt><dd><pre>{{t "quotes.cheat.table_example"}}</pre></dd>
+<dt>{{t "quotes.cheat.escape"}}</dt><dd><pre>{{t "quotes.cheat.escape_example"}}</pre></dd>
+</dl>
+</aside>{{end}}
+{{define "typst-failure"}}{{if .Paragraph}}{{t "quotes.compile_failed" .Paragraph .Message}}<pre class="typst-error">{{.Text}}</pre>{{else}}{{t "quotes.compile_failed_text" .Message}}{{end}}{{end}}

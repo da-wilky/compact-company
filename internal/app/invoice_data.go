@@ -105,13 +105,33 @@ func (e *missingBusinessError) Error() string {
 	return "missing business data: " + strings.Join(e.fields, ", ")
 }
 
-// customerLocation is the timezone of invoice id's customer.
-func customerLocation(q querier, id int64) (*time.Location, error) {
+// SQL expressions for customerLocation selecting the customer of an invoice or quote id.
+const (
+	invoiceCustomer = `(SELECT customer_id FROM invoice WHERE id = ?)`
+	quoteCustomer   = `(SELECT customer_id FROM quote WHERE id = ?)`
+)
+
+// customerLocation is the timezone of the customer whose id the SQL expression customer selects
+// with args: "?" for a customer id, invoiceCustomer or quoteCustomer for a record's.
+func customerLocation(q querier, customer string, args ...any) (*time.Location, error) {
 	var tz string
-	if err := q.QueryRow(`SELECT c.timezone FROM invoice i JOIN customer c ON c.id = i.customer_id WHERE i.id = ?`, id).Scan(&tz); err != nil {
+	if err := q.QueryRow(`SELECT timezone FROM customer WHERE id = `+customer, args...).Scan(&tz); err != nil {
 		return nil, err
 	}
 	return time.LoadLocation(tz)
+}
+
+// customerToday is today in the timezone customerLocation resolves.
+func (a *App) customerToday(q querier, customer string, args ...any) (string, error) {
+	loc, err := customerLocation(q, customer, args...)
+	if err != nil {
+		return "", err
+	}
+	return a.today(loc), nil
+}
+
+func (a *App) today(loc *time.Location) string {
+	return a.now().In(loc).Format(time.DateOnly)
 }
 
 // entryPeriod runs from the start of the first entry claimed by invoice id to the end of its last;
@@ -123,7 +143,7 @@ func entryPeriod(q querier, id int64) (p period, ok bool, err error) {
 		Scan(&first, &last); err != nil || !first.Valid {
 		return p, false, err
 	}
-	loc, err := customerLocation(q, id)
+	loc, err := customerLocation(q, invoiceCustomer, id)
 	if err != nil {
 		return p, false, err
 	}
@@ -148,36 +168,38 @@ func (l locationCache) load(tz string) (*time.Location, error) {
 	return loc, nil
 }
 
-// issueDate is today in the customer's timezone of invoice id.
-func (a *App) issueDate(q querier, id int64) (string, error) {
-	loc, err := customerLocation(q, id)
+// senderData is the business and its current tax as invoice and quote templates receive them;
+// it refuses while business data a render requires is unset.
+func (a *App) senderData() (businessData, taxData, error) {
+	b, err := a.loadBusiness()
 	if err != nil {
-		return "", err
+		return businessData{}, taxData{}, err
 	}
-	return a.now().In(loc).Format(time.DateOnly), nil
+	if missing := missingBusinessFields(b); missing != nil {
+		return businessData{}, taxData{}, &missingBusinessError{fields: missing}
+	}
+	tax := taxData{SmallBusiness: b.TaxMode != config.TaxModeStandard}
+	if !tax.SmallBusiness {
+		tax.VATRate = int64(b.VATRate)
+	}
+	return businessData{Name: b.Name, Company: b.Company, Address: b.Address, Email: b.Email, Web: b.Web,
+		Phone: b.Phone, TaxNumber: b.TaxNumber, Bank: bankData{Name: b.Bank.Name, IBAN: b.Bank.IBAN, BIC: b.Bank.BIC}}, tax, nil
 }
 
 // invoiceJSON builds the template input for invoice id, and returns its gross in minor units; a nil number makes it a draft.
 // The bytes are what a snapshot stores, so a rendering can be reproduced from it.
 func (a *App) invoiceJSON(q querier, id int64, number *string, issueDate string) ([]byte, int64, error) {
-	b, err := a.loadBusiness()
+	business, tax, err := a.senderData()
 	if err != nil {
 		return nil, 0, err
-	}
-	if missing := missingBusinessFields(b); missing != nil {
-		return nil, 0, &missingBusinessError{fields: missing}
 	}
 	d := invoiceData{
 		Version:   1,
 		Draft:     number == nil,
 		Number:    number,
 		IssueDate: issueDate,
-		Business: businessData{Name: b.Name, Company: b.Company, Address: b.Address, Email: b.Email, Web: b.Web,
-			Phone: b.Phone, TaxNumber: b.TaxNumber, Bank: bankData{Name: b.Bank.Name, IBAN: b.Bank.IBAN, BIC: b.Bank.BIC}},
-		Tax: taxData{SmallBusiness: b.TaxMode != config.TaxModeStandard},
-	}
-	if !d.Tax.SmallBusiness {
-		d.Tax.VATRate = int64(b.VATRate)
+		Business:  business,
+		Tax:       tax,
 	}
 	var paymentDays int
 	var address string
@@ -221,7 +243,7 @@ func (a *App) invoiceJSON(q querier, id int64, number *string, issueDate string)
 		return nil, 0, err
 	}
 	t := totalsOf(totals, d.Tax.VATRate)
-	d.Totals = totalsData{Net: formatAmount(t.Net, unit), VAT: formatAmount(t.VAT, unit), Gross: formatAmount(t.Gross, unit)}
+	d.Totals = t.format(unit)
 	entries, err := a.lineEntries(q, id)
 	if err != nil {
 		return nil, 0, err

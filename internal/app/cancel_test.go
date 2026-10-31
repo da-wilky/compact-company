@@ -183,7 +183,7 @@ func TestCancellationPassesTheContractWithTheOriginalTaxToTheTemplate(t *testing
 	res := c.postForm(inv+"/cancel", c.cancelForm(inv, "wrong rate", "Workshop"))
 
 	res.wantStatus(t, http.StatusInternalServerError)
-	res.wantBody(t, "The invoice template failed to render")
+	res.wantBody(t, "The template failed to render")
 	input := res.templateInput(t).(map[string]any)
 	want := decodeJSON(t, `{
 		"kind": "cancellation", "draft": false, "number": "2026-002", "issue_date": "2026-10-26",
@@ -251,7 +251,7 @@ func TestCancellingIsRefusedWhileBusinessDataIsMissing(t *testing.T) {
 	res := c.postForm(inv+"/cancel", c.cancelForm(inv, "", "Workshop"))
 
 	res.wantStatus(t, http.StatusConflict)
-	res.wantBody(t, "Invoices can&#39;t be previewed or issued until these are set: Name")
+	res.wantBody(t, "Invoices and quotes can&#39;t be previewed, issued or sent until these are set: Name")
 	c.get(inv).wantBody(t, ">Issued<")
 }
 

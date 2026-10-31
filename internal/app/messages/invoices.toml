@@ -69,12 +69,10 @@
 "invoices.error.rounding" = { en = "Choose a rounding increment.", de = "Bitte eine Rundung wählen." }
 "invoices.error.payment_days" = { en = "Payment days must be a positive whole number.", de = "Das Zahlungsziel muss eine positive ganze Zahl sein." }
 "invoices.error.projects" = { en = "Tick at least one of the customer's projects, or bill all projects.", de = "Bitte mindestens ein Projekt des Kunden ankreuzen oder alle Projekte abrechnen." }
-"invoices.error.description" = { en = "Description is required.", de = "Beschreibung ist erforderlich." }
-"invoices.error.quantity" = { en = "Quantity must be a non-negative decimal with at most 3 decimals.", de = "Menge muss eine nicht negative Dezimalzahl mit höchstens 3 Nachkommastellen sein." }
-"invoices.error.unit_price" = { en = "Unit price must be a non-negative decimal with no more decimals than the currency allows.", de = "Einzelpreis muss eine nicht negative Dezimalzahl mit höchstens so vielen Nachkommastellen sein, wie die Währung erlaubt." }
 "invoices.error.line_project" = { en = "Choose one of the projects this invoice bills.", de = "Bitte eines der Projekte wählen, die diese Rechnung abrechnet." }
 "invoices.preview" = { en = "Preview PDF", de = "PDF-Vorschau" }
-"invoices.typst_error" = { en = "The invoice template failed to render:", de = "Die Rechnungsvorlage konnte nicht gerendert werden:" }
+"invoices.typst_error" = { en = "The template failed to render:", de = "Die Vorlage konnte nicht gerendert werden:" }
+"invoices.missing_entry" = { en = "The template directory has no %s.", de = "Das Vorlagenverzeichnis enthält keine %s." }
 "invoices.issue" = { en = "Issue invoice", de = "Rechnung stellen" }
 "invoices.issue_warning" = { en = "Issuing gives the draft the next invoice number, dated today, and renders its PDF once. An issued invoice can never be edited or deleted.", de = "Beim Stellen erhält der Entwurf die nächste Rechnungsnummer mit dem heutigen Datum, und sein PDF wird einmalig erzeugt. Eine gestellte Rechnung kann nie mehr bearbeitet oder gelöscht werden." }
 "invoices.invoice" = { en = "Invoice %s", de = "Rechnung %s" }

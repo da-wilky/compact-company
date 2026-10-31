@@ -1,0 +1,19 @@
+{{define "title"}}{{t "quotes.new"}}{{end}}
+{{define "content"}}
+{{with .Data}}
+<a class="crumb" href="/quotes">{{template "icon-arrow-left"}}{{t "quotes.title"}}</a>
+<h1>{{template "title" $}}</h1>
+{{with .Errors}}<ul class="errors" role="alert">{{range .}}<li>{{t .}}</li>{{end}}</ul>{{end}}
+<form method="post" action="/quotes" class="form">
+<label>{{t "quotes.customer"}} <select name="customer" required hx-get="/quotes/new" hx-target="#quote-customer-fields" hx-select="#quote-customer-fields" hx-swap="outerHTML">
+{{range .Customers}}<option value="{{.ID}}"{{if eq (print .ID) $.Data.Form.Customer}} selected{{end}}>{{.Name}}</option>{{end}}
+</select></label>
+<label>{{t "quotes.subject"}} <input name="subject" value="{{.Form.Subject}}" required></label>
+<div id="quote-customer-fields" class="form-fields">
+{{template "quote-fields" .}}
+</div>
+{{template "quote-terms" .}}
+<button>{{template "icon-plus"}}{{t "quotes.create"}}</button>
+</form>
+{{end}}
+{{end}}

@@ -9,6 +9,7 @@
 {{with .Project.ID}}<p class="hint">{{$.Data.Project.Name}}</p>{{end}}</div>
 </div>
 {{with .Errors}}<ul class="errors" role="alert">{{range .}}<li>{{t .}}</li>{{end}}</ul>{{end}}
+{{with .Quote}}{{template "from-quote" .}}{{end}}
 <form method="post" action="{{with .Project.ID}}/projects/{{.}}{{else}}/customers/{{$.Data.Customer.ID}}/projects{{end}}" class="form">
 <label>{{t "projects.name"}} <input name="name" value="{{.Project.Name}}" required></label>
 <label>{{t "projects.hourly_rate" .Customer.Currency}} <input name="hourly_rate" value="{{.Project.HourlyRate}}" inputmode="decimal" placeholder="{{.Customer.HourlyRate}}" aria-describedby="rate-hint"></label>
@@ -20,6 +21,9 @@
 <form method="post" action="/projects/{{.}}/delete" data-confirm="{{t "projects.confirm_delete" $.Data.Project.Name}}"><button class="danger">{{template "icon-trash"}}{{t "common.delete"}}</button></form>
 <h2>{{t "todos.title"}}</h2>
 {{if not $.Data.Project.Archived}}<p class="actions"><a href="/projects/{{.}}/todos/new">{{template "icon-plus"}}{{t "todos.new"}}</a></p>{{end}}
-{{if $.Data.Board.Empty}}<p class="hint">{{t "todos.empty"}}</p>{{else}}{{template "board" $.Data.Board}}{{end}}{{end}}
+{{if $.Data.Board.Empty}}<p class="hint">{{t "todos.empty"}}</p>{{else}}{{template "board" $.Data.Board}}{{end}}
+<h2>{{t "quotes.title"}}</h2>
+<p class="actions"><a href="{{$.Data.NewQuoteURL}}">{{template "icon-plus"}}{{t "quotes.new"}}</a></p>
+{{if $.Data.Quotes.Rows}}{{template "quote-list" $.Data.Quotes}}{{else}}<p class="hint">{{t "quotes.empty"}}</p>{{end}}{{end}}
 {{end}}
 {{end}}

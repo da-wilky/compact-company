@@ -64,7 +64,7 @@ func TestBusinessPageNamesMissingRequiredFields(t *testing.T) {
 	ta := newTestApp(t, devConfig)
 	alice := ta.loginAs("alice")
 
-	alice.get("/settings").wantBody(t, "Invoices can&#39;t be previewed or issued until these are set: Name, Address, Tax number")
+	alice.get("/settings").wantBody(t, "Invoices and quotes can&#39;t be previewed, issued or sent until these are set: Name, Address, Tax number")
 
 	form := businessForm()
 	form.Set("address", "  \n ")

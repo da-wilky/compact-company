@@ -1,0 +1,103 @@
+"quotes.title" = { en = "Quotes", de = "Angebote" }
+"quotes.new" = { en = "New quote", de = "Neues Angebot" }
+"quotes.create" = { en = "Create draft", de = "Entwurf anlegen" }
+"quotes.empty" = { en = "No quotes yet.", de = "Noch keine Angebote." }
+"quotes.empty_filtered" = { en = "No quotes match these filters.", de = "Keine Angebote passen zu diesen Filtern." }
+"quotes.draft_for" = { en = "Draft for %s %s", de = "Entwurf für %s %s" }
+"quotes.number" = { en = "Number", de = "Nummer" }
+"quotes.customer" = { en = "Customer", de = "Kunde" }
+"quotes.subject" = { en = "Subject", de = "Betreff" }
+"quotes.date" = { en = "Date", de = "Datum" }
+"quotes.one_off" = { en = "One-off total", de = "Einmalig gesamt" }
+"quotes.status" = { en = "Status", de = "Status" }
+"quotes.status.draft" = { en = "Draft", de = "Entwurf" }
+"quotes.status.sent" = { en = "Sent", de = "Versendet" }
+"quotes.status.accepted" = { en = "Accepted", de = "Angenommen" }
+"quotes.status.declined" = { en = "Declined", de = "Abgelehnt" }
+"quotes.status.expired" = { en = "Expired", de = "Abgelaufen" }
+"quotes.all_statuses" = { en = "All statuses", de = "Alle Status" }
+"quotes.outcome_date" = { en = "Date", de = "Datum" }
+"quotes.accept" = { en = "Mark accepted", de = "Als angenommen markieren" }
+"quotes.decline" = { en = "Mark declined", de = "Als abgelehnt markieren" }
+"quotes.accepted_on" = { en = "Accepted on %s", de = "Angenommen am %s" }
+"quotes.declined_on" = { en = "Declined on %s", de = "Abgelehnt am %s" }
+"quotes.undo_accepted" = { en = "Undo accepted", de = "Annahme zurücknehmen" }
+"quotes.invoices" = { en = "Invoices", de = "Rechnungen" }
+"quotes.from_quote" = { en = "From quote", de = "Aus Angebot" }
+"quotes.create_invoice" = { en = "Create invoice", de = "Rechnung erstellen" }
+"quotes.create_project" = { en = "Create project", de = "Projekt anlegen" }
+"quotes.undo_declined" = { en = "Undo declined", de = "Ablehnung zurücknehmen" }
+"quotes.confirm_undo_accepted" = { en = "Undo the acceptance of quote %s?", de = "Annahme des Angebots %s zurücknehmen?" }
+"quotes.confirm_undo_declined" = { en = "Undo the decline of quote %s?", de = "Ablehnung des Angebots %s zurücknehmen?" }
+"quotes.late_acceptance" = { en = "A late acceptance is a new offer from the customer: mark it accepted only if you agree to it.", de = "Eine verspätete Annahme ist ein neues Angebot des Kunden: nur als angenommen markieren, wenn du zustimmst." }
+"quotes.confirm_late_acceptance" = { en = "Quote %s has expired. Mark it accepted anyway?", de = "Angebot %s ist abgelaufen. Trotzdem als angenommen markieren?" }
+"quotes.error.outcome_date" = { en = "Enter a valid date.", de = "Bitte ein gültiges Datum angeben." }
+"quotes.project" = { en = "Project", de = "Projekt" }
+"quotes.no_project" = { en = "No project", de = "Kein Projekt" }
+"quotes.project_hint" = { en = "Pick a project for existing work; leave it empty for new work.", de = "Für bestehende Arbeit ein Projekt wählen; für neue Arbeit leer lassen." }
+"quotes.language" = { en = "Language", de = "Sprache" }
+"quotes.pricing" = { en = "Pricing", de = "Preisart" }
+"quotes.pricing.fixed" = { en = "Fixed price", de = "Festpreis" }
+"quotes.pricing.effort" = { en = "By effort", de = "Nach Aufwand" }
+"quotes.valid_until" = { en = "Valid until", de = "Gültig bis" }
+"quotes.interval" = { en = "Interval", de = "Intervall" }
+"quotes.interval.once" = { en = "Once", de = "Einmalig" }
+"quotes.interval.monthly" = { en = "Monthly", de = "Monatlich" }
+"quotes.interval.yearly" = { en = "Yearly", de = "Jährlich" }
+"quotes.total.once" = { en = "One-off", de = "Einmalig" }
+"quotes.total.monthly" = { en = "Per month", de = "Pro Monat" }
+"quotes.total.yearly" = { en = "Per year", de = "Pro Jahr" }
+"quotes.no_lines" = { en = "No lines yet. A quote without lines states no price.", de = "Noch keine Positionen. Ein Angebot ohne Positionen nennt keinen Preis." }
+"quotes.sections" = { en = "Sections", de = "Abschnitte" }
+"quotes.no_sections" = { en = "No sections yet.", de = "Noch keine Abschnitte." }
+"quotes.add_section" = { en = "Add section", de = "Abschnitt hinzufügen" }
+"quotes.new_section" = { en = "New section", de = "Neuer Abschnitt" }
+"quotes.edit_section" = { en = "Edit section", de = "Abschnitt bearbeiten" }
+"quotes.delete" = { en = "Delete draft", de = "Entwurf löschen" }
+"quotes.delete_section" = { en = "Delete section", de = "Abschnitt löschen" }
+"quotes.confirm_delete_section" = { en = "Delete this section?", de = "Diesen Abschnitt löschen?" }
+"quotes.no_heading" = { en = "Paragraph without heading", de = "Absatz ohne Überschrift" }
+"quotes.heading" = { en = "Heading", de = "Überschrift" }
+"quotes.heading_hint" = { en = "Leave empty for a plain paragraph.", de = "Für einen einfachen Absatz leer lassen." }
+"quotes.body" = { en = "Text", de = "Text" }
+"quotes.body_hint" = { en = "Typst markup, a blank line between paragraphs. Pitfalls show below as you type.", de = "Typst-Markup, eine Leerzeile zwischen Absätzen. Stolperfallen erscheinen beim Tippen darunter." }
+"quotes.lint.at" = { en = "“%s” reads as a reference.", de = "„%s“ wird als Verweis gelesen." }
+"quotes.lint.dollar" = { en = "“%s” starts a formula that never ends.", de = "„%s“ beginnt eine Formel, die nie endet." }
+"quotes.lint.strong" = { en = "“%s” starts bold text that never ends.", de = "„%s“ beginnt fetten Text, der nie endet." }
+"quotes.lint.emph" = { en = "“%s” starts italic text that never ends.", de = "„%s“ beginnt kursiven Text, der nie endet." }
+"quotes.lint.hash" = { en = "“%s” reads as code.", de = "„%s“ wird als Code gelesen." }
+"quotes.lint.escape" = { en = "Write %s", de = "Als %s schreiben" }
+"quotes.compile_failed" = { en = "Paragraph %d doesn't compile: %s", de = "Absatz %d lässt sich nicht kompilieren: %s" }
+"quotes.compile_failed_text" = { en = "The text doesn't compile: %s", de = "Der Text lässt sich nicht kompilieren: %s" }
+"quotes.cheat_sheet" = { en = "Cheat sheet", de = "Spickzettel" }
+"quotes.cheat.bold" = { en = "Bold", de = "Fett" }
+"quotes.cheat.bold_example" = { en = "*bold*", de = "*fett*" }
+"quotes.cheat.list" = { en = "List", de = "Liste" }
+"quotes.cheat.list_example" = { en = "- Design\n- Build", de = "- Entwurf\n- Umsetzung" }
+"quotes.cheat.numbered" = { en = "Numbered list", de = "Nummerierte Liste" }
+"quotes.cheat.numbered_example" = { en = "+ Kick-off\n+ Launch", de = "+ Auftakt\n+ Start" }
+"quotes.cheat.link" = { en = "Link", de = "Link" }
+"quotes.cheat.link_example" = { en = "#link(\"https://example.com\")[our site]", de = "#link(\"https://example.com\")[unsere Seite]" }
+"quotes.cheat.table" = { en = "Table", de = "Tabelle" }
+"quotes.cheat.table_example" = { en = "#table(columns: 2,\n  [Phase], [Weeks],\n  [Design], [2],\n)", de = "#table(columns: 2,\n  [Phase], [Wochen],\n  [Entwurf], [2],\n)" }
+"quotes.cheat.escape" = { en = "Escapes", de = "Maskieren" }
+"quotes.cheat.escape_example" = { en = "info\\@example.com\n5 \\$  \\*  \\_  \\#", de = "info\\@example.com\n5 \\$  \\*  \\_  \\#" }
+"quotes.duplicate" = { en = "Duplicate", de = "Duplizieren" }
+"quotes.duplicate_title" = { en = "Duplicate quote", de = "Angebot duplizieren" }
+"quotes.duplicate_hint" = { en = "The new draft copies subject, pricing, lines and sections. Language and validity start afresh for this customer; the project stays only for the same customer.", de = "Der neue Entwurf übernimmt Betreff, Preisart, Positionen und Abschnitte. Sprache und Gültigkeit beginnen für diesen Kunden neu; das Projekt bleibt nur beim selben Kunden." }
+"quotes.confirm_delete" ={ en = "Delete the draft “%s”?", de = "Den Entwurf „%s“ löschen?" }
+"quotes.all_customers" = { en = "All customers", de = "Alle Kunden" }
+"quotes.error.customer" = { en = "Choose a customer.", de = "Bitte einen Kunden wählen." }
+"quotes.error.subject" = { en = "Subject is required.", de = "Betreff ist erforderlich." }
+"quotes.error.project" = { en = "Choose a project of this customer.", de = "Bitte ein Projekt dieses Kunden wählen." }
+"quotes.error.language" = { en = "Choose a language.", de = "Bitte eine Sprache wählen." }
+"quotes.error.pricing" = { en = "Choose fixed price or by effort.", de = "Bitte Festpreis oder nach Aufwand wählen." }
+"quotes.error.valid_until" = { en = "Enter a valid date.", de = "Bitte ein gültiges Datum angeben." }
+"quotes.error.interval" = { en = "Choose an interval.", de = "Bitte ein Intervall wählen." }
+"quotes.error.body" = { en = "Text is required.", de = "Text ist erforderlich." }
+"quotes.error.sections_fail" = { en = "A section doesn't compile. Fix it on the quote before sending.", de = "Ein Abschnitt lässt sich nicht kompilieren. Vor dem Versenden im Angebot korrigieren." }
+"quotes.send" = { en = "Send quote", de = "Angebot versenden" }
+"quotes.send_warning" = { en = "Sending gives the draft the next quote number, dated today, and renders its PDF once. A sent quote can never be edited or deleted.", de = "Beim Versenden erhält der Entwurf die nächste Angebotsnummer mit dem heutigen Datum, und sein PDF wird einmalig erzeugt. Ein versendetes Angebot kann nie mehr bearbeitet oder gelöscht werden." }
+"quotes.sent_for" = { en = "Quote %s for %s %s", de = "Angebot %s für %s %s" }
+"quotes.sent_on" = { en = "Sent %s", de = "Versendet am %s" }
+"quotes.sent_no_lines" = { en = "No lines. This quote states no price.", de = "Keine Positionen. Dieses Angebot nennt keinen Preis." }

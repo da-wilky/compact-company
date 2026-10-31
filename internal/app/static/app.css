@@ -178,6 +178,33 @@ h1 { margin: 0 0 1rem; font-size: 1.75rem; font-weight: 650; letter-spacing: -.0
 .line-actions { width: 1%; white-space: nowrap; text-align: right; }
 .line-actions form { display: inline; margin: 0; }
 .line-actions button { width: 30px; height: 30px; padding: 0; border-radius: 8px; }
+.quote-list :is(td:first-child, .date, .num) { white-space: nowrap; }
+.quote-totals { max-width: 34rem; margin-top: 1rem; }
+.quote-totals :is(th, td) { white-space: nowrap; }
+.quote-totals tbody th { font-weight: 650; }
+.quote-section { max-width: 48rem; margin-bottom: .75rem; padding: .9rem 1.1rem; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+.quote-section-head { display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
+.quote-section-head h3 { margin: 0; font-size: 1rem; overflow-wrap: anywhere; }
+.quote-section-head .line-actions { flex: none; width: auto; }
+.quote-body { margin: .5rem 0 0; font: inherit; font-size: .9rem; white-space: pre-wrap; overflow-wrap: anywhere; }
+.quote-section-form { max-width: 48rem; }
+.section-add { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem 1.5rem; margin: 1rem 0; }
+.snippet-picker { display: flex; gap: .4rem; min-width: 0; margin: 0; }
+.snippet-picker select { min-width: 0; max-width: 16rem; padding: .3rem .6rem; font-size: .85rem; }
+.snippet-picker button { flex: none; padding: .3rem .9rem; font-size: .85rem; }
+.quote-section .errors { margin: .5rem 0 0; padding-left: 1.1rem; font-size: .9rem; }
+.typst-editor { display: grid; grid-template-columns: minmax(0, 34rem) 17rem; gap: 1.25rem; align-items: start; }
+.typst-body { display: grid; gap: inherit; }
+.typst-lint { display: grid; gap: .5rem; margin: 0; padding: 0; list-style: none; font-size: .85rem; }
+.typst-lint li { display: flex; flex-wrap: wrap; align-items: center; gap: .3rem .6rem; padding-left: .6rem; border-left: 3px solid var(--accent); overflow-wrap: anywhere; }
+.typst-lint button { padding: .2rem .7rem; border-color: var(--field); font-size: .85rem; overflow-wrap: anywhere; }
+.cheat-sheet { padding: 1.1rem; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); font-size: .85rem; }
+.cheat-sheet h2 { margin: 0 0 .5rem; font-size: 1rem; }
+.cheat-sheet dl { margin: 0; }
+.cheat-sheet dt { margin-top: .6rem; color: var(--muted); font-weight: 550; }
+.cheat-sheet dd { margin: .15rem 0 0; }
+.cheat-sheet pre { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font-size: .8rem; }
+.form-fields { display: grid; gap: inherit; }
 .invoice-header { margin-top: 1.5rem; }
 .invoice-header .hint { margin: 0; }
 svg.icon { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
@@ -186,7 +213,7 @@ button.icon svg.icon { width: 12px; height: 12px; fill: currentColor; }
 .crumb { margin-bottom: .35rem; color: var(--muted); font-size: .85rem; font-weight: 500; }
 .crumb:hover { color: var(--accent); text-decoration: none; }
 .invoice-body { display: grid; grid-template-columns: minmax(0, 1fr) 17rem; gap: 1.25rem; align-items: start; }
-.invoice-body > .table-wrap { grid-row: 1; grid-column: 1; }
+.invoice-body > :not(.status-card) { grid-row: 1; grid-column: 1; min-width: 0; }
 .statuses { max-width: 34rem; }
 .statuses td:first-child, .statuses td:first-child input { width: 100%; }
 .statuses :is(th, td):nth-child(2) { width: 1%; padding-inline: .3rem; text-align: center; }
@@ -314,7 +341,8 @@ button.icon:hover { filter: brightness(1.1); }
   .form { padding: 1rem; }
   .page-head .pager { width: 100%; flex-wrap: wrap; }
   .invoice-body { grid-template-columns: minmax(0, 1fr); }
-  .invoice-body > .table-wrap { grid-row: auto; }
+  .invoice-body > :not(.status-card) { grid-row: auto; }
+  .typst-editor { grid-template-columns: minmax(0, 1fr); }
   .pager .pill { order: 1; }
   .seg a { padding: .2rem .6rem; }
   .selection { position: static; }

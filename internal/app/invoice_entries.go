@@ -93,7 +93,7 @@ func (a *App) pullEntries(tx *sql.Tx, id int64) error {
 		return nil
 	}
 	workingTime := a.printer(invoiceLanguage).Sprintf("invoices.working_time")
-	loc, err := customerLocation(tx, id)
+	loc, err := customerLocation(tx, invoiceCustomer, id)
 	if err != nil {
 		return err
 	}
@@ -175,7 +175,7 @@ func (e lineEntry) Duration() time.Duration {
 
 // lineEntries returns the entries claimed by invoice id's lines, by line id, in start order.
 func (a *App) lineEntries(q querier, id int64) (map[int64][]lineEntry, error) {
-	loc, err := customerLocation(q, id)
+	loc, err := customerLocation(q, invoiceCustomer, id)
 	if err != nil {
 		return nil, err
 	}

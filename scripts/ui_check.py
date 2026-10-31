@@ -4,7 +4,10 @@ Tabbing through each page (English, light) fails on any element that takes focus
 
 Usage: ui_check.py <base-url> <database> <screenshot-dir> <chromium> [path… | --changed <git-ref>], against a fresh dev-mode instance (it seeds data).
 Paths render only those pages; the seed is deterministic, so e.g. /invoices/1 is the draft with lines, /invoices/4 the empty one without a range
-and /invoices/5 to /invoices/8 open invoices, the even ones overdue; /todos/1 is an overdue todo. --changed renders only the pages whose template differs from <git-ref>.
+and /invoices/5 to /invoices/8 open invoices, the even ones overdue; /todos/1 is an overdue todo; /quotes/1 is the draft quote with
+lines and sections, /quotes/2 the empty one, /quotes/3 one whose section fails to compile, /quotes/4 a sent one,
+/quotes/5 to /quotes/7 sent ones accepted (with /invoices/9 and a project created from it), declined and expired;
+/snippets/1 is a German snippet, so /quotes/1 offers two in its picker. --changed renders only the pages whose template differs from <git-ref>.
 Interactions select by route, data-* or ARIA attributes, so renaming a styling class can't break them.
 """
 
@@ -135,7 +138,40 @@ def seed(api):
     legacy = re.search(r'href="/projects/(\d+)">Legacy portal<', api.get(f"{base}/customers/{other}/projects").text()).group(1)
     api.post(f"{base}/projects/{legacy}/todos", form={"title": "Export the old data", "description": "", "assignee": "1", "priority": "1", "due_date": ""})
     api.post(f"{base}/projects/{legacy}/archive")
-    return customer, projects["Website relaunch"], draft, line, entry, issued, cancellation, empty, legacy
+    quote = api.post(f"{base}/quotes", form={"customer": customer, "project": projects["Website relaunch"], "subject": "Relaunch of the company website with a new shop", "language": "de", "pricing": "fixed", "valid_until": str(today + datetime.timedelta(days=30))}, max_redirects=0).headers["location"]
+    for fields in [("Design and implementation", "Landing page, pricing and contact pages", "40", "h", "85", "once"), ("Hosting", "", "1", "month", "29.90", "monthly"), ("Domain", "", "1", "year", "15", "yearly")]:
+        api.post(f"{base}{quote}/lines", form=dict(zip(("description", "detail", "quantity", "unit", "unit_price", "interval"), fields)))
+    for heading, body in [("Scope", "We build *three* pages:\n\n- Home\n- Pricing\n- Contact"), ("", "We look forward to working with you.")]:
+        api.post(f"{base}{quote}/sections", form={"heading": heading, "body": body})
+    quote_line = re.search(rf'href="({quote}/lines/\d+)"', api.get(f"{base}{quote}").text()).group(1)
+    quote_section = re.search(rf'href="({quote}/sections/\d+)"', api.get(f"{base}{quote}").text()).group(1)
+    api.post(f"{base}/quotes", form={"customer": other, "project": "", "subject": "Fleet dashboard", "language": "de", "pricing": "effort", "valid_until": str(today)})
+    broken = api.post(f"{base}/quotes", form={"customer": customer, "project": "", "subject": "Shop maintenance", "language": "en", "pricing": "effort", "valid_until": str(today + datetime.timedelta(days=30))}, max_redirects=0).headers["location"]
+    api.post(f"{base}{broken}/sections", form={"heading": "Terms", "body": "Payment within 14 days.\n\nQuestions go to support@aufwind-example-mail.de, each reminder costs 5$."})
+    broken_section = re.search(rf'href="({broken}/sections/\d+)"', api.get(f"{base}{broken}").text()).group(1)
+    sent = api.post(f"{base}/quotes", form={"customer": customer, "project": projects["Hosting"], "subject": "Managed hosting for the shop", "language": "en", "pricing": "effort", "valid_until": str(today + datetime.timedelta(days=30))}, max_redirects=0).headers["location"]
+    for fields in [("Setup", "Server, backups and monitoring", "6", "h", "85", "once"), ("Hosting", "", "1", "month", "49", "monthly")]:
+        api.post(f"{base}{sent}/lines", form=dict(zip(("description", "detail", "quantity", "unit", "unit_price", "interval"), fields)))
+    api.post(f"{base}{sent}/sections", form={"heading": "Support", "body": "Requests are answered within *one* business day."})
+    api.post(f"{base}/settings/business", form=business)
+    api.post(f"{base}{sent}/send")
+    outcomes = []
+    for outcome, subject, days in [("accept", "Shop SEO audit", 30), ("decline", "Newsletter integration", 30), ("", "Payment provider migration", -3)]:
+        q = api.post(f"{base}/quotes", form={"customer": customer, "project": "", "subject": subject, "language": "de", "pricing": "fixed", "valid_until": str(today + datetime.timedelta(days=days))}, max_redirects=0).headers["location"]
+        api.post(f"{base}{q}/lines", form={"description": subject, "detail": "", "quantity": "1", "unit": "flat", "unit_price": "900", "interval": "once"})
+        api.post(f"{base}{q}/send")
+        if outcome:
+            api.post(f"{base}{q}/{outcome}", form={"date": str(today)})
+        if outcome == "accept":
+            from_quote = api.post(f"{base}{q}/invoice", max_redirects=0).headers["location"]
+            quote_project = api.post(f"{base}{q}/project", max_redirects=0).headers["location"]
+        outcomes.append(q)
+    api.post(f"{base}/settings/business", form=business | {"name": ""})
+    for name, language, heading, body in [("Zahlungsbedingungen", "de", "Zahlung", "Zahlbar innerhalb von *14 Tagen* ohne Abzug."),
+                                          ("Payment terms", "en", "Payment", "Payable within *14 days* without deduction."),
+                                          ("Ablauf und Termine für Relaunch-Projekte mit Shop-Anbindung", "de", "", "+ Auftakt\n+ Entwurf\n+ Umsetzung")]:
+        api.post(f"{base}/snippets", form={"name": name, "language": language, "heading": heading, "body": body})
+    return customer, projects["Website relaunch"], draft, line, entry, issued, cancellation, empty, legacy, quote, quote_line, quote_section, broken, broken_section, sent, outcomes, from_quote, quote_project
 
 
 def seed_open_invoices(api, customer, business):
@@ -161,7 +197,7 @@ def main():
     with sync_playwright() as p:
         browser = p.chromium.launch(executable_path=chromium)
         api = browser.new_context().request
-        customer, project, draft, line, entry, issued, cancellation, empty, legacy = seed(api)
+        customer, project, draft, line, entry, issued, cancellation, empty, legacy, quote, quote_line, quote_section, broken, broken_section, sent, outcomes, from_quote, quote_project = seed(api)
         today = datetime.date.today().isoformat()
         templates = [("home", "/"), ("week", "/week"), ("week", "/week?everyone=1"), ("entries", "/entries"),
                      ("entries", f"/entries?day={today}&project={project}"), ("entry", "/entries/new"), ("entry", entry),
@@ -171,7 +207,13 @@ def main():
                      ("invoices", "/invoices"), ("invoice_new", "/invoices/new"), ("invoice", draft), ("invoice", f"{draft}/preview"),
                      ("invoice_line", f"{draft}/lines/new"), ("invoice_line", line), ("invoice_refresh", f"{draft}/refresh"),
                      ("invoice_issue", f"{draft}/issue"), ("invoice_issued", issued), ("invoice_cancel", f"{issued}/cancel"),
-                     ("invoice_issued", cancellation), ("invoice", empty), ("invoice_refresh", f"{empty}/refresh"),
+                     ("invoice_issued", cancellation), ("invoice", empty), ("invoice_refresh", f"{empty}/refresh"), ("invoice", from_quote), ("project", quote_project),
+                     ("quotes", "/quotes"), ("quote_new", "/quotes/new"), ("quote", quote), ("quote", f"{quote}/preview"), ("quote", "/quotes/2"),
+                     ("quote_line", f"{quote}/lines/new"), ("quote_line", quote_line), ("quote_section", f"{quote}/sections/new"), ("quote_section", quote_section),
+                     ("quote", broken), ("quote_section", broken_section),
+                     ("quote_duplicate", f"{quote}/duplicate"), ("quote_send", f"{quote}/send"), ("quote_send", f"{broken}/send"),
+                     ("quote_sent", sent), ("quote_duplicate", f"{sent}/duplicate"), *(("quote_sent", q) for q in outcomes), ("quotes", "/quotes?status=expired"),
+                     ("snippets", "/snippets"), ("snippet", "/snippets/new"), ("snippet", "/snippets/1"),
                      ("settings", "/settings"), ("profile", "/profile"), ("error", "/no-such-page")]
         if changed:
             only[:] = [path for name, path in templates if name in changed]
@@ -233,6 +275,16 @@ def main():
                         page.wait_for_selector("main [role=alert]")
                         page.screenshot(path=f"{out}/{lang}-{viewport}-{scheme}-invoices-blocked.png", full_page=True)
                         failures += [f"{lang} {viewport} {scheme} /invoices (delete refused): {p}" for p in page.evaluate(FIND_BREAKAGE)]
+                    if (path := f"{quote}/sections/new") in pages:
+                        page.goto(base + path)
+                        page.fill("textarea[name=body]", "Write to info@example.com, it costs 5$ and *more.")
+                        page.wait_for_selector("button[name=escape]")
+                        page.screenshot(path=f"{out}/{lang}-{viewport}-{scheme}-quote-section-lint.png", full_page=True)
+                        failures += [f"{lang} {viewport} {scheme} {path} (lint while typing): {p}" for p in page.evaluate(FIND_BREAKAGE)]
+                        page.click("button[name=escape]")
+                        page.wait_for_function("document.querySelectorAll('button[name=escape]').length == 2")
+                        if "info\\@example.com" not in page.input_value("textarea[name=body]"):
+                            failures.append(f"{lang} {viewport} {scheme} {path}: escaping the first finding left the text as it was")
                     # Every seeded customer and project is still in use, so the delete is refused and nothing goes.
                     for path in ("/customers", f"/customers/{customer}/projects"):
                         if path not in pages:
