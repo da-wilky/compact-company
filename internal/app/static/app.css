@@ -178,6 +178,7 @@ h1 { margin: 0 0 1rem; font-size: 1.75rem; font-weight: 650; letter-spacing: -.0
 .line-actions { width: 1%; white-space: nowrap; text-align: right; }
 .line-actions form { display: inline; margin: 0; }
 .line-actions button { width: 30px; height: 30px; padding: 0; border-radius: 8px; }
+.quote-list :is(td:first-child, .date, .num) { white-space: nowrap; }
 .quote-totals { max-width: 34rem; margin-top: 1rem; }
 .quote-totals :is(th, td) { white-space: nowrap; }
 .quote-totals tbody th { font-weight: 650; }
