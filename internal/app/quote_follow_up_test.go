@@ -53,6 +53,9 @@ func TestProjectFromAByEffortQuoteBillsAtItsHourlyRate(t *testing.T) {
 	res := c.get(quote)
 	res.wantBody(t, `Project <a href="`+project+`">Website relaunch</a>`) // markup is the behaviour: the link
 	res.wantNoBody(t, `formaction="`+quote+`/project"`)
+	c.get(project).wantBody(t, `From quote <a href="`+quote+`">A-2026-001</a>`) // markup is the behaviour: the link
+	c.createProject(c.customerPath("acme"), projectForm("support", ""))
+	c.get(c.projectPath(c.customerPath("acme"), "support")).wantNoBody(t, "From quote")
 }
 
 func TestProjectFromAQuoteWithoutOneHourlyRateBillsAtTheCustomersRate(t *testing.T) {

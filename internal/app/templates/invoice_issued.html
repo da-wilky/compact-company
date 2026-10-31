@@ -8,7 +8,7 @@
 </div>
 {{with $.Data.Errors}}<ul class="errors" role="alert">{{range .}}<li>{{t .}}</li>{{end}}</ul>{{end}}
 {{with .Cancels}}<p>{{t "invoices.cancels"}} <a href="/invoices/{{$.Data.CancelsID}}">{{.Number}}</a> · {{day .IssueDate}}{{with $.Data.Snapshot.Reason}} · {{t "invoices.reason"}}: {{.}}{{end}}</p>{{end}}
-{{with $.Data.Quote}}<p>{{t "invoices.from_quote"}} <a href="/quotes/{{.ID}}">{{.Number}}</a></p>{{end}}
+{{with $.Data.Quote}}{{template "from-quote" .}}{{end}}
 <p class="hint">{{t "invoices.issue_date"}} {{day .IssueDate}}{{if not $.Data.CancelsID}} · {{t "invoices.due_date"}} {{day .DueDate}}{{end}} · {{if eq .ServicePeriod.From .ServicePeriod.To}}{{t "invoices.service_date"}} {{day .ServicePeriod.From}}{{else}}{{t "invoices.service_period"}} {{day .ServicePeriod.From}} – {{day .ServicePeriod.To}}{{end}}</p>
 <div class="invoice-body">
 <aside class="status-card">

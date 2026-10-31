@@ -18,3 +18,5 @@
 {{range .Rows}}<tr><td><a href="/quotes/{{.ID}}">{{or .Number (t "quotes.status.draft")}}</a></td>{{if $.ShowCustomer}}<td>{{.Customer}}</td>{{end}}<td>{{.Subject}}</td><td>{{with .SendDate}}{{day .}}{{end}}</td><td class="num">{{.OneOff}} {{.Currency}}</td><td>{{t (print "quotes.status." .Status)}}</td></tr>
 {{end}}</tbody>
 </table></div>{{end}}
+
+{{define "from-quote"}}<p>{{t "quotes.from_quote"}} <a href="/quotes/{{.ID}}">{{.Number}}</a></p>{{end}}

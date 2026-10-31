@@ -23,6 +23,7 @@
 "quotes.declined_on" = { en = "Declined on %s", de = "Abgelehnt am %s" }
 "quotes.undo_accepted" = { en = "Undo accepted", de = "Annahme zurücknehmen" }
 "quotes.invoices" = { en = "Invoices", de = "Rechnungen" }
+"quotes.from_quote" = { en = "From quote", de = "Aus Angebot" }
 "quotes.create_invoice" = { en = "Create invoice", de = "Rechnung erstellen" }
 "quotes.create_project" = { en = "Create project", de = "Projekt anlegen" }
 "quotes.undo_declined" = { en = "Undo declined", de = "Ablehnung zurücknehmen" }

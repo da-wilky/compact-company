@@ -5,7 +5,7 @@
 <h1>{{template "title" $}}</h1>
 {{template "render-errors" $.Data}}
 <p class="actions"><a href="/invoices/{{.ID}}/refresh">{{template "icon-refresh-cw"}}{{t "invoices.refresh"}}</a> <a href="/invoices/{{.ID}}/preview">{{template "icon-eye"}}{{t "invoices.preview"}}</a> <a href="/invoices/{{.ID}}/issue">{{template "icon-send"}}{{t "invoices.issue"}}</a></p>
-{{with .Quote}}<p>{{t "invoices.from_quote"}} <a href="/quotes/{{.ID}}">{{.Number}}</a></p>{{end}}
+{{with .Quote}}{{template "from-quote" .}}{{end}}
 {{if .Lines}}
 <div class="table-wrap"><table class="invoice-lines">
 <thead><tr><th>{{t "invoices.description"}}</th><th class="num">{{t "invoices.quantity"}}</th><th>{{t "invoices.unit"}}</th><th class="num">{{t "invoices.price"}}</th><th class="num">{{t "invoices.total"}}</th><th></th></tr></thead>
