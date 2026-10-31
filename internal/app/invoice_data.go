@@ -105,13 +105,33 @@ func (e *missingBusinessError) Error() string {
 	return "missing business data: " + strings.Join(e.fields, ", ")
 }
 
-// customerLocation is the timezone of invoice id's customer.
-func customerLocation(q querier, id int64) (*time.Location, error) {
+// SQL expressions for customerLocation selecting the customer of an invoice or quote id.
+const (
+	invoiceCustomer = `(SELECT customer_id FROM invoice WHERE id = ?)`
+	quoteCustomer   = `(SELECT customer_id FROM quote WHERE id = ?)`
+)
+
+// customerLocation is the timezone of the customer whose id the SQL expression customer selects
+// with args: "?" for a customer id, invoiceCustomer or quoteCustomer for a record's.
+func customerLocation(q querier, customer string, args ...any) (*time.Location, error) {
 	var tz string
-	if err := q.QueryRow(`SELECT c.timezone FROM invoice i JOIN customer c ON c.id = i.customer_id WHERE i.id = ?`, id).Scan(&tz); err != nil {
+	if err := q.QueryRow(`SELECT timezone FROM customer WHERE id = `+customer, args...).Scan(&tz); err != nil {
 		return nil, err
 	}
 	return time.LoadLocation(tz)
+}
+
+// customerToday is today in the timezone customerLocation resolves.
+func (a *App) customerToday(q querier, customer string, args ...any) (string, error) {
+	loc, err := customerLocation(q, customer, args...)
+	if err != nil {
+		return "", err
+	}
+	return a.today(loc), nil
+}
+
+func (a *App) today(loc *time.Location) string {
+	return a.now().In(loc).Format(time.DateOnly)
 }
 
 // entryPeriod runs from the start of the first entry claimed by invoice id to the end of its last;
@@ -123,7 +143,7 @@ func entryPeriod(q querier, id int64) (p period, ok bool, err error) {
 		Scan(&first, &last); err != nil || !first.Valid {
 		return p, false, err
 	}
-	loc, err := customerLocation(q, id)
+	loc, err := customerLocation(q, invoiceCustomer, id)
 	if err != nil {
 		return p, false, err
 	}
@@ -146,15 +166,6 @@ func (l locationCache) load(tz string) (*time.Location, error) {
 	}
 	l[tz] = loc
 	return loc, nil
-}
-
-// issueDate is today in the customer's timezone of invoice id.
-func (a *App) issueDate(q querier, id int64) (string, error) {
-	loc, err := customerLocation(q, id)
-	if err != nil {
-		return "", err
-	}
-	return a.now().In(loc).Format(time.DateOnly), nil
 }
 
 // senderData is the business and its current tax as invoice and quote templates receive them;

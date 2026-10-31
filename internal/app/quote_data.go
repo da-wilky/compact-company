@@ -2,7 +2,6 @@ package app
 
 import (
 	"encoding/json"
-	"time"
 
 	"golang.org/x/text/currency"
 )
@@ -48,19 +47,6 @@ type quoteTotalsData struct {
 	Once    *totalsData `json:"once"`
 	Monthly *totalsData `json:"monthly"`
 	Yearly  *totalsData `json:"yearly"`
-}
-
-// quoteToday is today in the timezone of quote id's customer.
-func (a *App) quoteToday(q querier, id int64) (string, error) {
-	var tz string
-	if err := q.QueryRow(`SELECT c.timezone FROM quote q JOIN customer c ON c.id = q.customer_id WHERE q.id = ?`, id).Scan(&tz); err != nil {
-		return "", err
-	}
-	loc, err := time.LoadLocation(tz)
-	if err != nil {
-		return "", err
-	}
-	return a.now().In(loc).Format(time.DateOnly), nil
 }
 
 // quoteJSON builds the template input for quote id; a nil number makes it a draft.

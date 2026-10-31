@@ -5,7 +5,6 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
-	"time"
 
 	"golang.org/x/text/currency"
 )
@@ -84,12 +83,11 @@ func (a *App) quoteDuplicate(w http.ResponseWriter, r *http.Request) {
 		a.serverError(w, r, err)
 		return
 	}
-	loc, err := a.viewerLocation(r)
+	validUntil, err := a.newQuoteValidUntil(customer)
 	if err != nil {
 		a.serverError(w, r, err)
 		return
 	}
-	validUntil := a.now().In(loc).AddDate(0, 0, a.cfg.Quote.ValidityDays).Format(time.DateOnly)
 	tx, err := a.db.Begin()
 	if err != nil {
 		a.serverError(w, r, err)

@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 )
 
 func quoteForm(customerPath, subject string) url.Values {
@@ -57,6 +58,19 @@ func TestQuoteValidityDefaultsToThirtyDays(t *testing.T) {
 	c.createCustomer(customerForm("acme", "85"))
 
 	c.get("/quotes/new").wantBody(t, `name="valid_until" value="2026-11-25"`)
+}
+
+func TestNewQuoteValidityCountsFromTodayInTheCustomersTimezone(t *testing.T) {
+	ta := newTestApp(t, devConfig)
+	c := ta.client()
+	c.createCustomer(customerForm("acme", "85"))
+	form := customerForm("kiribati", "85")
+	form.Set("timezone", "Pacific/Kiritimati")
+	c.createCustomer(form)
+	ta.clock.Advance(2 * time.Hour) // noon on the 26th in Berlin, 01:00 on the 27th in Kiritimati
+
+	c.get("/quotes/new?customer="+customerID(c, "kiribati")).wantBody(t, `name="valid_until" value="2026-11-26"`)
+	c.get("/quotes/new?customer="+customerID(c, "acme")).wantBody(t, `name="valid_until" value="2026-11-25"`)
 }
 
 func TestInvalidQuoteConfigFailsStartup(t *testing.T) {

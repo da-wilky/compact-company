@@ -25,7 +25,7 @@ func init() {
 // once into the data dir with its SHA-256 and commits tx, all or nothing like issuing an invoice.
 // sql.ErrNoRows: id was already sent.
 func (a *App) sendQuote(ctx context.Context, tx *sql.Tx, id int64) error {
-	sendDate, err := a.quoteToday(tx, id)
+	sendDate, err := a.customerToday(tx, quoteCustomer, id)
 	if err != nil {
 		return err
 	}
@@ -164,7 +164,7 @@ func (a *App) loadSentQuote(id int64) (sentQuote, error) {
 	if q.Invoices, err = a.quoteInvoices(id); err != nil {
 		return q, err
 	}
-	if q.DateForm, err = a.quoteToday(a.db, id); err != nil {
+	if q.DateForm, err = a.customerToday(a.db, quoteCustomer, id); err != nil {
 		return q, err
 	}
 	q.Status = expire(q.Status, validUntil, q.DateForm)

@@ -55,20 +55,24 @@ type quoteNewPage struct {
 }
 
 func (a *App) quoteNew(w http.ResponseWriter, r *http.Request) {
-	loc, err := a.viewerLocation(r)
-	if err != nil {
-		a.serverError(w, r, err)
-		return
-	}
 	a.renderQuoteNew(w, r, http.StatusOK, quoteHeader{
-		Customer:   r.FormValue("customer"),
-		Project:    r.FormValue("project"),
-		Pricing:    "fixed",
-		ValidUntil: a.now().In(loc).AddDate(0, 0, a.cfg.Quote.ValidityDays).Format(time.DateOnly),
+		Customer: r.FormValue("customer"),
+		Project:  r.FormValue("project"),
+		Pricing:  "fixed",
 	}, nil)
 }
 
-// renderQuoteNew starts the language at the customer's invoice language unless f has one.
+// newQuoteValidUntil is the configured validity counted from today in the timezone of customer id.
+func (a *App) newQuoteValidUntil(customerID int64) (string, error) {
+	loc, err := customerLocation(a.db, "?", customerID)
+	if err != nil {
+		return "", err
+	}
+	return a.now().In(loc).AddDate(0, 0, a.cfg.Quote.ValidityDays).Format(time.DateOnly), nil
+}
+
+// renderQuoteNew starts the language at the customer's invoice language unless f has one,
+// and a fresh form's validity at newQuoteValidUntil.
 func (a *App) renderQuoteNew(w http.ResponseWriter, r *http.Request, status int, f quoteHeader, errs []string) {
 	customers, err := a.customerOptions()
 	if err != nil {
@@ -81,6 +85,13 @@ func (a *App) renderQuoteNew(w http.ResponseWriter, r *http.Request, status int,
 	}
 	if f.Language == "" && f.Customer != "" {
 		if err := a.db.QueryRow(`SELECT invoice_language FROM customer WHERE id = ?`, f.Customer).Scan(&f.Language); err != nil {
+			a.serverError(w, r, err)
+			return
+		}
+	}
+	if errs == nil && f.ValidUntil == "" && f.Customer != "" {
+		id, _ := strconv.ParseInt(f.Customer, 10, 64)
+		if f.ValidUntil, err = a.newQuoteValidUntil(id); err != nil {
 			a.serverError(w, r, err)
 			return
 		}
@@ -387,7 +398,7 @@ func (a *App) loadQuoteRows(cond string, args ...any) ([]quoteRow, error) {
 		if err != nil {
 			return nil, err
 		}
-		row.Status = expire(row.Status, validUntil, a.now().In(loc).Format(time.DateOnly))
+		row.Status = expire(row.Status, validUntil, a.today(loc))
 		found = append(found, row)
 	}
 	if err := rows.Err(); err != nil {

@@ -70,6 +70,19 @@ func TestDuplicateCopiesAQuoteIntoADraftForAnotherCustomer(t *testing.T) {
 	orig.wantBody(t, `selected>website</option>`)
 }
 
+func TestDuplicateValidityCountsFromTodayInTheNewCustomersTimezone(t *testing.T) {
+	ta := newTestApp(t, devConfig)
+	c := ta.client()
+	quote := c.acmeQuote()
+	form := customerForm("kiribati", "85")
+	form.Set("timezone", "Pacific/Kiritimati")
+	c.createCustomer(form)
+	ta.clock.Advance(2 * time.Hour) // noon on the 26th in Berlin, 01:00 on the 27th in Kiritimati
+
+	c.get(c.duplicateQuote(quote, c.customerPath("kiribati"))).wantBody(t, `name="valid_until" value="2026-11-26"`)
+	c.get(c.duplicateQuote(quote, c.customerPath("acme"))).wantBody(t, `name="valid_until" value="2026-11-25"`)
+}
+
 func TestDuplicateForTheSameCustomerKeepsTheProject(t *testing.T) {
 	ta := newTestApp(t, devConfig)
 	c := ta.client()

@@ -31,7 +31,7 @@ func init() {
 // once into the data dir with its SHA-256 and commits tx. On any failure the caller's rollback
 // leaves the number unused, and no file is left behind. sql.ErrNoRows: id was already issued.
 func (a *App) issue(ctx context.Context, tx *sql.Tx, id int64) error {
-	issueDate, err := a.issueDate(tx, id)
+	issueDate, err := a.customerToday(tx, invoiceCustomer, id)
 	if err != nil {
 		return err
 	}
@@ -292,7 +292,7 @@ func (a *App) invoiceShow(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err == nil {
-		inv.PaidForm, err = a.issueDate(a.db, id)
+		inv.PaidForm, err = a.customerToday(a.db, invoiceCustomer, id)
 	}
 	if err != nil {
 		a.serverError(w, r, err)

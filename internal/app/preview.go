@@ -18,7 +18,7 @@ func (a *App) draftPreview(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	issueDate, err := a.issueDate(a.db, d.ID)
+	issueDate, err := a.customerToday(a.db, invoiceCustomer, d.ID)
 	if err != nil {
 		a.serverError(w, r, err)
 		return
@@ -42,7 +42,7 @@ func (a *App) quotePreview(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	today, err := a.quoteToday(a.db, q.ID)
+	today, err := a.customerToday(a.db, quoteCustomer, q.ID)
 	if err != nil {
 		a.serverError(w, r, err)
 		return
