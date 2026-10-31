@@ -31,23 +31,24 @@ type quoteDuplicatePage struct {
 	Errors    []string
 }
 
+// quoteSourceFromPath writes 404 or 500 itself when ok is false.
 func (a *App) quoteSourceFromPath(w http.ResponseWriter, r *http.Request) (quoteSource, bool) {
-	var q quoteSource
 	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
-	if err == nil {
-		q.ID = id
-		err = a.db.QueryRow(`SELECT customer_id, subject, currency FROM quote WHERE id = ?`, id).Scan(&q.CustomerID, &q.Subject, &q.currency)
-	}
-	if err == nil {
-		return q, true
-	}
-	var numErr *strconv.NumError
-	if errors.Is(err, sql.ErrNoRows) || errors.As(err, &numErr) {
+	if err != nil {
 		a.notFound(w, r)
-	} else {
-		a.serverError(w, r, err)
+		return quoteSource{}, false
 	}
-	return q, false
+	q := quoteSource{ID: id}
+	err = a.db.QueryRow(`SELECT customer_id, subject, currency FROM quote WHERE id = ?`, id).Scan(&q.CustomerID, &q.Subject, &q.currency)
+	if errors.Is(err, sql.ErrNoRows) {
+		a.notFound(w, r)
+		return q, false
+	}
+	if err != nil {
+		a.serverError(w, r, err)
+		return q, false
+	}
+	return q, true
 }
 
 func (a *App) renderQuoteDuplicate(w http.ResponseWriter, r *http.Request, status int, p quoteDuplicatePage) {
