@@ -53,6 +53,7 @@
 "quotes.add_section" = { en = "Add section", de = "Abschnitt hinzufügen" }
 "quotes.new_section" = { en = "New section", de = "Neuer Abschnitt" }
 "quotes.edit_section" = { en = "Edit section", de = "Abschnitt bearbeiten" }
+"quotes.delete" = { en = "Delete draft", de = "Entwurf löschen" }
 "quotes.delete_section" = { en = "Delete section", de = "Abschnitt löschen" }
 "quotes.confirm_delete_section" = { en = "Delete this section?", de = "Diesen Abschnitt löschen?" }
 "quotes.no_heading" = { en = "Paragraph without heading", de = "Absatz ohne Überschrift" }
@@ -85,6 +86,8 @@
 "quotes.duplicate_title" = { en = "Duplicate quote", de = "Angebot duplizieren" }
 "quotes.duplicate_hint" = { en = "The new draft copies subject, pricing, lines and sections. Language and validity start afresh for this customer; the project stays only for the same customer.", de = "Der neue Entwurf übernimmt Betreff, Preisart, Positionen und Abschnitte. Sprache und Gültigkeit beginnen für diesen Kunden neu; das Projekt bleibt nur beim selben Kunden." }
 "quotes.confirm_delete" ={ en = "Delete the draft “%s”?", de = "Den Entwurf „%s“ löschen?" }
+"quotes.all_customers" = { en = "All customers", de = "Alle Kunden" }
+"quotes.error.customer" = { en = "Choose a customer.", de = "Bitte einen Kunden wählen." }
 "quotes.error.subject" = { en = "Subject is required.", de = "Betreff ist erforderlich." }
 "quotes.error.project" = { en = "Choose a project of this customer.", de = "Bitte ein Projekt dieses Kunden wählen." }
 "quotes.error.language" = { en = "Choose a language.", de = "Bitte eine Sprache wählen." }

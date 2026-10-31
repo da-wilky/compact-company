@@ -150,7 +150,7 @@ func (a *App) quoteCreate(w http.ResponseWriter, r *http.Request) {
 		err = a.db.QueryRow(`SELECT EXISTS (SELECT 1 FROM customer WHERE id = ?)`, customerID).Scan(&exists)
 	}
 	if err != nil || !exists {
-		a.renderQuoteNew(w, r, http.StatusUnprocessableEntity, f, []string{"invoices.error.customer"})
+		a.renderQuoteNew(w, r, http.StatusUnprocessableEntity, f, []string{"quotes.error.customer"})
 		return
 	}
 	projects, err := a.projectOptions("p.customer_id = ?", customerID)
@@ -475,7 +475,7 @@ func (a *App) quoteList(w http.ResponseWriter, r *http.Request) {
 	for _, c := range customers {
 		options = append(options, filterSelectOption{Value: strconv.FormatInt(c.ID, 10), Name: c.Name, Archived: c.Archived, Selected: c.ID == page.Customer})
 	}
-	page.Customers = filterSelect{Action: "/quotes", Name: "customer", Label: "quotes.customer", All: "invoices.all_customers",
+	page.Customers = filterSelect{Action: "/quotes", Name: "customer", Label: "quotes.customer", All: "quotes.all_customers",
 		Hidden: hiddenFields(quotesQuery(page.Customer, page.Status), "customer"), Groups: []filterGroup{{Options: options}}}
 	if page.List.Rows, err = a.loadQuoteRows(`?1 = 0 OR q.customer_id = ?1`, page.Customer); err != nil {
 		a.serverError(w, r, err)

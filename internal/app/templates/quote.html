@@ -46,6 +46,6 @@
 {{template "quote-terms" $.Data}}
 <button>{{template "icon-save"}}{{t "common.save"}}</button>
 </form>
-<form method="post" action="/quotes/{{.ID}}/delete" data-confirm="{{t "quotes.confirm_delete" .Header.Subject}}"><button class="danger">{{template "icon-trash"}}{{t "invoices.delete"}}</button></form>
+<form method="post" action="/quotes/{{.ID}}/delete" data-confirm="{{t "quotes.confirm_delete" .Header.Subject}}"><button class="danger">{{template "icon-trash"}}{{t "quotes.delete"}}</button></form>
 {{end}}{{end}}
 {{end}}

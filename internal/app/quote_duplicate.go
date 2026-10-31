@@ -76,7 +76,7 @@ func (a *App) quoteDuplicate(w http.ResponseWriter, r *http.Request) {
 	var language, cur string
 	err := a.db.QueryRow(`SELECT invoice_language, currency FROM customer WHERE id = ?`, customer).Scan(&language, &cur)
 	if errors.Is(err, sql.ErrNoRows) {
-		a.renderQuoteDuplicate(w, r, http.StatusUnprocessableEntity, quoteDuplicatePage{Quote: q, Customer: r.PostFormValue("customer"), Errors: []string{"invoices.error.customer"}})
+		a.renderQuoteDuplicate(w, r, http.StatusUnprocessableEntity, quoteDuplicatePage{Quote: q, Customer: r.PostFormValue("customer"), Errors: []string{"quotes.error.customer"}})
 		return
 	}
 	if err != nil {
