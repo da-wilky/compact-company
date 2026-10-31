@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"slices"
 	"strconv"
-	"strings"
 
 	"golang.org/x/text/currency"
 )
@@ -25,16 +24,10 @@ func init() {
 
 var intervals = []string{"once", "monthly", "yearly"}
 
-// quoteLine holds quantity and money as the decimals the user sees.
 type quoteLine struct {
-	ID          int64
-	Description string
-	Detail      string
-	Quantity    string
-	Unit        string
-	UnitPrice   string
-	Interval    string
-	Total       string
+	ID int64
+	lineFields
+	Interval string
 }
 
 // intervalTotals are the totals of one interval's lines, formatted.
@@ -120,27 +113,8 @@ func (a *App) quoteLineEdit(w http.ResponseWriter, r *http.Request) {
 
 // quoteLineForm reads the submitted line on q; it writes 422 itself when ok is false.
 func (a *App) quoteLineForm(w http.ResponseWriter, r *http.Request, q quoteDraft, id int64) (l quoteLine, quantity, unitPrice int64, ok bool) {
-	l = quoteLine{
-		ID:          id,
-		Description: strings.TrimSpace(r.PostFormValue("description")),
-		Detail:      strings.TrimSpace(r.PostFormValue("detail")),
-		Quantity:    strings.TrimSpace(r.PostFormValue("quantity")),
-		Unit:        strings.TrimSpace(r.PostFormValue("unit")),
-		UnitPrice:   strings.TrimSpace(r.PostFormValue("unit_price")),
-		Interval:    r.PostFormValue("interval"),
-	}
-	var errs []string
-	if l.Description == "" {
-		errs = append(errs, "invoices.error.description")
-	}
-	quantity, err := parseQuantity(l.Quantity)
-	if err != nil {
-		errs = append(errs, "invoices.error.quantity")
-	}
-	unitPrice, err = parseAmount(l.UnitPrice, q.unit)
-	if err != nil {
-		errs = append(errs, "invoices.error.unit_price")
-	}
+	fields, quantity, unitPrice, errs := lineFieldsFromForm(r, q.unit)
+	l = quoteLine{ID: id, lineFields: fields, Interval: r.PostFormValue("interval")}
 	if !slices.Contains(intervals, l.Interval) {
 		errs = append(errs, "quotes.error.interval")
 	}
@@ -205,7 +179,7 @@ func (a *App) quotePartMove(table, param string, step int) http.HandlerFunc {
 			a.notFound(w, r)
 			return
 		}
-		if err := a.swapQuoteParts(table, quoteID, id, step); errors.Is(err, sql.ErrNoRows) {
+		if err := a.swapPosition(table, "quote", quoteID, id, step, "quote_id"); errors.Is(err, sql.ErrNoRows) {
 			a.notFound(w, r)
 			return
 		} else if err != nil {
@@ -214,36 +188,4 @@ func (a *App) quotePartMove(table, param string, step int) http.HandlerFunc {
 		}
 		http.Redirect(w, r, quotePath(quoteID), http.StatusSeeOther)
 	}
-}
-
-func (a *App) swapQuoteParts(table string, quoteID, id int64, step int) error {
-	tx, err := a.db.Begin()
-	if err != nil {
-		return err
-	}
-	defer func() { _ = tx.Rollback() }()
-	var pos int64
-	if err := tx.QueryRow(`SELECT l.position FROM `+table+` l JOIN quote q ON q.id = l.quote_id
-		WHERE l.id = ? AND q.id = ? AND q.number IS NULL`, id, quoteID).Scan(&pos); err != nil {
-		return err
-	}
-	neighbour := `SELECT id, position FROM ` + table + ` WHERE quote_id = ? AND position > ? ORDER BY position LIMIT 1`
-	if step < 0 {
-		neighbour = `SELECT id, position FROM ` + table + ` WHERE quote_id = ? AND position < ? ORDER BY position DESC LIMIT 1`
-	}
-	var otherID, otherPos int64
-	err = tx.QueryRow(neighbour, quoteID, pos).Scan(&otherID, &otherPos)
-	if errors.Is(err, sql.ErrNoRows) {
-		return nil
-	}
-	if err != nil {
-		return err
-	}
-	if _, err := tx.Exec(`UPDATE `+table+` SET position = ? WHERE id = ?`, otherPos, id); err != nil {
-		return err
-	}
-	if _, err := tx.Exec(`UPDATE `+table+` SET position = ? WHERE id = ?`, pos, otherID); err != nil {
-		return err
-	}
-	return tx.Commit()
 }
