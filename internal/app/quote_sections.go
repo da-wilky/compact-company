@@ -28,7 +28,6 @@ type quoteSection struct {
 	Failure       *typstFailure
 }
 
-// checkSections compiles each section's body and records why it fails.
 func checkSections(ctx context.Context, sections []quoteSection) error {
 	for i := range sections {
 		f, err := checkTypst(ctx, sections[i].Body)

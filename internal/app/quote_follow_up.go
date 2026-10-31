@@ -53,7 +53,6 @@ func (a *App) quoteProject(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/projects/"+strconv.FormatInt(projectID, 10), http.StatusSeeOther)
 }
 
-// quoteRef links a sent quote by its number.
 type quoteRef struct {
 	ID     int64
 	Number string
