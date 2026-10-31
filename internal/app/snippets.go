@@ -180,7 +180,7 @@ func (a *App) snippetUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	res, err := a.db.Exec(`UPDATE snippet SET name = ?, language = ?, heading = ?, body = ? WHERE id = ?`, s.Name, s.Language, s.Heading, s.Body, s.ID)
-	a.afterInvoiceWrite(w, r, res, err, "/snippets")
+	a.afterWrite(w, r, res, err, "/snippets")
 }
 
 // Quotes hold copies, so deleting a snippet leaves them as they are.
@@ -191,5 +191,5 @@ func (a *App) snippetDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	res, err := a.db.Exec(`DELETE FROM snippet WHERE id = ?`, id)
-	a.afterInvoiceWrite(w, r, res, err, "/snippets")
+	a.afterWrite(w, r, res, err, "/snippets")
 }

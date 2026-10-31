@@ -236,7 +236,7 @@ func (a *App) lineCreate(w http.ResponseWriter, r *http.Request) {
 		SELECT id, (SELECT ifnull(max(position), 0) + 1 FROM invoice_line WHERE invoice_id = ?1), 0, ?2, ?3, ?4, ?5, ?6, ?7
 		FROM invoice WHERE id = ?1 AND number IS NULL`,
 		d.ID, l.Description, l.Detail, quantity, l.Unit, unitPrice, l.projectID())
-	a.afterInvoiceWrite(w, r, res, err, draftPath(d.ID))
+	a.afterWrite(w, r, res, err, draftPath(d.ID))
 }
 
 // A line moved to another project goes last, to the end of that project's section.
@@ -253,7 +253,7 @@ func (a *App) lineUpdate(w http.ResponseWriter, r *http.Request) {
 		position = CASE WHEN project_id IS ?6 THEN position ELSE (SELECT max(position) + 1 FROM invoice_line WHERE invoice_id = ?8) END
 		WHERE id = ?7 AND invoice_id IN (SELECT id FROM invoice WHERE id = ?8 AND number IS NULL)`,
 		l.Description, l.Detail, quantity, l.Unit, unitPrice, l.projectID(), l.ID, d.ID)
-	a.afterInvoiceWrite(w, r, res, err, draftPath(d.ID))
+	a.afterWrite(w, r, res, err, draftPath(d.ID))
 }
 
 // Entries claimed by the line are released by the foreign key's ON DELETE SET NULL.
@@ -264,7 +264,7 @@ func (a *App) lineDelete(w http.ResponseWriter, r *http.Request) {
 	}
 	res, err := a.db.Exec(`DELETE FROM invoice_line
 		WHERE id = ? AND invoice_id IN (SELECT id FROM invoice WHERE id = ? AND number IS NULL)`, l.ID, d.ID)
-	a.afterInvoiceWrite(w, r, res, err, draftPath(d.ID))
+	a.afterWrite(w, r, res, err, draftPath(d.ID))
 }
 
 // lineMove swaps the line with its neighbour in direction step (-1 up, +1 down); at the edge it does nothing.

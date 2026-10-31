@@ -125,7 +125,7 @@ func (a *App) quoteLineCreate(w http.ResponseWriter, r *http.Request) {
 		SELECT id, (SELECT ifnull(max(position), 0) + 1 FROM quote_line WHERE quote_id = ?1), ?2, ?3, ?4, ?5, ?6, ?7
 		FROM quote WHERE id = ?1 AND number IS NULL`,
 		q.ID, l.Description, l.Detail, quantity, l.Unit, unitPrice, l.Interval)
-	a.afterInvoiceWrite(w, r, res, err, quotePath(q.ID))
+	a.afterWrite(w, r, res, err, quotePath(q.ID))
 }
 
 func (a *App) quoteLineUpdate(w http.ResponseWriter, r *http.Request) {
@@ -140,7 +140,7 @@ func (a *App) quoteLineUpdate(w http.ResponseWriter, r *http.Request) {
 	res, err := a.db.Exec(`UPDATE quote_line SET description = ?, detail = ?, quantity = ?, unit = ?, unit_price = ?, interval = ?
 		WHERE id = ? AND quote_id IN (SELECT id FROM quote WHERE id = ? AND number IS NULL)`,
 		l.Description, l.Detail, quantity, l.Unit, unitPrice, l.Interval, l.ID, q.ID)
-	a.afterInvoiceWrite(w, r, res, err, quotePath(q.ID))
+	a.afterWrite(w, r, res, err, quotePath(q.ID))
 }
 
 // quotePartDelete deletes the line or section (table quote_line or quote_section) named by path value param.
@@ -153,7 +153,7 @@ func (a *App) quotePartDelete(table, param string) http.HandlerFunc {
 			return
 		}
 		res, err := a.db.Exec(`DELETE FROM `+table+` WHERE id = ? AND quote_id IN (SELECT id FROM quote WHERE id = ? AND number IS NULL)`, id, quoteID)
-		a.afterInvoiceWrite(w, r, res, err, quotePath(quoteID))
+		a.afterWrite(w, r, res, err, quotePath(quoteID))
 	}
 }
 

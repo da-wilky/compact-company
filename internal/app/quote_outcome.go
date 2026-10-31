@@ -31,7 +31,7 @@ func (a *App) markOutcome(column string) http.HandlerFunc {
 		}
 		res, err := a.db.Exec(`UPDATE quote SET `+column+` = ?
 			WHERE id = ? AND number IS NOT NULL AND accepted_date IS NULL AND declined_date IS NULL`, date, id)
-		a.afterInvoiceWrite(w, r, res, err, quotePath(id))
+		a.afterWrite(w, r, res, err, quotePath(id))
 	}
 }
 
@@ -42,7 +42,7 @@ func (a *App) undoOutcome(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	res, err := a.db.Exec(`UPDATE quote SET accepted_date = NULL, declined_date = NULL WHERE id = ? AND number IS NOT NULL`, id)
-	a.afterInvoiceWrite(w, r, res, err, quotePath(id))
+	a.afterWrite(w, r, res, err, quotePath(id))
 }
 
 // refuseOutcome shows sent quote id with the submitted date and why it wasn't marked.

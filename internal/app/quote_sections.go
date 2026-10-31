@@ -120,7 +120,7 @@ func (a *App) quoteSectionCreate(w http.ResponseWriter, r *http.Request) {
 	res, err := a.db.Exec(`INSERT INTO quote_section (quote_id, position, heading, body)
 		SELECT id, (SELECT ifnull(max(position), 0) + 1 FROM quote_section WHERE quote_id = ?1), ?2, ?3
 		FROM quote WHERE id = ?1 AND number IS NULL`, q.ID, s.Heading, s.Body)
-	a.afterInvoiceWrite(w, r, res, err, quotePath(q.ID))
+	a.afterWrite(w, r, res, err, quotePath(q.ID))
 }
 
 func (a *App) quoteSectionUpdate(w http.ResponseWriter, r *http.Request) {
@@ -134,5 +134,5 @@ func (a *App) quoteSectionUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 	res, err := a.db.Exec(`UPDATE quote_section SET heading = ?, body = ?
 		WHERE id = ? AND quote_id IN (SELECT id FROM quote WHERE id = ? AND number IS NULL)`, s.Heading, s.Body, s.ID, q.ID)
-	a.afterInvoiceWrite(w, r, res, err, quotePath(q.ID))
+	a.afterWrite(w, r, res, err, quotePath(q.ID))
 }

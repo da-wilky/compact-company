@@ -333,7 +333,7 @@ func (a *App) quoteUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 	res, err := a.db.Exec(`UPDATE quote SET project_id = ?, subject = ?, language = ?, pricing = ?, valid_until = ?
 		WHERE id = ? AND number IS NULL`, project, f.Subject, f.Language, f.Pricing, f.ValidUntil, q.ID)
-	a.afterInvoiceWrite(w, r, res, err, quotePath(q.ID))
+	a.afterWrite(w, r, res, err, quotePath(q.ID))
 }
 
 // Deleting a draft cascades to its lines and sections.
@@ -344,7 +344,7 @@ func (a *App) quoteDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	res, err := a.db.Exec(`DELETE FROM quote WHERE id = ? AND number IS NULL`, id)
-	a.afterInvoiceWrite(w, r, res, err, "/quotes")
+	a.afterWrite(w, r, res, err, "/quotes")
 }
 
 // quoteStatus derives a quote's status (quote aliased q) short of expired, which needs today in the customer's timezone: see expire.

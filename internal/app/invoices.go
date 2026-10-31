@@ -527,7 +527,7 @@ func (a *App) draftUpdate(w http.ResponseWriter, r *http.Request) {
 	res, err := a.db.Exec(`UPDATE invoice SET range_from = ?, range_to = ?, service_from = ?, service_to = ?, payment_days = ?
 		WHERE id = ? AND number IS NULL`,
 		d.Header.From, d.Header.To, d.Header.ServiceFrom, d.Header.ServiceTo, paymentDays, d.ID)
-	a.afterInvoiceWrite(w, r, res, err, draftPath(d.ID))
+	a.afterWrite(w, r, res, err, draftPath(d.ID))
 }
 
 // Deleting the draft cascades to its lines, which releases their entries.
@@ -538,7 +538,7 @@ func (a *App) draftDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	res, err := deleteDraft(a.db, id)
-	a.afterInvoiceWrite(w, r, res, err, "/invoices")
+	a.afterWrite(w, r, res, err, "/invoices")
 }
 
 // deleteDraft deletes invoice id if it is a draft; cascades drop its lines and chosen projects and release its entries.
@@ -583,9 +583,9 @@ func (a *App) draftDeleteSelected(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// afterInvoiceWrite redirects to done, or answers 404 when the write matched no row
-// because the invoice (or line) is gone or no longer in the state the write requires.
-func (a *App) afterInvoiceWrite(w http.ResponseWriter, r *http.Request, res sql.Result, err error, done string) {
+// afterWrite redirects to done, or answers 404 when the write matched no row
+// because the record (an invoice, quote, line or section) is gone or no longer in the state the write requires.
+func (a *App) afterWrite(w http.ResponseWriter, r *http.Request, res sql.Result, err error, done string) {
 	if err != nil {
 		a.serverError(w, r, err)
 		return
