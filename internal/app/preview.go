@@ -49,12 +49,12 @@ func (a *App) quotePreview(w http.ResponseWriter, r *http.Request) {
 	}
 	data, err := a.quoteJSON(a.db, q.ID, nil, today)
 	if err != nil {
-		a.renderQuoteFailure(w, r, q, err)
+		a.renderQuoteFailure(w, r, "quote", q, err)
 		return
 	}
 	pdf, err := a.renderPDF(r.Context(), "quote.typ", data)
 	if err != nil {
-		a.renderQuoteFailure(w, r, q, err)
+		a.renderQuoteFailure(w, r, "quote", q, err)
 		return
 	}
 	writePDF(w, "quote-draft-"+strconv.FormatInt(q.ID, 10)+".pdf", pdf)

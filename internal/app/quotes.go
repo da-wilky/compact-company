@@ -2,6 +2,7 @@ package app
 
 import (
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/url"
@@ -225,7 +226,7 @@ func (a *App) loadQuoteDraft(id int64) (quoteDraft, error) {
 	if q.Lines, totals, err = queryQuoteLines(a.db, id, q.unit); err != nil {
 		return q, err
 	}
-	q.Totals = intervalTotalsOf(totals, q.VATPercent, q.unit)
+	q.Totals = quoteTotalsOf(totals, q.VATPercent, q.unit).list()
 	q.Sections, err = quoteSections(a.db, id)
 	return q, err
 }
@@ -271,15 +272,18 @@ func (a *App) renderQuotePage(w http.ResponseWriter, r *http.Request, status int
 	a.render(w, r, status, "quote", p)
 }
 
-// renderQuoteFailure shows on the quote's page why q couldn't be rendered.
-func (a *App) renderQuoteFailure(w http.ResponseWriter, r *http.Request, q quoteDraft, err error) {
+// renderQuoteFailure shows on page (quote or quote_send) why q couldn't be rendered.
+func (a *App) renderQuoteFailure(w http.ResponseWriter, r *http.Request, page string, q quoteDraft, err error) {
 	p := quotePage{Quote: q}
 	status, ok := p.explain(err)
-	if !ok {
+	switch {
+	case !ok:
 		a.serverError(w, r, err)
-		return
+	case page == "quote":
+		a.renderQuotePage(w, r, status, p)
+	default:
+		a.render(w, r, status, page, p)
 	}
-	a.renderQuotePage(w, r, status, p)
 }
 
 func (a *App) quoteShow(w http.ResponseWriter, r *http.Request) {
@@ -378,7 +382,7 @@ type quoteList struct {
 // A sent quote's one-off total is its snapshot's, so a later VAT change doesn't alter it.
 func (a *App) loadQuoteRows(cond string, args ...any) ([]quoteRow, error) {
 	rows, err := a.db.Query(`SELECT * FROM (SELECT q.id, ifnull(q.number, ''), c.name, q.subject, ifnull(q.send_date, '') send_date, q.currency,
-		`+quoteStatus+` status, q.valid_until, c.timezone, q.number IS NOT NULL sent, ifnull(q.snapshot ->> '$.totals.once.gross', '')
+		`+quoteStatus+` status, q.valid_until, c.timezone, q.number IS NOT NULL sent, q.snapshot -> '$.totals'
 		FROM quote q JOIN customer c ON c.id = q.customer_id WHERE `+cond+`)
 		ORDER BY sent, send_date DESC, id DESC`, args...)
 	if err != nil {
@@ -386,12 +390,14 @@ func (a *App) loadQuoteRows(cond string, args ...any) ([]quoteRow, error) {
 	}
 	defer func() { _ = rows.Close() }()
 	var found []quoteRow
+	var drafts []int
 	locs := locationCache{}
 	for rows.Next() {
 		var row quoteRow
 		var validUntil, tz string
 		var sent bool
-		if err := rows.Scan(&row.ID, &row.Number, &row.Customer, &row.Subject, &row.SendDate, &row.Currency, &row.Status, &validUntil, &tz, &sent, &row.OneOff); err != nil {
+		var snapshotTotals sql.NullString
+		if err := rows.Scan(&row.ID, &row.Number, &row.Customer, &row.Subject, &row.SendDate, &row.Currency, &row.Status, &validUntil, &tz, &sent, &snapshotTotals); err != nil {
 			return nil, err
 		}
 		loc, err := locs.load(tz)
@@ -399,6 +405,15 @@ func (a *App) loadQuoteRows(cond string, args ...any) ([]quoteRow, error) {
 			return nil, err
 		}
 		row.Status = expire(row.Status, validUntil, a.today(loc))
+		if sent {
+			var totals quoteTotalsData
+			if err := json.Unmarshal([]byte(snapshotTotals.String), &totals); err != nil {
+				return nil, err
+			}
+			row.OneOff = totals.oneOff(currency.MustParseISO(row.Currency))
+		} else {
+			drafts = append(drafts, len(found))
+		}
 		found = append(found, row)
 	}
 	if err := rows.Err(); err != nil {
@@ -408,16 +423,13 @@ func (a *App) loadQuoteRows(cond string, args ...any) ([]quoteRow, error) {
 	if err != nil {
 		return nil, err
 	}
-	for i := range found {
-		if found[i].OneOff != "" {
-			continue
-		}
+	for _, i := range drafts {
 		unit := currency.MustParseISO(found[i].Currency)
 		_, totals, err := queryQuoteLines(a.db, found[i].ID, unit)
 		if err != nil {
 			return nil, err
 		}
-		found[i].OneOff = formatAmount(totalsOf(totals["once"], vat).Gross, unit)
+		found[i].OneOff = quoteTotalsOf(totals, vat, unit).oneOff(unit)
 	}
 	return found, nil
 }

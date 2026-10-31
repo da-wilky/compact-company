@@ -42,11 +42,39 @@ type quoteSectionData struct {
 	Body    string `json:"body"`
 }
 
-// quoteTotalsData holds each interval's totals, nil for an interval without lines.
-type quoteTotalsData struct {
-	Once    *totalsData `json:"once"`
-	Monthly *totalsData `json:"monthly"`
-	Yearly  *totalsData `json:"yearly"`
+// quoteTotalsData holds each interval's totals by interval, nil for an interval without lines.
+type quoteTotalsData map[string]*totalsData
+
+// quoteTotalsOf taxes each interval on its own net, like an invoice.
+func quoteTotalsOf(lineTotals map[string][]int64, vatPercent int64, unit currency.Unit) quoteTotalsData {
+	out := quoteTotalsData{}
+	for _, iv := range intervals {
+		out[iv] = nil
+		if len(lineTotals[iv]) > 0 {
+			t := totalsOf(lineTotals[iv], vatPercent).format(unit)
+			out[iv] = &t
+		}
+	}
+	return out
+}
+
+// list is the totals of the intervals that have lines, in interval order.
+func (t quoteTotalsData) list() []intervalTotals {
+	var out []intervalTotals
+	for _, iv := range intervals {
+		if t[iv] != nil {
+			out = append(out, intervalTotals{iv, *t[iv]})
+		}
+	}
+	return out
+}
+
+// oneOff is the one-off gross, zero without one-off lines.
+func (t quoteTotalsData) oneOff(unit currency.Unit) string {
+	if t["once"] == nil {
+		return formatAmount(0, unit)
+	}
+	return t["once"].Gross
 }
 
 // quoteJSON builds the template input for quote id; a nil number makes it a draft.
@@ -84,14 +112,7 @@ func (a *App) quoteJSON(q querier, id int64, number *string, issueDate string) (
 		d.Lines = append(d.Lines, quoteLineData{Description: l.Description, Detail: l.Detail, Quantity: l.Quantity,
 			Unit: l.Unit, UnitPrice: l.UnitPrice, Interval: l.Interval, Total: l.Total})
 	}
-	intervalTotals := func(interval string) *totalsData {
-		if len(totals[interval]) == 0 {
-			return nil
-		}
-		t := totalsOf(totals[interval], tax.VATRate)
-		return &totalsData{Net: formatAmount(t.Net, unit), VAT: formatAmount(t.VAT, unit), Gross: formatAmount(t.Gross, unit)}
-	}
-	d.Totals = quoteTotalsData{Once: intervalTotals("once"), Monthly: intervalTotals("monthly"), Yearly: intervalTotals("yearly")}
+	d.Totals = quoteTotalsOf(totals, tax.VATRate, unit)
 	sections, err := quoteSections(q, id)
 	if err != nil {
 		return nil, err

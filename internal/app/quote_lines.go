@@ -32,8 +32,8 @@ type quoteLine struct {
 
 // intervalTotals are the totals of one interval's lines, formatted.
 type intervalTotals struct {
-	Interval        string
-	Net, VAT, Gross string
+	Interval string
+	totalsData
 }
 
 // queryQuoteLines returns quote id's lines in order and each interval's line totals in minor units.
@@ -58,19 +58,6 @@ func queryQuoteLines(q querier, id int64, unit currency.Unit) ([]quoteLine, map[
 		totals[l.Interval] = append(totals[l.Interval], total)
 	}
 	return lines, totals, rows.Err()
-}
-
-// intervalTotalsOf taxes each interval on its own net, like an invoice, and leaves out intervals without lines.
-func intervalTotalsOf(totals map[string][]int64, vatPercent int64, unit currency.Unit) []intervalTotals {
-	var out []intervalTotals
-	for _, iv := range intervals {
-		if len(totals[iv]) == 0 {
-			continue
-		}
-		t := totalsOf(totals[iv], vatPercent)
-		out = append(out, intervalTotals{iv, formatAmount(t.Net, unit), formatAmount(t.VAT, unit), formatAmount(t.Gross, unit)})
-	}
-	return out
 }
 
 type quoteLinePage struct {

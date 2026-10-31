@@ -12,7 +12,7 @@
 <div class="invoice-body">
 <aside class="status-card">
 <p class="status">{{t (print "quotes.status." $.Data.Status)}}</p>
-{{with .Totals.Once}}<p class="due">{{.Gross}} {{$.Data.Snapshot.Currency}}</p>{{end}}
+{{with index .Totals "once"}}<p class="due">{{.Gross}} {{$.Data.Snapshot.Currency}}</p>{{end}}
 {{with $.Data.Invoices}}<p>{{t "quotes.invoices"}}: {{range $i, $inv := .}}{{if $i}}, {{end}}<a href="/invoices/{{.ID}}">{{or .Number (t "invoices.status.draft")}}</a>{{end}}</p>{{end}}
 {{if $.Data.AcceptedDate}}<form method="post" action="/quotes/{{$.Data.ID}}/invoice">
 <p><button class="primary">{{template "icon-plus"}}{{t "quotes.create_invoice"}}</button>{{if not $.Data.Project}} <button formaction="/quotes/{{$.Data.ID}}/project">{{template "icon-plus"}}{{t "quotes.create_project"}}</button>{{end}}</p>

@@ -243,7 +243,7 @@ func (a *App) invoiceJSON(q querier, id int64, number *string, issueDate string)
 		return nil, 0, err
 	}
 	t := totalsOf(totals, d.Tax.VATRate)
-	d.Totals = totalsData{Net: formatAmount(t.Net, unit), VAT: formatAmount(t.VAT, unit), Gross: formatAmount(t.Gross, unit)}
+	d.Totals = t.format(unit)
 	entries, err := a.lineEntries(q, id)
 	if err != nil {
 		return nil, 0, err

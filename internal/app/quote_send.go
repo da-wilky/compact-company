@@ -106,13 +106,7 @@ func (a *App) quoteSend(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		p := quotePage{Quote: q}
-		status, ok := p.explain(err)
-		if !ok {
-			a.serverError(w, r, err)
-			return
-		}
-		a.render(w, r, status, "quote_send", p)
+		a.renderQuoteFailure(w, r, "quote_send", q, err)
 		return
 	}
 	http.Redirect(w, r, quotePath(q.ID), http.StatusSeeOther)
@@ -135,13 +129,7 @@ type sentQuote struct {
 
 // Totals are the snapshot's totals of the intervals that have lines.
 func (q sentQuote) Totals() []intervalTotals {
-	var out []intervalTotals
-	for i, t := range []*totalsData{q.Snapshot.Totals.Once, q.Snapshot.Totals.Monthly, q.Snapshot.Totals.Yearly} {
-		if t != nil {
-			out = append(out, intervalTotals{intervals[i], t.Net, t.VAT, t.Gross})
-		}
-	}
-	return out
+	return q.Snapshot.Totals.list()
 }
 
 // loadSentQuote returns sql.ErrNoRows unless id is sent. It reads the snapshot,
