@@ -14,7 +14,7 @@
 <aside class="status-card">
 <p class="status">{{t (print "invoices.status." $.Data.Status)}}</p>
 <p class="due">{{or $.Data.AmountDue .Totals.Gross}} {{.Currency}}</p>
-<a class="pill primary" href="/invoices/{{$.Data.ID}}/pdf">{{template "icon-download"}}{{t "invoices.download"}}</a>
+<a class="pill primary" href="/invoices/{{$.Data.ID}}/pdf">{{template "icon-download"}}{{t "pdf.download"}}</a>
 {{if $.Data.PaidDate}}<form method="post" action="/invoices/{{$.Data.ID}}/unpaid" data-confirm="{{t "invoices.confirm_undo_paid" $.Data.Number}}" data-confirm-ok="{{t "invoices.undo_paid"}}" data-confirm-neutral>
 <p>{{t "invoices.paid_on" (day $.Data.PaidDate)}}</p>
 <button class="primary">{{template "icon-undo-2"}}{{t "invoices.undo_paid"}}</button>
@@ -26,19 +26,19 @@
 {{if $.Data.Cancellable}}<a class="danger" href="/invoices/{{$.Data.ID}}/cancel">{{template "icon-file-x"}}{{t "invoices.cancel"}}</a>{{end}}
 </aside>
 <div class="table-wrap"><table class="invoice-lines">
-<thead><tr><th>{{t "invoices.description"}}</th><th class="num">{{t "invoices.quantity"}}</th><th>{{t "invoices.unit"}}</th><th class="num">{{t "invoices.price"}}</th><th class="num">{{t "invoices.total"}}</th><th></th></tr></thead>
+<thead><tr><th>{{t "lines.description"}}</th><th class="num">{{t "lines.quantity"}}</th><th>{{t "lines.unit"}}</th><th class="num">{{t "lines.price"}}</th><th class="num">{{t "lines.total"}}</th><th></th></tr></thead>
 <tbody>
 {{range $.Data.Sections}}{{with .Project}}<tr class="section"><th colspan="6">{{.}}</th></tr>
 {{end}}{{$s := .}}{{range .Lines}}<tr{{if $s.Project}} class="in-section"{{end}}><td>{{.Description}}{{with .Detail}}<br><span class="hint">{{.}}</span>{{end}}</td><td class="num">{{.Quantity}}</td><td>{{.Unit}}</td><td class="num">{{.UnitPrice}}</td><td class="num">{{.Total}}</td><td>{{with .CancelledBy}}<a class="tag" href="/invoices/{{.ID}}">{{t "invoices.cancelled_by" .Number}}</a>{{end}}</td></tr>
 {{end}}{{end}}</tbody>
 <tfoot>
-<tr><th colspan="4">{{t "invoices.net"}}</th><td class="num">{{.Totals.Net}}</td><td>{{.Currency}}</td></tr>
-{{if not .Tax.SmallBusiness}}<tr><th colspan="4">{{t "invoices.vat" .Tax.VATRate}}</th><td class="num">{{.Totals.VAT}}</td><td>{{.Currency}}</td></tr>{{end}}
-<tr><th colspan="4">{{t "invoices.gross"}}</th><td class="num">{{.Totals.Gross}}</td><td>{{.Currency}}</td></tr>
+<tr><th colspan="4">{{t "lines.net"}}</th><td class="num">{{.Totals.Net}}</td><td>{{.Currency}}</td></tr>
+{{if not .Tax.SmallBusiness}}<tr><th colspan="4">{{t "lines.vat" .Tax.VATRate}}</th><td class="num">{{.Totals.VAT}}</td><td>{{.Currency}}</td></tr>{{end}}
+<tr><th colspan="4">{{t "lines.gross"}}</th><td class="num">{{.Totals.Gross}}</td><td>{{.Currency}}</td></tr>
 {{with $.Data.AmountDue}}<tr><th colspan="4">{{t "invoices.amount_due"}}</th><td class="num">{{.}}</td><td>{{$.Data.Snapshot.Currency}}</td></tr>{{end}}
 </tfoot>
 </table></div>
 </div>
-<p class="hint sha">{{t "invoices.sha256"}}: {{$.Data.SHA256}}</p>
+<p class="hint sha">{{t "pdf.sha256"}}: {{$.Data.SHA256}}</p>
 {{end}}{{end}}
 {{end}}

@@ -1,3 +1,18 @@
 "lines.error.description" = { en = "Description is required.", de = "Beschreibung ist erforderlich." }
 "lines.error.quantity" = { en = "Quantity must be a non-negative decimal with at most 3 decimals.", de = "Menge muss eine nicht negative Dezimalzahl mit höchstens 3 Nachkommastellen sein." }
 "lines.error.unit_price" = { en = "Unit price must be a non-negative decimal with no more decimals than the currency allows.", de = "Einzelpreis muss eine nicht negative Dezimalzahl mit höchstens so vielen Nachkommastellen sein, wie die Währung erlaubt." }
+"lines.unit" = { en = "Unit", de = "Einheit" }
+"lines.quantity" = { en = "Quantity", de = "Menge" }
+"lines.description" = { en = "Description", de = "Beschreibung" }
+"lines.detail" = { en = "Detail", de = "Detail" }
+"lines.price" = { en = "Unit price", de = "Einzelpreis" }
+"lines.unit_price" = { en = "Unit price (%s)", de = "Einzelpreis (%s)" }
+"lines.total" = { en = "Total", de = "Summe" }
+"lines.net" = { en = "Net", de = "Netto" }
+"lines.vat" = { en = "VAT %d %%", de = "USt. %d %%" }
+"lines.gross" = { en = "Gross", de = "Brutto" }
+"lines.add_line" = { en = "Add line", de = "Position hinzufügen" }
+"lines.delete_line" = { en = "Delete line", de = "Position löschen" }
+"lines.new_line" = { en = "New line", de = "Neue Position" }
+"lines.edit_line" = { en = "Edit line", de = "Position bearbeiten" }
+"lines.confirm_delete_line" = { en = "Delete the line “%s”?", de = "Position „%s“ löschen?" }

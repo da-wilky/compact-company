@@ -7,7 +7,7 @@
 <p class="hint">{{t "quotes.sent_for" $.Data.Number .Customer.Number .Customer.Name}}</p></div>
 </div>
 {{with $.Data.Errors}}<ul class="errors" role="alert">{{range .}}<li>{{t .}}</li>{{end}}</ul>{{end}}
-<p class="actions"><a href="/quotes/{{$.Data.ID}}/pdf">{{template "icon-download"}}{{t "invoices.download"}}</a> <a href="/quotes/{{$.Data.ID}}/duplicate">{{template "icon-copy"}}{{t "quotes.duplicate"}}</a></p>
+<p class="actions"><a href="/quotes/{{$.Data.ID}}/pdf">{{template "icon-download"}}{{t "pdf.download"}}</a> <a href="/quotes/{{$.Data.ID}}/duplicate">{{template "icon-copy"}}{{t "quotes.duplicate"}}</a></p>
 <p class="hint">{{t "quotes.sent_on" (day .IssueDate)}} · {{t "quotes.valid_until"}} {{day .ValidUntil}} · {{t (print "quotes.pricing." .Pricing)}}{{with $.Data.Project}} · {{t "quotes.project"}} <a href="/projects/{{.ID}}">{{.Name}}</a>{{end}}</p>
 <div class="invoice-body">
 <aside class="status-card">
@@ -34,13 +34,13 @@
 <div>
 {{if .Lines}}
 <div class="table-wrap"><table class="invoice-lines">
-<thead><tr><th>{{t "invoices.description"}}</th><th class="num">{{t "invoices.quantity"}}</th><th>{{t "invoices.unit"}}</th><th class="num">{{t "invoices.price"}}</th><th>{{t "quotes.interval"}}</th><th class="num">{{t "invoices.total"}}</th></tr></thead>
+<thead><tr><th>{{t "lines.description"}}</th><th class="num">{{t "lines.quantity"}}</th><th>{{t "lines.unit"}}</th><th class="num">{{t "lines.price"}}</th><th>{{t "quotes.interval"}}</th><th class="num">{{t "lines.total"}}</th></tr></thead>
 <tbody>
 {{range .Lines}}<tr><td>{{.Description}}{{with .Detail}}<br><span class="hint">{{.}}</span>{{end}}</td><td class="num">{{.Quantity}}</td><td>{{.Unit}}</td><td class="num">{{.UnitPrice}}</td><td>{{t (print "quotes.interval." .Interval)}}</td><td class="num">{{.Total}}</td></tr>
 {{end}}</tbody>
 </table></div>
 <div class="table-wrap"><table class="quote-totals">
-<thead><tr><td></td><th class="num">{{t "invoices.net"}}</th>{{if not .Tax.SmallBusiness}}<th class="num">{{t "invoices.vat" .Tax.VATRate}}</th>{{end}}<th class="num">{{t "invoices.gross"}}</th></tr></thead>
+<thead><tr><td></td><th class="num">{{t "lines.net"}}</th>{{if not .Tax.SmallBusiness}}<th class="num">{{t "lines.vat" .Tax.VATRate}}</th>{{end}}<th class="num">{{t "lines.gross"}}</th></tr></thead>
 <tbody>
 {{range $.Data.Totals}}<tr><th>{{t (print "quotes.total." .Interval)}}</th><td class="num">{{.Net}} {{$.Data.Snapshot.Currency}}</td>{{if not $.Data.Snapshot.Tax.SmallBusiness}}<td class="num">{{.VAT}} {{$.Data.Snapshot.Currency}}</td>{{end}}<td class="num">{{.Gross}} {{$.Data.Snapshot.Currency}}</td></tr>
 {{end}}</tbody>
@@ -55,6 +55,6 @@
 <pre class="quote-body">{{.Body}}</pre>
 </section>
 {{end}}{{end}}
-<p class="hint sha">{{t "invoices.sha256"}}: {{$.Data.SHA256}}</p>
+<p class="hint sha">{{t "pdf.sha256"}}: {{$.Data.SHA256}}</p>
 {{end}}{{end}}
 {{end}}

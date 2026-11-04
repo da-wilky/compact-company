@@ -12,7 +12,7 @@
 <div class="table-wrap"><table>
 <thead><tr><th>{{t "todos.todo_title"}}</th><th>{{t "todos.project"}}</th><th>{{t "todos.priority"}}</th><th>{{t "todos.due_date"}}</th></tr></thead>
 <tbody>
-{{range .}}<tr><td><a href="/todos/{{.ID}}">{{.Title}}</a></td><td>{{.Project}}</td><td>{{t .PriorityKey}}</td><td>{{with .DueDate}}{{day .}}{{end}}{{if .Overdue}} <span class="badge">{{t "todos.overdue"}}</span>{{end}}</td></tr>
+{{range .}}<tr><td><a href="/todos/{{.ID}}">{{.Title}}</a></td><td>{{.Project}}</td><td>{{t .PriorityKey}}</td><td class="date">{{with .DueDate}}{{day .}}{{end}}{{if .Overdue}} <span class="badge">{{t "todos.overdue"}}</span>{{end}}</td></tr>
 {{end}}</tbody>
 </table></div>
 <p class="actions"><a href="/todos?assignee=me">{{t "home.all_my_todos"}}</a></p>
@@ -22,7 +22,7 @@
 <div class="table-wrap"><table>
 <thead><tr><th>{{t "invoices.customer"}}</th><th class="num">{{t "home.not_invoiced"}}</th><th class="num">{{t "home.on_draft"}}</th><th>{{t "home.oldest"}}</th><th></th></tr></thead>
 <tbody>
-{{range .}}<tr><td>{{.Name}}</td><td class="num">{{with .NotInvoiced}}{{t "home.hours" (duration .)}}{{end}}</td><td class="num">{{range $i, $d := .OnDrafts}}{{if $i}}, {{end}}<a href="/invoices/{{.ID}}">{{t "home.hours" (duration .Tracked)}}</a>{{end}}</td><td>{{day .OldestDate}}</td><td>{{if .NotInvoiced}}<a href="/invoices/new?customer={{.ID}}">{{template "icon-plus"}}{{t "invoices.create"}}</a>{{end}}</td></tr>
+{{range .}}<tr><td>{{.Name}}</td><td class="num">{{with .NotInvoiced}}{{t "home.hours" (duration .)}}{{end}}</td><td class="num">{{range $i, $d := .OnDrafts}}{{if $i}}, {{end}}<a href="/invoices/{{.ID}}">{{t "home.hours" (duration .Tracked)}}</a>{{end}}</td><td class="date">{{day .OldestDate}}</td><td>{{if .NotInvoiced}}<a href="/invoices/new?customer={{.ID}}">{{template "icon-plus"}}{{t "invoices.create"}}</a>{{end}}</td></tr>
 {{end}}</tbody>
 </table></div>
 {{end}}
@@ -31,7 +31,7 @@
 <div class="table-wrap"><table>
 <thead><tr><th>{{t "invoices.customer"}}</th><th>{{t "home.range"}}</th></tr></thead>
 <tbody>
-{{range .}}<tr><td>{{.Customer}}</td><td><a href="/invoices/{{.ID}}">{{if .From}}{{day .From}} – {{day .To}}{{else}}{{t "invoices.no_range"}}{{end}}</a></td></tr>
+{{range .}}<tr><td>{{.Customer}}</td><td class="date"><a href="/invoices/{{.ID}}">{{if .From}}{{day .From}} – {{day .To}}{{else}}{{t "invoices.no_range"}}{{end}}</a></td></tr>
 {{end}}</tbody>
 </table></div>
 {{end}}
@@ -43,7 +43,7 @@
 <div class="table-wrap"><table class="open-invoices">
 <thead><tr><th>{{t "invoices.number"}}</th><th>{{t "invoices.customer"}}</th><th>{{t "invoices.due_date"}}</th><th class="num">{{t "home.amount_due"}}</th></tr></thead>
 <tbody>
-{{range .}}<tr><td><a href="/invoices/{{.ID}}">{{.Number}}</a></td><td>{{.Customer}}</td><td>{{day .DueDate}}{{if .Overdue}} <span class="badge">{{t "home.overdue"}}</span>{{end}}</td><td class="num">{{.AmountDue}} {{.Currency}}</td></tr>
+{{range .}}<tr><td><a href="/invoices/{{.ID}}">{{.Number}}</a></td><td>{{.Customer}}</td><td class="date">{{day .DueDate}}{{if .Overdue}} <span class="badge">{{t "home.overdue"}}</span>{{end}}</td><td class="num">{{.AmountDue}} {{.Currency}}</td></tr>
 {{end}}</tbody>
 </table></div>
 {{end}}

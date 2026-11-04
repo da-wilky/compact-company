@@ -5,7 +5,6 @@
 "invoices.number" = { en = "Number", de = "Nummer" }
 "invoices.customer" = { en = "Customer", de = "Kunde" }
 "invoices.issue_date" = { en = "Issue date", de = "Rechnungsdatum" }
-"invoices.gross" = { en = "Gross", de = "Brutto" }
 "invoices.status" = { en = "Status", de = "Status" }
 "invoices.paid" = { en = "Paid", de = "Bezahlt" }
 "invoices.all_customers" = { en = "All customers", de = "Alle Kunden" }
@@ -35,25 +34,10 @@
 "invoices.create" = { en = "Create draft", de = "Entwurf anlegen" }
 "invoices.delete" = { en = "Delete draft", de = "Entwurf löschen" }
 "invoices.no_lines" = { en = "No lines yet.", de = "Noch keine Positionen." }
-"invoices.add_line" = { en = "Add line", de = "Position hinzufügen" }
-"invoices.edit_line" = { en = "Edit line", de = "Position bearbeiten" }
-"invoices.new_line" = { en = "New line", de = "Neue Position" }
 "invoices.generated" = { en = "from time", de = "aus Zeiten" }
 "invoices.working_time" = { en = "Working time", de = "Arbeitszeit" }
-"invoices.description" = { en = "Description", de = "Beschreibung" }
-"invoices.detail" = { en = "Detail", de = "Detail" }
-"invoices.quantity" = { en = "Quantity", de = "Menge" }
-"invoices.unit" = { en = "Unit", de = "Einheit" }
-"invoices.unit_price" = { en = "Unit price (%s)", de = "Einzelpreis (%s)" }
 "invoices.line_project" = { en = "Project", de = "Projekt" }
 "invoices.line_no_project" = { en = "No project", de = "Kein Projekt" }
-"invoices.price" = { en = "Unit price", de = "Einzelpreis" }
-"invoices.total" = { en = "Total", de = "Summe" }
-"invoices.net" = { en = "Net", de = "Netto" }
-"invoices.vat" = { en = "VAT %d %%", de = "USt. %d %%" }
-"invoices.move_up" = { en = "Move up", de = "Nach oben" }
-"invoices.move_down" = { en = "Move down", de = "Nach unten" }
-"invoices.delete_line" = { en = "Delete line", de = "Position löschen" }
 "invoices.badge.draft" = { en = "On a draft", de = "Im Entwurf" }
 "invoices.badge.issued" = { en = "Invoice %s", de = "Rechnung %s" }
 "invoices.line_entries" = { en = "Time entries on this line", de = "Zeiteinträge dieser Position" }
@@ -70,7 +54,6 @@
 "invoices.error.payment_days" = { en = "Payment days must be a positive whole number.", de = "Das Zahlungsziel muss eine positive ganze Zahl sein." }
 "invoices.error.projects" = { en = "Tick at least one of the customer's projects, or bill all projects.", de = "Bitte mindestens ein Projekt des Kunden ankreuzen oder alle Projekte abrechnen." }
 "invoices.error.line_project" = { en = "Choose one of the projects this invoice bills.", de = "Bitte eines der Projekte wählen, die diese Rechnung abrechnet." }
-"invoices.preview" = { en = "Preview PDF", de = "PDF-Vorschau" }
 "invoices.typst_error" = { en = "The template failed to render:", de = "Die Vorlage konnte nicht gerendert werden:" }
 "invoices.missing_entry" = { en = "The template directory has no %s.", de = "Das Vorlagenverzeichnis enthält keine %s." }
 "invoices.issue" = { en = "Issue invoice", de = "Rechnung stellen" }
@@ -79,8 +62,6 @@
 "invoices.due_date" = { en = "Due date", de = "Fällig am" }
 "invoices.service_period" = { en = "Service period", de = "Leistungszeitraum" }
 "invoices.service_date" = { en = "Service date", de = "Leistungsdatum" }
-"invoices.download" = { en = "Download PDF", de = "PDF herunterladen" }
-"invoices.sha256" = { en = "SHA-256 of the PDF", de = "SHA-256 des PDFs" }
 "invoices.cancellation" = { en = "Cancellation invoice %s", de = "Stornorechnung %s" }
 "invoices.status.cancellation" = { en = "Cancellation invoice", de = "Stornorechnung" }
 "invoices.status.cancelled" = { en = "Cancelled", de = "Storniert" }
@@ -102,7 +83,6 @@
 "invoices.error.paid_date" = { en = "Enter a valid payment date.", de = "Bitte ein gültiges Zahlungsdatum angeben." }
 "invoices.error.paid_cancelled" = { en = "Every line of this invoice is cancelled, so it can't be marked paid.", de = "Alle Positionen dieser Rechnung sind storniert, sie kann nicht als bezahlt markiert werden." }
 "invoices.confirm_delete" = { en = "Delete the draft for %s %s?", de = "Entwurf für %s %s löschen?" }
-"invoices.confirm_delete_line" = { en = "Delete the line “%s”?", de = "Position „%s“ löschen?" }
 "invoices.select" = { en = "Select the draft for %s", de = "Entwurf für %s auswählen" }
 "invoices.confirm_delete_one" = { en = "Delete 1 draft?", de = "1 Entwurf löschen?" }
 "invoices.confirm_delete_many" = { en = "Delete %s drafts?", de = "%s Entwürfe löschen?" }

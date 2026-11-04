@@ -2,3 +2,5 @@
 "common.delete" = { en = "Delete", de = "Löschen" }
 "common.yes" = { en = "yes", de = "ja" }
 "common.no" = { en = "no", de = "nein" }
+"common.move_up" = { en = "Move up", de = "Nach oben" }
+"common.move_down" = { en = "Move down", de = "Nach unten" }

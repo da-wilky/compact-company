@@ -21,6 +21,7 @@
         sh scripts/table_wrap.sh
         sh scripts/css_rules.sh
         sh scripts/template_urls.sh
+        sh scripts/catalog_prefixes.sh
       '';
     in
     {
@@ -152,6 +153,11 @@
         template-urls = pkgs.runCommand "compact-company-template-urls" { } ''
           cd ${./.}
           sh scripts/template_urls.sh
+          touch $out
+        '';
+        catalog-prefixes = pkgs.runCommand "compact-company-catalog-prefixes" { } ''
+          cd ${./.}
+          sh scripts/catalog_prefixes.sh
           touch $out
         '';
       });

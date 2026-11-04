@@ -1,4 +1,4 @@
-{{define "title"}}{{if .Data.Line.ID}}{{t "invoices.edit_line"}}{{else}}{{t "invoices.new_line"}}{{end}}{{end}}
+{{define "title"}}{{if .Data.Line.ID}}{{t "lines.edit_line"}}{{else}}{{t "lines.new_line"}}{{end}}{{end}}
 {{define "parent"}}{{t "invoices.draft_for" .Data.Draft.CustomerName}}{{end}}
 {{define "tab"}}{{template "title" .}} · {{template "parent" .}}{{end}}
 {{define "content"}}
@@ -10,11 +10,11 @@
 </div>
 {{with .Errors}}<ul class="errors" role="alert">{{range .}}<li>{{t .}}</li>{{end}}</ul>{{end}}
 <form method="post" action="/invoices/{{.Draft.ID}}/lines{{with .Line.ID}}/{{.}}{{end}}" class="form">
-<label>{{t "invoices.description"}} <input name="description" value="{{.Line.Description}}" required></label>
-<label>{{t "invoices.detail"}} <input name="detail" value="{{.Line.Detail}}"></label>
-<label>{{t "invoices.quantity"}} <input name="quantity" value="{{.Line.Quantity}}" required inputmode="decimal"></label>
-<label>{{t "invoices.unit"}} <input name="unit" value="{{.Line.Unit}}"></label>
-<label>{{t "invoices.unit_price" .Draft.Currency}} <input name="unit_price" value="{{.Line.UnitPrice}}" required inputmode="decimal"></label>
+<label>{{t "lines.description"}} <input name="description" value="{{.Line.Description}}" required></label>
+<label>{{t "lines.detail"}} <input name="detail" value="{{.Line.Detail}}"></label>
+<label>{{t "lines.quantity"}} <input name="quantity" value="{{.Line.Quantity}}" required inputmode="decimal"></label>
+<label>{{t "lines.unit"}} <input name="unit" value="{{.Line.Unit}}"></label>
+<label>{{t "lines.unit_price" .Draft.Currency}} <input name="unit_price" value="{{.Line.UnitPrice}}" required inputmode="decimal"></label>
 {{if not .Line.Generated}}<label>{{t "invoices.line_project"}} <select name="project">
 <option value="">{{t "invoices.line_no_project"}}</option>
 {{range .Projects}}<option value="{{.ID}}"{{if eq .ID $.Data.Line.ProjectID}} selected{{end}}>{{.Name}}{{if .Archived}} ({{t "archive.archived"}}){{end}}</option>
@@ -23,9 +23,9 @@
 </form>
 {{with .Entries}}<h2>{{t "invoices.line_entries"}}</h2>
 <div class="table-wrap"><table>
-<thead><tr><th>{{t "invoices.entry_date"}}</th><th>{{t "invoices.entry_user"}}</th><th class="num">{{t "invoices.entry_duration"}}</th><th>{{t "invoices.description"}}</th></tr></thead>
+<thead><tr><th>{{t "invoices.entry_date"}}</th><th>{{t "invoices.entry_user"}}</th><th class="num">{{t "invoices.entry_duration"}}</th><th>{{t "lines.description"}}</th></tr></thead>
 <tbody>
-{{range .}}<tr><td>{{day .Date}}</td><td>{{.User}}</td><td class="num">{{duration .Duration}}</td><td>{{.Description}}</td></tr>
+{{range .}}<tr><td class="date">{{day .Date}}</td><td>{{.User}}</td><td class="num">{{duration .Duration}}</td><td>{{.Description}}</td></tr>
 {{end}}</tbody>
 </table></div>
 {{end}}

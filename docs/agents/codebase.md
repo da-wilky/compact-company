@@ -1,5 +1,7 @@
 # Codebase conventions
 
+In a worktree, run each `git`, `nix` and `sed` call plain and alone from the worktree root, with literal arguments, and write files with Write/Edit: isolated agents get `git -C`, chaining (`&&`, `;`), `sh -c`, heredocs and computed globs refused.
+
 ## Packages
 
 ```
@@ -68,7 +70,7 @@ To preview while tests are red (`nix run` builds with tests and fails), use `go 
 "customers.title" = { en = "Customers", de = "Kunden" }
 ```
 
-A plain Save, Delete, yes or no uses `common.save` / `common.delete` / `common.yes` / `common.no`; a label that says more ("Delete draft") keeps its own key.
+A plain Save, Delete, yes or no uses `common.save` / `common.delete` / `common.yes` / `common.no`; a label that says more ("Delete draft") keeps its own key. Wording invoices and quotes share lives under `common.*` (Move up/down), `lines.*` (line fields, totals) and `pdf.*` (preview, download, SHA-256); `scripts/catalog_prefixes.sh` fails on a quote file using an `invoices.*` key or the reverse.
 
 Startup, and so every test, fails if a key is duplicated or lacks `en` or `de`. Language is the user's own, else the default (`a.defaults()`: the stored row with config's `[defaults]` keys laid over it); `Accept-Language` is never read.
 
@@ -144,11 +146,11 @@ A link's `aria-current` sits between its `href` and `>`, so match `href="…">La
 
 ## Checks
 
-While working, run `nix run .#check`: formatting, lint, the markup-assertion, table-wrap, CSS-rule and template-URL checks and tests, on the working tree. Run it as its own Bash call and write files with Write/Edit: worktree-isolated agents get chained shell (`&&`, `;`, `sh -c`, heredocs) refused.
+While working, run `nix run .#check`: formatting, lint, the markup-assertion, table-wrap, CSS-rule, template-URL and catalog-prefix checks and tests, on the working tree.
 
 `nix flake check -L` is what CI runs: the same checks from git-tracked files only, so `git add` new files first.
 
-After any template or CSS change, run `nix run .#ui-check` (Linux): it seeds a throwaway instance, renders every page in English and German at 1280 and 390 px in light and dark, fails on horizontal overflow, invisible or cut-off text and elements that take focus without showing it, and prints a directory of screenshots. Each run takes a free port, so parallel runs are fine. Look at the screenshots of the pages you touched; the check can't judge alignment or wrapping. New pages go into `pages` in `scripts/ui_check.py`. To iterate on a few pages, pass their paths: `nix run .#ui-check -- /invoices/1` (seeded ids are listed in the script's docstring), or `-- --changed main` for the pages whose template changed; read the phone shots first, they are the smallest.
+After any template or CSS change, run `nix run .#ui-check` (Linux): it seeds a throwaway instance, renders every page in English and German at 1280 and 390 px in light and dark, fails on horizontal overflow, invisible or cut-off text, a number, date or id wrapping inside a `td` (give the cell `class="date"` or a nowrap rule) and elements that take focus without showing it, and prints a directory of screenshots. Each run takes a free port, so parallel runs are fine. Look at the screenshots of the pages you touched; the check can't judge alignment or wrapping. New pages go into `pages` in `scripts/ui_check.py`. To iterate on a few pages, pass their paths: `nix run .#ui-check -- /invoices/1` (seeded ids are listed in the script's docstring), or `-- --changed main` for the pages whose template changed; read the phone shots first, they are the smallest.
 
 ## Nix
 

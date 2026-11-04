@@ -61,6 +61,16 @@ func decodeJSON(t *testing.T, s string) any {
 	return v
 }
 
+func TestPreviewsOpenInANewTab(t *testing.T) {
+	c := newTestApp(t, devConfig).client()
+	c.createCustomer(customerForm("acme", "85"))
+	draft := c.createDraft(draftForm(c.customerPath("acme"), "2026-09-01", "2026-09-30"))
+	quote := c.createQuote(quoteForm(c.customerPath("acme"), "Website"))
+
+	c.get(draft).wantBody(t, `<a href="`+draft+`/preview" target="_blank">`)
+	c.get(quote).wantBody(t, `<a href="`+quote+`/preview" target="_blank">`)
+}
+
 func TestPreviewPassesTheContractToTheTemplate(t *testing.T) {
 	ta := newTestApp(t, dumpConfig(t))
 	c := ta.client()
