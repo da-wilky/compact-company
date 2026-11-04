@@ -2,7 +2,7 @@
 
 Customers, time tracking and invoices for small businesses — and nothing else. A single self-hosted Go binary backed by SQLite, with server-rendered HTML and htmx. One instance serves one business; several users can log in and track time.
 
-Status: Phase 1 (foundation and time tracking) is in progress. See `PLAN.md`.
+Status: 0.1.0 covers time tracking, invoices, quotes and the overview. See `PLAN.md`.
 
 ## Running
 
@@ -21,6 +21,31 @@ go build ./cmd/compact-company
 ```
 
 The binary embeds its templates, CSS, htmx, migrations and timezone data. The database is migrated automatically on startup; back up `app.db` before upgrading, as there are no down migrations.
+
+### NixOS
+
+```nix
+# flake inputs
+compact-company.url = "github:da-wilky/compact-company/v0.1.0";
+
+# configuration
+imports = [ inputs.compact-company.nixosModules.default ];
+services.compact-company = {
+  enable = true;
+  clientSecretFile = "/run/secrets/compact-company-oidc";
+  settings = {
+    listen = "127.0.0.1:9440";
+    public_url = "https://time.example.com";
+    auth = {
+      mode = "oidc";
+      issuer = "https://id.example.com/realms/main";
+      client_id = "compact-company";
+    };
+  };
+};
+```
+
+`settings` is the TOML below. The module sets `data_dir` to `/var/lib/compact-company` and `auth.client_secret_file` to the secret, which systemd hands to the `DynamicUser` service as a credential. Put a reverse proxy with TLS in front; back up `/var/lib/compact-company`.
 
 ## Configuration
 
