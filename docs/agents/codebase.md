@@ -156,3 +156,4 @@ After any template or CSS change, run `nix run .#ui-check` (Linux): it seeds a t
 
 - After changing `go.mod`/`go.sum`: set `vendorHash = pkgs.lib.fakeHash;`, run `nix build`, paste the `got:` hash.
 - Keep `subPackages` off `buildGoModule`: it would limit the check phase's `go test` and skip `internal/app`.
+- `nix/module.nix` (`nixosModules.default`) takes the config as free-form `settings`, so new config keys need no module change. Its VM test (`nix/test.nix`) renders an invoice preview under the service's hardening: `nix build .#checks.x86_64-linux.nixos-module -L`.

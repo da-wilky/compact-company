@@ -121,46 +121,57 @@
         }
       );
 
-      checks = forAll (pkgs: {
-        tests = self.packages.${pkgs.stdenv.hostPlatform.system}.default;
-        lint = self.packages.${pkgs.stdenv.hostPlatform.system}.default.overrideAttrs (old: {
-          pname = "compact-company-lint";
-          nativeBuildInputs = old.nativeBuildInputs ++ [ pkgs.golangci-lint ];
-          buildPhase = ''
-            runHook preBuild
-            HOME=$TMPDIR GOLANGCI_LINT_CACHE=$TMPDIR/golangci-lint golangci-lint run ./...
-            HOME=$TMPDIR GOLANGCI_LINT_CACHE=$TMPDIR/golangci-lint golangci-lint fmt --diff ./...
-            runHook postBuild
+      nixosModules.default = import ./nix/module.nix self;
+
+      checks = forAll (
+        pkgs:
+        pkgs.lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux {
+          nixos-module = import ./nix/test.nix {
+            inherit pkgs;
+            module = self.nixosModules.default;
+          };
+        }
+        // {
+          tests = self.packages.${pkgs.stdenv.hostPlatform.system}.default;
+          lint = self.packages.${pkgs.stdenv.hostPlatform.system}.default.overrideAttrs (old: {
+            pname = "compact-company-lint";
+            nativeBuildInputs = old.nativeBuildInputs ++ [ pkgs.golangci-lint ];
+            buildPhase = ''
+              runHook preBuild
+              HOME=$TMPDIR GOLANGCI_LINT_CACHE=$TMPDIR/golangci-lint golangci-lint run ./...
+              HOME=$TMPDIR GOLANGCI_LINT_CACHE=$TMPDIR/golangci-lint golangci-lint fmt --diff ./...
+              runHook postBuild
+            '';
+            doCheck = false;
+            installPhase = "touch $out";
+          });
+          markup-assertions = pkgs.runCommand "compact-company-markup-assertions" { } ''
+            cd ${./.}
+            sh scripts/markup_assertions.sh
+            touch $out
           '';
-          doCheck = false;
-          installPhase = "touch $out";
-        });
-        markup-assertions = pkgs.runCommand "compact-company-markup-assertions" { } ''
-          cd ${./.}
-          sh scripts/markup_assertions.sh
-          touch $out
-        '';
-        table-wrap = pkgs.runCommand "compact-company-table-wrap" { } ''
-          cd ${./.}
-          sh scripts/table_wrap.sh
-          touch $out
-        '';
-        css-rules = pkgs.runCommand "compact-company-css-rules" { } ''
-          cd ${./.}
-          sh scripts/css_rules.sh
-          touch $out
-        '';
-        template-urls = pkgs.runCommand "compact-company-template-urls" { } ''
-          cd ${./.}
-          sh scripts/template_urls.sh
-          touch $out
-        '';
-        catalog-prefixes = pkgs.runCommand "compact-company-catalog-prefixes" { } ''
-          cd ${./.}
-          sh scripts/catalog_prefixes.sh
-          touch $out
-        '';
-      });
+          table-wrap = pkgs.runCommand "compact-company-table-wrap" { } ''
+            cd ${./.}
+            sh scripts/table_wrap.sh
+            touch $out
+          '';
+          css-rules = pkgs.runCommand "compact-company-css-rules" { } ''
+            cd ${./.}
+            sh scripts/css_rules.sh
+            touch $out
+          '';
+          template-urls = pkgs.runCommand "compact-company-template-urls" { } ''
+            cd ${./.}
+            sh scripts/template_urls.sh
+            touch $out
+          '';
+          catalog-prefixes = pkgs.runCommand "compact-company-catalog-prefixes" { } ''
+            cd ${./.}
+            sh scripts/catalog_prefixes.sh
+            touch $out
+          '';
+        }
+      );
 
       devShells = forAll (pkgs: {
         default = pkgs.mkShell {
