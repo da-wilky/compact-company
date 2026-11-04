@@ -35,6 +35,7 @@ VIEWPORTS = {"desktop": (1280, 800), "phone": (390, 800)}
 # Elements whose text is font-size 0 are invisible; icon buttons that draw a ::before keep their text as the accessible name.
 # Text is cut off when it is wider than its box (unless the box shows an ellipsis or scrolls), or when it sits past the
 # viewport's edge outside a horizontal scroller: fixed elements, like the phone tab bar, don't widen the page.
+# A table cell's number, date or id (text without whitespace) that breaks over lines reads as two values.
 FIND_BREAKAGE = """() => {
   const problems = [];
   const scrolls = (el) => ["auto", "scroll"].includes(getComputedStyle(el).overflowX);
@@ -51,6 +52,14 @@ FIND_BREAKAGE = """() => {
     if ((style.display !== "inline" && el.scrollWidth > el.clientWidth + 1 && style.textOverflow !== "ellipsis" && !scrolls(el))
         || ((rect.right > innerWidth + 1 || rect.left < -1) && !inScroller(el)))
       problems.push(`cut-off text: ${JSON.stringify(text.slice(0, 40))}`);
+    if (el.closest("td")) for (const n of el.childNodes) {
+      const value = n.nodeType === 3 ? n.textContent.trim() : "";
+      if (!value || /\\s/.test(value)) continue;
+      const range = document.createRange();
+      range.selectNodeContents(n);
+      if (new Set([...range.getClientRects()].map((r) => Math.round(r.top))).size > 1)
+        problems.push(`wrapped value in a table cell: ${JSON.stringify(value.slice(0, 40))}`);
+    }
   }
   return problems;
 }"""
