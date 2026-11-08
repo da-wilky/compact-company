@@ -14,6 +14,7 @@
 "entries.time" = { en = "Time", de = "Zeit" }
 "entries.duration" = { en = "Duration", de = "Dauer" }
 "entries.project" = { en = "Project", de = "Projekt" }
+"entries.customer" = { en = "Customer", de = "Kunde" }
 "entries.description" = { en = "Description", de = "Beschreibung" }
 "entries.billable" = { en = "Billable", de = "Abrechenbar" }
 "entries.billable_default" = { en = "Project default", de = "Projektstandard" }

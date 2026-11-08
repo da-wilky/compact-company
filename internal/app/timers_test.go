@@ -40,10 +40,11 @@ func TestStartTimerOnAProjectFromTheHeader(t *testing.T) {
 	res.wantStatus(t, http.StatusOK)
 	res.wantBody(t, `id="timers"`)
 	res.wantNoBody(t, "<html")
-	res.wantBody(t, "acme · website")
+	wantInOrder(t, res.text(), "acme", "website")
 	res.wantBody(t, `value="homepage"`)
 	page := c.get("/profile")
-	page.wantBody(t, "acme · website")
+	wantInOrder(t, page.text(), "acme", "website")
+	page.wantBody(t, `title="website"`)
 	page.wantBody(t, "2026-10-26 09:00")
 }
 
@@ -78,7 +79,7 @@ parallel_entries = true
 	if len(timers) != 2 {
 		t.Fatalf("got %d timers:\n%s", len(timers), res.body)
 	}
-	for i, want := range []string{"acme · internal</span>", "acme · website</span>"} {
+	for i, want := range []string{"internal</span>", "website</span>"} {
 		if !strings.Contains(timers[i], want) {
 			t.Errorf("timer %d lacks %q:\n%s", i, want, timers[i])
 		}

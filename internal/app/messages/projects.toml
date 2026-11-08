@@ -23,3 +23,11 @@
 "projects.confirm_delete_many" = { en = "Delete %s projects?", de = "%s Projekte löschen?" }
 "projects.error.archive_blocked" = { en = "Nothing was archived. These projects can't be archived:", de = "Nichts wurde archiviert. Diese Projekte können nicht archiviert werden:" }
 "projects.error.delete_blocked" = { en = "Nothing was deleted. These projects can't be deleted:", de = "Nichts wurde gelöscht. Diese Projekte können nicht gelöscht werden:" }
+"projects.nav" = { en = "Projects", de = "Projekte" }
+"projects.customer" = { en = "Customer", de = "Kunde" }
+"projects.all_customers" = { en = "All customers", de = "Alle Kunden" }
+"projects.empty_customer" = { en = "This customer has no projects yet.", de = "Dieser Kunde hat noch keine Projekte." }
+"projects.hourly_rate_any" = { en = "Hourly rate override", de = "Abweichender Stundensatz" }
+"projects.hourly_rate_hint_any" = { en = "Leave empty to use the customer's default.", de = "Leer lassen für den Kundenstandard." }
+"projects.error.customer" = { en = "Pick a customer.", de = "Bitte einen Kunden wählen." }
+"projects.error.customer_archived" = { en = "This customer is archived.", de = "Dieser Kunde ist archiviert." }

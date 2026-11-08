@@ -24,7 +24,7 @@ func TestCardStartButtonStartsATimerOnTheTodoAndItsProject(t *testing.T) {
 	res := c.hxPost("/timers", startOn(todo))
 
 	res.wantStatus(t, http.StatusOK)
-	wantInOrder(t, res.text(), "acme · website", "Write copy", "billable")
+	wantInOrder(t, res.text(), "acme", "website", "Write copy", "billable")
 }
 
 func TestCardStartWithoutJSReturnsToTheBoard(t *testing.T) {
@@ -162,7 +162,7 @@ parallel_entries = true
 	c.get(todo).wantStatus(t, http.StatusNotFound)
 	page := c.get("/customers")
 	page.wantNoBody(t, "Write copy")
-	page.wantBody(t, "acme · website")
+	wantInOrder(t, page.text(), "acme", "website")
 }
 
 func TestChangingAnEntrysProjectClearsItsTodo(t *testing.T) {

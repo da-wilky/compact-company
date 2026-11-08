@@ -113,7 +113,7 @@ func TestEntriesOfAnArchivedProjectStayVisibleAndEditable(t *testing.T) {
 	other := c.createEntry(entryForm("", "2026-10-26T10:00", "2026-10-26T11:00", "orphan"))
 	c.postForm("/customers/1/archive", nil).wantStatus(t, http.StatusSeeOther)
 
-	c.get("/entries?day=2026-10-26").wantBody(t, "acme · website")
+	wantInOrder(t, c.get("/entries?day=2026-10-26").text(), "acme", "website", "kickoff")
 	c.get(entry).wantBody(t, `<option value="`+project+`" selected>website</option>`)
 	c.get(other).wantNoBody(t, `<option value="`+project+`"`)
 	res := c.postForm(entry, entryForm(project, "2026-10-26T08:00", "2026-10-26T09:30", "kickoff, longer"))

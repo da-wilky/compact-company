@@ -28,7 +28,7 @@ func TestPickingATodoOnAnEntrySetsItsProject(t *testing.T) {
 	res := c.postForm(entry, withTodo(entryForm(website, "2026-10-26T08:00", "2026-10-26T09:00", "dns work"), todo))
 
 	wantRedirect(t, res, "/entries?day=2026-10-26")
-	c.get("/entries?day=2026-10-26").wantRow(t, "", "08:00–09:00", "1:00", "acme · hosting", "Migrate DNS", "dns work", "yes")
+	c.get("/entries?day=2026-10-26").wantRow(t, "", "08:00–09:00", "1:00", "acme", "hosting", "Migrate DNS", "dns work", "yes")
 	edit := c.get(entry)
 	edit.wantBody(t, `<option value="`+hosting+`" selected>hosting</option>`)
 	edit.wantBody(t, `<optgroup label="acme · hosting"><option value="`+todoID(todo)+`" selected>Migrate DNS</option>`)
@@ -43,15 +43,15 @@ func TestPickingAnotherProjectOrNoTodoClearsTheEntrysTodo(t *testing.T) {
 	moved := c.createEntry(withTodo(entryForm("", "2026-10-26T08:00", "2026-10-26T09:00", "moved"), todo))
 	cleared := c.createEntry(withTodo(entryForm("", "2026-10-26T09:00", "2026-10-26T10:00", "cleared"), todo))
 	list := c.get("/entries?day=2026-10-26")
-	list.wantRow(t, "", "08:00–09:00", "1:00", "acme · hosting", "Migrate DNS", "moved", "yes")
-	list.wantRow(t, "", "09:00–10:00", "1:00", "acme · hosting", "Migrate DNS", "cleared", "yes")
+	list.wantRow(t, "", "08:00–09:00", "1:00", "acme", "hosting", "Migrate DNS", "moved", "yes")
+	list.wantRow(t, "", "09:00–10:00", "1:00", "acme", "hosting", "Migrate DNS", "cleared", "yes")
 
 	c.postForm(moved, withTodo(entryForm(website, "2026-10-26T08:00", "2026-10-26T09:00", "moved"), todo)).wantStatus(t, http.StatusSeeOther)
 	c.postForm(cleared, entryForm(hosting, "2026-10-26T09:00", "2026-10-26T10:00", "cleared")).wantStatus(t, http.StatusSeeOther)
 
 	list = c.get("/entries?day=2026-10-26")
-	list.wantRow(t, "", "08:00–09:00", "1:00", "acme · website", "", "moved", "yes")
-	list.wantRow(t, "", "09:00–10:00", "1:00", "acme · hosting", "", "cleared", "yes")
+	list.wantRow(t, "", "08:00–09:00", "1:00", "acme", "website", "", "moved", "yes")
+	list.wantRow(t, "", "09:00–10:00", "1:00", "acme", "hosting", "", "cleared", "yes")
 }
 
 func TestADoneTodoIsNotPickedButStaysOnItsEntries(t *testing.T) {
@@ -75,7 +75,7 @@ func TestADoneTodoIsNotPickedButStaysOnItsEntries(t *testing.T) {
 	edit.wantBody(t, `<option value="`+todoID(copy)+`" selected>Write copy</option>`)
 	edit.wantNoBody(t, ">Launch</option>")
 	c.postForm(kept, withTodo(entryForm(strings.TrimPrefix(project, "/projects/"), "2026-10-26T08:00", "2026-10-26T08:30", "kept"), copy)).wantStatus(t, http.StatusSeeOther)
-	c.get("/entries?day=2026-10-26").wantRow(t, "", "08:00–08:30", "0:30", "acme · website", "Write copy", "kept", "yes")
+	c.get("/entries?day=2026-10-26").wantRow(t, "", "08:00–08:30", "0:30", "acme", "website", "Write copy", "kept", "yes")
 }
 
 func TestTheTodoOfAClaimedEntryCannotChange(t *testing.T) {
@@ -90,7 +90,7 @@ func TestTheTodoOfAClaimedEntryCannotChange(t *testing.T) {
 	res := c.postForm(entry, withTodo(entryForm(website, "2026-09-02T08:00", "2026-09-02T09:00", "billed"), todo))
 
 	res.wantStatus(t, http.StatusConflict)
-	c.get("/entries?day=2026-09-02").wantRow(t, "", "08:00–09:00", "1:00", "acme · website", "", "billed On a draft", "yes")
+	c.get("/entries?day=2026-09-02").wantRow(t, "", "08:00–09:00", "1:00", "acme", "website", "", "billed On a draft", "yes")
 }
 
 func TestSelectedEntriesGetATodoAndItsProjectTogether(t *testing.T) {
@@ -108,8 +108,8 @@ func TestSelectedEntriesGetATodoAndItsProjectTogether(t *testing.T) {
 	res := c.massEdit("todo", "?day=2026-10-26", url.Values{"todo": {todoID(todo)}}, first, second)
 
 	res.wantStatus(t, http.StatusOK)
-	res.wantRow(t, "", "08:00–09:00", "1:00", "acme · hosting", "Migrate DNS", "explicit", "no")
-	res.wantRow(t, "", "09:00–10:00", "1:00", "acme · hosting", "Migrate DNS", "orphan", "yes")
+	res.wantRow(t, "", "08:00–09:00", "1:00", "acme", "hosting", "Migrate DNS", "explicit", "no")
+	res.wantRow(t, "", "09:00–10:00", "1:00", "acme", "hosting", "Migrate DNS", "orphan", "yes")
 	res.wantRow(t, "", "10:00–11:00", "1:00", "Unassigned", "", "left alone", "")
 }
 
@@ -124,7 +124,7 @@ func TestEntriesFilterByTodoKeepingTheOtherFilters(t *testing.T) {
 
 	res := c.get("/entries?day=2026-10-26&todo=" + todoID(todo))
 
-	res.wantRow(t, "", "08:00–09:00", "1:00", "acme · website", "Write copy", "on the todo", "yes")
+	res.wantRow(t, "", "08:00–09:00", "1:00", "acme", "website", "Write copy", "on the todo", "yes")
 	res.wantNoBody(t, "beside it")
 	res.wantBody(t, `<optgroup label="acme · website"><option value="`+todoID(todo)+`" selected>Write copy</option>`)
 	res.wantBody(t, `<input type="hidden" name="todo" value="`+todoID(todo)+`">`)
@@ -218,6 +218,6 @@ func TestAssigningSelectedEntriesToAnotherProjectClearsTheirTodo(t *testing.T) {
 	res := c.massEdit("assign", "?day=2026-10-26", url.Values{"project": {hosting}}, moves)
 
 	res.wantStatus(t, http.StatusOK)
-	res.wantRow(t, "", "08:00–09:00", "1:00", "acme · website", "Write copy", "stays", "yes")
-	res.wantRow(t, "", "09:00–10:00", "1:00", "acme · hosting", "", "moves", "yes")
+	res.wantRow(t, "", "08:00–09:00", "1:00", "acme", "website", "Write copy", "stays", "yes")
+	res.wantRow(t, "", "09:00–10:00", "1:00", "acme", "hosting", "", "moves", "yes")
 }
