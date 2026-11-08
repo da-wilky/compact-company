@@ -73,8 +73,8 @@ func TestMovingATodoMovesItsEntriesWithTheirTodoAndBillableFlags(t *testing.T) {
 	wantCards(t, board.column(t, "In progress"), "Write copy")
 	wantInOrder(t, board.column(t, "In progress").text(), "Write copy", "2:00 h")
 	entries := c.get("/entries?day=2026-10-26")
-	entries.wantRow(t, "", "09:00–10:00", "1:00", "acme · hosting", "Write copy", "", "yes")
-	entries.wantRow(t, "", "09:00–10:00", "1:00", "acme · hosting", "Write copy", "internal", "no")
+	entries.wantRow(t, "", "09:00–10:00", "1:00", "acme", "hosting", "Write copy", "", "yes")
+	entries.wantRow(t, "", "09:00–10:00", "1:00", "acme", "hosting", "Write copy", "internal", "no")
 	entries.wantNoBody(t, "acme · website")
 }
 

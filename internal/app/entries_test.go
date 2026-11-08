@@ -26,10 +26,10 @@ func TestManualEntryShowsInTheDayListing(t *testing.T) {
 	wantRedirect(t, res, "/entries?day=2026-10-26")
 	list := c.get("/entries?day=2026-10-26")
 	list.wantStatus(t, http.StatusOK)
-	list.wantBody(t, "acme · website")
+	wantInOrder(t, list.text(), "acme", "website", "kickoff")
 	list.wantBody(t, "kickoff")
 	list.wantBody(t, "08:00–09:45")
-	list.wantRow(t, "", "08:00–09:45", "1:45", "acme · website", "", "kickoff", "yes")
+	list.wantRow(t, "", "08:00–09:45", "1:45", "acme", "website", "", "kickoff", "yes")
 	c.get("/entries?day=2026-10-27").wantNoBody(t, "kickoff")
 }
 
@@ -197,7 +197,7 @@ func TestAssigningAnUnassignedEntryAppliesTheProjectDefault(t *testing.T) {
 	wantRedirect(t, res, "/entries?day=2026-10-26")
 	list := c.get("/entries?day=2026-10-26")
 	list.wantBody(t, "08:00–09:30")
-	list.wantRow(t, "", "08:00–09:30", "1:30", "acme · website", "", "adopted", "yes")
+	list.wantRow(t, "", "08:00–09:30", "1:30", "acme", "website", "", "adopted", "yes")
 	c.get(entry).wantBody(t, `<option value="yes" selected>`)
 }
 
@@ -293,9 +293,9 @@ func TestEntryBillableInheritsTheProjectDefaultUnlessSet(t *testing.T) {
 	c.postForm("/entries", entryForm("", "2026-10-26T11:00", "2026-10-26T12:00", "orphan")).wantStatus(t, http.StatusSeeOther)
 
 	list := c.get("/entries?day=2026-10-26")
-	list.wantRow(t, "", "08:00–09:00", "1:00", "acme · internal", "", "inherited", "no")
-	list.wantRow(t, "", "09:00–10:00", "1:00", "acme · website", "", "explicit", "no")
-	list.wantRow(t, "", "10:00–11:00", "1:00", "acme · website", "", "default", "yes")
+	list.wantRow(t, "", "08:00–09:00", "1:00", "acme", "internal", "", "inherited", "no")
+	list.wantRow(t, "", "09:00–10:00", "1:00", "acme", "website", "", "explicit", "no")
+	list.wantRow(t, "", "10:00–11:00", "1:00", "acme", "website", "", "default", "yes")
 	list.wantRow(t, "", "11:00–12:00", "1:00", "Unassigned", "", "orphan", "")
 }
 

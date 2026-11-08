@@ -2,12 +2,12 @@
 {{with .Timers}}{{with .Error}}<ul class="errors" role="alert"><li>{{t .}}</li></ul>{{end}}
 {{range .Running}}<div class="timer">
 <div class="timer-top"><span class="pulse" aria-hidden="true"></span>
-<span class="project">{{if .Project}}{{.Project}}{{else}}{{t "timers.unassigned"}}{{end}}</span>
+{{if .Project}}<span class="customer" title="{{.Customer}}">{{.Customer}}</span>{{else}}<span class="customer">{{t "timers.unassigned"}}</span>{{end}}
 <time class="elapsed" data-start="{{.Start.Unix}}" title="{{t "timers.since" (datetime .Start)}}">{{t "timers.since" (clock .Start)}}</time>
 <form method="post" action="/timers/{{.ID}}/stop" hx-post="/timers/{{.ID}}/stop"><button class="icon stop" aria-label="{{t "timers.stop"}}" title="{{t "timers.stop"}}">{{template "icon-square"}}</button></form></div>
-{{with .Todo}}<p class="timer-todo">{{.}}</p>{{end}}
+{{if .Project}}<p class="timer-task"><span class="project" title="{{.Project}}">{{.Project}}</span>{{with .Todo}}<span class="todo" title="{{.}}">{{.}}</span>{{end}}</p>{{end}}
 <div class="timer-bottom"><form method="post" action="/timers/{{.ID}}" hx-post="/timers/{{.ID}}" hx-trigger="change from:find input, submit">
-<input name="description" value="{{.Description}}" placeholder="{{t "timers.description"}}" aria-label="{{t "timers.description"}}">
+<input name="description" value="{{.Description}}"{{with .Description}} title="{{.}}"{{end}} placeholder="{{t "timers.description"}}" aria-label="{{t "timers.description"}}">
 </form>
 {{if .Billable.Valid}}<span class="tag">{{if .Billable.Bool}}{{t "timers.billable"}}{{else}}{{t "timers.not_billable"}}{{end}}</span>{{end}}</div>
 {{if .Overdue}}<span class="badge" role="status">{{t "timers.overdue"}}</span>{{end}}

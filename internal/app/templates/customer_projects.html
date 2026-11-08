@@ -1,0 +1,6 @@
+{{define "title"}}{{t "projects.title" .Data.Customer.Name}}{{end}}
+{{define "content"}}
+<a class="crumb" href="/customers/{{.Data.Customer.ID}}">{{template "icon-arrow-left"}}{{t "customers.edit"}}</a>
+<h1>{{template "title" $}}</h1>
+{{template "project-list" $}}
+{{end}}

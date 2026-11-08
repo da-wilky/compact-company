@@ -145,14 +145,16 @@ h1 { margin: 0 0 1rem; font-size: 1.75rem; font-weight: 650; letter-spacing: -.0
 .entry-day h2 { display: flex; align-items: baseline; gap: .75rem; margin: 1.25rem 0 .5rem; font-size: 1rem; font-weight: 650; }
 .entry-day h2 .sum { margin-left: auto; color: var(--muted); font-weight: 600; font-variant-numeric: tabular-nums; }
 .entry-day thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
-.entry-day table { table-layout: fixed; min-width: 48rem; }
-.entry-day .c-user { width: 9rem; }
-.entry-day .c-time { width: 8.5rem; }
-.entry-day .c-dur { width: 5.5rem; }
-.entry-day .c-project { width: 24%; }
-.entry-day .c-todo { width: 20%; }
-.entry-day .c-bill { width: 7rem; }
-.entry-day td { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.entry-day table, .entry-day tbody { display: block; }
+.entry-day table { min-width: 40rem; }
+.entry-day tbody tr { display: flex; align-items: center; border-bottom: 1px solid var(--line); }
+.entry-day tbody tr:last-child { border-bottom: 0; }
+.entry-day td { flex: 1 1 auto; min-width: 8rem; overflow: hidden; border-bottom: 0; text-overflow: ellipsis; white-space: nowrap; }
+.entry-day td:empty:not(:first-child) { display: none; }
+.entry-day td:first-child { flex: none; width: 2.6rem; min-width: 0; }
+.entry-day .c-time { flex: none; width: 8.5rem; min-width: 0; }
+.entry-day .c-dur { flex: none; width: 4.5rem; min-width: 0; }
+.entry-day .c-bill { flex: none; min-width: 0; }
 .selection input[type=checkbox], input[type=checkbox][form] { width: 1.1rem; height: 1.1rem; margin: 0; padding: 0; vertical-align: middle; accent-color: var(--accent); }
 
 .selection { position: sticky; top: .75rem; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .75rem; min-height: 2.75rem; margin: 0 0 .5rem; padding: .35rem .45rem .35rem .85rem; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
@@ -300,8 +302,10 @@ main > form:not(.form) { display: inline-block; margin: 1rem .5rem 0 0; }
 .timer-top input, .timer-bottom input { width: 100%; flex: 1; padding: .2rem .3rem; border: 0; background: transparent; font-size: .85rem; }
 .timer-bottom input { color: var(--muted); }
 .timer-top input:focus, .timer-bottom input:focus { box-shadow: inset 0 -2px 0 var(--accent); color: var(--fg); }
-.timer .project { flex: 1; min-width: 0; overflow: hidden; font-size: .85rem; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
-.timer-todo { overflow: hidden; margin: 0; padding-left: calc(7px + .4rem); font-size: .85rem; text-overflow: ellipsis; white-space: nowrap; }
+.timer .customer { flex: 1; min-width: 0; overflow: hidden; font-size: .85rem; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.timer-task { display: grid; min-width: 0; margin: 0; padding-left: calc(7px + .4rem); color: var(--muted); font-size: .8rem; }
+.timer-task span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.timer-task .todo { color: var(--fg); }
 .timer .elapsed { color: var(--run); font-size: .9rem; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .timer-start select { width: 100%; padding: .25rem .4rem; border-radius: 8px; background: var(--bg); color: var(--muted); font-size: .8rem; }
 button.icon { display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 0; font-size: .7rem; }

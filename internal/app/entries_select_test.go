@@ -72,7 +72,7 @@ func TestSelectedEntriesAreDeletedTogetherKeepingFiltersAndPage(t *testing.T) {
 	res := c.deleteEntries(query, paths[0], paths[2])
 
 	res.wantStatus(t, http.StatusOK)
-	wantInOrder(t, res.text(), "Time entries on 2026-10-26", "acme · website", "slot 11", "slot 09")
+	wantInOrder(t, res.text(), "Time entries on 2026-10-26", "acme", "website", "slot 11", "slot 09")
 	res.wantNoBody(t, "slot 08")
 	res.wantNoBody(t, "slot 10")
 	res.wantNoBody(t, "elsewhere")
@@ -214,8 +214,8 @@ func TestSelectedEntriesAreAssignedToAProjectTogether(t *testing.T) {
 	res := c.massEdit("assign", "?day=2026-10-26", url.Values{"project": {hosting}}, first, second)
 
 	res.wantStatus(t, http.StatusOK)
-	res.wantRow(t, "", "08:00–09:00", "1:00", "acme · hosting", "", "explicit", "no")
-	res.wantRow(t, "", "09:00–10:00", "1:00", "acme · hosting", "", "orphan", "yes")
+	res.wantRow(t, "", "08:00–09:00", "1:00", "acme", "hosting", "", "explicit", "no")
+	res.wantRow(t, "", "09:00–10:00", "1:00", "acme", "hosting", "", "orphan", "yes")
 	res.wantRow(t, "", "10:00–11:00", "1:00", "Unassigned", "", "left alone", "")
 }
 
@@ -280,15 +280,15 @@ func TestSelectedEntriesAreMarkedBillableOrNotTogether(t *testing.T) {
 	billable := c.massEdit("billable", "?day=2026-10-26", url.Values{"billable": {"yes"}}, first, second)
 
 	billable.wantStatus(t, http.StatusOK)
-	billable.wantRow(t, "", "08:00–09:00", "1:00", "acme · website", "", "first", "yes")
-	billable.wantRow(t, "", "09:00–10:00", "1:00", "acme · website", "", "second", "yes")
+	billable.wantRow(t, "", "08:00–09:00", "1:00", "acme", "website", "", "first", "yes")
+	billable.wantRow(t, "", "09:00–10:00", "1:00", "acme", "website", "", "second", "yes")
 
 	notBillable := c.massEdit("billable", "?day=2026-10-26", url.Values{"billable": {"no"}}, first, second)
 
 	notBillable.wantStatus(t, http.StatusOK)
-	notBillable.wantRow(t, "", "08:00–09:00", "1:00", "acme · website", "", "first", "no")
-	notBillable.wantRow(t, "", "09:00–10:00", "1:00", "acme · website", "", "second", "no")
-	notBillable.wantRow(t, "", "10:00–11:00", "1:00", "acme · website", "", "left alone", "yes")
+	notBillable.wantRow(t, "", "08:00–09:00", "1:00", "acme", "website", "", "first", "no")
+	notBillable.wantRow(t, "", "09:00–10:00", "1:00", "acme", "website", "", "second", "no")
+	notBillable.wantRow(t, "", "10:00–11:00", "1:00", "acme", "website", "", "left alone", "yes")
 }
 
 func TestSelectionWithAnUnassignedEntryChangesNoBillableFlag(t *testing.T) {
@@ -302,5 +302,5 @@ func TestSelectionWithAnUnassignedEntryChangesNoBillableFlag(t *testing.T) {
 
 	res.wantStatus(t, http.StatusUnprocessableEntity)
 	wantInOrder(t, res.text(), "Nothing was changed. These time entries can't be changed:", "2026-10-26 09:00 “orphan” · unassigned")
-	res.wantRow(t, "", "08:00–09:00", "1:00", "acme · website", "", "assigned", "yes")
+	res.wantRow(t, "", "08:00–09:00", "1:00", "acme", "website", "", "assigned", "yes")
 }

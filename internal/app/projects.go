@@ -39,10 +39,18 @@ type project struct {
 	EffectiveRate string
 	Billable      bool
 	Archived      bool
+	CustomerID    int64
+	Customer      string
+	Currency      string
 }
 
+// projectsPage lists one customer's projects, or every project when Customer is nil.
 type projectsPage struct {
-	Customer     projectCustomer
+	Customer *projectCustomer
+	// Customers filters the list of every project.
+	Customers    filterSelect
+	CustomerID   int64
+	NewURL       string
 	Projects     []project
 	ShowArchived bool
 	// HidesArchived is set when the list is empty only because archived projects are hidden.
@@ -55,8 +63,11 @@ type projectPage struct {
 	Customer projectCustomer
 	Project  project
 	Errors   []string
-	Board    board
-	Quotes   quoteList
+	// OnProjects: a new project from the Projects page, which picks its customer from Customers.
+	OnProjects bool
+	Customers  []customerOption
+	Board      board
+	Quotes     quoteList
 	// NewQuoteURL opens a new quote for the project.
 	NewQuoteURL string
 	// Quote is the accepted quote the project was created from, if any.
@@ -129,16 +140,44 @@ func (a *App) customerFromPath(w http.ResponseWriter, r *http.Request) (projectC
 func (a *App) projectList(w http.ResponseWriter, r *http.Request) {
 	c, ok := a.customerFromPath(w, r)
 	if ok {
-		a.listProjects(w, r, http.StatusOK, c, selectionRefusal[blockedRow]{})
+		a.listProjects(w, r, http.StatusOK, &c, selectionRefusal[blockedRow]{})
 	}
 }
 
-func (a *App) listProjects(w http.ResponseWriter, r *http.Request, status int, c projectCustomer, s selectionRefusal[blockedRow]) {
+func (a *App) listProjects(w http.ResponseWriter, r *http.Request, status int, c *projectCustomer, s selectionRefusal[blockedRow]) {
 	show := r.FormValue("archived") != ""
-	page := projectsPage{Customer: c, ShowArchived: show, selectionRefusal: s,
-		archiveActions: newArchiveActions("/customers/"+strconv.FormatInt(c.ID, 10)+"/projects", show)}
-	rows, err := a.db.Query(`SELECT id, name, hourly_rate, billable, archived FROM project
-		WHERE customer_id = ? AND (? OR archived = 0) ORDER BY id`, c.ID, page.ShowArchived)
+	page := projectsPage{Customer: c, ShowArchived: show, selectionRefusal: s}
+	var err error
+	if c != nil {
+		base := "/customers/" + strconv.FormatInt(c.ID, 10) + "/projects"
+		page.CustomerID, page.NewURL, page.archiveActions = c.ID, base+"/new", newArchiveActions(base, nil, show)
+	} else {
+		if v := r.FormValue("customer"); v != "" {
+			if page.CustomerID, err = strconv.ParseInt(v, 10, 64); err != nil {
+				a.errorPage(w, r, http.StatusBadRequest, "error.invalid_filter")
+				return
+			}
+		}
+		q := url.Values{}
+		page.NewURL = "/projects/new"
+		if page.CustomerID != 0 {
+			q.Set("customer", strconv.FormatInt(page.CustomerID, 10))
+			page.NewURL += "?" + q.Encode()
+		}
+		page.archiveActions = newArchiveActions("/projects", q, show)
+		page.Customers = filterSelect{Action: "/projects", Name: "customer", Label: "projects.customer", All: "projects.all_customers"}
+		if show {
+			page.Customers.Hidden = []hiddenField{{"archived", "1"}}
+		}
+		page.Customers.Groups = []filterGroup{{}}
+		if page.Customers.Groups[0].Options, err = a.customerFilter(page.CustomerID); err != nil {
+			a.serverError(w, r, err)
+			return
+		}
+	}
+	rows, err := a.db.Query(`SELECT p.id, p.name, p.hourly_rate, p.billable, p.archived, c.id, c.name, c.currency, c.hourly_rate
+		FROM project p JOIN customer c ON c.id = p.customer_id
+		WHERE ? IN (0, p.customer_id) AND (? OR p.archived = 0) ORDER BY c.name, c.id, p.id`, page.CustomerID, page.ShowArchived)
 	if err != nil {
 		a.serverError(w, r, err)
 		return
@@ -147,13 +186,15 @@ func (a *App) listProjects(w http.ResponseWriter, r *http.Request, status int, c
 	for rows.Next() {
 		var p project
 		var rate sql.NullInt64
-		if err := rows.Scan(&p.ID, &p.Name, &rate, &p.Billable, &p.Archived); err != nil {
+		var customerRate int64
+		if err := rows.Scan(&p.ID, &p.Name, &rate, &p.Billable, &p.Archived, &p.CustomerID, &p.Customer, &p.Currency, &customerRate); err != nil {
 			a.serverError(w, r, err)
 			return
 		}
-		p.EffectiveRate = c.HourlyRate
+		unit := currency.MustParseISO(p.Currency)
+		p.EffectiveRate = formatAmount(customerRate, unit)
 		if rate.Valid {
-			p.HourlyRate = formatAmount(rate.Int64, c.unit)
+			p.HourlyRate = formatAmount(rate.Int64, unit)
 			p.EffectiveRate = p.HourlyRate
 		}
 		page.Projects = append(page.Projects, p)
@@ -162,11 +203,15 @@ func (a *App) listProjects(w http.ResponseWriter, r *http.Request, status int, c
 		a.serverError(w, r, err)
 		return
 	}
-	if page.HidesArchived, err = a.hidesArchived(show, page.Projects == nil, `SELECT 1 FROM project WHERE customer_id = ? AND archived = 1`, c.ID); err != nil {
+	if page.HidesArchived, err = a.hidesArchived(show, page.Projects == nil, `SELECT 1 FROM project WHERE ? IN (0, customer_id) AND archived = 1`, page.CustomerID); err != nil {
 		a.serverError(w, r, err)
 		return
 	}
-	a.render(w, r, status, "projects", page)
+	name := "projects"
+	if c != nil {
+		name = "customer_projects"
+	}
+	a.render(w, r, status, name, page)
 }
 
 func (a *App) projectNew(w http.ResponseWriter, r *http.Request) {
@@ -205,20 +250,34 @@ func (a *App) projectCreate(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	refuse := func(p project, errs []string) {
+		a.render(w, r, http.StatusUnprocessableEntity, "project", projectPage{Customer: c, Project: p, Errors: errs})
+	}
+	a.insertProject(w, r, c, refuse, "/customers/"+strconv.FormatInt(c.ID, 10)+"/projects")
+}
+
+// insertProject creates the submitted project of c and redirects to done, or calls refuse with the form and its errors.
+func (a *App) insertProject(w http.ResponseWriter, r *http.Request, c projectCustomer, refuse func(project, []string), done string) {
 	tx, err := a.db.Begin()
 	if err != nil {
 		a.serverError(w, r, err)
 		return
 	}
 	defer func() { _ = tx.Rollback() }()
-	if c.unit, err = customerUnit(tx, c.ID); err != nil {
+	var cur string
+	var archived bool
+	if err := tx.QueryRow(`SELECT currency, archived FROM customer WHERE id = ?`, c.ID).Scan(&cur, &archived); err != nil {
 		a.serverError(w, r, err)
 		return
 	}
+	c.unit = currency.MustParseISO(cur)
 	p, rate, errs := projectFromForm(r, c.unit)
+	if archived {
+		errs = []string{"projects.error.customer_archived"}
+	}
 	if errs != nil {
 		_ = tx.Rollback()
-		a.render(w, r, http.StatusUnprocessableEntity, "project", projectPage{Customer: c, Project: p, Errors: errs})
+		refuse(p, errs)
 		return
 	}
 	if _, err := tx.Exec(`INSERT INTO project (customer_id, name, hourly_rate, billable) VALUES (?, ?, ?, ?)`,
@@ -230,7 +289,7 @@ func (a *App) projectCreate(w http.ResponseWriter, r *http.Request) {
 		a.serverError(w, r, err)
 		return
 	}
-	http.Redirect(w, r, "/customers/"+strconv.FormatInt(c.ID, 10)+"/projects", http.StatusSeeOther)
+	http.Redirect(w, r, done, http.StatusSeeOther)
 }
 
 // projectFromPath writes 404 or 500 itself when ok is false.

@@ -19,9 +19,10 @@ func init() {
 
 const overdueAfter = 12 * time.Hour
 
-// timer is a running time entry; Project is "customer · project", "" when unassigned.
+// timer is a running time entry; Customer and Project are "" when unassigned.
 type timer struct {
 	ID          int64
+	Customer    string
 	Project     string
 	Todo        string
 	Billable    sql.NullBool
@@ -56,7 +57,7 @@ type timerBar struct {
 func (a *App) loadTimerBar(userID int64) (*timerBar, error) {
 	bar := &timerBar{}
 	rows, err := a.db.Query(`
-		SELECT e.id, ifnull(c.name || ' · ' || p.name, ''), ifnull(t.title, ''), e.billable, e.start_time, e.description
+		SELECT e.id, ifnull(c.name, ''), ifnull(p.name, ''), ifnull(t.title, ''), e.billable, e.start_time, e.description
 		FROM time_entry e LEFT JOIN project p ON p.id = e.project_id LEFT JOIN customer c ON c.id = p.customer_id
 			LEFT JOIN todo t ON t.id = e.todo_id
 		WHERE e.user_id = ? AND e.end_time IS NULL ORDER BY e.start_time, e.id`, userID)
@@ -68,7 +69,7 @@ func (a *App) loadTimerBar(userID int64) (*timerBar, error) {
 	for rows.Next() {
 		var t timer
 		var start int64
-		if err := rows.Scan(&t.ID, &t.Project, &t.Todo, &t.Billable, &start, &t.Description); err != nil {
+		if err := rows.Scan(&t.ID, &t.Customer, &t.Project, &t.Todo, &t.Billable, &start, &t.Description); err != nil {
 			return nil, err
 		}
 		t.Start = time.Unix(start, 0)

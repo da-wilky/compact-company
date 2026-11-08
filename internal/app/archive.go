@@ -2,7 +2,9 @@ package app
 
 import (
 	"database/sql"
+	"maps"
 	"net/http"
+	"net/url"
 	"strconv"
 )
 
@@ -60,6 +62,9 @@ func init() {
 		mux.HandleFunc("POST /customers/{id}/projects/archive", a.authed(a.projectsWrite(projectArchive, "projects.error.archive_blocked")))
 		mux.HandleFunc("POST /customers/{id}/projects/unarchive", a.authed(a.projectsWrite(projectUnarchive, "")))
 		mux.HandleFunc("POST /customers/{id}/projects/delete", a.authed(a.projectsWrite(projectDelete, "projects.error.delete_blocked")))
+		mux.HandleFunc("POST /projects/archive", a.authed(a.allProjectsWrite(projectArchive, "projects.error.archive_blocked")))
+		mux.HandleFunc("POST /projects/unarchive", a.authed(a.allProjectsWrite(projectUnarchive, "")))
+		mux.HandleFunc("POST /projects/delete", a.authed(a.allProjectsWrite(projectDelete, "projects.error.delete_blocked")))
 	})
 }
 
@@ -162,13 +167,21 @@ func (a *App) hidesArchived(show, empty bool, archived string, args ...any) (boo
 	return hides, err
 }
 
-func newArchiveActions(base string, showArchived bool) archiveActions {
-	q := ""
-	if showArchived {
-		q = "?archived=1"
+// newArchiveActions keeps the list's other filters q on every URL.
+func newArchiveActions(base string, q url.Values, showArchived bool) archiveActions {
+	link := func(path string, archived bool) string {
+		v := url.Values{}
+		maps.Copy(v, q)
+		if archived {
+			v.Set("archived", "1")
+		}
+		if len(v) == 0 {
+			return path
+		}
+		return path + "?" + v.Encode()
 	}
-	return archiveActions{base + "/archive" + q, base + "/unarchive" + q, base + "/delete" + q,
-		[]filterOption{{"filter.active", base, !showArchived}, {"filter.all", base + "?archived=1", showArchived}}}
+	return archiveActions{link(base+"/archive", showArchived), link(base+"/unarchive", showArchived), link(base+"/delete", showArchived),
+		[]filterOption{{"filter.active", link(base, false), !showArchived}, {"filter.all", link(base, true), showArchived}}}
 }
 
 func (a *App) customersWrite(rw rowWrite, blocked string) http.HandlerFunc {
@@ -184,8 +197,15 @@ func (a *App) projectsWrite(rw rowWrite, blocked string) http.HandlerFunc {
 		if !ok {
 			return
 		}
-		list := func(status int, s selectionRefusal[blockedRow]) { a.listProjects(w, r, status, c, s) }
+		list := func(status int, s selectionRefusal[blockedRow]) { a.listProjects(w, r, status, &c, s) }
 		a.rowsWrite(w, r, `SELECT id, name FROM project WHERE customer_id = ? AND id`, []any{c.ID}, rw, blocked, list)
+	}
+}
+
+func (a *App) allProjectsWrite(rw rowWrite, blocked string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		list := func(status int, s selectionRefusal[blockedRow]) { a.listProjects(w, r, status, nil, s) }
+		a.rowsWrite(w, r, `SELECT id, name FROM project WHERE id`, nil, rw, blocked, list)
 	}
 }
 

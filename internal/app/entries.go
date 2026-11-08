@@ -36,11 +36,12 @@ func formatDuration(d time.Duration) string {
 	return fmt.Sprintf("%d:%02d", m/60, m%60)
 }
 
-// entryRow is an entry as listings show it; Project is "customer · project", "" when unassigned.
+// entryRow is an entry as listings show it; Customer and Project are "" when unassigned.
 type entryRow struct {
 	ID          int64
 	User        string
 	Own         bool
+	Customer    string
 	Project     string
 	Todo        string
 	Start, End  time.Time
@@ -260,7 +261,7 @@ func (a *App) listEntries(w http.ResponseWriter, r *http.Request, status int, re
 	}
 
 	rows, err := a.db.Query(`
-		SELECT e.id, e.user_id, u.display_name, ifnull(c.name || ' · ' || p.name, ''), ifnull(t.title, ''), e.start_time, e.end_time, e.description, e.billable, ci.id, ci.number
+		SELECT e.id, e.user_id, u.display_name, ifnull(c.name, ''), ifnull(p.name, ''), ifnull(t.title, ''), e.start_time, e.end_time, e.description, e.billable, ci.id, ci.number
 		FROM time_entry e JOIN user u ON u.id = e.user_id
 		LEFT JOIN project p ON p.id = e.project_id LEFT JOIN customer c ON c.id = p.customer_id
 		LEFT JOIN todo t ON t.id = e.todo_id`+claimJoin+where+`
@@ -276,7 +277,7 @@ func (a *App) listEntries(w http.ResponseWriter, r *http.Request, status int, re
 		var userID, start int64
 		var end, invoice sql.NullInt64
 		var number sql.NullString
-		if err := rows.Scan(&e.ID, &userID, &e.User, &e.Project, &e.Todo, &start, &end, &e.Description, &e.Billable, &invoice, &number); err != nil {
+		if err := rows.Scan(&e.ID, &userID, &e.User, &e.Customer, &e.Project, &e.Todo, &start, &end, &e.Description, &e.Billable, &invoice, &number); err != nil {
 			a.serverError(w, r, err)
 			return
 		}
@@ -836,8 +837,8 @@ func (a *App) editSelected(w http.ResponseWriter, r *http.Request, blocked strin
 	massWrite(a, w, r, massAction[entryRow]{
 		load: func(tx *sql.Tx, ids []int64) ([]entryRow, error) {
 			in, args := inList(ids)
-			rows, err := tx.Query(`SELECT e.user_id, u.display_name, ifnull(c.name || ' · ' || p.name, ''), e.start_time, e.end_time IS NULL, e.description, ci.id, ci.number
-				FROM time_entry e JOIN user u ON u.id = e.user_id LEFT JOIN project p ON p.id = e.project_id LEFT JOIN customer c ON c.id = p.customer_id`+claimJoin+`
+			rows, err := tx.Query(`SELECT e.user_id, u.display_name, ifnull(p.name, ''), e.start_time, e.end_time IS NULL, e.description, ci.id, ci.number
+				FROM time_entry e JOIN user u ON u.id = e.user_id LEFT JOIN project p ON p.id = e.project_id`+claimJoin+`
 				WHERE e.id`+in+` ORDER BY e.start_time, e.id`, args...)
 			if err != nil {
 				return nil, err
