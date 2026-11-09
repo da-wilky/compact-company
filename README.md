@@ -28,6 +28,12 @@ endpoint = "https://s3.example.com"
 access_key_id = "…"
 secret_access_key_file = "/run/secrets/s3"   # secrets come only from files
 
+[oidc]                         # optional sign-in through an identity provider; it never creates users
+issuer = "https://id.example.com/realms/example"
+client_id = "compact-company"  # redirect URI: <public_url>/api/oidc/callback
+client_secret_file = "/run/secrets/oidc"
+name = "Keycloak"              # label of the sign-in button
+
 [business]                     # each key set here is fixed; the app shows it read-only
 name = "…"
 address = "…"
@@ -44,27 +50,6 @@ npm --prefix web ci && npm --prefix web run build   # the server embeds web/buil
 cargo run -- serve
 npm --prefix web run dev     # client with hot reload, proxies /api to the server
 nix flake check              # fmt, clippy, tests, svelte-check
-```
-
-Every config key is optional:
-
-```toml
-listen = "127.0.0.1:9440"
-data_dir = "data"              # database, and stored files unless S3 is set
-
-[storage.s3]                   # S3-compatible bucket for stored files
-bucket = "compact-company"
-region = "eu-central-1"
-endpoint = "https://s3.example.com"
-access_key_id = "…"
-secret_access_key_file = "/run/secrets/s3"   # secrets come only from files
-
-[business]                     # each key set here is fixed; the app shows it read-only
-name = "…"
-address = "…"
-tax_number = "…"
-vat_id = "…"
-small_business = true
 ```
 
 Licensed under AGPL-3.0-or-later.

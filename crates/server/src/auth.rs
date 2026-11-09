@@ -46,6 +46,7 @@ pub trait Allowed {
 
 pub struct AnyRole;
 pub struct OwnerOnly;
+pub struct OwnerOrAccountant;
 
 impl Allowed for AnyRole {
     const ROLES: &[Role] = &[Role::Owner, Role::Staff, Role::Accountant];
@@ -53,6 +54,10 @@ impl Allowed for AnyRole {
 
 impl Allowed for OwnerOnly {
     const ROLES: &[Role] = &[Role::Owner];
+}
+
+impl Allowed for OwnerOrAccountant {
+    const ROLES: &[Role] = &[Role::Owner, Role::Accountant];
 }
 
 /// A signed-in user whose role is one of `R::ROLES`; state-changing requests must also carry the
@@ -194,6 +199,17 @@ pub async fn start_ceremony(
     state: &impl Serialize,
 ) -> Result<String, ApiError> {
     let id = random_token();
+    store_ceremony(app, &id, kind, state).await?;
+    Ok(id)
+}
+
+/// Like [`start_ceremony`] for an exchange whose id must be known before its state.
+pub async fn store_ceremony(
+    app: &App,
+    id: &str,
+    kind: &str,
+    state: &impl Serialize,
+) -> Result<(), ApiError> {
     let now = now();
     sqlx::query("DELETE FROM ceremony WHERE expires_at <= ?")
         .bind(now)
@@ -206,7 +222,7 @@ pub async fn start_ceremony(
         .bind(now + CEREMONY_SECS)
         .execute(&app.db)
         .await?;
-    Ok(id)
+    Ok(())
 }
 
 /// Consumes a started exchange; each id can be used once.

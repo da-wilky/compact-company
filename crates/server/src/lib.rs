@@ -20,6 +20,7 @@ pub mod api;
 pub mod auth;
 pub mod config;
 pub mod files;
+pub mod oidc;
 pub mod settings;
 
 pub struct App {
@@ -30,6 +31,7 @@ pub struct App {
     pub public_url: Url,
     /// Required to create the first owner, so that only whoever can read the server log can.
     pub setup_token: String,
+    pub oidc: Option<oidc::Provider>,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -42,6 +44,8 @@ pub enum Error {
     Migrate(#[from] sqlx::migrate::MigrateError),
     #[error("cannot open the file store: {0}")]
     Files(#[from] files::Error),
+    #[error(transparent)]
+    Oidc(#[from] oidc::Error),
     #[error("invalid public_url {0}: {1}")]
     PublicUrl(Url, WebauthnError),
 }
@@ -81,6 +85,11 @@ impl App {
             webauthn,
             public_url: url.clone(),
             setup_token: auth::random_token(),
+            oidc: config
+                .oidc
+                .as_ref()
+                .map(|oidc| oidc::Provider::new(oidc, url))
+                .transpose()?,
         })
     }
 

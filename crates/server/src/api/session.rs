@@ -27,6 +27,8 @@ pub struct SessionView {
     /// Send as `x-csrf-token` with every state-changing request.
     csrf_token: Option<String>,
     setup_required: bool,
+    /// Label of the identity provider's sign-in button, if one is configured.
+    oidc: Option<String>,
 }
 
 #[utoipa::path(get, path = "/session", tag = "session",
@@ -38,6 +40,7 @@ pub async fn get_session(
     let current = auth::current(&app, &headers).await?;
     Ok(Json(SessionView {
         setup_required: app.setup_required().await?,
+        oidc: app.oidc.as_ref().map(|p| p.name.clone()),
         csrf_token: current.as_ref().map(|c| c.csrf_token.clone()),
         user: current.map(|c| c.user),
     }))
@@ -118,7 +121,7 @@ pub async fn setup_finish(
     insert_passkey(&mut tx, user.id, &passkey_name, &passkey).await?;
     let session = auth::start_session(&mut *tx, &app, user.id).await?;
     tx.commit().await?;
-    Ok(signed_in(session, user))
+    Ok(signed_in(&app, session, user))
 }
 
 pub async fn create_user(
@@ -164,11 +167,12 @@ pub async fn insert_passkey(
     }
 }
 
-pub fn signed_in(session: NewSession, user: User) -> Response {
+pub fn signed_in(app: &App, session: NewSession, user: User) -> Response {
     let view = SessionView {
         user: Some(user),
         csrf_token: Some(session.csrf_token),
         setup_required: false,
+        oidc: app.oidc.as_ref().map(|p| p.name.clone()),
     };
     ([(header::SET_COOKIE, session.cookie)], Json(view)).into_response()
 }
@@ -231,7 +235,7 @@ pub async fn sign_in_finish(
         name,
         role,
     };
-    Ok(signed_in(session, user))
+    Ok(signed_in(&app, session, user))
 }
 
 #[utoipa::path(post, path = "/sign-out", tag = "session",

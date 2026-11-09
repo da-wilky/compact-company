@@ -192,6 +192,61 @@ impl TestApp {
     }
 }
 
+impl TestApp {
+    /// Has the owner invite someone and returns the token from the invitation link.
+    pub async fn invite(&self, owner: &mut Browser, name: &str, role: &str) -> String {
+        let response = self
+            .as_browser(
+                owner,
+                "POST",
+                "/api/invitations",
+                json!({ "name": name, "role": role }),
+            )
+            .await;
+        assert_eq!(response.status(), StatusCode::OK);
+        let link = json(response).await["link"].as_str().unwrap().to_owned();
+        link.split_once("/invitation#").unwrap().1.to_owned()
+    }
+
+    pub async fn accept_with_passkey(&self, token: &str) -> Result<Browser, Box<Response>> {
+        let mut browser = Browser::new();
+        let start = self
+            .send_json(
+                "POST",
+                "/api/invitation/passkey/start",
+                json!({ "token": token }),
+            )
+            .await;
+        if start.status() != StatusCode::OK {
+            return Err(Box::new(start));
+        }
+        let start = json(start).await;
+        let credential = browser.register(&start["options"]);
+        let finish = self
+            .as_browser(
+                &mut browser,
+                "POST",
+                "/api/invitation/passkey/finish",
+                json!({ "ceremony": start["ceremony"], "passkey_name": "Laptop", "credential": credential }),
+            )
+            .await;
+        if finish.status() != StatusCode::OK {
+            return Err(Box::new(finish));
+        }
+        browser.csrf_token = json(finish).await["csrf_token"].as_str().map(str::to_owned);
+        Ok(browser)
+    }
+
+    /// Signs in a user with `role` through an invitation from a fresh owner.
+    pub async fn with_role(&self, owner: &mut Browser, role: &str) -> Browser {
+        let token = self.invite(owner, role, role).await;
+        match self.accept_with_passkey(&token).await {
+            Ok(browser) => browser,
+            Err(response) => panic!("{}", text(*response).await),
+        }
+    }
+}
+
 pub async fn text(response: Response) -> String {
     let bytes = response.into_body().collect().await.unwrap().to_bytes();
     String::from_utf8(bytes.to_vec()).unwrap()

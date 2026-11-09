@@ -23,6 +23,20 @@ pub struct Config {
     pub storage: Storage,
     #[serde(default)]
     pub business: Business,
+    pub oidc: Option<Oidc>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Oidc {
+    pub issuer: Url,
+    pub client_id: String,
+    client_secret_file: PathBuf,
+    #[serde(skip)]
+    pub client_secret: String,
+    /// Label of the sign-in button.
+    #[serde(default = "default_oidc_name")]
+    pub name: String,
 }
 
 #[derive(Debug, Default, Deserialize)]
@@ -65,6 +79,9 @@ impl Config {
         if let Some(s3) = &mut config.storage.s3 {
             s3.secret_access_key = read(&s3.secret_access_key_file)?.trim_end().to_owned();
         }
+        if let Some(oidc) = &mut config.oidc {
+            oidc.client_secret = read(&oidc.client_secret_file)?.trim_end().to_owned();
+        }
         Ok(config)
     }
 }
@@ -83,4 +100,8 @@ fn default_public_url() -> Url {
 
 fn default_data_dir() -> PathBuf {
     "data".into()
+}
+
+fn default_oidc_name() -> String {
+    "Single sign-on".into()
 }

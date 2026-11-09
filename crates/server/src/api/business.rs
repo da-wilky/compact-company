@@ -7,7 +7,7 @@ use utoipa::ToSchema;
 use super::error::{ApiError, FieldError, Json};
 use crate::{
     App,
-    auth::{Auth, OwnerOnly},
+    auth::{Auth, OwnerOnly, OwnerOrAccountant},
     settings::{self, Business},
 };
 
@@ -22,7 +22,7 @@ pub struct BusinessView {
     responses((status = OK, body = BusinessView), (status = "default", body = ApiError)))]
 pub async fn get_business(
     State(app): State<Arc<App>>,
-    _: Auth,
+    _: Auth<OwnerOrAccountant>,
 ) -> Result<Json<BusinessView>, ApiError> {
     view(&app).await.map(Json)
 }

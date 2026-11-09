@@ -8,8 +8,11 @@ use crate::App;
 
 pub mod business;
 pub mod error;
+pub mod invitations;
+pub mod oidc;
 pub mod passkeys;
 pub mod session;
+pub mod users;
 
 use error::{ApiError, ErrorCode, Json};
 
@@ -31,6 +34,15 @@ pub fn routes() -> OpenApiRouter<Arc<App>> {
         .routes(routes!(passkeys::add_passkey_start))
         .routes(routes!(passkeys::add_passkey_finish))
         .routes(routes!(passkeys::remove_passkey))
+        .routes(routes!(users::list_users))
+        .routes(routes!(users::change_user))
+        .routes(routes!(invitations::list_invitations, invitations::invite))
+        .routes(routes!(invitations::revoke_invitation))
+        .routes(routes!(invitations::view_invitation))
+        .routes(routes!(invitations::accept_start))
+        .routes(routes!(invitations::accept_finish))
+        .routes(routes!(oidc::oidc_start))
+        .routes(routes!(oidc::oidc_callback))
         .fallback(async || ApiError::new(ErrorCode::NotFound));
     OpenApiRouter::with_openapi(Doc::openapi()).nest("/api", api)
 }

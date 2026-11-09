@@ -11,7 +11,7 @@ async fn a_fresh_instance_requires_setup() {
     let session = json(app.get("/api/session").await).await;
     assert_eq!(
         session,
-        json!({ "user": null, "csrf_token": null, "setup_required": true })
+        json!({ "user": null, "csrf_token": null, "setup_required": true, "oidc": null })
     );
 }
 
