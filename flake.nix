@@ -22,7 +22,13 @@
         pkgs:
         let
           craneLib = crane.mkLib pkgs;
-          src = craneLib.cleanCargoSource ./.;
+          src = pkgs.lib.fileset.toSource {
+            root = ./.;
+            fileset = pkgs.lib.fileset.unions [
+              (craneLib.fileset.commonCargoSources ./.)
+              ./crates/server/migrations
+            ];
+          };
           pname = "compact-company";
           version = "0.1.0";
           web = pkgs.buildNpmPackage {
@@ -36,6 +42,7 @@
             inherit src pname version;
             strictDeps = true;
           };
+          caBundle = "${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt";
           withClient = {
             inherit
               src
@@ -49,8 +56,20 @@
           };
         in
         {
-          inherit craneLib src web;
-          server = craneLib.buildPackage (withClient // { meta.mainProgram = "compact-company"; });
+          inherit
+            craneLib
+            src
+            web
+            caBundle
+            ;
+          server = craneLib.buildPackage (
+            withClient
+            // {
+              # the S3 client refuses to start without CA certificates, even for plain HTTP
+              SSL_CERT_FILE = caBundle;
+              meta.mainProgram = "compact-company";
+            }
+          );
           clippy = craneLib.cargoClippy (
             withClient // { cargoClippyExtraArgs = "--all-targets -- --deny warnings"; }
           );
@@ -77,10 +96,15 @@
               Entrypoint = [ (pkgs.lib.getExe b.server) ];
               Cmd = [
                 "serve"
-                "--listen"
-                "0.0.0.0:9440"
+                "--config"
+                "${pkgs.writeText "config.toml" ''
+                  listen = "0.0.0.0:9440"
+                  data_dir = "/data"
+                ''}"
               ];
+              Env = [ "SSL_CERT_FILE=${b.caBundle}" ];
               ExposedPorts."9440/tcp" = { };
+              Volumes."/data" = { };
             };
           };
         }

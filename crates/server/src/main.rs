@@ -1,6 +1,7 @@
-use std::net::SocketAddr;
+use std::{path::PathBuf, process::ExitCode};
 
 use clap::{Parser, Subcommand};
+use compact_company::{App, config::Config};
 
 #[derive(Parser)]
 #[command(version, about)]
@@ -13,15 +14,32 @@ struct Cli {
 enum Command {
     /// Serve the app over HTTP
     Serve {
-        #[arg(long, default_value = "127.0.0.1:9440")]
-        listen: SocketAddr,
+        /// TOML config; without it, defaults apply
+        #[arg(long)]
+        config: Option<PathBuf>,
     },
 }
 
 #[tokio::main]
-async fn main() -> std::io::Result<()> {
-    let Command::Serve { listen } = Cli::parse().command;
-    let listener = tokio::net::TcpListener::bind(listen).await?;
+async fn main() -> ExitCode {
+    match serve().await {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(e) => {
+            eprintln!("error: {e}");
+            ExitCode::FAILURE
+        }
+    }
+}
+
+async fn serve() -> Result<(), Box<dyn std::error::Error>> {
+    let Command::Serve { config } = Cli::parse().command;
+    let config = match config {
+        Some(path) => Config::load(&path)?,
+        None => Config::default(),
+    };
+    let _app = App::open(&config).await?;
+    let listener = tokio::net::TcpListener::bind(config.listen).await?;
     eprintln!("listening on http://{}", listener.local_addr()?);
-    axum::serve(listener, compact_company::router()).await
+    axum::serve(listener, compact_company::router()).await?;
+    Ok(())
 }
