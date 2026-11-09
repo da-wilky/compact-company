@@ -169,19 +169,22 @@ pub fn clear_session_cookie(app: &App) -> HeaderValue {
 }
 
 fn session_cookie(app: &App, token: &str, max_age: i64) -> HeaderValue {
+    set_cookie(app, SESSION_COOKIE, token, "/; SameSite=Strict", max_age)
+}
+
+/// A `Set-Cookie` value; `path` may carry further attributes.
+pub fn set_cookie(app: &App, name: &str, value: &str, path: &str, max_age: i64) -> HeaderValue {
     let secure = if app.public_url.scheme() == "https" {
         "; Secure"
     } else {
         ""
     };
-    format!(
-        "{SESSION_COOKIE}={token}; Path=/; HttpOnly; SameSite=Strict; Max-Age={max_age}{secure}"
-    )
-    .parse()
-    .expect("cookie is ASCII")
+    format!("{name}={value}; Path={path}; HttpOnly; Max-Age={max_age}{secure}")
+        .parse()
+        .expect("cookie is ASCII")
 }
 
-fn cookie<'a>(headers: &'a HeaderMap, name: &str) -> Option<&'a str> {
+pub fn cookie<'a>(headers: &'a HeaderMap, name: &str) -> Option<&'a str> {
     headers
         .get_all(header::COOKIE)
         .iter()

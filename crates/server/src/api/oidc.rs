@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use axum::{
     extract::{Query, State},
-    http::{StatusCode, header},
+    http::{HeaderMap, StatusCode, header},
     response::{IntoResponse, Response},
 };
 use serde::{Deserialize, Serialize};
@@ -16,7 +16,7 @@ use super::{
 };
 use crate::{
     App, audit,
-    auth::{self, User, now, random_token},
+    auth::{self, User, digest, now, random_token},
     oidc::Pending,
 };
 
@@ -43,7 +43,7 @@ struct Ceremony {
 pub async fn oidc_start(
     State(app): State<Arc<App>>,
     Json(body): Json<OidcStart>,
-) -> Result<Json<OidcRedirect>, ApiError> {
+) -> Result<Response, ApiError> {
     let provider = app
         .oidc
         .as_ref()
@@ -59,8 +59,18 @@ pub async fn oidc_start(
         invitation,
     };
     auth::store_ceremony(&app, &id, "oidc", &state).await?;
-    Ok(Json(OidcRedirect { url: url.into() }))
+    let cookie = auth::set_cookie(&app, STATE_COOKIE, &id, CALLBACK_PATH, 300);
+    Ok((
+        [(header::SET_COOKIE, cookie)],
+        Json(OidcRedirect { url: url.into() }),
+    )
+        .into_response())
 }
+
+/// Binds the provider's answer to the browser that asked, so nobody can sign another person in
+/// to their own account by sending them a callback link. Lax, as the provider redirects back.
+const STATE_COOKIE: &str = "oidc_state";
+const CALLBACK_PATH: &str = "/api/oidc/callback; SameSite=Lax";
 
 #[derive(Deserialize, IntoParams)]
 #[into_params(parameter_in = Query)]
@@ -75,9 +85,11 @@ pub struct Callback {
     responses((status = SEE_OTHER)))]
 pub async fn oidc_callback(
     State(app): State<Arc<App>>,
+    headers: HeaderMap,
     Query(callback): Query<Callback>,
 ) -> Response {
-    match sign_in(&app, callback).await {
+    let clear_state = auth::set_cookie(&app, STATE_COOKIE, "", CALLBACK_PATH, 0);
+    let mut response = match sign_in(&app, &headers, callback).await {
         Ok(cookie) => (
             StatusCode::SEE_OTHER,
             [
@@ -91,14 +103,27 @@ pub async fn oidc_callback(
             [(header::LOCATION, format!("/sign-in#{}", e.message))],
         )
             .into_response(),
-    }
+    };
+    response
+        .headers_mut()
+        .append(header::SET_COOKIE, clear_state);
+    response
 }
 
-async fn sign_in(app: &App, callback: Callback) -> Result<axum::http::HeaderValue, ApiError> {
+async fn sign_in(
+    app: &App,
+    headers: &HeaderMap,
+    callback: Callback,
+) -> Result<axum::http::HeaderValue, ApiError> {
     let provider = app
         .oidc
         .as_ref()
         .ok_or(ApiError::new(ErrorCode::NotFound))?;
+    let started_here = auth::cookie(headers, STATE_COOKIE)
+        .is_some_and(|id| digest(id.as_bytes()) == digest(callback.state.as_bytes()));
+    if !started_here {
+        return Err(ApiError::new(ErrorCode::OidcFailed));
+    }
     let state: Ceremony = auth::take_ceremony(app, "oidc", &callback.state).await?;
     let code = callback.code.ok_or(ApiError::new(ErrorCode::OidcFailed))?;
     let identity = provider

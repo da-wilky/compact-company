@@ -56,16 +56,16 @@ async fn setup_creates_the_owner_once() {
 async fn owner_signs_out_and_back_in_and_edits_the_business() {
     let app = start(Config::default()).await;
     let mut owner = app.setup_owner().await;
-    let old_cookie = owner.cookie.clone();
+    let old_cookies = owner.cookies.clone();
 
     let response = app
         .as_browser(&mut owner, "POST", "/api/sign-out", json!({}))
         .await;
     assert_eq!(response.status(), StatusCode::NO_CONTENT);
-    assert_eq!(owner.cookie, None);
+    assert!(owner.cookies.is_empty());
 
     let mut stale = Browser::new();
-    stale.cookie = old_cookie;
+    stale.cookies = old_cookies;
     let response = app
         .as_browser(&mut stale, "GET", "/api/business", json!({}))
         .await;
