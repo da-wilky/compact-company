@@ -25,6 +25,17 @@ _Avoid_: Employee, member
 The role that reads the books and takes exports but changes nothing.
 _Avoid_: Tax advisor, bookkeeper
 
+**Invitation** (de: Einladung):
+A one-time link from the owner that lets one named person become a user with a given role.
+
+**Passkey** (de: Passkey):
+A credential on a user's device that signs them in; a user may have several and never fewer than one.
+_Avoid_: Password, key
+
+**Audit log** (de: Änderungsprotokoll):
+The append-only record of who changed what and when, with the values before and after.
+_Avoid_: History, changelog
+
 **Customer** (de: Kunde):
 A person or organization that work is done for and documents go to.
 _Avoid_: Client, contact, account
