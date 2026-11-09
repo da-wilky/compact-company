@@ -1,0 +1,20 @@
+{
+  "app.save": "Save",
+  "app.saved": "Saved",
+  "business.title": "Business",
+  "business.name": "Name",
+  "business.address": "Address",
+  "business.tax_number": "Tax number",
+  "business.vat_id": "VAT ID",
+  "business.small_business": "Small business (§ 19 UStG)",
+  "business.pinned": "Set by the server configuration",
+  "error.not_found": "Not found.",
+  "error.malformed_request": "The request could not be read.",
+  "error.invalid_input": "Please correct the marked fields.",
+  "error.internal": "Something went wrong on the server.",
+  "error.network": "The server cannot be reached.",
+  "field.too_long": "Too long.",
+  "field.invalid_format": "Invalid format.",
+  "field.pinned": "Fixed by the server configuration.",
+  "term.business": "Business"
+}

@@ -1,4 +1,4 @@
-use std::{path::PathBuf, process::ExitCode};
+use std::{path::PathBuf, process::ExitCode, sync::Arc};
 
 use clap::{Parser, Subcommand};
 use compact_company::{App, config::Config};
@@ -18,11 +18,17 @@ enum Command {
         #[arg(long)]
         config: Option<PathBuf>,
     },
+    /// Print the API's OpenAPI description
+    Openapi,
 }
 
 #[tokio::main]
 async fn main() -> ExitCode {
-    match serve().await {
+    let result = match Cli::parse().command {
+        Command::Serve { config } => serve(config).await,
+        Command::Openapi => openapi(),
+    };
+    match result {
         Ok(()) => ExitCode::SUCCESS,
         Err(e) => {
             eprintln!("error: {e}");
@@ -31,15 +37,19 @@ async fn main() -> ExitCode {
     }
 }
 
-async fn serve() -> Result<(), Box<dyn std::error::Error>> {
-    let Command::Serve { config } = Cli::parse().command;
+async fn serve(config: Option<PathBuf>) -> Result<(), Box<dyn std::error::Error>> {
     let config = match config {
         Some(path) => Config::load(&path)?,
         None => Config::default(),
     };
-    let _app = App::open(&config).await?;
+    let app = Arc::new(App::open(&config).await?);
     let listener = tokio::net::TcpListener::bind(config.listen).await?;
     eprintln!("listening on http://{}", listener.local_addr()?);
-    axum::serve(listener, compact_company::router()).await?;
+    axum::serve(listener, compact_company::router(app)).await?;
+    Ok(())
+}
+
+fn openapi() -> Result<(), Box<dyn std::error::Error>> {
+    println!("{}", compact_company::openapi().to_pretty_json()?);
     Ok(())
 }

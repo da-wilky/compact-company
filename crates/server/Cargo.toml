@@ -6,7 +6,7 @@ license = "AGPL-3.0-or-later"
 publish = false
 
 [dependencies]
-axum = "0.8.9"
+axum = { version = "0.8.9", features = ["macros"] }
 clap = { version = "4.6.7", features = ["derive"] }
 hex = "0.4.3"
 object_store = { version = "0.14", features = ["aws"] }
@@ -18,6 +18,8 @@ sqlx = { version = "0.9", default-features = false, features = ["runtime-tokio",
 thiserror = "2.0.21"
 tokio = { version = "1.54.1", features = ["rt-multi-thread", "macros", "net"] }
 toml = "1.2"
+utoipa = "6"
+utoipa-axum = "0.3"
 
 [dev-dependencies]
 http-body-util = "0.1.5"

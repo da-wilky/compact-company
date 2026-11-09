@@ -1,44 +1,38 @@
-use axum::{
-    body::Body,
-    http::{Request, StatusCode, header},
-    response::Response,
-};
-use http_body_util::BodyExt;
-use tower::ServiceExt;
+mod common;
 
-async fn get(path: &str) -> Response {
-    compact_company::router()
-        .oneshot(Request::get(path).body(Body::empty()).unwrap())
-        .await
-        .unwrap()
-}
+use axum::http::{StatusCode, header};
+use common::{json, start, text};
+use compact_company::config::Config;
+use serde_json::json;
 
-async fn text(response: Response) -> String {
-    let bytes = response.into_body().collect().await.unwrap().to_bytes();
-    String::from_utf8(bytes.to_vec()).unwrap()
-}
-
-fn content_type(response: &Response) -> &str {
+fn content_type(response: &axum::response::Response) -> &str {
     response.headers()[header::CONTENT_TYPE].to_str().unwrap()
 }
 
 #[tokio::test]
 async fn health_reports_ok() {
-    let response = get("/api/health").await;
+    let app = start(Config::default()).await;
+    let response = app.get("/api/health").await;
     assert_eq!(response.status(), StatusCode::OK);
-    assert_eq!(text(response).await, r#"{"status":"ok"}"#);
+    assert_eq!(json(response).await, json!({ "status": "ok" }));
 }
 
 #[tokio::test]
-async fn unknown_api_path_is_a_json_404() {
-    let response = get("/api/nope").await;
+async fn unknown_api_path_is_a_not_found_error() {
+    let app = start(Config::default()).await;
+    let response = app.get("/api/nope").await;
     assert_eq!(response.status(), StatusCode::NOT_FOUND);
     assert_eq!(content_type(&response), "application/json");
+    assert_eq!(
+        json(response).await,
+        json!({ "code": "not_found", "message": "error.not_found" })
+    );
 }
 
 #[tokio::test]
 async fn root_serves_the_client() {
-    let response = get("/").await;
+    let app = start(Config::default()).await;
+    let response = app.get("/").await;
     assert_eq!(response.status(), StatusCode::OK);
     assert!(content_type(&response).starts_with("text/html"));
     assert!(text(response).await.contains("/_app/"));
@@ -46,17 +40,29 @@ async fn root_serves_the_client() {
 
 #[tokio::test]
 async fn client_routes_fall_back_to_the_client() {
-    let response = get("/customers/42").await;
+    let app = start(Config::default()).await;
+    let response = app.get("/customers/42").await;
     assert_eq!(response.status(), StatusCode::OK);
     assert!(text(response).await.contains("/_app/"));
 }
 
 #[tokio::test]
 async fn client_assets_are_served_with_their_type() {
-    let page = text(get("/").await).await;
+    let app = start(Config::default()).await;
+    let page = text(app.get("/").await).await;
     let start = page.find("/_app/immutable/").unwrap();
     let end = start + page[start..].find(".js").unwrap() + 3;
-    let response = get(&page[start..end]).await;
+    let response = app.get(&page[start..end]).await;
     assert_eq!(response.status(), StatusCode::OK);
     assert_eq!(content_type(&response), "text/javascript");
+}
+
+#[tokio::test]
+async fn malformed_json_is_an_api_error() {
+    let app = start(Config::default()).await;
+    let response = app
+        .send_json("PUT", "/api/business", json!({ "colour": 1 }))
+        .await;
+    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+    assert_eq!(json(response).await["code"], "malformed_request");
 }

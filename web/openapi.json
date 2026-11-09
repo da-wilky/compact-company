@@ -1,0 +1,209 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "compact-company",
+    "description": "",
+    "license": {
+      "name": "AGPL-3.0-or-later",
+      "identifier": "AGPL-3.0-or-later"
+    },
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/api/business": {
+      "get": {
+        "tags": [
+          "business"
+        ],
+        "operationId": "get_business",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessView"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "business"
+        ],
+        "operationId": "put_business",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Business"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessView"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/health": {
+      "get": {
+        "tags": [
+          "health"
+        ],
+        "operationId": "health",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Health"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ApiError": {
+        "type": "object",
+        "description": "The one error body every endpoint returns; `message` and each field error are catalog keys.",
+        "required": [
+          "code",
+          "message"
+        ],
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/ErrorCode"
+          },
+          "fields": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/FieldError"
+            },
+            "propertyNames": {
+              "type": "string"
+            }
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "Business": {
+        "type": "object",
+        "properties": {
+          "address": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "small_business": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "tax_number": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "vat_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "BusinessView": {
+        "type": "object",
+        "required": [
+          "values",
+          "pinned"
+        ],
+        "properties": {
+          "pinned": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Keys fixed by the config; the app shows them read-only."
+          },
+          "values": {
+            "$ref": "#/components/schemas/Business"
+          }
+        }
+      },
+      "ErrorCode": {
+        "type": "string",
+        "enum": [
+          "not_found",
+          "malformed_request",
+          "invalid_input",
+          "internal"
+        ]
+      },
+      "FieldError": {
+        "type": "string",
+        "enum": [
+          "too_long",
+          "invalid_format",
+          "pinned"
+        ]
+      },
+      "Health": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

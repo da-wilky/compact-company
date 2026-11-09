@@ -1,0 +1,20 @@
+{
+  "app.save": "Speichern",
+  "app.saved": "Gespeichert",
+  "business.title": "Unternehmen",
+  "business.name": "Name",
+  "business.address": "Anschrift",
+  "business.tax_number": "Steuernummer",
+  "business.vat_id": "USt-IdNr.",
+  "business.small_business": "Kleinunternehmer (§ 19 UStG)",
+  "business.pinned": "Durch die Serverkonfiguration festgelegt",
+  "error.not_found": "Nicht gefunden.",
+  "error.malformed_request": "Die Anfrage konnte nicht gelesen werden.",
+  "error.invalid_input": "Bitte die markierten Felder korrigieren.",
+  "error.internal": "Auf dem Server ist ein Fehler aufgetreten.",
+  "error.network": "Der Server ist nicht erreichbar.",
+  "field.too_long": "Zu lang.",
+  "field.invalid_format": "Ungültiges Format.",
+  "field.pinned": "Durch die Serverkonfiguration festgelegt.",
+  "term.business": "Unternehmen"
+}

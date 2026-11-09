@@ -1,13 +1,11 @@
-use std::time::Duration;
+use std::{sync::Arc, time::Duration};
 
 use axum::{
-    Json, Router,
-    http::{StatusCode, Uri, header},
+    Router,
+    http::{Uri, header},
     response::{IntoResponse, Response},
-    routing::get,
 };
 use rust_embed::Embed;
-use serde_json::json;
 use sqlx::{
     SqlitePool,
     sqlite::{SqliteConnectOptions, SqliteJournalMode},
@@ -15,6 +13,7 @@ use sqlx::{
 
 use crate::{config::Config, files::Files, settings::Settings};
 
+pub mod api;
 pub mod config;
 pub mod files;
 pub mod settings;
@@ -70,19 +69,13 @@ struct Client;
 
 const CLIENT_FALLBACK: &str = "200.html";
 
-pub fn router() -> Router {
-    let api = Router::new()
-        .route("/health", get(health))
-        .fallback(api_not_found);
-    Router::new().nest("/api", api).fallback(client)
+pub fn router(app: Arc<App>) -> Router {
+    let (api, _) = api::routes().split_for_parts();
+    api.with_state(app).fallback(client)
 }
 
-async fn health() -> Json<serde_json::Value> {
-    Json(json!({ "status": "ok" }))
-}
-
-async fn api_not_found() -> Response {
-    (StatusCode::NOT_FOUND, Json(json!({ "error": "not_found" }))).into_response()
+pub fn openapi() -> utoipa::openapi::OpenApi {
+    api::routes().into_openapi()
 }
 
 async fn client(uri: Uri) -> Response {
