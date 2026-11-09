@@ -66,3 +66,19 @@ async fn malformed_json_is_an_api_error() {
     assert_eq!(response.status(), StatusCode::BAD_REQUEST);
     assert_eq!(json(response).await["code"], "malformed_request");
 }
+
+#[tokio::test]
+async fn responses_carry_security_headers() {
+    let app = start(Config::default()).await;
+    let page = app.get("/").await;
+    assert_eq!(page.headers()["x-frame-options"], "DENY");
+    assert_eq!(page.headers()["x-content-type-options"], "nosniff");
+    assert_eq!(page.headers()["cache-control"], "no-cache");
+    assert!(
+        text(page)
+            .await
+            .contains("http-equiv=\"content-security-policy\"")
+    );
+    let api = app.get("/api/health").await;
+    assert_eq!(api.headers()["cache-control"], "no-store");
+}

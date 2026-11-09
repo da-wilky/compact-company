@@ -2,7 +2,9 @@ use std::{sync::Arc, time::Duration};
 
 use axum::{
     Router,
-    http::{Uri, header},
+    extract::Request,
+    http::{HeaderValue, Uri, header},
+    middleware::{self, Next},
     response::{IntoResponse, Response},
 };
 use rust_embed::Embed;
@@ -110,7 +112,35 @@ const CLIENT_FALLBACK: &str = "200.html";
 
 pub fn router(app: Arc<App>) -> Router {
     let (api, _) = api::routes().split_for_parts();
-    api.with_state(app).fallback(client)
+    api.with_state(app)
+        .fallback(client)
+        .layer(middleware::from_fn(security_headers))
+}
+
+/// The client's own CSP sits in a meta tag, which cannot forbid framing.
+async fn security_headers(request: Request, next: Next) -> Response {
+    let cache = match request.uri().path() {
+        path if path.starts_with("/api/") => "no-store",
+        path if path.starts_with("/_app/immutable/") => "public, max-age=31536000, immutable",
+        _ => "no-cache",
+    };
+    let mut response = next.run(request).await;
+    let headers = response.headers_mut();
+    headers.insert(header::CACHE_CONTROL, HeaderValue::from_static(cache));
+    headers.insert(
+        header::X_CONTENT_TYPE_OPTIONS,
+        HeaderValue::from_static("nosniff"),
+    );
+    headers.insert(header::X_FRAME_OPTIONS, HeaderValue::from_static("DENY"));
+    headers.insert(
+        header::CONTENT_SECURITY_POLICY,
+        HeaderValue::from_static("frame-ancestors 'none'"),
+    );
+    headers.insert(
+        header::REFERRER_POLICY,
+        HeaderValue::from_static("same-origin"),
+    );
+    response
 }
 
 pub fn openapi() -> utoipa::openapi::OpenApi {
