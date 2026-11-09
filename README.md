@@ -42,6 +42,24 @@ vat_id = "…"
 small_business = true
 ```
 
+## NixOS
+
+```nix
+{
+  imports = [ compact-company.nixosModules.default ];
+  services.compact-company = {
+    enable = true;
+    settings = {
+      public_url = "https://cc.example.com/";
+      business.name = "Example GmbH";
+      # any *_file setting, such as oidc.client_secret_file, reaches the service as a systemd credential
+    };
+  };
+}
+```
+
+The service listens on `127.0.0.1:9440` for a reverse proxy and keeps its data in `/var/lib/compact-company`; `journalctl -u compact-company` shows the setup link.
+
 ## Developing
 
 ```sh
@@ -49,7 +67,7 @@ nix develop
 npm --prefix web ci && npm --prefix web run build   # the server embeds web/build at compile time
 cargo run -- serve
 npm --prefix web run dev     # client with hot reload, proxies /api to the server
-nix flake check              # fmt, clippy, tests, svelte-check
+nix flake check              # fmt, clippy, tests, svelte-check, NixOS VM test (x86_64)
 ```
 
 Licensed under AGPL-3.0-or-later.
