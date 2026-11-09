@@ -40,38 +40,48 @@
 
 {#if error}<p class="error" role="alert">{t(error.message)}</p>{/if}
 
-<table>
-	<thead>
-		<tr>
-			<th>{t('audit.at')}</th>
-			<th>{t('audit.user')}</th>
-			<th>{t('audit.action')}</th>
-			<th>{t('audit.subject')}</th>
-			<th>{t('audit.change')}</th>
-		</tr>
-	</thead>
-	<tbody>
-		{#each entries as entry (entry.id)}
+<div class="scroll">
+	<table>
+		<thead>
 			<tr>
-				<td>{new Date(entry.at * 1000).toLocaleString(i18n.locale)}</td>
-				<td>{entry.user_name}</td>
-				<td>{entry.action}</td>
-				<td>{entry.subject}</td>
-				<td><code>{change(entry)}</code></td>
+				<th>{t('audit.at')}</th>
+				<th>{t('audit.user')}</th>
+				<th>{t('audit.action')}</th>
+				<th>{t('audit.subject')}</th>
+				<th>{t('audit.change')}</th>
 			</tr>
-		{:else}
-			<tr><td colspan="5">{t('audit.empty')}</td></tr>
-		{/each}
-	</tbody>
-</table>
+		</thead>
+		<tbody>
+			{#each entries as entry (entry.id)}
+				<tr>
+					<td>{new Date(entry.at * 1000).toLocaleString(i18n.locale)}</td>
+					<td>{entry.user_name}</td>
+					<td>{entry.action}</td>
+					<td>{entry.subject}</td>
+					<td><code>{change(entry)}</code></td>
+				</tr>
+			{:else}
+				<tr><td colspan="5">{t('audit.empty')}</td></tr>
+			{/each}
+		</tbody>
+	</table>
+</div>
 
 {#if more}
 	<button onclick={() => load(entries.at(-1)?.id)}>{t('audit.more')}</button>
 {/if}
 
 <style>
+	.scroll {
+		overflow-x: auto;
+	}
+	form input {
+		flex: 1 1 10rem;
+		min-width: 0;
+	}
 	form {
 		display: flex;
+		flex-wrap: wrap;
 		gap: 0.5rem;
 		margin-bottom: 1rem;
 	}
