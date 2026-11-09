@@ -75,7 +75,7 @@
   "term.user": "User",
   "users.active": "Active",
   "users.name": "Name",
-  "users.passkeys": "{count} passkeys",
+  "users.passkeys": "Passkeys: {count}",
   "users.role": "Role",
   "users.sign_in": "Sign-in",
   "users.title": "Users"

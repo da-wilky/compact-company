@@ -11,7 +11,8 @@ export default defineConfig({
 				directives: {
 					'default-src': ['self'],
 					'script-src': ['self'],
-					'style-src': ['self'],
+					// SvelteKit sets style attributes (its body wrapper and route announcer), which hashes cannot allow
+					'style-src': ['self', 'unsafe-inline'],
 					'img-src': ['self', 'data:'],
 					'object-src': ['none'],
 					'base-uri': ['self'],

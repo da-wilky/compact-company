@@ -72,6 +72,9 @@
 		border: 1px solid #bbb;
 		border-radius: 4px;
 	}
+	:global(input[type='checkbox']) {
+		justify-self: start;
+	}
 	:global(.error) {
 		color: #b00020;
 	}
