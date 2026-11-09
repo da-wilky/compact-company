@@ -1,4 +1,5 @@
 data/
 /result
 /.direnv/
-__debug_bin*
+/target/
+node_modules/

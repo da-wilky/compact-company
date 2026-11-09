@@ -1,0 +1,3 @@
+# compact-company becomes a small business suite
+
+compact-company grows from customers, time and invoices into a suite for one German business: todos and timers, quotes and invoices with e-invoicing, receipts, bank import, a double-entry journal, VAT returns, EÜR and fixed assets. This reverses the non-goals "CRM, expenses" and "e-invoicing" and the README's "nothing else": owning time tracking and the books in one place removes the hand-off to a second tool, and Haben shows the scope is buildable but lacks todos, timers and free Typst layouts. Sole traders and freelancers get complete books; a UG or GmbH gets the same journal, VAT return and a DATEV export, and its tax advisor prepares the balance sheet, P&L and E-Bilanz. Payroll stays out.

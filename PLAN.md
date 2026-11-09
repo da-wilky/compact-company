@@ -1,112 +1,137 @@
 # compact-company – Plan
 
-A small, self-hosted tool for one-person businesses: customers, time tracking and invoices rendered with Typst. Minimal, fast, beautiful. Open source.
-
-Starting point for a fresh session: read this file, settle the open decisions, then start with phase 1.
+A self-hosted business suite for one German business: todos and timers, quotes and invoices with e-invoicing and free Typst layouts, receipts, bank import and double-entry books. Rebuilt in Rust; the Go version stays in use until this one replaces it. Open source (AGPL-3.0-or-later).
 
 ## Why
 
-TimeTracker and similar tools are overloaded (CRM, pipelines, inventory, chat, …) and their invoice PDFs can't match a Typst layout. compact-company does few things well and delegates the invoice layout entirely to a Typst template.
+Time tracking, invoicing and bookkeeping usually live in two or three tools with hand-offs between them. Haben covers the books well but has no todos or timers and limits invoice layouts; time trackers stop at the invoice. compact-company does both for one business, with every document laid out by a Typst layout the business controls.
 
-## Goals
+## Decisions
 
-- Customers with automatic customer numbers (`K-001`)
-- Projects per customer, hourly rates (customer default, project override)
-- Time tracking: start/stop timer, manual entries, week view
-- Invoices from unbilled time entries plus free line items, rendered by a user-supplied Typst template, stored immutably
-- Quotes with priced lines and free Typst sections, rendered by the same template directory (#59)
-- Overview: open amounts, overdue invoices, hours per month
-- Single binary, SQLite, trivial backup, NixOS module
+| Area | Decision | ADR |
+| --- | --- | --- |
+| Scope | Suite for one business; UG/GmbH year-end closing by the tax advisor | 0008 |
+| Audience | Built for swilk, public repo others may self-host, no support promises | – |
+| Tenancy | One business per instance | 0003 |
+| Language | Rust, rebuilt from scratch, no data migration from the Go version | 0009 |
+| Frontend | Svelte SPA over the app's own JSON API | 0010 |
+| Books | Double-entry journal, SKR03 or SKR04 chosen at setup | 0011 |
+| Layouts | Uploaded in the app, raw data + Typst helper library, approved packages only | 0012 |
+| Tax office | Figures computed, entered by hand in Mein ELSTER | 0013 |
+| Login | Passkeys, OIDC optional | 0014 |
+| Roles | Owner, staff, accountant | 0015 |
+| Storage | SQLite only; files content-addressed on disk or S3 | 0016 |
+| Languages | UI and documents in German and English | – |
+| Platforms | x86_64 and arm64; NixOS module and OCI image | – |
 
-## Non-goals (for now)
+## Scope
 
-- Customer portal (maybe later, see "Later")
-- CRM, expenses
-- Todos and boards stay lean: no dependencies, subtasks, sprints, Gantt or workload planning
-- Multi-user teams, roles
-- E-invoicing (ZUGFeRD/XRechnung) – Kleinunternehmer are exempt from issuing; revisit when needed
+**Work**
+- Customers with permanent numbers, projects, archiving
+- Hourly rates: customer default, project override, activity types with their own rate
+- Todos per project: list and board over one shared status list, priority, due date, assignee, comments
+- Timers on a project or todo, several running per user; manual entries; week view
+- Billable flag and a billable duration next to the tracked one
 
-## Open decisions (settle first)
+**Documents** (all rendered by Typst layouts)
+- Quote, order confirmation, invoice, cancellation invoice, dunning letter, delivery note, timesheet, acceptance report
+- Invoices from unbilled time: grouped by project, todo, activity or not at all; rounding per entry (0/5/10/15/30 min); timesheet as attachment
+- Outgoing e-invoices (ZUGFeRD and XRechnung, EN 16931) from the first release, embedded in PDF/A-3
+- Mandatory details of § 14 Abs. 4 UStG checked before issuing; legal details of a UG/GmbH (§ 35a GmbHG) on every document
+- Sending by email (SMTP) with a sent log per document
 
-1. **Language:** Go (recommended: CRUD and forms are its sweet spot, fast iteration) or Rust (if preferred for enjoyment/maintenance; ~20–30 % more effort).
-2. **License:** e.g. AGPL-3.0 (keeps hosted forks open) or MIT/Apache-2.0.
-3. **UI language:** English default with German translation from the start, or German only first.
+**Books**
+- Journal on SKR03/SKR04; every issued invoice, payment, receipt, bank transaction and depreciation posts to it; corrections only by reversal
+- Taxation: Kleinunternehmer (§ 19 UStG), regular with cash basis (Ist), regular with accrual basis (Soll)
+- Receipts: upload of PDFs and photos, incoming ZUGFeRD/XRechnung read automatically, others entered by hand; account and VAT per line
+- Bank: CAMT.053 and CSV import, matching suggestions against open invoices and receipts, partial payments
+- Open items and dunning
+- Fixed assets and depreciation (straight-line, low-value assets)
+- VAT return and EÜR figures traceable to postings; DATEV export; deadlines as ICS feed and email reminders; year-end archive with checksums
+- Audit log of every change that affects the books
+
+**Access and integration**
+- Passkeys, optional OIDC; roles owner, staff, accountant
+- REST API with scoped tokens (OpenAPI); tokens never issue, send or book
+
+## Non-goals
+
+- Several businesses per instance
+- EU and third-country cases: reverse charge (§ 13b UStG), intra-community supplies, ZM
+- Balance sheet, P&L and E-Bilanz for UG/GmbH (the tax advisor closes the year from the DATEV export)
+- ELSTER transmission (ERiC), payroll, cash book, flat-rate allowances
+- PSD2 aggregators; PostgreSQL
+- Todo subtasks, sprints, dependencies, Gantt, budgets
 
 ## Stack
 
-| | Go | Rust |
-| --- | --- | --- |
-| HTTP | `net/http` | `axum` |
-| Templates | `html/template` | `askama` |
-| Interactivity | htmx, no JS build step | same |
-| DB | SQLite (`modernc.org/sqlite`, no cgo), plain SQL migrations | SQLite via `sqlx` (offline mode for Nix builds) |
-| Auth | OIDC via `coreos/go-oidc` | `openidconnect` + `tower-sessions` |
-| PDF | `typst` CLI as subprocess | same |
-| Nix | `buildGoModule` | `crane` |
+| Concern | Choice |
+| --- | --- |
+| HTTP | `axum` |
+| DB | SQLite via `sqlx`, compile-time checked queries (offline data for Nix builds) |
+| Money | `rust_decimal`, never floats |
+| API | `utoipa` OpenAPI → generated TypeScript types for the client |
+| Auth | `webauthn-rs` for passkeys, `openidconnect` for OIDC |
+| Documents | `typst` + `typst-pdf` in-process, PDF/A-3; EN 16931 CII written with `quick-xml`; KoSIT validator in CI |
+| Storage | `object_store` (local disk or S3) |
+| Frontend | Svelte 5, SvelteKit with the static adapter, embedded in the binary |
+| Nix | `crane` for Rust, `buildNpmPackage` for the client, `dockerTools` for the image, NixOS module with VM test |
 
-Server-rendered HTML, one CSS file, no framework. Typst must be on `PATH` (the Nix package wraps it in).
-
-## Architecture
-
-- One binary: `compact-company serve --config config.toml`
-- Data dir: `app.db` (SQLite, WAL), `invoices/<year>/<number>.pdf`
-- Config (TOML): listen address, data dir, OIDC issuer/client/secret file, allowed subject(s), business data (optional, overrides settings – ADR 0005), tax mode, numbering formats, Typst template dir, font paths
-- Secrets only via files (`*_file` options), never inline – fits sops-nix
-
-## Data model
-
-- `customer`: id, number (`K-001`, assigned on create, never reused), name, address lines, email, default hourly rate, note, archived
-- `project`: id, customer_id, name, hourly rate (nullable → customer default), archived
-- `time_entry`: id, project_id, start, end (null = running), description, billable, invoice_id (null = unbilled)
-- `invoice`: id, number (null while draft), customer_id, issue date, due date, service period, status (`draft` | `issued` | `paid` | `cancelled`), totals, snapshot JSON, pdf path, pdf sha256
-- `invoice_line`: id, invoice_id, position, description, detail, quantity, unit, unit price
-- `sequence`: name, year, last value – for gapless numbering
-
-Rules:
-- Only one running timer.
-- Invoice numbers are assigned when issuing, not for drafts: format configurable, default `{year}-{seq:03}`, sequence per year, inside one transaction → no gaps.
-- Issuing freezes the invoice: snapshot of business data, customer address, lines and totals is stored; PDF is rendered once and hashed. No edits after issuing.
-- Corrections only via a cancellation invoice (Stornorechnung) referencing the original, never by editing or deleting.
-- Time entries linked to an issued invoice are locked; cancelling the invoice releases them.
-
-## Typst contract
-
-Specified in the Phase 2 PRD (#15) and, once built, documented in `templates/README.md`.
+Crate names are candidates; verify each before the foundation phase settles them.
 
 ## Phases
 
-### Phase 1 – Foundation and time tracking
-- Repo setup: `flake.nix` (dev shell, package, checks), license, README, CI (lint, test, `nix flake check`)
-- Config loading, SQLite migrations, OIDC login restricted to configured subject(s), CSRF protection, secure cookies
-- Customers and projects: list, create, edit, archive
-- Timer (start/stop, one running), manual entries, week view with totals
-- Done when: running locally with `nix run`, time can be tracked against a project of a new customer
+### Phase 1 – Foundation
+- Cargo workspace, Svelte client, flake (dev shell, package, image, checks), CI
+- Config (TOML, secrets only from files), SQLite migrations, file storage on disk/S3
+- Passkeys, optional OIDC, sessions, CSRF, roles; audit log
+- API skeleton with OpenAPI and generated client types; i18n catalog shared by server and client
+- NixOS module and OCI image, x86_64 and arm64
+- Done when: an owner registers a passkey on a fresh instance and invites a staff user
 
-### Phase 2 – Invoices
-- Specified in the PRD #15 with its sub-issues; it supersedes the invoice parts of the data model above.
-- Done when: invoice 2026-001 for Genossenschaft Aufwind is reproduced with every page pixel-identical to the current PDF
+### Phase 2 – Work
+- Customers, projects, activities, rates, todos with list and board, statuses
+- Parallel timers, manual entries, week view, billable duration
+- Done when: a staff user tracks time on a todo of a new customer's project
 
-### Phase 3 – Overview
-- Dashboard: running timer, hours this week/month, unbilled hours per customer, open and overdue invoices
+### Phase 3 – Documents (first release, replaces the Go version)
+- Layout engine: built-in layouts, upload with fonts, package approval, sample render and § 14 check, per-customer override
+- Quotes → order confirmation → invoice; invoices from time; cancellation invoices; delivery note, timesheet, acceptance report
+- ZUGFeRD and XRechnung, validated by KoSIT in CI
+- Email sending with sent log; overview (running timers, unbilled time, open invoices)
+- Done when: swilk's invoices and quotes are issued from it with the corporate-design layout, and the Go version is retired
 
-### Phase 4 – Deployment (pi5dd)
-- NixOS module in the repo (`nixosModules.default`): systemd service, `DynamicUser`, `StateDirectory`, hardening options
-- `/etc/nix-config/hosts/pi5dd/apps/compact-company.nix`: enable module, sops secret for OIDC client secret, Caddy vhost `tls internal`, VPN-only like `timetracker.nix`
-- Keycloak client `compact-company` in realm `public`
-- restic: `sqlite3 .backup` snapshot + `invoices/` (keep 8 years)
-- Migrate: import existing customers/invoices from TimeTracker (API or manual), then retire TimeTracker
+### Phase 4 – Books
+- Journal, SKR03/SKR04, posting rules for invoices and payments under each taxation
+- Receipts with incoming e-invoice parsing
+- Bank import and matching, open items, dunning letters
+- Done when: a quarter of swilk's receipts and bank statements is booked and every open invoice is matched
 
-## Later (not planned yet)
+### Phase 5 – Tax and exports
+- VAT return and EÜR figures with drill-down to postings
+- DATEV export, deadlines (ICS, reminders), year-end archive
+- Accountant role in use; API tokens with scopes
+- Done when: a VAT return and an EÜR are entered in Mein ELSTER from its figures, and the tax advisor imports the DATEV export
 
-- Customer portal: separate route prefix `/portal`, only that exposed publicly, email magic links with rate limiting, customer sees only own invoices
-- Other documents from corporate-design (order confirmation, acceptance report)
-- E-invoice (ZUGFeRD) embedding
-- Recurring invoices (hosting/maintenance)
+### Phase 6 – Fixed assets
+- Assets, straight-line depreciation, low-value assets; postings and EÜR lines
+
+### Later
+- FinTS bank fetch (free; needs a product registration with the Deutsche Kreditwirtschaft)
+- AI extraction of receipts (optional endpoint), IMAP receipt inbox, MCP server
+- Recurring invoices, partial and final invoices
+
+## Open questions
+
+1. Number ranges: one per document type, format per range, yearly reset?
+2. Layout data schema: versioned, so uploaded layouts survive schema changes?
+3. Retention: how long receipts and issued documents are kept, and whether deletion after the period is supported.
+4. Process documentation (GoBD Verfahrensdokumentation): generated from settings, or written by hand?
+5. Business data and defaults: may config pin them (read-only in the app), or are they only edited by the owner in the app?
 
 ## Context (swilk)
 
-- Brand and Typst templates: `~/workspace/mine/gewerbe/corporate-design` (`typst/lib/vorlagen.typ`, `typst/firma.toml`, private `typst/firma.local.toml`)
-- Existing invoice: `corporate-design/rechnungen/2026-001_K-001.typ`
-- Server config: `/etc/nix-config/hosts/pi5dd/apps/` (pattern: `timetracker.nix`)
-- Login: Keycloak `https://user.swilk.eu/realms/public`
-- Tax: Kleinunternehmer (§ 19 UStG), invoices per § 34a UStDV
+- Brand and Typst library for swilk's layouts: `~/workspace/mine/gewerbe/corporate-design` (`typst/lib/vorlagen.typ`, `typst/firma.toml`, private `typst/firma.local.toml`); never commit them, the repo is public
+- Server: pi5dd (arm64), `/etc/nix-config/hosts/pi5dd/apps/`
+- Login today: Keycloak `https://user.swilk.eu/realms/public`
+- Tax: Kleinunternehmer (§ 19 UStG); receiving e-invoices is mandatory, issuing is not

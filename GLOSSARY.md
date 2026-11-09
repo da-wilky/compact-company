@@ -1,29 +1,56 @@
 # compact-company
 
-Customers, time tracking and invoices for small businesses.
+A business suite for one German business: work, documents and books.
 
 ## Language
 
+### Business and people
+
+**Business** (de: Unternehmen):
+The business an instance serves; it issues every document and keeps the books.
+_Avoid_: Seller, issuer, company, tenant
+
+**User** (de: Benutzer):
+A person who signs in; every user works for the same business and has exactly one role.
+_Avoid_: Member, account
+
+**Owner** (de: Inhaber):
+The role that may do everything, including settings, issuing and booking.
+
+**Staff** (de: Mitarbeiter):
+The role that works on todos and its own time and sees customers and projects.
+_Avoid_: Employee, member
+
+**Accountant** (de: Steuerberater):
+The role that reads the books and takes exports but changes nothing.
+_Avoid_: Tax advisor, bookkeeper
+
 **Customer** (de: Kunde):
-A person or organization that work is done for and invoices go to.
-_Avoid_: Client, account
+A person or organization that work is done for and documents go to.
+_Avoid_: Client, contact, account
 
 **Customer number** (de: Kundennummer):
 The permanent, never-reused identifier of a customer (e.g. `K-001`), assigned when the customer is created.
 
+**Supplier** (de: Lieferant):
+A person or organization the business buys from; receipts come from suppliers.
+_Avoid_: Vendor, creditor, contact
+
+**Archived** (de: archiviert):
+A customer, supplier, project or activity hidden from everyday use and closed to new work, but kept with all its history.
+
+### Work
+
 **Project** (de: Projekt):
-A body of work for one customer that time is tracked against.
+A body of work for one customer that todos and time belong to.
 _Avoid_: Job, task
 
+**Activity** (de: Tätigkeit):
+A kind of work, such as consulting or development, with its own hourly rate; a todo or time entry may name one.
+_Avoid_: Service, category, task type
+
 **Hourly rate** (de: Stundensatz):
-The price of one hour of work: the customer's default rate, unless the project overrides it.
-
-**Time entry** (de: Zeiteintrag):
-A span of work with a start, an end and a description.
-_Avoid_: Time record, timesheet row, booking
-
-**Timer** (de: Timer):
-A time entry that has started but not yet ended.
+The price of one hour of work: the activity's rate if the work names one, else the project's, else the customer's default.
 
 **Todo** (de: Aufgabe):
 A piece of work within one project, optionally assigned to one user; time tracked on a todo belongs to its project.
@@ -33,103 +60,181 @@ _Avoid_: Task, ticket, issue
 How urgent a todo is: low, normal or high; normal unless chosen otherwise.
 
 **Status** (de: Status):
-Where a todo stands, from one ordered list shared by the whole business; a status either counts as done or not. New todos get the first status.
+Where a todo stands, from one ordered list shared by the whole business; a status either counts as done or not.
 _Avoid_: Column, stage, state
 
-**Working status** (de: Arbeitsstatus):
-The status a todo moves to from the first status when someone starts a timer on it; a business may have none.
+**Time entry** (de: Zeiteintrag):
+A span of work by one user on a project or todo, with a duration and a description.
+_Avoid_: Time record, timesheet row, booking
 
-**Unassigned entry** (de: nicht zugeordneter Zeiteintrag):
-A time entry not yet attached to a project.
-_Avoid_: No project (that describes invoice lines outside every project section)
+**Timer** (de: Timer):
+A time entry that has started but not yet ended; a user may run several at once.
 
 **Billable** (de: abrechenbar):
-Whether a time entry is meant to be charged to the customer; inherited from the project's default.
+Whether a time entry is meant to be charged to the customer.
+
+**Billable duration** (de: abrechenbare Dauer):
+The part of a time entry's duration that is charged; the full duration unless set otherwise.
 
 **Unbilled entry** (de: nicht abgerechneter Zeiteintrag):
 A billable time entry not yet on an issued invoice.
 
-**Archived** (de: archiviert):
-A customer or project hidden from everyday use and closed to new time, but kept with all its history.
+### Documents
 
-**Claimed entry**:
-A time entry on a draft or issued invoice; no other invoice can bill it.
+**Document** (de: Dokument):
+Anything the business issues to a customer, laid out by a layout: quote, order confirmation, invoice, cancellation invoice, dunning letter, delivery note, timesheet or acceptance report.
+_Avoid_: Beleg (that is a receipt), file
 
-**User** (de: Benutzer):
-A person who logs in and tracks time; all users work for the same business.
-_Avoid_: Member, account
-
-**Default** (de: Voreinstellung):
-A business-wide setting that new users and new customers start with; a user's language and timezone follow it until the user chooses their own.
-_Avoid_: System default, preset
-
-**Business** (de: Unternehmen):
-The business an instance serves; it sends every invoice.
-_Avoid_: Seller, issuer, company
-
-**Invoice** (de: Rechnung):
-A bill to one customer, made of lines; it bills either all of the customer's projects, including ones added later, or a fixed choice of them.
-_Avoid_: Bill
-
-**Project section**:
-The lines of an invoice that belong to one project, under a heading with the project's name; lines without a project come after all sections.
-
-**Service period** (de: Leistungszeitraum):
-When the billed work was done: from the start of the invoice's first time entry to the end of its last. An invoice without time entries may have one set by hand; without one it was supplied on its issue date.
-_Avoid_: Billing period
+**Layout** (de: Layout):
+The design a document is rendered with; each document type has a default, and a customer may have its own.
+_Avoid_: Template, theme, design
 
 **Draft** (de: Entwurf):
-An invoice or quote still being prepared: editable, unnumbered, and deletable.
+A document still being prepared: editable, unnumbered and deletable.
 
-**Issue** (de: stellen):
-To give a draft its invoice number and freeze it for good.
+**Issue** (de: ausstellen):
+To give a draft its number and freeze it for good; an issued document can never be edited or deleted.
+_Avoid_: Finalize, lock, send
 
-**Issued invoice** (de: gestellte Rechnung):
-An invoice that has been issued; it can never be edited or deleted.
-
-**Cancellation invoice** (de: Stornorechnung):
-An issued invoice that reverses some or all lines of an earlier issued invoice.
-_Avoid_: Storno, credit note
-
-**Paid** (de: bezahlt):
-An issued invoice whose payment has been received.
-
-**Amount due** (de: offener Betrag):
-What the customer still owes on an issued invoice: its total less whatever its cancellation invoices reverse.
-
-**Open invoice** (de: offene Rechnung):
-An issued invoice, not a cancellation invoice, that is neither paid nor fully cancelled.
-_Avoid_: Outstanding, unpaid
+**Send** (de: versenden):
+To email an issued document to its customer.
 
 **Quote** (de: Angebot):
-An offer of work to one customer, optionally for one of its projects, that stays open until a validity date.
+An offer of work to one customer that stays open until a validity date.
 _Avoid_: Offer, estimate, Kostenvoranschlag
 
 **Fixed price** (de: Festpreis):
 A quote whose total is what the customer will be invoiced.
 
 **By effort** (de: nach Aufwand):
-A quote whose total is an estimate; the customer is invoiced for the time actually spent at the quoted rates.
+A quote whose total is an estimate; the customer is invoiced for the time actually spent.
 _Avoid_: Estimate, Kostenvoranschlag
 
-**Snippet** (de: Textbaustein):
-A named, reusable section of quote text in one language, copied into a quote and independent of it afterwards.
-_Avoid_: Template, text block
-
-**Send** (de: versenden):
-To give a draft quote its quote number and freeze it for good.
-
-**Sent quote** (de: versendetes Angebot):
-A quote that has been sent; it can never be edited or deleted, only accepted, declined or left to expire.
-
 **Accepted** (de: angenommen):
-A sent quote the customer has agreed to.
+An issued quote the customer has agreed to.
 
 **Declined** (de: abgelehnt):
-A sent quote the customer has turned down.
+An issued quote the customer has turned down.
 
 **Expired** (de: abgelaufen):
-A sent quote neither accepted nor declined whose validity date has passed.
+An issued quote neither accepted nor declined whose validity date has passed.
+
+**Order confirmation** (de: Auftragsbestätigung):
+A document confirming an accepted quote as an order.
+
+**Invoice** (de: Rechnung):
+A bill to one customer, made of lines.
+_Avoid_: Bill
+
+**E-invoice** (de: E-Rechnung):
+An invoice whose content is also carried in a structured, machine-readable form (ZUGFeRD or XRechnung).
+
+**Service period** (de: Leistungszeitraum):
+When the invoiced work was done; from its time entries if it has any, otherwise set by hand or the issue date.
+_Avoid_: Billing period
+
+**Cancellation invoice** (de: Stornorechnung):
+An issued invoice that reverses some or all lines of an earlier issued invoice.
+_Avoid_: Storno, credit note
+
+**Dunning letter** (de: Mahnung):
+A document reminding a customer of an overdue invoice, at an increasing level.
+_Avoid_: Reminder, payment reminder
+
+**Delivery note** (de: Lieferschein):
+A document listing what was delivered, without prices.
+
+**Timesheet** (de: Stundennachweis):
+A document listing the time entries behind an invoice.
+_Avoid_: Time report
+
+**Acceptance report** (de: Abnahmeprotokoll):
+A document in which the customer confirms that delivered work is accepted.
+
+**Snippet** (de: Textbaustein):
+A named, reusable piece of text in one language, copied into a document and independent of it afterwards.
+_Avoid_: Template, text block
 
 **Overdue** (de: überfällig):
-An open invoice, or a todo not yet done, whose due date has passed.
+An open item, or a todo not yet done, whose due date has passed.
+
+### Books
+
+**Receipt** (de: Beleg):
+A document from a supplier for something the business paid or owes, such as a supplier's invoice or a ticket.
+_Avoid_: Expense, bill, voucher
+
+**Journal** (de: Journal):
+The complete, append-only record of every posting, in order.
+_Avoid_: Ledger, log
+
+**Posting** (de: Buchung):
+One balanced entry in the journal: amounts moved between ledger accounts on a date, with the document, receipt or bank transaction behind it.
+_Avoid_: Booking, transaction, entry
+
+**Book** (de: buchen):
+To record a posting in the journal.
+
+**Reversal** (de: Stornobuchung):
+A posting that exactly undoes an earlier one; the only way to correct a posting.
+_Avoid_: Correction, deletion
+
+**Ledger account** (de: Sachkonto):
+A named, numbered account that postings move amounts between.
+_Avoid_: Account (alone), category
+
+**Chart of accounts** (de: Kontenrahmen):
+The set of ledger accounts a business books on: SKR03 or SKR04, chosen once.
+
+**Bank transaction** (de: Bankumsatz):
+One movement on the business's bank account, as imported from a statement.
+_Avoid_: Transaction (alone), payment
+
+**Payment** (de: Zahlung):
+Money received for an invoice or paid for a receipt; an invoice or receipt may have several.
+
+**Match** (de: zuordnen):
+To link a bank transaction to the invoices or receipts it pays, which records their payments.
+_Avoid_: Reconcile, assign
+
+**Open item** (de: offener Posten):
+An issued invoice or a receipt whose amount due is not yet zero.
+_Avoid_: Outstanding, unpaid
+
+**Amount due** (de: offener Betrag):
+What is still owed on an invoice or receipt: its total less its payments and, for an invoice, its cancellation invoices.
+
+**Paid** (de: bezahlt):
+An invoice or receipt whose amount due is zero.
+
+**Taxation** (de: Besteuerungsart):
+How the business owes VAT: as a small business (no VAT), on a cash basis or on an accrual basis.
+
+**Small business** (de: Kleinunternehmer):
+A business exempt from charging VAT under § 19 UStG; its invoices show no VAT.
+
+**Cash basis** (de: Istversteuerung):
+Taxation under which VAT on an invoice is owed when the payment is received.
+
+**Accrual basis** (de: Sollversteuerung):
+Taxation under which VAT on an invoice is owed for the period it is issued in.
+
+**VAT return** (de: Umsatzsteuer-Voranmeldung):
+The monthly or quarterly declaration of VAT owed and input VAT reclaimed.
+_Avoid_: UStVA, tax return
+
+**EÜR** (de: Einnahmenüberschussrechnung):
+The yearly profit statement of a business that is not required to keep a balance sheet: income less expenses as paid.
+_Avoid_: Profit and loss, P&L
+
+**Fixed asset** (de: Anlagegut):
+Something the business bought to use for longer than a year, such as a laptop, written off over its useful life.
+_Avoid_: Asset (alone), equipment
+
+**Depreciation** (de: Abschreibung):
+The part of a fixed asset's cost booked as an expense in one year.
+_Avoid_: AfA, write-off
+
+**Low-value asset** (de: geringwertiges Wirtschaftsgut):
+A fixed asset cheap enough to be written off in full in the year it is bought.
+_Avoid_: GWG

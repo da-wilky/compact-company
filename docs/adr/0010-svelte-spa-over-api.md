@@ -1,0 +1,3 @@
+# Svelte SPA over the app's own API
+
+The UI is a Svelte single-page app served from the binary and talking only to the app's JSON API; types for the client are generated from the Rust API's OpenAPI description. The Go version used htmx because its forms and tables held little client state, but the suite adds screens that do: the document editor with live preview, the todo board, bank matching and receipt splits, which htmx plus hand-written JS handles badly. A scoped API for tokens is needed anyway, so the UI is its first client rather than a second surface. Leptos was rejected for its smaller ecosystem and WASM build times; the cost of Svelte is a second language and an npm dependency hash in the Nix build.
