@@ -1,13 +1,14 @@
 <script lang="ts">
 	import { api, call, clientError, type ApiError } from '#lib/api/index.ts';
-	import { t } from '#lib/i18n.svelte.ts';
+	import { has, t } from '#lib/i18n.svelte.ts';
 	import { startOidc } from '#lib/oidc.ts';
 	import { session, show } from '#lib/session.svelte.ts';
 	import { usePasskey } from '#lib/webauthn.ts';
 
-	// the OIDC callback reports its failure in the fragment
+	// the OIDC callback reports its failure in the fragment; anything else there is not ours to show
+	const reported = decodeURIComponent(location.hash.slice(1));
 	let error = $state<ApiError | undefined>(
-		location.hash ? clientError(decodeURIComponent(location.hash.slice(1))) : undefined
+		reported.startsWith('error.') && has(reported) ? clientError(reported) : undefined
 	);
 
 	async function signIn() {

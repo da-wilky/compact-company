@@ -168,7 +168,7 @@ async fn sign_in(
         }
         (None, None) => return Err(ApiError::new(ErrorCode::OidcUnknownIdentity)),
     };
-    let session = auth::start_session(&mut *tx, app, user.id).await?;
+    let session = auth::start_session(&mut tx, app, user.id).await?;
     tx.commit().await?;
     Ok(session.cookie)
 }

@@ -247,7 +247,7 @@ pub async fn accept_finish(
     let mut tx = app.db.begin_with("BEGIN IMMEDIATE").await?;
     let user = accept(&mut tx, &state.token_hash, state.handle).await?;
     insert_passkey(&mut tx, user.id, &name, &passkey).await?;
-    let session = auth::start_session(&mut *tx, &app, user.id).await?;
+    let session = auth::start_session(&mut tx, &app, user.id).await?;
     tx.commit().await?;
     Ok(signed_in(&app, session, user))
 }

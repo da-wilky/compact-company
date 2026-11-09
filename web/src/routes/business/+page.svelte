@@ -2,6 +2,9 @@
 	import { api, call, type ApiError, type Schemas } from '#lib/api/index.ts';
 	import Field from '#lib/components/Field.svelte';
 	import { t } from '#lib/i18n.svelte.ts';
+	import { session } from '#lib/session.svelte.ts';
+
+	const owner = $derived(session.view?.user?.role === 'owner');
 
 	let values = $state<Schemas['Business']>({});
 	let pinned = $state<string[]>([]);
@@ -32,24 +35,34 @@
 <h1>{t('business.title')}</h1>
 
 <form onsubmit={save}>
-	{#each texts as key (key)}
-		<Field label={t(`business.${key}`)} error={error?.fields?.[key]} note={note(key)}>
-			<input bind:value={values[key]} readonly={pinned.includes(key)} />
+	<fieldset disabled={!owner}>
+		{#each texts as key (key)}
+			<Field label={t(`business.${key}`)} error={error?.fields?.[key]} note={note(key)}>
+				<input bind:value={values[key]} readonly={pinned.includes(key)} />
+			</Field>
+		{/each}
+		<Field label={t('business.address')} error={error?.fields?.address} note={note('address')}>
+			<textarea rows="3" bind:value={values.address} readonly={pinned.includes('address')}
+			></textarea>
 		</Field>
-	{/each}
-	<Field label={t('business.address')} error={error?.fields?.address} note={note('address')}>
-		<textarea rows="3" bind:value={values.address} readonly={pinned.includes('address')}
-		></textarea>
-	</Field>
-	<Field label={t('business.small_business')} note={note('small_business')}>
-		<input
-			type="checkbox"
-			bind:checked={values.small_business}
-			disabled={pinned.includes('small_business')}
-		/>
-	</Field>
+		<Field label={t('business.small_business')} note={note('small_business')}>
+			<input
+				type="checkbox"
+				bind:checked={values.small_business}
+				disabled={pinned.includes('small_business')}
+			/>
+		</Field>
 
-	{#if error}<p class="error" role="alert">{t(error.message)}</p>{/if}
-	{#if saved}<p role="status">{t('app.saved')}</p>{/if}
-	<button>{t('app.save')}</button>
+		{#if error}<p class="error" role="alert">{t(error.message)}</p>{/if}
+		{#if saved}<p role="status">{t('app.saved')}</p>{/if}
+		{#if owner}<button>{t('app.save')}</button>{/if}
+	</fieldset>
 </form>
+
+<style>
+	fieldset {
+		border: 0;
+		padding: 0;
+		margin: 0;
+	}
+</style>

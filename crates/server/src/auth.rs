@@ -10,7 +10,7 @@ use axum::{
 };
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use sha2::{Digest, Sha256};
-use sqlx::SqliteExecutor;
+use sqlx::SqliteConnection;
 use utoipa::ToSchema;
 
 use crate::{
@@ -140,13 +140,18 @@ pub struct NewSession {
 }
 
 pub async fn start_session(
-    db: impl SqliteExecutor<'_>,
+    db: &mut SqliteConnection,
     app: &App,
     user_id: i64,
 ) -> Result<NewSession, sqlx::Error> {
     let token = random_token();
     let csrf_token = random_token();
     let now = now();
+    sqlx::query("DELETE FROM session WHERE last_seen_at <= ? OR created_at <= ?")
+        .bind(now - SESSION_IDLE_SECS)
+        .bind(now - SESSION_MAX_SECS)
+        .execute(&mut *db)
+        .await?;
     sqlx::query(
         "INSERT INTO session (token_hash, user_id, csrf_token, created_at, last_seen_at)
          VALUES (?, ?, ?, ?, ?)",

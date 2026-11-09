@@ -13,3 +13,7 @@ export function t(key: string, params: Record<string, string | number> = {}): st
 	const text = (catalogs[i18n.locale] as Record<string, string>)[key] ?? key;
 	return text.replace(/\{(\w+)\}/g, (_, name) => String(params[name] ?? `{${name}}`));
 }
+
+export function has(key: string): boolean {
+	return key in catalogs.en;
+}
