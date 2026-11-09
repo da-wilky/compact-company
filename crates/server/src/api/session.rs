@@ -6,6 +6,7 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use utoipa::ToSchema;
 use webauthn_rs::prelude::{
     DiscoverableAuthentication, Passkey, PasskeyRegistration, PublicKeyCredential,
@@ -17,7 +18,7 @@ use super::{
     passkeys::{Challenge, passkey_name, person_name},
 };
 use crate::{
-    App,
+    App, audit,
     auth::{self, Auth, NewSession, Role, User, digest, now},
 };
 
@@ -130,7 +131,7 @@ pub async fn create_user(
     handle: Uuid,
     role: Role,
 ) -> Result<User, ApiError> {
-    Ok(sqlx::query_as(
+    let user: User = sqlx::query_as(
         "INSERT INTO user (handle, name, role, created_at) VALUES (?, ?, ?, ?)
          RETURNING id, name, role",
     )
@@ -138,8 +139,19 @@ pub async fn create_user(
     .bind(name)
     .bind(role)
     .bind(now())
-    .fetch_one(tx)
-    .await?)
+    .fetch_one(&mut *tx)
+    .await?;
+    let after = json!({ "name": user.name, "role": user.role, "active": true });
+    audit::record(
+        tx,
+        user.id,
+        "user.create",
+        &format!("user:{}", user.id),
+        None,
+        Some(after),
+    )
+    .await?;
+    Ok(user)
 }
 
 pub async fn insert_passkey(
@@ -148,23 +160,34 @@ pub async fn insert_passkey(
     name: &str,
     passkey: &Passkey,
 ) -> Result<(), ApiError> {
-    let result = sqlx::query(
+    let result = sqlx::query_scalar(
         "INSERT INTO passkey (user_id, credential_id, name, passkey, created_at)
-         VALUES (?, ?, ?, ?, ?)",
+         VALUES (?, ?, ?, ?, ?) RETURNING id",
     )
     .bind(user_id)
     .bind(passkey.cred_id().as_slice())
     .bind(name)
     .bind(serde_json::to_string(passkey).map_err(ApiError::internal)?)
     .bind(now())
-    .execute(tx)
+    .fetch_one(&mut *tx)
     .await;
-    match result {
+    let id: i64 = match result {
         Err(sqlx::Error::Database(e)) if e.is_unique_violation() => {
-            Err(ApiError::new(ErrorCode::PasskeyRejected))
+            return Err(ApiError::new(ErrorCode::PasskeyRejected));
         }
-        result => result.map(|_| ()).map_err(ApiError::from),
-    }
+        result => result?,
+    };
+    let after = json!({ "user_id": user_id, "name": name });
+    audit::record(
+        tx,
+        user_id,
+        "passkey.add",
+        &format!("passkey:{id}"),
+        None,
+        Some(after),
+    )
+    .await?;
+    Ok(())
 }
 
 pub fn signed_in(app: &App, session: NewSession, user: User) -> Response {

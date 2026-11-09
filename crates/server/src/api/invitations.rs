@@ -1,21 +1,18 @@
 use std::sync::Arc;
 
-use axum::{
-    extract::{Path, State},
-    http::StatusCode,
-    response::Response,
-};
+use axum::{extract::State, http::StatusCode, response::Response};
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use utoipa::ToSchema;
 use webauthn_rs::prelude::{PasskeyRegistration, Uuid};
 
 use super::{
-    error::{ApiError, ErrorCode, Json},
+    error::{ApiError, ErrorCode, Json, Path},
     passkeys::{Challenge, passkey_name, person_name},
     session::{RegistrationFinish, create_user, insert_passkey, signed_in},
 };
 use crate::{
-    App,
+    App, audit,
     auth::{self, Auth, OwnerOnly, Role, User, digest, now, random_token},
 };
 
@@ -70,7 +67,8 @@ pub async fn invite(
     let name = person_name(&request.name)?;
     let token = random_token();
     let now = now();
-    let invitation = sqlx::query_as(
+    let mut tx = app.db.begin().await?;
+    let invitation: InvitationView = sqlx::query_as(
         "INSERT INTO invitation (token_hash, name, role, created_by, created_at, expires_at)
          VALUES (?, ?, ?, ?, ?, ?) RETURNING id, name, role, created_at, expires_at",
     )
@@ -80,8 +78,20 @@ pub async fn invite(
     .bind(auth.user.id)
     .bind(now)
     .bind(now + INVITATION_SECS)
-    .fetch_one(&app.db)
+    .fetch_one(&mut *tx)
     .await?;
+    let after = json!({ "name": invitation.name, "role": invitation.role });
+    let subject = format!("invitation:{}", invitation.id);
+    audit::record(
+        &mut tx,
+        auth.user.id,
+        "invitation.create",
+        &subject,
+        None,
+        Some(after),
+    )
+    .await?;
+    tx.commit().await?;
     Ok(Json(NewInvitation {
         invitation,
         link: format!("{}invitation#{token}", app.public_url),
@@ -93,17 +103,29 @@ pub async fn invite(
     responses((status = NO_CONTENT), (status = "default", body = ApiError)))]
 pub async fn revoke_invitation(
     State(app): State<Arc<App>>,
-    _: Auth<OwnerOnly>,
+    auth: Auth<OwnerOnly>,
     Path(id): Path<i64>,
 ) -> Result<StatusCode, ApiError> {
-    let deleted = sqlx::query("DELETE FROM invitation WHERE id = ? AND accepted_by IS NULL")
-        .bind(id)
-        .execute(&app.db)
-        .await?
-        .rows_affected();
-    if deleted == 0 {
-        return Err(ApiError::new(ErrorCode::NotFound));
-    }
+    let mut tx = app.db.begin().await?;
+    let (name, role): (String, Role) = sqlx::query_as(
+        "DELETE FROM invitation WHERE id = ? AND accepted_by IS NULL RETURNING name, role",
+    )
+    .bind(id)
+    .fetch_optional(&mut *tx)
+    .await?
+    .ok_or(ApiError::new(ErrorCode::NotFound))?;
+    let before = json!({ "name": name, "role": role });
+    let subject = format!("invitation:{id}");
+    audit::record(
+        &mut tx,
+        auth.user.id,
+        "invitation.revoke",
+        &subject,
+        Some(before),
+        None,
+    )
+    .await?;
+    tx.commit().await?;
     Ok(StatusCode::NO_CONTENT)
 }
 
@@ -147,6 +169,17 @@ pub async fn accept(
         .bind(id)
         .execute(&mut *tx)
         .await?;
+    let after = json!({ "accepted_by": user.id });
+    let subject = format!("invitation:{id}");
+    audit::record(
+        tx,
+        user.id,
+        "invitation.accept",
+        &subject,
+        None,
+        Some(after),
+    )
+    .await?;
     Ok(user)
 }
 

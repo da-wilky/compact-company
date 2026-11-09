@@ -1,7 +1,10 @@
 use std::collections::BTreeMap;
 
 use axum::{
-    extract::{FromRequest, rejection::JsonRejection},
+    extract::{
+        FromRequest, FromRequestParts,
+        rejection::{JsonRejection, PathRejection, QueryRejection},
+    },
     http::StatusCode,
     response::{IntoResponse, Response},
 };
@@ -167,3 +170,25 @@ impl<T: Serialize> IntoResponse for Json<T> {
         axum::Json(self.0).into_response()
     }
 }
+
+impl From<QueryRejection> for ApiError {
+    fn from(_: QueryRejection) -> Self {
+        Self::new(ErrorCode::MalformedRequest)
+    }
+}
+
+impl From<PathRejection> for ApiError {
+    fn from(_: PathRejection) -> Self {
+        Self::new(ErrorCode::NotFound)
+    }
+}
+
+/// `axum::extract::Query` whose rejection uses the API's error format.
+#[derive(FromRequestParts)]
+#[from_request(via(axum::extract::Query), rejection(ApiError))]
+pub struct Query<T>(pub T);
+
+/// `axum::extract::Path` whose rejection uses the API's error format.
+#[derive(FromRequestParts)]
+#[from_request(via(axum::extract::Path), rejection(ApiError))]
+pub struct Path<T>(pub T);

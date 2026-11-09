@@ -6,6 +6,7 @@ use utoipa_axum::{router::OpenApiRouter, routes};
 
 use crate::App;
 
+pub mod audit;
 pub mod business;
 pub mod error;
 pub mod invitations;
@@ -43,6 +44,7 @@ pub fn routes() -> OpenApiRouter<Arc<App>> {
         .routes(routes!(invitations::accept_finish))
         .routes(routes!(oidc::oidc_start))
         .routes(routes!(oidc::oidc_callback))
+        .routes(routes!(audit::list_audit))
         .fallback(async || ApiError::new(ErrorCode::NotFound));
     OpenApiRouter::with_openapi(Doc::openapi()).nest("/api", api)
 }

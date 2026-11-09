@@ -1,12 +1,13 @@
 use std::sync::Arc;
 
-use axum::extract::{Path, State};
+use axum::extract::State;
 use serde::{Deserialize, Serialize};
+use serde_json::{Map, Value, json};
 use utoipa::ToSchema;
 
-use super::error::{ApiError, ErrorCode, Json};
+use super::error::{ApiError, ErrorCode, Json, Path};
 use crate::{
-    App,
+    App, audit,
     auth::{Auth, OwnerOnly, Role},
 };
 
@@ -46,22 +47,43 @@ pub struct UserChange {
     responses((status = OK, body = UserView), (status = "default", body = ApiError)))]
 pub async fn change_user(
     State(app): State<Arc<App>>,
-    _: Auth<OwnerOnly>,
+    auth: Auth<OwnerOnly>,
     Path(id): Path<i64>,
     Json(change): Json<UserChange>,
 ) -> Result<Json<UserView>, ApiError> {
     let mut tx = app.db.begin_with("BEGIN IMMEDIATE").await?;
-    let updated = sqlx::query(
+    let (role, active): (Role, bool) = sqlx::query_as("SELECT role, active FROM user WHERE id = ?")
+        .bind(id)
+        .fetch_optional(&mut *tx)
+        .await?
+        .ok_or(ApiError::new(ErrorCode::NotFound))?;
+    let (mut before, mut after) = (Map::new(), Map::new());
+    if let Some(new) = change.role.filter(|new| *new != role) {
+        before.insert("role".into(), json!(role));
+        after.insert("role".into(), json!(new));
+    }
+    if let Some(new) = change.active.filter(|new| *new != active) {
+        before.insert("active".into(), json!(active));
+        after.insert("active".into(), json!(new));
+    }
+    sqlx::query(
         "UPDATE user SET role = coalesce(?, role), active = coalesce(?, active) WHERE id = ?",
     )
     .bind(change.role)
     .bind(change.active)
     .bind(id)
     .execute(&mut *tx)
-    .await?
-    .rows_affected();
-    if updated == 0 {
-        return Err(ApiError::new(ErrorCode::NotFound));
+    .await?;
+    if !after.is_empty() {
+        audit::record(
+            &mut tx,
+            auth.user.id,
+            "user.update",
+            &format!("user:{id}"),
+            Some(Value::Object(before)),
+            Some(Value::Object(after)),
+        )
+        .await?;
     }
     let owners: i64 =
         sqlx::query_scalar("SELECT count(*) FROM user WHERE role = 'owner' AND active = 1")

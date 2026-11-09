@@ -36,6 +36,7 @@
 	<nav>
 		{#if role === 'owner' || role === 'accountant'}
 			<a href="/business">{t('term.business')}</a>
+			<a href="/audit">{t('audit.title')}</a>
 		{/if}
 		{#if role === 'owner'}
 			<a href="/users">{t('users.title')}</a>

@@ -6,6 +6,7 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use utoipa::{IntoParams, ToSchema};
 use webauthn_rs::prelude::Uuid;
 
@@ -14,7 +15,7 @@ use super::{
     invitations,
 };
 use crate::{
-    App,
+    App, audit,
     auth::{self, User, now, random_token},
     oidc::Pending,
 };
@@ -62,6 +63,7 @@ pub async fn oidc_start(
 }
 
 #[derive(Deserialize, IntoParams)]
+#[into_params(parameter_in = Query)]
 pub struct Callback {
     state: String,
     code: Option<String>,
@@ -134,6 +136,9 @@ async fn sign_in(app: &App, callback: Callback) -> Result<axum::http::HeaderValu
                 }
                 result => result?,
             };
+            let after = json!({ "issuer": identity.issuer, "subject": identity.subject });
+            let subject = format!("user:{}", user.id);
+            audit::record(&mut tx, user.id, "oidc.link", &subject, None, Some(after)).await?;
             user
         }
         (None, None) => return Err(ApiError::new(ErrorCode::OidcUnknownIdentity)),
