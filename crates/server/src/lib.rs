@@ -11,9 +11,13 @@ use sqlx::{
     sqlite::{SqliteConnectOptions, SqliteJournalMode},
 };
 
+use url::Url;
+use webauthn_rs::prelude::{Webauthn, WebauthnBuilder, WebauthnError};
+
 use crate::{config::Config, files::Files, settings::Settings};
 
 pub mod api;
+pub mod auth;
 pub mod config;
 pub mod files;
 pub mod settings;
@@ -22,6 +26,10 @@ pub struct App {
     pub db: SqlitePool,
     pub files: Files,
     pub settings: Settings,
+    pub webauthn: Webauthn,
+    pub public_url: Url,
+    /// Required to create the first owner, so that only whoever can read the server log can.
+    pub setup_token: String,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -34,6 +42,8 @@ pub enum Error {
     Migrate(#[from] sqlx::migrate::MigrateError),
     #[error("cannot open the file store: {0}")]
     Files(#[from] files::Error),
+    #[error("invalid public_url {0}: {1}")]
+    PublicUrl(Url, WebauthnError),
 }
 
 impl App {
@@ -55,11 +65,30 @@ impl App {
             None => Files::local(&config.data_dir.join("files"))?,
         };
         let settings = Settings::new(db.clone(), &config.business);
+        let url = &config.public_url;
+        let rp_id = url.host_str().unwrap_or_default();
+        let webauthn = WebauthnBuilder::new(rp_id, url)
+            .map(|b| {
+                b.rp_name("compact-company")
+                    .allow_any_port(rp_id == "localhost")
+            })
+            .and_then(WebauthnBuilder::build)
+            .map_err(|e| Error::PublicUrl(url.clone(), e))?;
         Ok(Self {
             db,
             files,
             settings,
+            webauthn,
+            public_url: url.clone(),
+            setup_token: auth::random_token(),
         })
+    }
+
+    pub async fn setup_required(&self) -> Result<bool, sqlx::Error> {
+        let users: i64 = sqlx::query_scalar("SELECT count(*) FROM user")
+            .fetch_one(&self.db)
+            .await?;
+        Ok(users == 0)
     }
 }
 

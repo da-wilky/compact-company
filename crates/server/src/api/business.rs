@@ -7,6 +7,7 @@ use utoipa::ToSchema;
 use super::error::{ApiError, FieldError, Json};
 use crate::{
     App,
+    auth::{Auth, OwnerOnly},
     settings::{self, Business},
 };
 
@@ -19,7 +20,10 @@ pub struct BusinessView {
 
 #[utoipa::path(get, path = "/business", tag = "business",
     responses((status = OK, body = BusinessView), (status = "default", body = ApiError)))]
-pub async fn get_business(State(app): State<Arc<App>>) -> Result<Json<BusinessView>, ApiError> {
+pub async fn get_business(
+    State(app): State<Arc<App>>,
+    _: Auth,
+) -> Result<Json<BusinessView>, ApiError> {
     view(&app).await.map(Json)
 }
 
@@ -27,6 +31,7 @@ pub async fn get_business(State(app): State<Arc<App>>) -> Result<Json<BusinessVi
     responses((status = OK, body = BusinessView), (status = "default", body = ApiError)))]
 pub async fn put_business(
     State(app): State<Arc<App>>,
+    _: Auth<OwnerOnly>,
     Json(business): Json<Business>,
 ) -> Result<Json<BusinessView>, ApiError> {
     let business = validate(business)?;

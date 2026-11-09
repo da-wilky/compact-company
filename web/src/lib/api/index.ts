@@ -6,5 +6,30 @@ export type ApiError = Schemas['ApiError'];
 
 export const api = createClient<paths>();
 
-/** The error to show when the server cannot be reached at all. */
-export const networkError: ApiError = { code: 'internal', message: 'error.network' };
+let csrfToken: string | null = null;
+
+export function setCsrfToken(token: string | null | undefined) {
+	csrfToken = token ?? null;
+}
+
+api.use({
+	onRequest({ request }) {
+		if (csrfToken && !['GET', 'HEAD'].includes(request.method)) {
+			request.headers.set('x-csrf-token', csrfToken);
+		}
+	}
+});
+
+/** An error raised in the browser, shown like the server's errors. */
+export const clientError = (message: string): ApiError => ({ code: 'internal', message });
+
+/** Runs an API call, turning a failed fetch into an error to show. */
+export async function call<T>(
+	request: Promise<{ data?: T; error?: ApiError }>
+): Promise<{ data?: T; error?: ApiError }> {
+	try {
+		return await request;
+	} catch {
+		return { error: clientError('error.network') };
+	}
+}

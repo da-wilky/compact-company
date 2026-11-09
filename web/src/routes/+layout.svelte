@@ -1,7 +1,29 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
+	import { api, call } from '#lib/api/index.ts';
 	import { i18n, t, type Locale } from '#lib/i18n.svelte.ts';
+	import { load, session, show } from '#lib/session.svelte.ts';
 
 	let { children } = $props();
+
+	const open = ['/setup', '/sign-in'];
+
+	load();
+
+	$effect(() => {
+		const view = session.view;
+		if (!view) return;
+		const path = page.url.pathname;
+		if (view.setup_required && path !== '/setup') goto('/setup');
+		else if (!view.setup_required && !view.user && path !== '/sign-in') goto('/sign-in');
+		else if (view.user && open.includes(path)) goto('/');
+	});
+
+	async function signOut() {
+		await call(api.POST('/api/sign-out'));
+		show({ user: null, csrf_token: null, setup_required: false });
+	}
 </script>
 
 <svelte:head>
@@ -11,8 +33,14 @@
 <header>
 	<a href="/">compact-company</a>
 	<nav>
-		<a href="/business">{t('term.business')}</a>
+		{#if session.view?.user}
+			<a href="/business">{t('term.business')}</a>
+		{/if}
 	</nav>
+	{#if session.view?.user}
+		<a href="/account">{session.view.user.name}</a>
+		<button onclick={signOut}>{t('sign_out')}</button>
+	{/if}
 	<select bind:value={i18n.locale} aria-label="Language">
 		{#each ['de', 'en'] as Locale[] as locale (locale)}
 			<option value={locale}>{locale.toUpperCase()}</option>
@@ -21,7 +49,9 @@
 </header>
 
 <main>
-	{@render children()}
+	{#if session.view?.user || open.includes(page.url.pathname)}
+		{@render children()}
+	{/if}
 </main>
 
 <style>
@@ -30,6 +60,15 @@
 		margin: 0;
 		color: #1c1c1c;
 		background: #fafafa;
+	}
+	:global(input:not([type='checkbox']), textarea) {
+		font: inherit;
+		padding: 0.4rem;
+		border: 1px solid #bbb;
+		border-radius: 4px;
+	}
+	:global(.error) {
+		color: #b00020;
 	}
 	header {
 		display: flex;

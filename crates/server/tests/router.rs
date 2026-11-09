@@ -61,7 +61,7 @@ async fn client_assets_are_served_with_their_type() {
 async fn malformed_json_is_an_api_error() {
     let app = start(Config::default()).await;
     let response = app
-        .send_json("PUT", "/api/business", json!({ "colour": 1 }))
+        .send_json("POST", "/api/setup/start", json!({ "token": 1 }))
         .await;
     assert_eq!(response.status(), StatusCode::BAD_REQUEST);
     assert_eq!(json(response).await["code"], "malformed_request");

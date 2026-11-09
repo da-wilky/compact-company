@@ -12,10 +12,13 @@ nix run . -- --config config.toml
 nix build .#image            # OCI image on 0.0.0.0:9440 with data in /data; load with `docker load < result`
 ```
 
+On first start the server prints a one-time setup link; whoever opens it creates the owner with a passkey.
+
 Every config key is optional:
 
 ```toml
 listen = "127.0.0.1:9440"
+public_url = "http://localhost:9440"   # the address browsers use; passkeys are bound to its host
 data_dir = "data"              # database, and stored files unless S3 is set
 
 [storage.s3]                   # S3-compatible bucket for stored files

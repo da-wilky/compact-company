@@ -25,12 +25,21 @@ pub enum ErrorCode {
     NotFound,
     MalformedRequest,
     InvalidInput,
+    Unauthenticated,
+    Forbidden,
+    CsrfToken,
+    SetupDone,
+    InvalidSetupToken,
+    CeremonyExpired,
+    PasskeyRejected,
+    LastPasskey,
     Internal,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, ToSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum FieldError {
+    Required,
     TooLong,
     InvalidFormat,
     Pinned,
@@ -41,14 +50,27 @@ impl ErrorCode {
         Self::NotFound,
         Self::MalformedRequest,
         Self::InvalidInput,
+        Self::Unauthenticated,
+        Self::Forbidden,
+        Self::CsrfToken,
+        Self::SetupDone,
+        Self::InvalidSetupToken,
+        Self::CeremonyExpired,
+        Self::PasskeyRejected,
+        Self::LastPasskey,
         Self::Internal,
     ];
 
     fn status(self) -> StatusCode {
         match self {
             Self::NotFound => StatusCode::NOT_FOUND,
-            Self::MalformedRequest => StatusCode::BAD_REQUEST,
+            Self::MalformedRequest | Self::CeremonyExpired | Self::PasskeyRejected => {
+                StatusCode::BAD_REQUEST
+            }
             Self::InvalidInput => StatusCode::UNPROCESSABLE_ENTITY,
+            Self::Unauthenticated => StatusCode::UNAUTHORIZED,
+            Self::Forbidden | Self::CsrfToken | Self::InvalidSetupToken => StatusCode::FORBIDDEN,
+            Self::SetupDone | Self::LastPasskey => StatusCode::CONFLICT,
             Self::Internal => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
@@ -59,7 +81,12 @@ impl ErrorCode {
 }
 
 impl FieldError {
-    pub const ALL: &[Self] = &[Self::TooLong, Self::InvalidFormat, Self::Pinned];
+    pub const ALL: &[Self] = &[
+        Self::Required,
+        Self::TooLong,
+        Self::InvalidFormat,
+        Self::Pinned,
+    ];
 
     pub fn key(self) -> String {
         format!("field.{}", snake_case(self))

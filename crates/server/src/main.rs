@@ -43,6 +43,12 @@ async fn serve(config: Option<PathBuf>) -> Result<(), Box<dyn std::error::Error>
         None => Config::default(),
     };
     let app = Arc::new(App::open(&config).await?);
+    if app.setup_required().await? {
+        eprintln!(
+            "no users yet; set up this instance at {}setup#{}",
+            app.public_url, app.setup_token
+        );
+    }
     let listener = tokio::net::TcpListener::bind(config.listen).await?;
     eprintln!("listening on http://{}", listener.local_addr()?);
     axum::serve(listener, compact_company::router(app)).await?;

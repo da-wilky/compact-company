@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { api, networkError, type ApiError, type Schemas } from '#lib/api/index.ts';
+	import { api, call, type ApiError, type Schemas } from '#lib/api/index.ts';
 	import Field from '#lib/components/Field.svelte';
 	import { t } from '#lib/i18n.svelte.ts';
 
@@ -8,35 +8,22 @@
 	let error = $state<ApiError>();
 	let saved = $state(false);
 
-	function show(view: Schemas['BusinessView']) {
-		values = view.values;
-		pinned = view.pinned;
-	}
-
-	async function load() {
-		try {
-			const { data, error: e } = await api.GET('/api/business');
-			if (data) show(data);
-			error = e;
-		} catch {
-			error = networkError;
+	function show(result: { data?: Schemas['BusinessView']; error?: ApiError }) {
+		if (result.data) {
+			values = result.data.values;
+			pinned = result.data.pinned;
 		}
+		error = result.error;
 	}
 
 	async function save(event: SubmitEvent) {
 		event.preventDefault();
-		saved = false;
-		try {
-			const { data, error: e } = await api.PUT('/api/business', { body: values });
-			if (data) show(data);
-			error = e;
-			saved = !e;
-		} catch {
-			error = networkError;
-		}
+		const result = await call(api.PUT('/api/business', { body: values }));
+		show(result);
+		saved = !result.error;
 	}
 
-	load();
+	call(api.GET('/api/business')).then(show);
 
 	const note = (key: string) => (pinned.includes(key) ? t('business.pinned') : undefined);
 	const texts = ['name', 'tax_number', 'vat_id'] as const;
@@ -66,16 +53,3 @@
 	{#if saved}<p role="status">{t('app.saved')}</p>{/if}
 	<button>{t('app.save')}</button>
 </form>
-
-<style>
-	input:not([type='checkbox']),
-	textarea {
-		font: inherit;
-		padding: 0.4rem;
-		border: 1px solid #bbb;
-		border-radius: 4px;
-	}
-	.error {
-		color: #b00020;
-	}
-</style>

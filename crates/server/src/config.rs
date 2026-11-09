@@ -5,6 +5,7 @@ use std::{
 };
 
 use serde::Deserialize;
+use url::Url;
 
 use crate::settings::Business;
 
@@ -13,6 +14,9 @@ use crate::settings::Business;
 pub struct Config {
     #[serde(default = "default_listen")]
     pub listen: SocketAddr,
+    /// The address browsers use; passkeys are bound to its host.
+    #[serde(default = "default_public_url")]
+    pub public_url: Url,
     #[serde(default = "default_data_dir")]
     pub data_dir: PathBuf,
     #[serde(default)]
@@ -71,6 +75,10 @@ fn read(path: &Path) -> Result<String, Error> {
 
 fn default_listen() -> SocketAddr {
     ([127, 0, 0, 1], 9440).into()
+}
+
+fn default_public_url() -> Url {
+    "http://localhost:9440".parse().expect("valid URL")
 }
 
 fn default_data_dir() -> PathBuf {
