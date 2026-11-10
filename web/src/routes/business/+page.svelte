@@ -27,6 +27,8 @@
 	}
 
 	call(api.GET('/api/business')).then(show);
+	let currencies = $state<string[]>([]);
+	call(api.GET('/api/currencies')).then(({ data }) => (currencies = data ?? []));
 
 	const note = (key: string) => (pinned.includes(key) ? t('business.pinned') : undefined);
 	const texts = ['name', 'tax_number', 'vat_id'] as const;
@@ -46,6 +48,11 @@
 		<Field label={t('business.address')} error={error?.fields?.address} note={note('address')}>
 			<textarea rows="3" bind:value={values.address} readonly={pinned.includes('address')}
 			></textarea>
+		</Field>
+		<Field label={t('business.currency')} error={error?.fields?.currency} note={note('currency')}>
+			<select bind:value={values.currency} disabled={pinned.includes('currency')}>
+				{#each currencies as code (code)}<option value={code}>{code}</option>{/each}
+			</select>
 		</Field>
 		<div class="wide">
 			<Field label={t('business.small_business')} note={note('small_business')} inline>

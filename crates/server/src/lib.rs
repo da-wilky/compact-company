@@ -23,6 +23,7 @@ pub mod audit;
 pub mod auth;
 pub mod config;
 pub mod files;
+pub mod money;
 pub mod oidc;
 pub mod settings;
 

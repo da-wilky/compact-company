@@ -40,6 +40,11 @@ const SIGNED_IN: &[(&str, &str, &[&str])] = &[
     ("POST", "/api/invitations", OWNER),
     ("DELETE", "/api/invitations/{id}", OWNER),
     ("GET", "/api/audit", OWNER_ACCOUNTANT),
+    ("GET", "/api/currencies", ANY),
+    ("GET", "/api/customers", ANY),
+    ("POST", "/api/customers", OWNER),
+    ("GET", "/api/customers/{id}", ANY),
+    ("PUT", "/api/customers/{id}", OWNER),
 ];
 
 #[test]

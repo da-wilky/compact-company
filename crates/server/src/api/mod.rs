@@ -8,7 +8,9 @@ use crate::App;
 
 pub mod audit;
 pub mod business;
+pub mod customers;
 pub mod error;
+pub mod input;
 pub mod invitations;
 pub mod oidc;
 pub mod passkeys;
@@ -45,6 +47,9 @@ pub fn routes() -> OpenApiRouter<Arc<App>> {
         .routes(routes!(oidc::oidc_start))
         .routes(routes!(oidc::oidc_callback))
         .routes(routes!(audit::list_audit))
+        .routes(routes!(currencies))
+        .routes(routes!(customers::list_customers, customers::create_customer))
+        .routes(routes!(customers::get_customer, customers::put_customer))
         .fallback(async || ApiError::new(ErrorCode::NotFound));
     OpenApiRouter::with_openapi(Doc::openapi()).nest("/api", api)
 }
@@ -57,4 +62,11 @@ pub struct Health {
 #[utoipa::path(get, path = "/health", tag = "health", responses((status = OK, body = Health)))]
 async fn health() -> Json<Health> {
     Json(Health { status: "ok" })
+}
+
+/// The ISO 4217 codes customers may be billed in.
+#[utoipa::path(get, path = "/currencies", tag = "customers",
+    responses((status = OK, body = Vec<String>), (status = "default", body = ApiError)))]
+async fn currencies(_: crate::auth::Auth) -> Json<Vec<&'static str>> {
+    Json(crate::money::CURRENCIES.iter().map(|(code, _)| *code).collect())
 }

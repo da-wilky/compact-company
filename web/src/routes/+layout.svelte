@@ -15,22 +15,30 @@
 
 	let { children } = $props();
 
-	type Item = { href: string; label: string; icon: IconName; roles: Schemas['Role'][] };
+	type Item = {
+		href: string;
+		label: string;
+		icon: IconName;
+		roles: Schemas['Role'][];
+		group: 'main' | 'admin' | 'me';
+	};
 	const all: Schemas['Role'][] = ['owner', 'staff', 'accountant'];
 	const items: Item[] = $derived([
-		{ href: '/', label: t('nav.overview'), icon: 'overview', roles: all },
-		{ href: '/business', label: t('term.business'), icon: 'business', roles: ['owner', 'accountant'] },
-		{ href: '/users', label: t('users.title'), icon: 'users', roles: ['owner'] },
-		{ href: '/audit', label: t('audit.title'), icon: 'audit', roles: ['owner', 'accountant'] },
-		{ href: '/account', label: t('account.title'), icon: 'account', roles: all }
+		{ href: '/', label: t('nav.overview'), icon: 'overview', roles: all, group: 'main' },
+		{ href: '/customers', label: t('customers.title'), icon: 'customers', roles: all, group: 'main' },
+		{ href: '/business', label: t('term.business'), icon: 'business', roles: ['owner', 'accountant'], group: 'admin' },
+		{ href: '/users', label: t('users.title'), icon: 'users', roles: ['owner'], group: 'admin' },
+		{ href: '/audit', label: t('audit.title'), icon: 'audit', roles: ['owner', 'accountant'], group: 'admin' },
+		{ href: '/account', label: t('account.title'), icon: 'account', roles: all, group: 'me' }
 	]);
 
 	const open = ['/setup', '/sign-in', '/invitation'];
 	const user = $derived(session.view?.user);
 	const visible = $derived(items.filter((item) => user && item.roles.includes(user.role)));
-	const main = $derived(visible.filter((item) => item.href === '/'));
-	const admin = $derived(visible.filter((item) => item.href !== '/' && item.href !== '/account'));
-	const bar = $derived(visible.slice(0, 3));
+	const main = $derived(visible.filter((item) => item.group === 'main'));
+	const admin = $derived(visible.filter((item) => item.group === 'admin'));
+	// the phone bar shows the everyday pages; the rest live in the "more" sheet
+	const bar = $derived(visible.filter((item) => item.group === 'main' && item.href !== '/').slice(0, 3));
 	const initials = $derived(
 		(user?.name ?? '')
 			.split(/\s+/)
@@ -62,7 +70,10 @@
 		more = false;
 	});
 
-	const current = (href: string) => (page.url.pathname === href ? 'page' : undefined);
+	const current = (href: string) =>
+		page.url.pathname === href || (href !== '/' && page.url.pathname.startsWith(`${href}/`))
+			? 'page'
+			: undefined;
 
 	async function signOut() {
 		await call(api.POST('/api/sign-out'));
