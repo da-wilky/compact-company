@@ -1,7 +1,9 @@
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
-use sqlx::SqlitePool;
+use sqlx::{SqliteConnection, SqliteExecutor, SqlitePool};
 use utoipa::ToSchema;
+
+use crate::audit;
 
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize, ToSchema)]
 #[serde(deny_unknown_fields)]
@@ -50,8 +52,12 @@ impl Settings {
     }
 
     pub async fn business(&self) -> Result<Business, Error> {
+        self.read(&self.db).await
+    }
+
+    async fn read(&self, db: impl SqliteExecutor<'_>) -> Result<Business, Error> {
         let rows: Vec<(String, String)> = sqlx::query_as("SELECT key, value FROM setting")
-            .fetch_all(&self.db)
+            .fetch_all(db)
             .await?;
         let mut values = Map::new();
         for (key, value) in rows {
@@ -61,8 +67,14 @@ impl Settings {
         serde_json::from_value(Value::Object(values)).map_err(Error::Corrupt)
     }
 
-    /// Stores every key that is not pinned; a pinned key must keep its pinned value.
-    pub async fn update(&self, business: &Business) -> Result<(), Error> {
+    /// Stores every key that is not pinned and records the changed keys in the audit log; a
+    /// pinned key must keep its pinned value.
+    pub async fn update(
+        &self,
+        tx: &mut SqliteConnection,
+        user_id: i64,
+        business: &Business,
+    ) -> Result<(), Error> {
         let values = to_map(business);
         let changed_pins: Vec<String> = self
             .pinned
@@ -73,11 +85,14 @@ impl Settings {
         if !changed_pins.is_empty() {
             return Err(Error::Pinned(changed_pins));
         }
-        let mut tx = self.db.begin().await?;
+        let current = to_map(&self.read(&mut *tx).await?);
+        let (mut before, mut after) = (Map::new(), Map::new());
         for (key, value) in values
             .iter()
-            .filter(|(key, _)| !self.pinned.contains_key(*key))
+            .filter(|(key, value)| current.get(*key) != Some(value))
         {
+            before.insert(key.clone(), current[key].clone());
+            after.insert(key.clone(), value.clone());
             if value.is_null() {
                 sqlx::query("DELETE FROM setting WHERE key = ?")
                     .bind(key)
@@ -94,7 +109,17 @@ impl Settings {
                 .await?;
             }
         }
-        tx.commit().await?;
+        if !after.is_empty() {
+            audit::record(
+                tx,
+                user_id,
+                "business.update",
+                "business",
+                Some(Value::Object(before)),
+                Some(Value::Object(after)),
+            )
+            .await?;
+        }
         Ok(())
     }
 }

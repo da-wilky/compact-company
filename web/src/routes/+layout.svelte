@@ -3,11 +3,12 @@
 	import { page } from '$app/state';
 	import { api, call } from '#lib/api/index.ts';
 	import { i18n, t, type Locale } from '#lib/i18n.svelte.ts';
-	import { load, session, show } from '#lib/session.svelte.ts';
+	import { load, session } from '#lib/session.svelte.ts';
 
 	let { children } = $props();
 
-	const open = ['/setup', '/sign-in'];
+	const open = ['/setup', '/sign-in', '/invitation'];
+	const role = $derived(session.view?.user?.role);
 
 	load();
 
@@ -16,13 +17,13 @@
 		if (!view) return;
 		const path = page.url.pathname;
 		if (view.setup_required && path !== '/setup') goto('/setup');
-		else if (!view.setup_required && !view.user && path !== '/sign-in') goto('/sign-in');
+		else if (!view.setup_required && !view.user && !open.includes(path)) goto('/sign-in');
 		else if (view.user && open.includes(path)) goto('/');
 	});
 
 	async function signOut() {
 		await call(api.POST('/api/sign-out'));
-		show({ user: null, csrf_token: null, setup_required: false });
+		await load();
 	}
 </script>
 
@@ -33,8 +34,12 @@
 <header>
 	<a href="/">compact-company</a>
 	<nav>
-		{#if session.view?.user}
+		{#if role === 'owner' || role === 'accountant'}
 			<a href="/business">{t('term.business')}</a>
+			<a href="/audit">{t('audit.title')}</a>
+		{/if}
+		{#if role === 'owner'}
+			<a href="/users">{t('users.title')}</a>
 		{/if}
 	</nav>
 	{#if session.view?.user}

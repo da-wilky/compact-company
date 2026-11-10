@@ -7,7 +7,7 @@ use utoipa::ToSchema;
 use super::error::{ApiError, FieldError, Json};
 use crate::{
     App,
-    auth::{Auth, OwnerOnly},
+    auth::{Auth, OwnerOnly, OwnerOrAccountant},
     settings::{self, Business},
 };
 
@@ -22,7 +22,7 @@ pub struct BusinessView {
     responses((status = OK, body = BusinessView), (status = "default", body = ApiError)))]
 pub async fn get_business(
     State(app): State<Arc<App>>,
-    _: Auth,
+    _: Auth<OwnerOrAccountant>,
 ) -> Result<Json<BusinessView>, ApiError> {
     view(&app).await.map(Json)
 }
@@ -31,11 +31,12 @@ pub async fn get_business(
     responses((status = OK, body = BusinessView), (status = "default", body = ApiError)))]
 pub async fn put_business(
     State(app): State<Arc<App>>,
-    _: Auth<OwnerOnly>,
+    auth: Auth<OwnerOnly>,
     Json(business): Json<Business>,
 ) -> Result<Json<BusinessView>, ApiError> {
     let business = validate(business)?;
-    match app.settings.update(&business).await {
+    let mut tx = app.db.begin_with("BEGIN IMMEDIATE").await?;
+    match app.settings.update(&mut tx, auth.user.id, &business).await {
         Err(settings::Error::Pinned(keys)) => Err(ApiError::fields(
             keys.into_iter()
                 .map(|key| (key, FieldError::Pinned))
@@ -43,6 +44,7 @@ pub async fn put_business(
         )),
         result => result.map_err(ApiError::internal),
     }?;
+    tx.commit().await?;
     view(&app).await.map(Json)
 }
 

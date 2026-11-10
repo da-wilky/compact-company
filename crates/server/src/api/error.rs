@@ -1,7 +1,10 @@
 use std::collections::BTreeMap;
 
 use axum::{
-    extract::{FromRequest, rejection::JsonRejection},
+    extract::{
+        FromRequest, FromRequestParts,
+        rejection::{JsonRejection, PathRejection, QueryRejection},
+    },
     http::StatusCode,
     response::{IntoResponse, Response},
 };
@@ -33,6 +36,11 @@ pub enum ErrorCode {
     CeremonyExpired,
     PasskeyRejected,
     LastPasskey,
+    LastOwner,
+    InvitationInvalid,
+    OidcFailed,
+    OidcUnknownIdentity,
+    OidcIdentityTaken,
     Internal,
 }
 
@@ -58,19 +66,30 @@ impl ErrorCode {
         Self::CeremonyExpired,
         Self::PasskeyRejected,
         Self::LastPasskey,
+        Self::LastOwner,
+        Self::InvitationInvalid,
+        Self::OidcFailed,
+        Self::OidcUnknownIdentity,
+        Self::OidcIdentityTaken,
         Self::Internal,
     ];
 
     fn status(self) -> StatusCode {
         match self {
-            Self::NotFound => StatusCode::NOT_FOUND,
-            Self::MalformedRequest | Self::CeremonyExpired | Self::PasskeyRejected => {
-                StatusCode::BAD_REQUEST
-            }
+            Self::NotFound | Self::InvitationInvalid => StatusCode::NOT_FOUND,
+            Self::MalformedRequest
+            | Self::CeremonyExpired
+            | Self::PasskeyRejected
+            | Self::OidcFailed => StatusCode::BAD_REQUEST,
             Self::InvalidInput => StatusCode::UNPROCESSABLE_ENTITY,
             Self::Unauthenticated => StatusCode::UNAUTHORIZED,
-            Self::Forbidden | Self::CsrfToken | Self::InvalidSetupToken => StatusCode::FORBIDDEN,
-            Self::SetupDone | Self::LastPasskey => StatusCode::CONFLICT,
+            Self::Forbidden
+            | Self::CsrfToken
+            | Self::InvalidSetupToken
+            | Self::OidcUnknownIdentity => StatusCode::FORBIDDEN,
+            Self::SetupDone | Self::LastPasskey | Self::LastOwner | Self::OidcIdentityTaken => {
+                StatusCode::CONFLICT
+            }
             Self::Internal => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
@@ -151,3 +170,25 @@ impl<T: Serialize> IntoResponse for Json<T> {
         axum::Json(self.0).into_response()
     }
 }
+
+impl From<QueryRejection> for ApiError {
+    fn from(_: QueryRejection) -> Self {
+        Self::new(ErrorCode::MalformedRequest)
+    }
+}
+
+impl From<PathRejection> for ApiError {
+    fn from(_: PathRejection) -> Self {
+        Self::new(ErrorCode::NotFound)
+    }
+}
+
+/// `axum::extract::Query` whose rejection uses the API's error format.
+#[derive(FromRequestParts)]
+#[from_request(via(axum::extract::Query), rejection(ApiError))]
+pub struct Query<T>(pub T);
+
+/// `axum::extract::Path` whose rejection uses the API's error format.
+#[derive(FromRequestParts)]
+#[from_request(via(axum::extract::Path), rejection(ApiError))]
+pub struct Path<T>(pub T);

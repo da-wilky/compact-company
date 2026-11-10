@@ -1,16 +1,17 @@
 use std::{collections::BTreeMap, sync::Arc};
 
-use axum::extract::{Path, State};
+use axum::extract::State;
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use utoipa::ToSchema;
 use webauthn_rs::prelude::{CredentialID, PasskeyRegistration, Uuid};
 
 use super::{
-    error::{ApiError, ErrorCode, FieldError, Json},
+    error::{ApiError, ErrorCode, FieldError, Json, Path},
     session::{RegistrationFinish, insert_passkey},
 };
 use crate::{
-    App,
+    App, audit,
     auth::{self, Auth},
 };
 
@@ -143,18 +144,26 @@ pub async fn remove_passkey(
         .bind(auth.user.id)
         .fetch_one(&mut *tx)
         .await?;
-    let deleted = sqlx::query("DELETE FROM passkey WHERE id = ? AND user_id = ?")
-        .bind(id)
-        .bind(auth.user.id)
-        .execute(&mut *tx)
-        .await?
-        .rows_affected();
-    if deleted == 0 {
-        return Err(ApiError::new(ErrorCode::NotFound));
-    }
+    let name: String =
+        sqlx::query_scalar("DELETE FROM passkey WHERE id = ? AND user_id = ? RETURNING name")
+            .bind(id)
+            .bind(auth.user.id)
+            .fetch_optional(&mut *tx)
+            .await?
+            .ok_or(ApiError::new(ErrorCode::NotFound))?;
     if count <= 1 {
         return Err(ApiError::new(ErrorCode::LastPasskey));
     }
+    let before = json!({ "user_id": auth.user.id, "name": name });
+    audit::record(
+        &mut tx,
+        auth.user.id,
+        "passkey.remove",
+        &format!("passkey:{id}"),
+        Some(before),
+        None,
+    )
+    .await?;
     tx.commit().await?;
     list(&app, auth.user.id).await.map(Json)
 }
