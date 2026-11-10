@@ -2,6 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { api, call, clientError, type ApiError, type Schemas } from '#lib/api/index.ts';
+	import Dialog from '#lib/components/Dialog.svelte';
 	import Field from '#lib/components/Field.svelte';
 	import Icon from '#lib/components/Icon.svelte';
 	import Segmented from '#lib/components/Segmented.svelte';
@@ -29,6 +30,7 @@
 		vat: string;
 		project_id: number | null;
 		activity_id: number | null;
+		time_entry_ids: number[];
 	};
 
 	const id = $derived(Number(page.params.id));
@@ -46,6 +48,9 @@
 	let outro = $state('');
 	let validUntil = $state('');
 	let pricing = $state<Schemas['Pricing']>('fixed');
+	let serviceFrom = $state('');
+	let serviceTo = $state('');
+	let timesheet = $state(false);
 	let lines = $state<EditLine[]>([]);
 	let dirty = $state(false);
 
@@ -64,6 +69,9 @@
 		outro = next.outro ?? '';
 		validUntil = next.valid_until ?? '';
 		pricing = next.pricing ?? 'fixed';
+		serviceFrom = next.service_from ?? '';
+		serviceTo = next.service_to ?? '';
+		timesheet = next.timesheet;
 		lines = next.lines.map((line) => ({
 			description: line.description,
 			quantity: decimalInput(line.quantity),
@@ -71,7 +79,8 @@
 			price: moneyInput(line.unit_price, next.currency),
 			vat: decimalInput(line.vat_rate),
 			project_id: line.project_id ?? null,
-			activity_id: line.activity_id ?? null
+			activity_id: line.activity_id ?? null,
+			time_entry_ids: line.time_entry_ids
 		}));
 		dirty = false;
 		issueError = undefined;
@@ -108,7 +117,8 @@
 			unit_price: parseMoney(line.price, doc!.currency),
 			vat_rate: parseDecimal(line.vat),
 			project_id: line.project_id,
-			activity_id: line.activity_id
+			activity_id: line.activity_id,
+			time_entry_ids: line.time_entry_ids
 		}));
 		const fields: Record<string, Schemas['FieldError']> = {};
 		parsed.forEach((line, i) => {
@@ -130,6 +140,9 @@
 			outro,
 			valid_until: doc.kind === 'quote' ? validUntil || null : null,
 			pricing: doc.kind === 'quote' ? pricing : null,
+			service_from: doc.kind === 'invoice' ? serviceFrom || null : null,
+			service_to: doc.kind === 'invoice' ? serviceTo || null : null,
+			timesheet: doc.kind === 'invoice' && timesheet,
 			lines: parsed as Schemas['LineInput'][]
 		};
 	}
@@ -196,9 +209,51 @@
 			price: '',
 			vat: '',
 			project_id: projectId,
-			activity_id: null
+			activity_id: null,
+			time_entry_ids: []
 		});
 		dirty = true;
+	}
+
+	let timeOpen = $state(false);
+	let timeFrom = $state('');
+	let timeTo = $state('');
+	let timeProject = $state<number | null>(null);
+	let grouping = $state<Schemas['Grouping']>('todo');
+	let rounding = $state(15);
+	let unbilled = $state<Schemas['UnbilledProject'][]>([]);
+	let timeError = $state<ApiError>();
+
+	async function openTime() {
+		if (dirty && !(await save())) return;
+		timeError = undefined;
+		timeOpen = true;
+		rounding = doc?.rounding || 15;
+		const result = await call(
+			api.GET('/api/unbilled', { params: { query: { customer_id: customerId } } })
+		);
+		unbilled = result.data ?? [];
+	}
+
+	async function addTime(event: SubmitEvent) {
+		event.preventDefault();
+		const result = await call(
+			api.POST('/api/documents/{id}/time', {
+				params: { path: { id } },
+				body: {
+					from: timeFrom || null,
+					to: timeTo || null,
+					project_id: timeProject,
+					group: grouping,
+					rounding
+				}
+			})
+		);
+		timeError = result.error;
+		if (result.data) {
+			show(result.data);
+			timeOpen = false;
+		}
 	}
 
 	function move(i: number, by: number) {
@@ -334,6 +389,19 @@
 						<option value="en">{t('language.en')}</option>
 					</select>
 				</Field>
+				{#if doc.kind === 'invoice'}
+					<Field label={t('documents.service_from')} error={fieldError('service_from')} note={t('documents.service_hint')}>
+						<input type="date" bind:value={serviceFrom} />
+					</Field>
+					<Field label={t('documents.service_to')} error={fieldError('service_to')}>
+						<input type="date" bind:value={serviceTo} />
+					</Field>
+					<div class="wide">
+						<Field label={t('documents.timesheet')} inline>
+							<input type="checkbox" bind:checked={timesheet} />
+						</Field>
+					</div>
+				{/if}
 				{#if doc.kind === 'quote'}
 					<Field label={t('documents.valid_until')} error={fieldError('valid_until')} note={t('documents.valid_until_hint')}>
 						<input type="date" bind:value={validUntil} />
@@ -411,6 +479,9 @@
 									</select>
 								</Field>
 							{/if}
+							{#if line.time_entry_ids.length}
+								<small class="muted wide-line">{t('documents.from_time', { n: line.time_entry_ids.length })}</small>
+							{/if}
 							<div class="line-actions">
 								<button type="button" class="ghost icon" aria-label={t('documents.up')} disabled={i === 0} onclick={() => move(i, -1)}><Icon name="chevron_up" size={18} /></button>
 								<button type="button" class="ghost icon" aria-label={t('documents.down')} disabled={i === lines.length - 1} onclick={() => move(i, 1)}><Icon name="chevron_down" size={18} /></button>
@@ -418,7 +489,12 @@
 							</div>
 						</div>
 					{/each}
-					<div><button type="button" class="ghost" onclick={addLine}><Icon name="plus" size={18} />{t('documents.add_line')}</button></div>
+					<div class="add">
+						<button type="button" class="ghost" onclick={addLine}><Icon name="plus" size={18} />{t('documents.add_line')}</button>
+						{#if doc.kind === 'invoice'}
+							<button type="button" class="ghost" onclick={openTime}><Icon name="time" size={18} />{t('documents.add_time')}</button>
+						{/if}
+					</div>
 				</div>
 
 				<div class="wide">
@@ -477,12 +553,63 @@
 				{/if}
 				{#if doc.data.outro}<p class="pre">{doc.data.outro}</p>{/if}
 				{#if doc.data.valid_until}<p class="muted">{t('documents.valid_until')}: {formatDay(doc.data.valid_until, { dateStyle: 'medium' })}</p>{/if}
+				{#if doc.data.service_from && doc.data.service_to}<p class="muted">{t('term.service_period')}: {formatDay(doc.data.service_from, { dateStyle: 'medium' })} – {formatDay(doc.data.service_to, { dateStyle: 'medium' })}</p>{/if}
+				{#if doc.data.due_date}<p class="muted">{t('documents.due_date')}: {formatDay(doc.data.due_date, { dateStyle: 'medium' })}</p>{/if}
 			</section>
 		{/if}
 	</div>
 {:else if error}
 	<p class="alert" role="alert">{t(error.message)}</p>
 {/if}
+
+
+<Dialog bind:open={timeOpen} title={t('documents.add_time')}>
+	<form class="stack" onsubmit={addTime}>
+		{#if unbilled.length}
+			<ul class="unbilled">
+				{#each unbilled as project (project.project_id)}
+					<li>
+						<span>{project.project_name}</span>
+						<span class="muted">{t('documents.unbilled_hours', { hours: (project.minutes / 60).toLocaleString(undefined, { maximumFractionDigits: 2 }) })}</span>
+					</li>
+				{/each}
+			</ul>
+		{:else}
+			<p class="muted">{t('documents.no_unbilled')}</p>
+		{/if}
+		<div class="pair">
+			<Field label={t('documents.time_from')} error={timeError?.fields?.from}>
+				<input type="date" bind:value={timeFrom} />
+			</Field>
+			<Field label={t('documents.time_to')} error={timeError?.fields?.to}>
+				<input type="date" bind:value={timeTo} />
+			</Field>
+		</div>
+		<Field label={t('term.project')}>
+			<select bind:value={timeProject}>
+				<option value={null}>{t('documents.all_projects')}</option>
+				{#each unbilled as project (project.project_id)}<option value={project.project_id}>{project.project_name}</option>{/each}
+			</select>
+		</Field>
+		<Field label={t('documents.grouping')}>
+			<select bind:value={grouping}>
+				<option value="todo">{t('documents.group.todo')}</option>
+				<option value="project">{t('documents.group.project')}</option>
+				<option value="activity">{t('documents.group.activity')}</option>
+				<option value="entry">{t('documents.group.entry')}</option>
+			</select>
+		</Field>
+		<Field label={t('documents.rounding')} error={timeError?.fields?.rounding}>
+			<select bind:value={rounding}>
+				{#each [0, 5, 10, 15, 30] as minutes (minutes)}
+					<option value={minutes}>{minutes ? t('documents.rounding_to', { minutes }) : t('documents.rounding_none')}</option>
+				{/each}
+			</select>
+		</Field>
+		{#if timeError && !timeError.fields}<p class="alert" role="alert">{t(timeError.message)}</p>{/if}
+		<div><button class="primary">{t('documents.add_time')}</button></div>
+	</form>
+</Dialog>
 
 <style>
 	.eyebrow {
@@ -595,6 +722,31 @@
 		white-space: pre-wrap;
 		font-size: 0.75rem;
 		margin: 0.5rem 0 0;
+	}
+	.add {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem;
+	}
+	.wide-line {
+		grid-column: 1 / -1;
+	}
+	.pair {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 0.75rem;
+	}
+	.unbilled {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: grid;
+		gap: 0.375rem;
+	}
+	.unbilled li {
+		display: flex;
+		justify-content: space-between;
+		gap: 1rem;
 	}
 	@media (max-width: 40rem) {
 		.wide-only {

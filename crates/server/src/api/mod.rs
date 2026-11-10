@@ -9,6 +9,7 @@ use crate::App;
 
 pub mod activities;
 pub mod audit;
+pub mod billing;
 pub mod business;
 pub mod customers;
 pub mod documents;
@@ -93,6 +94,8 @@ pub fn routes() -> OpenApiRouter<Arc<App>> {
         .routes(routes!(documents::duplicate_document))
         .routes(routes!(documents::follow_up))
         .routes(routes!(documents::set_outcome))
+        .routes(routes!(billing::add_time))
+        .routes(routes!(billing::list_unbilled))
         .routes(routes!(snippets::list_snippets, snippets::create_snippet))
         .routes(routes!(snippets::put_snippet, snippets::delete_snippet))
         .merge(

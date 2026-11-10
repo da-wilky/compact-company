@@ -362,6 +362,11 @@ pub struct Row {
     pub valid_until: Option<String>,
     pub pricing: Option<Pricing>,
     pub source_id: Option<i64>,
+    pub due_date: Option<String>,
+    pub service_from: Option<String>,
+    pub service_to: Option<String>,
+    pub timesheet: bool,
+    pub rounding: i64,
 }
 
 #[derive(Debug, Clone, Serialize, ToSchema, sqlx::FromRow)]
@@ -378,6 +383,9 @@ pub struct LineRow {
     pub vat_rate: Option<DecimalText>,
     pub project_id: Option<i64>,
     pub activity_id: Option<i64>,
+    /// The time entries this line charges.
+    #[sqlx(skip)]
+    pub time_entry_ids: Vec<i64>,
 }
 
 /// A decimal stored as text, since SQLite has no decimal type.
@@ -403,10 +411,20 @@ pub async fn lines(
     db: &mut SqliteConnection,
     document_id: i64,
 ) -> Result<Vec<LineRow>, sqlx::Error> {
-    sqlx::query_as("SELECT * FROM document_line WHERE document_id = ? ORDER BY position")
-        .bind(document_id)
-        .fetch_all(db)
-        .await
+    let mut lines: Vec<LineRow> =
+        sqlx::query_as("SELECT * FROM document_line WHERE document_id = ? ORDER BY position")
+            .bind(document_id)
+            .fetch_all(&mut *db)
+            .await?;
+    for line in &mut lines {
+        line.time_entry_ids = sqlx::query_scalar(
+            "SELECT time_entry_id FROM line_time_entry WHERE line_id = ? ORDER BY time_entry_id",
+        )
+        .bind(line.id)
+        .fetch_all(&mut *db)
+        .await?;
+    }
+    Ok(lines)
 }
 
 pub fn default_vat_rate(business: &Business) -> Decimal {
@@ -472,6 +490,7 @@ pub async fn draft_data(
             vat_rate: priced.then_some(rate),
         });
     }
+    let (service_from, service_to, timesheet) = time_details(db, business, row).await?;
     let vat: Vec<VatData> = vat
         .into_iter()
         .map(|(rate, net)| {
@@ -507,13 +526,13 @@ pub async fn draft_data(
         lines,
         vat,
         totals,
-        due_date: None,
+        due_date: row.due_date.clone(),
         valid_until: row.valid_until.clone(),
         pricing: row.pricing,
-        service_from: None,
-        service_to: None,
+        service_from,
+        service_to,
         reference: reference(db, row).await?,
-        timesheet: None,
+        timesheet,
     })
 }
 
@@ -719,4 +738,95 @@ async fn reference(db: &mut SqliteConnection, row: &Row) -> Result<Option<String
         (_, _) if de => format!("Zu Rechnung {number}"),
         (_, _) => format!("For invoice {number}"),
     }))
+}
+
+pub fn timezone(business: &Business) -> jiff::tz::TimeZone {
+    business
+        .timezone
+        .as_deref()
+        .and_then(|tz| jiff::tz::TimeZone::get(tz).ok())
+        .unwrap_or_else(|| {
+            jiff::tz::TimeZone::get("Europe/Berlin").expect("the bundled database has it")
+        })
+}
+
+/// The ISO date of a Unix time in the business's timezone.
+pub fn day(business: &Business, secs: i64) -> String {
+    jiff::Timestamp::from_second(secs)
+        .expect("stored times are valid")
+        .to_zoned(timezone(business))
+        .date()
+        .to_string()
+}
+
+/// Minutes charged for `secs` of work: whole minutes, rounded up to `rounding` minutes if set.
+pub fn billed_minutes(secs: i64, rounding: i64) -> i64 {
+    if rounding > 0 {
+        (secs + rounding * 60 - 1) / (rounding * 60) * rounding
+    } else {
+        (secs + 30) / 60
+    }
+}
+
+/// Hours with two decimals, as lines and timesheets show them.
+pub fn hours(minutes: i64) -> Decimal {
+    (Decimal::from(minutes) / Decimal::from(60))
+        .round_dp_with_strategy(2, RoundingStrategy::MidpointAwayFromZero)
+}
+
+type Period = (Option<String>, Option<String>, Option<Vec<TimesheetEntry>>);
+
+/// An invoice's service period from its time entries, else as set by hand, and its timesheet.
+async fn time_details(
+    db: &mut SqliteConnection,
+    business: &Business,
+    row: &Row,
+) -> Result<Period, sqlx::Error> {
+    if !matches!(row.kind, Kind::Invoice | Kind::Cancellation) {
+        return Ok((None, None, None));
+    }
+    let entries: Vec<BilledEntry> = sqlx::query_as(
+        "SELECT v.started_at, v.ended_at, coalesce(v.billable_secs, v.ended_at - v.started_at) AS secs,
+         v.user_name, v.description, v.todo_title, v.project_name
+         FROM line_time_entry x JOIN document_line l ON l.id = x.line_id
+         JOIN time_entry_view v ON v.id = x.time_entry_id
+         WHERE l.document_id = ? ORDER BY v.started_at",
+    )
+    .bind(row.id)
+    .fetch_all(db)
+    .await?;
+    let (from, to) = match (entries.first(), entries.iter().map(|e| e.ended_at).max()) {
+        (Some(first), Some(last)) => (
+            Some(day(business, first.started_at)),
+            Some(day(business, last - 1)),
+        ),
+        _ => (row.service_from.clone(), row.service_to.clone()),
+    };
+    let timesheet = (row.timesheet && !entries.is_empty()).then(|| {
+        entries
+            .iter()
+            .map(|e| TimesheetEntry {
+                date: day(business, e.started_at),
+                user: e.user_name.clone(),
+                description: match (&e.todo_title, &e.description) {
+                    (Some(todo), Some(description)) => format!("{todo}: {description}"),
+                    (Some(text), None) | (None, Some(text)) => text.clone(),
+                    (None, None) => e.project_name.clone(),
+                },
+                hours: hours(billed_minutes(e.secs, row.rounding)),
+            })
+            .collect()
+    });
+    Ok((from, to, timesheet))
+}
+
+#[derive(sqlx::FromRow)]
+struct BilledEntry {
+    started_at: i64,
+    ended_at: i64,
+    secs: i64,
+    user_name: String,
+    description: Option<String>,
+    todo_title: Option<String>,
+    project_name: String,
 }

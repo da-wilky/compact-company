@@ -964,6 +964,56 @@
         }
       }
     },
+    "/api/documents/{id}/time": {
+      "post": {
+        "tags": [
+          "documents"
+        ],
+        "summary": "Adds the customer's unbilled time to a draft invoice as lines priced at the hourly rate when\nissued.",
+        "operationId": "add_time",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TimeInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Document"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/health": {
       "get": {
         "tags": [
@@ -2959,6 +3009,49 @@
         }
       }
     },
+    "/api/unbilled": {
+      "get": {
+        "tags": [
+          "documents"
+        ],
+        "summary": "Billable time, ended and on no invoice, per project.",
+        "operationId": "list_unbilled",
+        "parameters": [
+          {
+            "name": "customer_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/UnbilledProject"
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/users": {
       "get": {
         "tags": [
@@ -3797,6 +3890,8 @@
           "lines",
           "data",
           "missing",
+          "timesheet",
+          "rounding",
           "follow_ups",
           "created_at",
           "updated_at"
@@ -3819,6 +3914,12 @@
           "data": {
             "$ref": "#/components/schemas/DocumentData",
             "description": "What the layout renders: as issued, or for a draft as it would be issued now."
+          },
+          "due_date": {
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "follow_ups": {
             "type": "array",
@@ -3918,6 +4019,23 @@
               }
             ]
           },
+          "rounding": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Minutes each time entry is rounded up to."
+          },
+          "service_from": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "service_to": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "source_id": {
             "type": [
               "integer",
@@ -3928,6 +4046,9 @@
           },
           "status": {
             "$ref": "#/components/schemas/DocumentStatus"
+          },
+          "timesheet": {
+            "type": "boolean"
           },
           "title": {
             "type": [
@@ -4154,6 +4275,23 @@
             ],
             "format": "int64"
           },
+          "service_from": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Invoices only: ISO dates of the service period when it has no time entries."
+          },
+          "service_to": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "timesheet": {
+            "type": "boolean",
+            "description": "Invoices only: whether a timesheet of its time entries is attached."
+          },
           "title": {
             "type": [
               "string",
@@ -4188,7 +4326,8 @@
           "position",
           "description",
           "quantity",
-          "unit"
+          "unit",
+          "time_entry_ids"
         ],
         "properties": {
           "activity_id": {
@@ -4218,6 +4357,14 @@
           },
           "quantity": {
             "type": "string"
+          },
+          "time_entry_ids": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "description": "The time entries this line charges."
           },
           "unit": {
             "$ref": "#/components/schemas/Unit"
@@ -4526,6 +4673,8 @@
           "follow_up_not_allowed",
           "quote_not_accepted",
           "quote_decided",
+          "billed",
+          "no_unbilled_time",
           "rate_limited",
           "internal"
         ]
@@ -4578,6 +4727,16 @@
           }
         },
         "additionalProperties": false
+      },
+      "Grouping": {
+        "type": "string",
+        "description": "How time entries become invoice lines; entries with different rates never share a line.",
+        "enum": [
+          "entry",
+          "project",
+          "todo",
+          "activity"
+        ]
       },
       "Health": {
         "type": "object",
@@ -4831,6 +4990,14 @@
           },
           "quantity": {
             "type": "string"
+          },
+          "time_entry_ids": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "description": "Invoices only: the billable time entries this line charges."
           },
           "unit": {
             "$ref": "#/components/schemas/Unit"
@@ -5414,6 +5581,45 @@
           }
         ]
       },
+      "TimeInput": {
+        "type": "object",
+        "required": [
+          "group"
+        ],
+        "properties": {
+          "from": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "ISO date of the first day whose time to bill; all earlier unbilled time when left out."
+          },
+          "group": {
+            "$ref": "#/components/schemas/Grouping"
+          },
+          "project_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Only this project's time."
+          },
+          "rounding": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Minutes each entry is rounded up to: 0, 5, 10, 15 or 30."
+          },
+          "to": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "ISO date of the last day, inclusive."
+          }
+        },
+        "additionalProperties": false
+      },
       "TimerInput": {
         "type": "object",
         "required": [
@@ -5689,6 +5895,53 @@
             "type": "string"
           },
           "tax": {
+            "type": "string"
+          }
+        }
+      },
+      "UnbilledProject": {
+        "type": "object",
+        "required": [
+          "customer_id",
+          "customer_name",
+          "project_id",
+          "project_name",
+          "entries",
+          "minutes"
+        ],
+        "properties": {
+          "amount": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Money",
+                "description": "What the time is worth at today's rates; none when no rate applies."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "customer_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "customer_name": {
+            "type": "string"
+          },
+          "entries": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "minutes": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Billable minutes, each entry to the minute."
+          },
+          "project_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "project_name": {
             "type": "string"
           }
         }

@@ -54,6 +54,8 @@ pub enum ErrorCode {
     FollowUpNotAllowed,
     QuoteNotAccepted,
     QuoteDecided,
+    Billed,
+    NoUnbilledTime,
     RateLimited,
     Internal,
 }
@@ -97,6 +99,8 @@ impl ErrorCode {
         Self::FollowUpNotAllowed,
         Self::QuoteNotAccepted,
         Self::QuoteDecided,
+        Self::Billed,
+        Self::NoUnbilledTime,
         Self::RateLimited,
         Self::Internal,
     ];
@@ -127,7 +131,9 @@ impl ErrorCode {
             | Self::Issued
             | Self::FollowUpNotAllowed
             | Self::QuoteNotAccepted
-            | Self::QuoteDecided => StatusCode::CONFLICT,
+            | Self::QuoteDecided
+            | Self::Billed
+            | Self::NoUnbilledTime => StatusCode::CONFLICT,
             Self::RateLimited => StatusCode::TOO_MANY_REQUESTS,
             Self::Internal => StatusCode::INTERNAL_SERVER_ERROR,
         }

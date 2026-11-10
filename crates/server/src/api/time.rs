@@ -12,6 +12,7 @@ use super::{
 use crate::{
     App, audit,
     auth::{Auth, OwnerOrStaff, Role, User, now},
+    documents::Status,
     money::Money,
     rates,
 };
@@ -212,6 +213,9 @@ pub async fn put_entry(
 ) -> Result<Json<TimeEntry>, ApiError> {
     let mut tx = app.db.begin_with("BEGIN IMMEDIATE").await?;
     let before = find(&mut tx, &auth.user, id).await?;
+    if invoiced(&mut tx, id).await? == Some(Status::Issued) {
+        return Err(ApiError::new(ErrorCode::Billed));
+    }
     if input.user_id.is_some_and(|user| user != before.user_id) {
         return Err(ApiError::new(ErrorCode::MalformedRequest));
     }
@@ -263,6 +267,9 @@ pub async fn delete_entry(
 ) -> Result<StatusCode, ApiError> {
     let mut tx = app.db.begin_with("BEGIN IMMEDIATE").await?;
     let entry = find(&mut tx, &auth.user, id).await?;
+    if invoiced(&mut tx, id).await?.is_some() {
+        return Err(ApiError::new(ErrorCode::Billed));
+    }
     sqlx::query("DELETE FROM time_entry WHERE id = ?")
         .bind(id)
         .execute(&mut *tx)
@@ -448,4 +455,15 @@ async fn validate(
     };
     check.done()?;
     Ok(fields)
+}
+
+/// Whether the entry is on an invoice, and whether that is issued.
+async fn invoiced(db: &mut SqliteConnection, id: i64) -> Result<Option<Status>, ApiError> {
+    Ok(sqlx::query_scalar(
+        "SELECT d.status FROM line_time_entry x JOIN document_line l ON l.id = x.line_id
+         JOIN document d ON d.id = l.document_id WHERE x.time_entry_id = ?",
+    )
+    .bind(id)
+    .fetch_optional(db)
+    .await?)
 }

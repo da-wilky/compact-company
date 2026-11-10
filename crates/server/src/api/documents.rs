@@ -42,6 +42,12 @@ pub struct DocumentInput {
     valid_until: Option<String>,
     /// Quotes only; fixed when left out.
     pricing: Option<Pricing>,
+    /// Invoices only: ISO dates of the service period when it has no time entries.
+    service_from: Option<String>,
+    service_to: Option<String>,
+    /// Invoices only: whether a timesheet of its time entries is attached.
+    #[serde(default)]
+    timesheet: bool,
     #[serde(default)]
     lines: Vec<LineInput>,
 }
@@ -61,6 +67,9 @@ pub struct LineInput {
     vat_rate: Option<Decimal>,
     project_id: Option<i64>,
     activity_id: Option<i64>,
+    /// Invoices only: the billable time entries this line charges.
+    #[serde(default)]
+    time_entry_ids: Vec<i64>,
 }
 
 #[derive(Debug, Serialize, ToSchema)]
@@ -87,6 +96,12 @@ pub struct Document {
     pricing: Option<Pricing>,
     /// The document this one follows from.
     source_id: Option<i64>,
+    due_date: Option<String>,
+    service_from: Option<String>,
+    service_to: Option<String>,
+    timesheet: bool,
+    /// Minutes each time entry is rounded up to.
+    rounding: i64,
     quote_state: Option<QuoteState>,
     /// Documents that follow from this one.
     follow_ups: Vec<FollowUp>,
@@ -216,7 +231,7 @@ pub async fn create_document(
 ) -> Result<Json<Document>, ApiError> {
     let business = business(&app).await?;
     let mut tx = app.db.begin_with("BEGIN IMMEDIATE").await?;
-    let draft = validate(&mut tx, input).await?;
+    let draft = validate(&mut tx, input, None).await?;
     let id = insert_draft(&mut tx, auth.user.id, &draft).await?;
     let document = find(&mut tx, &business, id).await?;
     tx.commit().await?;
@@ -246,6 +261,14 @@ pub async fn duplicate_document(
     let copy = Draft {
         valid_until: None,
         source_id: None,
+        lines: original
+            .lines
+            .into_iter()
+            .map(|line| Line {
+                time_entry_ids: Vec::new(),
+                ..line
+            })
+            .collect(),
         ..original
     };
     let copy_id = insert_draft(&mut tx, auth.user.id, &copy).await?;
@@ -299,7 +322,11 @@ pub async fn follow_up(
         }
     }
     let original = snapshot(&mut tx, &source).await?;
+    let source_data = data(&mut tx, &business, &source).await?;
     let priced = input.kind.priced();
+    // an invoice for a quote by effort charges the time spent, added to it afterwards
+    let by_effort = original.pricing == Some(Pricing::Effort) && input.kind == Kind::Invoice;
+    let cancels = input.kind == Kind::Cancellation;
     let draft = Draft {
         kind: input.kind,
         intro: None,
@@ -307,9 +334,13 @@ pub async fn follow_up(
         valid_until: None,
         pricing: None,
         source_id: Some(id),
+        service_from: source_data.service_from.filter(|_| cancels),
+        service_to: source_data.service_to.filter(|_| cancels),
+        timesheet: false,
         lines: original
             .lines
             .into_iter()
+            .filter(|_| !by_effort)
             .map(|line| Line {
                 quantity: if input.kind == Kind::Cancellation {
                     -line.quantity
@@ -318,6 +349,7 @@ pub async fn follow_up(
                 },
                 unit_price: line.unit_price.filter(|_| priced),
                 vat_rate: line.vat_rate.filter(|_| priced),
+                time_entry_ids: Vec::new(),
                 ..line
             })
             .collect(),
@@ -383,8 +415,9 @@ async fn insert_draft(
     let at = now();
     let id: i64 = sqlx::query_scalar(
         "INSERT INTO document (kind, status, customer_id, project_id, language, currency, title,
-         intro, outro, valid_until, pricing, source_id, created_at, updated_at)
-         VALUES (?, 'draft', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id",
+         intro, outro, valid_until, pricing, source_id, service_from, service_to, timesheet,
+         rounding, created_at, updated_at)
+         VALUES (?, 'draft', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id",
     )
     .bind(draft.kind)
     .bind(draft.customer_id)
@@ -397,6 +430,10 @@ async fn insert_draft(
     .bind(&draft.valid_until)
     .bind(draft.pricing)
     .bind(draft.source_id)
+    .bind(&draft.service_from)
+    .bind(&draft.service_to)
+    .bind(draft.timesheet)
+    .bind(draft.rounding)
     .bind(at)
     .bind(at)
     .fetch_one(&mut *tx)
@@ -431,12 +468,14 @@ pub async fn put_document(
         check.fail("kind", FieldError::Locked);
         check.done()?;
     }
-    let mut draft = validate(&mut tx, input).await?;
+    let mut draft = validate(&mut tx, input, Some(id)).await?;
     let before = snapshot(&mut tx, &before).await?;
     draft.source_id = before.source_id;
+    draft.rounding = before.rounding;
     sqlx::query(
         "UPDATE document SET customer_id = ?, project_id = ?, language = ?, currency = ?,
-         title = ?, intro = ?, outro = ?, valid_until = ?, pricing = ?, updated_at = ?
+         title = ?, intro = ?, outro = ?, valid_until = ?, pricing = ?, service_from = ?,
+         service_to = ?, timesheet = ?, updated_at = ?
          WHERE id = ?",
     )
     .bind(draft.customer_id)
@@ -448,6 +487,9 @@ pub async fn put_document(
     .bind(&draft.outro)
     .bind(&draft.valid_until)
     .bind(draft.pricing)
+    .bind(&draft.service_from)
+    .bind(&draft.service_to)
+    .bind(draft.timesheet)
     .bind(now())
     .bind(id)
     .execute(&mut *tx)
@@ -597,6 +639,17 @@ pub async fn issue(
     data.number = Some(number.clone());
     data.issue_date = Some(today.to_string());
     data.valid_until = valid_until.clone();
+    let due_date = (row.kind == Kind::Invoice).then(|| {
+        let days = i64::from(business.payment_days.unwrap_or(14));
+        today
+            .saturating_add(jiff::Span::new().days(days))
+            .to_string()
+    });
+    data.due_date = due_date.clone();
+    if matches!(row.kind, Kind::Invoice | Kind::Cancellation) && data.service_from.is_none() {
+        data.service_from = Some(today.to_string());
+        data.service_to = Some(today.to_string());
+    }
     let layout = layouts::for_document(app, tx, row.kind, row.customer_id).await?;
     let layout_name = layout.name.clone();
     let (rendered, data) = render::render_blocking(layout, data, Vec::new())
@@ -629,7 +682,7 @@ pub async fn issue(
     let at = now();
     sqlx::query(
         "UPDATE document SET status = 'issued', number = ?, issue_date = ?, data = ?, pdf = ?,
-         layout = ?, valid_until = ?, issued_at = ?, issued_by = ?, updated_at = ? WHERE id = ?",
+         layout = ?, valid_until = ?, due_date = ?, issued_at = ?, issued_by = ?, updated_at = ? WHERE id = ?",
     )
     .bind(&number)
     .bind(today.to_string())
@@ -637,6 +690,7 @@ pub async fn issue(
     .bind(pdf.to_string())
     .bind(layout_name)
     .bind(valid_until)
+    .bind(due_date)
     .bind(at)
     .bind(user_id)
     .bind(at)
@@ -744,6 +798,11 @@ pub async fn find(
         valid_until: row.valid_until,
         pricing: row.pricing,
         source_id: row.source_id,
+        due_date: row.due_date,
+        service_from: row.service_from,
+        service_to: row.service_to,
+        timesheet: row.timesheet,
+        rounding: row.rounding,
         quote_state,
         follow_ups,
         layout: row.layout,
@@ -767,6 +826,10 @@ pub struct Draft {
     valid_until: Option<String>,
     pricing: Option<Pricing>,
     source_id: Option<i64>,
+    service_from: Option<String>,
+    service_to: Option<String>,
+    timesheet: bool,
+    rounding: i64,
     lines: Vec<Line>,
 }
 
@@ -779,6 +842,7 @@ pub struct Line {
     vat_rate: Option<Decimal>,
     project_id: Option<i64>,
     activity_id: Option<i64>,
+    time_entry_ids: Vec<i64>,
 }
 
 async fn snapshot(db: &mut SqliteConnection, row: &Row) -> Result<Draft, ApiError> {
@@ -794,6 +858,10 @@ async fn snapshot(db: &mut SqliteConnection, row: &Row) -> Result<Draft, ApiErro
         valid_until: row.valid_until.clone(),
         pricing: row.pricing,
         source_id: row.source_id,
+        service_from: row.service_from.clone(),
+        service_to: row.service_to.clone(),
+        timesheet: row.timesheet,
+        rounding: row.rounding,
         lines: documents::lines(db, row.id)
             .await?
             .into_iter()
@@ -805,6 +873,7 @@ async fn snapshot(db: &mut SqliteConnection, row: &Row) -> Result<Draft, ApiErro
                 vat_rate: l.vat_rate.map(|v| v.0),
                 project_id: l.project_id,
                 activity_id: l.activity_id,
+                time_entry_ids: l.time_entry_ids,
             })
             .collect(),
     })
@@ -812,9 +881,10 @@ async fn snapshot(db: &mut SqliteConnection, row: &Row) -> Result<Draft, ApiErro
 
 async fn write_lines(tx: &mut SqliteConnection, id: i64, lines: &[Line]) -> Result<(), ApiError> {
     for (position, line) in lines.iter().enumerate() {
-        sqlx::query(
+        let line_id: i64 = sqlx::query_scalar(
             "INSERT INTO document_line (document_id, position, description, quantity, unit,
-             unit_price, vat_rate, project_id, activity_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+             unit_price, vat_rate, project_id, activity_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+             RETURNING id",
         )
         .bind(id)
         .bind(i64::try_from(position).expect("lines are capped"))
@@ -825,13 +895,24 @@ async fn write_lines(tx: &mut SqliteConnection, id: i64, lines: &[Line]) -> Resu
         .bind(line.vat_rate.map(|v| v.to_string()))
         .bind(line.project_id)
         .bind(line.activity_id)
-        .execute(&mut *tx)
+        .fetch_one(&mut *tx)
         .await?;
+        for entry in &line.time_entry_ids {
+            sqlx::query("INSERT INTO line_time_entry (line_id, time_entry_id) VALUES (?, ?)")
+                .bind(line_id)
+                .bind(entry)
+                .execute(&mut *tx)
+                .await?;
+        }
     }
     Ok(())
 }
 
-async fn validate(db: &mut SqliteConnection, input: DocumentInput) -> Result<Draft, ApiError> {
+async fn validate(
+    db: &mut SqliteConnection,
+    input: DocumentInput,
+    document_id: Option<i64>,
+) -> Result<Draft, ApiError> {
     let mut check = Check::default();
     let customer: Option<(Language, String, bool)> =
         sqlx::query_as("SELECT language, currency, archived FROM customer WHERE id = ?")
@@ -862,6 +943,8 @@ async fn validate(db: &mut SqliteConnection, input: DocumentInput) -> Result<Dra
     if input.lines.len() > MAX_LINES {
         check.fail("lines", FieldError::TooLong);
     }
+    let invoice = input.kind == Kind::Invoice;
+    let mut seen = std::collections::BTreeSet::new();
     let mut lines = Vec::new();
     for (i, line) in input.lines.into_iter().enumerate() {
         let key = |field: &str| format!("lines.{i}.{field}");
@@ -886,6 +969,22 @@ async fn validate(db: &mut SqliteConnection, input: DocumentInput) -> Result<Dra
         if line.activity_id.is_some_and(|a| !activities.contains(&a)) {
             check.fail(&key("activity_id"), FieldError::InvalidFormat);
         }
+        for entry in &line.time_entry_ids {
+            let usable: bool = sqlx::query_scalar(
+                "SELECT EXISTS (SELECT 1 FROM time_entry e JOIN project p ON p.id = e.project_id
+                 WHERE e.id = ?1 AND e.billable AND e.ended_at IS NOT NULL AND p.customer_id = ?2
+                 AND NOT EXISTS (SELECT 1 FROM line_time_entry x JOIN document_line l ON l.id = x.line_id
+                     WHERE x.time_entry_id = e.id AND l.document_id IS NOT ?3))",
+            )
+            .bind(entry)
+            .bind(input.customer_id)
+            .bind(document_id)
+            .fetch_one(&mut *db)
+            .await?;
+            if !invoice || !usable || !seen.insert(*entry) {
+                check.fail(&key("time_entry_ids"), FieldError::InvalidFormat);
+            }
+        }
         lines.push(Line {
             description: check.required(&key("description"), line.description, 2000),
             quantity: line.quantity.normalize(),
@@ -894,6 +993,7 @@ async fn validate(db: &mut SqliteConnection, input: DocumentInput) -> Result<Dra
             vat_rate: line.vat_rate.map(|v| v.normalize()),
             project_id: line.project_id,
             activity_id: line.activity_id,
+            time_entry_ids: line.time_entry_ids,
         });
     }
     let quote = input.kind == Kind::Quote;
@@ -906,6 +1006,22 @@ async fn validate(db: &mut SqliteConnection, input: DocumentInput) -> Result<Dra
     }
     if input.pricing.is_some() && !quote {
         check.fail("pricing", FieldError::InvalidFormat);
+    }
+    for (key, date) in [
+        ("service_from", &input.service_from),
+        ("service_to", &input.service_to),
+    ] {
+        if date
+            .as_deref()
+            .is_some_and(|d| !invoice || d.parse::<jiff::civil::Date>().is_err())
+        {
+            check.fail(key, FieldError::InvalidFormat);
+        }
+    }
+    if input.service_from.is_some() != input.service_to.is_some()
+        || input.service_from > input.service_to
+    {
+        check.fail("service_to", FieldError::InvalidFormat);
     }
     let draft = Draft {
         kind: input.kind,
@@ -923,8 +1039,53 @@ async fn validate(db: &mut SqliteConnection, input: DocumentInput) -> Result<Dra
             None
         },
         source_id: None,
+        service_from: input.service_from,
+        service_to: input.service_to,
+        timesheet: invoice && input.timesheet,
+        rounding: 0,
         lines,
     };
     check.done()?;
     Ok(draft)
+}
+
+impl Line {
+    /// A line charging time entries at the hourly rate of their project and activity.
+    pub fn from_time(
+        description: String,
+        quantity: Decimal,
+        unit: Unit,
+        project_id: i64,
+        activity_id: Option<i64>,
+        time_entry_ids: Vec<i64>,
+    ) -> Self {
+        Self {
+            description,
+            quantity: quantity.normalize(),
+            unit,
+            unit_price: None,
+            vat_rate: None,
+            project_id: Some(project_id),
+            activity_id,
+            time_entry_ids,
+        }
+    }
+}
+
+pub async fn snapshot_lines(db: &mut SqliteConnection, id: i64) -> Result<Vec<Line>, ApiError> {
+    let row = row(db, id).await?;
+    Ok(snapshot(db, &row).await?.lines)
+}
+
+/// Replaces a draft's lines.
+pub async fn write_all_lines(
+    tx: &mut SqliteConnection,
+    id: i64,
+    lines: &[Line],
+) -> Result<(), ApiError> {
+    sqlx::query("DELETE FROM document_line WHERE document_id = ?")
+        .bind(id)
+        .execute(&mut *tx)
+        .await?;
+    write_lines(tx, id, lines).await
 }

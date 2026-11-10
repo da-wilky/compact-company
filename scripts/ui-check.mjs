@@ -308,6 +308,7 @@ try {
 		customer_id: krume.id,
 		lines: [{ description: 'Wartung im Oktober', quantity: '2.5', unit: 'hour', unit_price: 8500 }]
 	});
+	await api('POST', `/api/documents/${invoice.id}/time`, { group: 'todo', rounding: 15 });
 	await api('POST', '/api/snippets', { name: 'Zahlungshinweis', language: 'de', body: 'Bitte überweisen Sie den Betrag ohne Abzug.' });
 
 	await screen('overview', `${origin}/`);
