@@ -43,8 +43,8 @@
 		<Segmented
 			label={t('customers.title')}
 			options={[
-				{ value: 'active', label: t('customers.active') },
-				{ value: 'archived', label: t('customers.archived') }
+				{ value: 'active', label: t('app.active') },
+				{ value: 'archived', label: t('app.archived') }
 			]}
 			value={archived ? 'archived' : 'active'}
 			onchange={(v) => (archived = v === 'archived')}

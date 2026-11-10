@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
-	import { api, call, type ApiError, type Schemas } from '#lib/api/index.ts';
+	import { api, call, clientError, type ApiError, type Schemas } from '#lib/api/index.ts';
 	import { t } from '#lib/i18n.svelte.ts';
 	import { moneyInput, parseMoney } from '#lib/money.ts';
 	import Field from './Field.svelte';
@@ -32,7 +32,7 @@
 		event.preventDefault();
 		const hourly_rate = parseMoney(rate, currency);
 		if (Number.isNaN(hourly_rate)) {
-			error = { code: 'invalid_input', message: 'error.invalid_input', fields: { hourly_rate: 'invalid_format' } };
+			error = { ...clientError('error.invalid_input'), fields: { hourly_rate: 'invalid_format' } };
 			return;
 		}
 		const body: Schemas['CustomerInput'] = {

@@ -2,6 +2,9 @@
 	import { page } from '$app/state';
 	import { api, call, type ApiError, type Schemas } from '#lib/api/index.ts';
 	import CustomerForm from '#lib/components/CustomerForm.svelte';
+	import Dialog from '#lib/components/Dialog.svelte';
+	import Icon from '#lib/components/Icon.svelte';
+	import ProjectForm from '#lib/components/ProjectForm.svelte';
 	import { t } from '#lib/i18n.svelte.ts';
 	import { formatMoney } from '#lib/money.ts';
 	import { session } from '#lib/session.svelte.ts';
@@ -31,6 +34,49 @@
 			customer = result.data;
 			toast(t(archived ? 'customers.archived_done' : 'customers.restored'));
 		}
+	}
+
+	let projects = $state<Schemas['Project'][]>([]);
+	let showArchived = $state(false);
+	let editingProject = $state<Schemas['Project']>();
+	let projectDialog = $state(false);
+
+	async function loadProjects() {
+		const result = await call(
+			api.GET('/api/projects', { params: { query: { customer_id: id, archived: showArchived } } })
+		);
+		projects = result.data ?? [];
+	}
+
+	$effect(() => {
+		showArchived;
+		loadProjects();
+	});
+
+	function editProject(project?: Schemas['Project']) {
+		editingProject = project;
+		projectDialog = true;
+	}
+
+	async function projectSaved() {
+		projectDialog = false;
+		toast(t('app.saved'));
+		await loadProjects();
+	}
+
+	async function setProjectArchived(project: Schemas['Project'], archived: boolean) {
+		const body = {
+			customer_id: project.customer_id,
+			name: project.name,
+			hourly_rate: project.hourly_rate,
+			billable: project.billable,
+			archived
+		};
+		const result = await call(
+			api.PUT('/api/projects/{id}', { params: { path: { id: project.id } }, body })
+		);
+		error = result.error;
+		await loadProjects();
 	}
 
 	function saved(updated: Schemas['Customer']) {
@@ -81,6 +127,49 @@
 			</dl>
 		{/if}
 	</section>
+
+	<section class="card stack">
+		<div class="row">
+			<h2>{t('projects.title')}</h2>
+			<label class="row toggle">
+				<input type="checkbox" bind:checked={showArchived} />{t('app.show_archived')}
+			</label>
+			{#if owner && !customer.archived}
+				<button class="primary" onclick={() => editProject()}><Icon name="plus" size={18} />{t('projects.new')}</button>
+			{/if}
+		</div>
+		{#if projects.length}
+			<ul class="list">
+				{#each projects as project (project.id)}
+					<li>
+						<div>
+							<strong>{project.name}</strong>
+							<small class="muted">
+								{project.hourly_rate == null
+									? t('projects.uses_customer_rate')
+									: formatMoney(project.hourly_rate, project.currency)}
+								· {t(project.billable ? 'projects.billable' : 'projects.not_billable')}
+							</small>
+						</div>
+						{#if owner}
+							<button class="ghost" onclick={() => editProject(project)}>{t('app.edit')}</button>
+							<button class="ghost" onclick={() => setProjectArchived(project, !project.archived)}>
+								{t(project.archived ? 'customers.restore' : 'customers.archive')}
+							</button>
+						{/if}
+					</li>
+				{/each}
+			</ul>
+		{:else}
+			<p class="muted">{t('projects.none')}</p>
+		{/if}
+	</section>
+
+	<Dialog bind:open={projectDialog} title={t(editingProject ? 'projects.edit' : 'projects.new')}>
+		{#if projectDialog}
+			<ProjectForm {customer} project={editingProject} onsaved={projectSaved} />
+		{/if}
+	</Dialog>
 {/if}
 
 <style>
@@ -89,6 +178,16 @@
 	}
 	section {
 		max-width: 48rem;
+	}
+	section + section {
+		margin-top: 1rem;
+	}
+	.row h2 {
+		margin-right: auto;
+	}
+	.toggle {
+		color: var(--muted);
+		font-size: 0.8125rem;
 	}
 	dl {
 		display: grid;

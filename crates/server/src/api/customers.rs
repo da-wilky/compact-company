@@ -154,6 +154,18 @@ pub async fn put_customer(
     let fields = validate(&app, input).await?;
     let mut tx = app.db.begin_with("BEGIN IMMEDIATE").await?;
     let before = find(&mut tx, id).await?;
+    // project rates are in the customer's currency and would silently change meaning
+    let rated: bool = sqlx::query_scalar(
+        "SELECT EXISTS (SELECT 1 FROM project WHERE customer_id = ? AND hourly_rate IS NOT NULL)",
+    )
+    .bind(id)
+    .fetch_one(&mut *tx)
+    .await?;
+    if rated && fields.currency != before.fields.currency {
+        let mut check = Check::default();
+        check.fail("currency", FieldError::Locked);
+        check.done()?;
+    }
     sqlx::query(
         "UPDATE customer SET name = ?, address = ?, email = ?, language = ?, currency = ?,
          hourly_rate = ?, note = ?, archived = ? WHERE id = ?",

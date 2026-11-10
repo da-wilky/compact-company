@@ -6,6 +6,7 @@ use utoipa_axum::{router::OpenApiRouter, routes};
 
 use crate::App;
 
+pub mod activities;
 pub mod audit;
 pub mod business;
 pub mod customers;
@@ -14,6 +15,7 @@ pub mod input;
 pub mod invitations;
 pub mod oidc;
 pub mod passkeys;
+pub mod projects;
 pub mod session;
 pub mod users;
 
@@ -50,6 +52,10 @@ pub fn routes() -> OpenApiRouter<Arc<App>> {
         .routes(routes!(currencies))
         .routes(routes!(customers::list_customers, customers::create_customer))
         .routes(routes!(customers::get_customer, customers::put_customer))
+        .routes(routes!(projects::list_projects, projects::create_project))
+        .routes(routes!(projects::get_project, projects::put_project))
+        .routes(routes!(activities::list_activities, activities::create_activity))
+        .routes(routes!(activities::put_activity))
         .fallback(async || ApiError::new(ErrorCode::NotFound));
     OpenApiRouter::with_openapi(Doc::openapi()).nest("/api", api)
 }

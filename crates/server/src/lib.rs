@@ -25,6 +25,7 @@ pub mod config;
 pub mod files;
 pub mod money;
 pub mod oidc;
+pub mod rates;
 pub mod settings;
 
 pub struct App {
