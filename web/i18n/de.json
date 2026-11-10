@@ -77,6 +77,7 @@
   "error.oidc_unknown_identity": "Diese Identität gehört zu keinem Benutzer; bitte den Inhaber um eine Einladung.",
   "error.passkey_cancelled": "Die Passkey-Abfrage wurde abgebrochen.",
   "error.passkey_rejected": "Der Passkey wurde nicht akzeptiert.",
+  "error.rate_limited": "Zu viele Versuche; bitte warte eine Minute und versuche es erneut.",
   "error.setup_done": "Diese Instanz ist bereits eingerichtet.",
   "error.status_in_use": "Es sind noch Aufgaben in diesem Status; verschiebe sie zuerst.",
   "error.unauthenticated": "Bitte anmelden.",

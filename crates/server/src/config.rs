@@ -24,6 +24,9 @@ pub struct Config {
     #[serde(default)]
     pub business: Business,
     pub oidc: Option<Oidc>,
+    /// Reverse proxies whose X-Forwarded-For names the real client, e.g. `["127.0.0.1"]`.
+    #[serde(default)]
+    pub trusted_proxies: Vec<std::net::IpAddr>,
 }
 
 #[derive(Debug, Deserialize)]

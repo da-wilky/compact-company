@@ -44,6 +44,7 @@ pub enum ErrorCode {
     Archived,
     StatusInUse,
     HasTime,
+    RateLimited,
     Internal,
 }
 
@@ -78,6 +79,7 @@ impl ErrorCode {
         Self::Archived,
         Self::StatusInUse,
         Self::HasTime,
+        Self::RateLimited,
         Self::Internal,
     ];
 
@@ -103,6 +105,7 @@ impl ErrorCode {
             | Self::HasTime => {
                 StatusCode::CONFLICT
             }
+            Self::RateLimited => StatusCode::TOO_MANY_REQUESTS,
             Self::Internal => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }

@@ -65,6 +65,7 @@ struct SetupState {
     responses((status = OK, body = Challenge), (status = "default", body = ApiError)))]
 pub async fn setup_start(
     State(app): State<Arc<App>>,
+    _: crate::limit::Limited,
     Json(body): Json<SetupStart>,
 ) -> Result<Json<Challenge>, ApiError> {
     if !app.setup_required().await? {
@@ -202,7 +203,10 @@ pub fn signed_in(app: &App, session: NewSession, user: User) -> Response {
 
 #[utoipa::path(post, path = "/sign-in/start", tag = "session",
     responses((status = OK, body = Challenge), (status = "default", body = ApiError)))]
-pub async fn sign_in_start(State(app): State<Arc<App>>) -> Result<Json<Challenge>, ApiError> {
+pub async fn sign_in_start(
+    State(app): State<Arc<App>>,
+    _: crate::limit::Limited,
+) -> Result<Json<Challenge>, ApiError> {
     let (options, state) = app
         .webauthn
         .start_discoverable_authentication()

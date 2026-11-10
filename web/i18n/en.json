@@ -77,6 +77,7 @@
   "error.oidc_unknown_identity": "This identity is not linked to a user; ask the owner for an invitation.",
   "error.passkey_cancelled": "The passkey prompt was cancelled.",
   "error.passkey_rejected": "The passkey was not accepted.",
+  "error.rate_limited": "Too many attempts; please wait a minute and try again.",
   "error.setup_done": "This instance is already set up.",
   "error.status_in_use": "Todos are still in this status; move them first.",
   "error.unauthenticated": "Please sign in.",

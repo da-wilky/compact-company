@@ -193,6 +193,7 @@ pub async fn check(app: &App, token: &str) -> Result<Vec<u8>, ApiError> {
     responses((status = OK, body = InvitationInfo), (status = "default", body = ApiError)))]
 pub async fn view_invitation(
     State(app): State<Arc<App>>,
+    _: crate::limit::Limited,
     Json(body): Json<InvitationToken>,
 ) -> Result<Json<InvitationInfo>, ApiError> {
     let (_, info) = pending(&app.db, &digest(body.token.as_bytes())).await?;
@@ -211,6 +212,7 @@ struct AcceptState {
     responses((status = OK, body = Challenge), (status = "default", body = ApiError)))]
 pub async fn accept_start(
     State(app): State<Arc<App>>,
+    _: crate::limit::Limited,
     Json(body): Json<InvitationToken>,
 ) -> Result<Json<Challenge>, ApiError> {
     let token_hash = digest(body.token.as_bytes());

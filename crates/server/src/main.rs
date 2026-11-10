@@ -51,7 +51,11 @@ async fn serve(config: Option<PathBuf>) -> Result<(), Box<dyn std::error::Error>
     }
     let listener = tokio::net::TcpListener::bind(config.listen).await?;
     eprintln!("listening on http://{}", listener.local_addr()?);
-    axum::serve(listener, compact_company::router(app)).await?;
+    axum::serve(
+        listener,
+        compact_company::router(app).into_make_service_with_connect_info::<std::net::SocketAddr>(),
+    )
+    .await?;
     Ok(())
 }
 

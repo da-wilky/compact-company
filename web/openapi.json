@@ -2666,6 +2666,7 @@
           "archived",
           "status_in_use",
           "has_time",
+          "rate_limited",
           "internal"
         ]
       },

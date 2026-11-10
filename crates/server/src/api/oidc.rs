@@ -42,6 +42,7 @@ struct Ceremony {
     responses((status = OK, body = OidcRedirect), (status = "default", body = ApiError)))]
 pub async fn oidc_start(
     State(app): State<Arc<App>>,
+    _: crate::limit::Limited,
     Json(body): Json<OidcStart>,
 ) -> Result<Response, ApiError> {
     let provider = app
