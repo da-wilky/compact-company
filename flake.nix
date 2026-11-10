@@ -27,6 +27,7 @@
             fileset = pkgs.lib.fileset.unions [
               (craneLib.fileset.commonCargoSources ./.)
               ./crates/server/migrations
+              ./crates/server/typst
               ./web/openapi.json
               ./web/i18n
               ./GLOSSARY.md

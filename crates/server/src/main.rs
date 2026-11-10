@@ -1,7 +1,12 @@
-use std::{path::PathBuf, process::ExitCode, sync::Arc};
+use std::{io::Write, path::PathBuf, process::ExitCode, sync::Arc};
 
 use clap::{Parser, Subcommand};
-use compact_company::{App, config::Config};
+use compact_company::{
+    App,
+    config::Config,
+    documents,
+    render::{self, Layout},
+};
 
 #[derive(Parser)]
 #[command(version, about)]
@@ -20,6 +25,19 @@ enum Command {
     },
     /// Print the API's OpenAPI description
     Openapi,
+    /// Render sample data with a layout and write the PDF to stdout, for writing layouts
+    Sample {
+        /// Directory with `layout.typ` and optional `assets/` and `fonts/`; the built-in layout
+        /// without it
+        #[arg(long)]
+        layout: Option<PathBuf>,
+        #[arg(long, default_value = "invoice")]
+        kind: String,
+        #[arg(long, default_value = "de")]
+        language: String,
+        #[arg(long)]
+        small_business: bool,
+    },
 }
 
 #[tokio::main]
@@ -27,6 +45,12 @@ async fn main() -> ExitCode {
     let result = match Cli::parse().command {
         Command::Serve { config } => serve(config).await,
         Command::Openapi => openapi(),
+        Command::Sample {
+            layout,
+            kind,
+            language,
+            small_business,
+        } => sample(layout, &kind, &language, small_business),
     };
     match result {
         Ok(()) => ExitCode::SUCCESS,
@@ -61,5 +85,26 @@ async fn serve(config: Option<PathBuf>) -> Result<(), Box<dyn std::error::Error>
 
 fn openapi() -> Result<(), Box<dyn std::error::Error>> {
     println!("{}", compact_company::openapi().to_pretty_json()?);
+    Ok(())
+}
+
+fn sample(
+    dir: Option<PathBuf>,
+    kind: &str,
+    language: &str,
+    small_business: bool,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let kind = serde_json::from_value(serde_json::Value::from(kind))?;
+    let language = serde_json::from_value(serde_json::Value::from(language))?;
+    let layout = match dir {
+        Some(dir) => Layout::from_dir(&dir)?,
+        None => Layout::built_in(),
+    };
+    let data = documents::sample(kind, language, small_business);
+    let rendered = render::render(&layout, &data, &[])?;
+    for key in render::missing(&data, &rendered) {
+        eprintln!("not shown: {key}");
+    }
+    std::io::stdout().write_all(&rendered.pdf()?)?;
     Ok(())
 }

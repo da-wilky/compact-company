@@ -779,6 +779,51 @@
         }
       }
     },
+    "/api/documents/{id}/pdf": {
+      "get": {
+        "tags": [
+          "documents"
+        ],
+        "summary": "The document as PDF: as issued, or for a draft as it would look now.",
+        "operationId": "document_pdf",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "integer",
+                    "format": "int32",
+                    "minimum": 0
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/health": {
       "get": {
         "tags": [
@@ -2442,6 +2487,13 @@
           "code": {
             "$ref": "#/components/schemas/ErrorCode"
           },
+          "detail": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "What went wrong in detail, such as the errors of a layout."
+          },
           "fields": {
             "type": "object",
             "additionalProperties": {
@@ -3225,6 +3277,13 @@
           "customer": {
             "$ref": "#/components/schemas/CustomerData"
           },
+          "due_date": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "ISO date."
+          },
           "intro": {
             "type": [
               "string",
@@ -3262,10 +3321,40 @@
               "null"
             ]
           },
+          "reference": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The document this one refers to, as a sentence such as `Cancels invoice RE-2026-001`."
+          },
           "schema": {
             "type": "integer",
             "format": "int32",
             "minimum": 0
+          },
+          "service_from": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "ISO dates of the service period."
+          },
+          "service_to": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "timesheet": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/TimesheetEntry"
+            },
+            "description": "The time entries behind an invoice, for its timesheet."
           },
           "title": {
             "type": [
@@ -3282,6 +3371,13 @@
                 "type": "null"
               }
             ]
+          },
+          "valid_until": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "ISO date until which a quote stands."
           },
           "vat": {
             "type": "array",
@@ -3686,6 +3782,7 @@
           "status_in_use",
           "has_time",
           "issued",
+          "layout_failed",
           "rate_limited",
           "internal"
         ]
@@ -3697,7 +3794,8 @@
           "too_long",
           "invalid_format",
           "pinned",
-          "locked"
+          "locked",
+          "not_shown"
         ]
       },
       "Health": {
@@ -4294,6 +4392,30 @@
           }
         },
         "additionalProperties": false
+      },
+      "TimesheetEntry": {
+        "type": "object",
+        "required": [
+          "date",
+          "user",
+          "description",
+          "hours"
+        ],
+        "properties": {
+          "date": {
+            "type": "string",
+            "description": "ISO date."
+          },
+          "description": {
+            "type": "string"
+          },
+          "hours": {
+            "type": "string"
+          },
+          "user": {
+            "type": "string"
+          }
+        }
       },
       "Todo": {
         "allOf": [

@@ -1,6 +1,10 @@
 use std::{collections::BTreeMap, sync::Arc};
 
-use axum::{extract::State, http::StatusCode};
+use axum::{
+    extract::State,
+    http::{StatusCode, header},
+    response::{IntoResponse, Response},
+};
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use sqlx::SqliteConnection;
@@ -15,6 +19,7 @@ use crate::{
     App, audit,
     auth::{Auth, OwnerOnly, OwnerOrAccountant, now},
     documents::{self, Data, Kind, LineRow, Row, Status, Unit},
+    layouts, render,
     settings::Business,
 };
 
@@ -285,15 +290,60 @@ pub async fn issue_document(
 ) -> Result<Json<Document>, ApiError> {
     let business = business(&app).await?;
     let mut tx = app.db.begin_with("BEGIN IMMEDIATE").await?;
-    issue(&mut tx, &business, auth.user.id, id).await?;
+    issue(&app, &mut tx, &business, auth.user.id, id).await?;
     let document = find(&mut tx, &business, id).await?;
     tx.commit().await?;
     Ok(Json(document))
 }
 
-/// Issues a draft within `tx`: numbers it, stores each line's price and VAT rate, and keeps the
-/// layout data as issued.
+/// The document as PDF: as issued, or for a draft as it would look now.
+#[utoipa::path(get, path = "/documents/{id}/pdf", tag = "documents", params(("id" = i64, Path)),
+    responses((status = OK, content_type = "application/pdf", body = Vec<u8>),
+        (status = "default", body = ApiError)))]
+pub async fn document_pdf(
+    State(app): State<Arc<App>>,
+    _: Auth<OwnerOrAccountant>,
+    Path(id): Path<i64>,
+) -> Result<Response, ApiError> {
+    let mut db = app.db.acquire().await?;
+    let row = row(&mut db, id).await?;
+    let (bytes, name) = match &row.pdf {
+        Some(hash) => {
+            let hash = hash.parse().map_err(ApiError::internal)?;
+            let bytes = app.files.get(hash).await.map_err(ApiError::internal)?;
+            (bytes.to_vec(), row.number.clone().unwrap_or_default())
+        }
+        None => {
+            let business = business(&app).await?;
+            let data = data(&mut db, &business, &row).await?;
+            let layout = layouts::for_document(&mut db, row.kind, row.customer_id).await?;
+            drop(db);
+            let (rendered, _) = render::render_blocking(layout, data, Vec::new())
+                .await
+                .map_err(ApiError::layout)?;
+            (
+                rendered.pdf().map_err(ApiError::layout)?,
+                format!("draft-{id}"),
+            )
+        }
+    };
+    Ok((
+        [
+            (header::CONTENT_TYPE, "application/pdf".to_owned()),
+            (
+                header::CONTENT_DISPOSITION,
+                format!("inline; filename=\"{name}.pdf\""),
+            ),
+        ],
+        bytes,
+    )
+        .into_response())
+}
+
+/// Issues a draft within `tx`: numbers it, stores each line's price and VAT rate, renders it,
+/// and keeps the layout data and PDF as issued.
 pub async fn issue(
+    app: &App,
     tx: &mut SqliteConnection,
     business: &Business,
     user_id: i64,
@@ -307,6 +357,27 @@ pub async fn issue(
     }
     let today = today(business)?;
     let number = documents::next_number(tx, row.kind, business, today.year()).await?;
+    data.number = Some(number.clone());
+    data.issue_date = Some(today.to_string());
+    let layout = layouts::for_document(tx, row.kind, row.customer_id).await?;
+    let (rendered, data) = render::render_blocking(layout, data, Vec::new())
+        .await
+        .map_err(ApiError::layout)?;
+    let not_shown = render::missing(&data, &rendered);
+    if !not_shown.is_empty() {
+        return Err(ApiError::fields(
+            not_shown
+                .into_iter()
+                .map(|key| (key, FieldError::NotShown))
+                .collect(),
+        ));
+    }
+    let pdf = rendered.pdf().map_err(ApiError::layout)?;
+    let pdf = app
+        .files
+        .put(pdf.into())
+        .await
+        .map_err(ApiError::internal)?;
     for line in documents::lines(tx, id).await? {
         let (price, vat) = documents::effective(tx, business, &line).await?;
         sqlx::query("UPDATE document_line SET unit_price = ?, vat_rate = ? WHERE id = ?")
@@ -316,16 +387,15 @@ pub async fn issue(
             .execute(&mut *tx)
             .await?;
     }
-    data.number = Some(number.clone());
-    data.issue_date = Some(today.to_string());
     let at = now();
     sqlx::query(
-        "UPDATE document SET status = 'issued', number = ?, issue_date = ?, data = ?,
+        "UPDATE document SET status = 'issued', number = ?, issue_date = ?, data = ?, pdf = ?,
          issued_at = ?, issued_by = ?, updated_at = ? WHERE id = ?",
     )
     .bind(&number)
     .bind(today.to_string())
     .bind(serde_json::to_string(&data).map_err(ApiError::internal)?)
+    .bind(pdf.to_string())
     .bind(at)
     .bind(user_id)
     .bind(at)

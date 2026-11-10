@@ -23,6 +23,10 @@ sqlx = { version = "0.9", default-features = false, features = ["runtime-tokio",
 thiserror = "2.0.21"
 tokio = { version = "1.54.1", features = ["rt-multi-thread", "macros", "net"] }
 toml = "1.2"
+typst = "0.15.1"
+typst-assets = { version = "0.15.1", features = ["fonts"] }
+typst-layout = "0.15.1"
+typst-pdf = "0.15.1"
 url = { version = "2.5.8", features = ["serde"] }
 utoipa = { version = "6", features = ["decimal"] }
 utoipa-axum = "0.3"

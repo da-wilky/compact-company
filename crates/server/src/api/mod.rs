@@ -86,6 +86,7 @@ pub fn routes() -> OpenApiRouter<Arc<App>> {
             documents::delete_document
         ))
         .routes(routes!(documents::issue_document))
+        .routes(routes!(documents::document_pdf))
         .routes(routes!(time::list_time, time::create_entry))
         .routes(routes!(time::put_entry, time::delete_entry))
         .routes(routes!(time::stop_timer))

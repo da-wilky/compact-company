@@ -20,6 +20,9 @@ pub struct ApiError {
     pub message: String,
     #[serde(skip_serializing_if = "BTreeMap::is_empty")]
     pub fields: BTreeMap<String, FieldError>,
+    /// What went wrong in detail, such as the errors of a layout.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub detail: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, ToSchema)]
@@ -45,6 +48,7 @@ pub enum ErrorCode {
     StatusInUse,
     HasTime,
     Issued,
+    LayoutFailed,
     RateLimited,
     Internal,
 }
@@ -57,6 +61,7 @@ pub enum FieldError {
     InvalidFormat,
     Pinned,
     Locked,
+    NotShown,
 }
 
 impl ErrorCode {
@@ -81,6 +86,7 @@ impl ErrorCode {
         Self::StatusInUse,
         Self::HasTime,
         Self::Issued,
+        Self::LayoutFailed,
         Self::RateLimited,
         Self::Internal,
     ];
@@ -92,7 +98,7 @@ impl ErrorCode {
             | Self::CeremonyExpired
             | Self::PasskeyRejected
             | Self::OidcFailed => StatusCode::BAD_REQUEST,
-            Self::InvalidInput => StatusCode::UNPROCESSABLE_ENTITY,
+            Self::InvalidInput | Self::LayoutFailed => StatusCode::UNPROCESSABLE_ENTITY,
             Self::Unauthenticated => StatusCode::UNAUTHORIZED,
             Self::Forbidden
             | Self::CsrfToken
@@ -123,6 +129,7 @@ impl FieldError {
         Self::InvalidFormat,
         Self::Pinned,
         Self::Locked,
+        Self::NotShown,
     ];
 
     pub fn key(self) -> String {
@@ -144,6 +151,7 @@ impl ApiError {
             code,
             message: code.key(),
             fields: BTreeMap::new(),
+            detail: None,
         }
     }
 
@@ -151,6 +159,14 @@ impl ApiError {
         Self {
             fields,
             ..Self::new(ErrorCode::InvalidInput)
+        }
+    }
+
+    /// A layout that does not render, with Typst's errors as the detail.
+    pub fn layout(error: crate::render::Error) -> Self {
+        Self {
+            detail: Some(error.to_string()),
+            ..Self::new(ErrorCode::LayoutFailed)
         }
     }
 

@@ -24,10 +24,12 @@ pub mod auth;
 pub mod config;
 pub mod documents;
 pub mod files;
+pub mod layouts;
 pub mod limit;
 pub mod money;
 pub mod oidc;
 pub mod rates;
+pub mod render;
 pub mod settings;
 
 pub struct App {

@@ -220,6 +220,17 @@ pub struct Data {
     /// One entry per VAT rate; empty for a document without prices.
     pub vat: Vec<VatData>,
     pub totals: Option<Totals>,
+    /// ISO date.
+    pub due_date: Option<String>,
+    /// ISO date until which a quote stands.
+    pub valid_until: Option<String>,
+    /// ISO dates of the service period.
+    pub service_from: Option<String>,
+    pub service_to: Option<String>,
+    /// The document this one refers to, as a sentence such as `Cancels invoice RE-2026-001`.
+    pub reference: Option<String>,
+    /// The time entries behind an invoice, for its timesheet.
+    pub timesheet: Option<Vec<TimesheetEntry>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
@@ -334,6 +345,7 @@ pub struct Row {
     pub number: Option<String>,
     pub issue_date: Option<String>,
     pub data: Option<String>,
+    pub pdf: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, ToSchema, sqlx::FromRow)]
@@ -479,6 +491,12 @@ pub async fn draft_data(
         lines,
         vat,
         totals,
+        due_date: None,
+        valid_until: None,
+        service_from: None,
+        service_to: None,
+        reference: None,
+        timesheet: None,
     })
 }
 
@@ -525,4 +543,138 @@ pub fn missing(data: &Data) -> BTreeMap<String, FieldError> {
         }
     }
     missing
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct TimesheetEntry {
+    /// ISO date.
+    pub date: String,
+    pub user: String,
+    pub description: String,
+    #[schema(value_type = String)]
+    pub hours: Decimal,
+}
+
+/// Sample data for checking a layout before it is saved: every field filled, amounts with
+/// thousands, and VAT unless the business is a small business.
+pub fn sample(kind: Kind, language: Language, small_business: bool) -> Data {
+    let d = |s: &str| s.parse::<Decimal>().expect("sample decimals parse");
+    let lines = vec![
+        LineData {
+            position: 1,
+            description: "Konzeption und Entwicklung".to_owned(),
+            quantity: d("12.5"),
+            unit: Unit::Hour,
+            unit_price: Some(d("95.00")),
+            net: Some(d("1187.50")),
+            vat_rate: Some(if small_business { d("0") } else { d("19") }),
+        },
+        LineData {
+            position: 2,
+            description: "Hosting".to_owned(),
+            quantity: d("3"),
+            unit: Unit::Month,
+            unit_price: Some(d("15.50")),
+            net: Some(d("46.50")),
+            vat_rate: Some(if small_business { d("0") } else { d("7") }),
+        },
+    ];
+    let vat = if small_business {
+        vec![VatData {
+            rate: d("0"),
+            net: d("1234.00"),
+            tax: d("0.00"),
+        }]
+    } else {
+        vec![
+            VatData {
+                rate: d("7"),
+                net: d("46.50"),
+                tax: d("3.26"),
+            },
+            VatData {
+                rate: d("19"),
+                net: d("1187.50"),
+                tax: d("225.63"),
+            },
+        ]
+    };
+    let tax: Decimal = vat.iter().map(|v| v.tax).sum();
+    let priced = kind.priced();
+    Data {
+        schema: SCHEMA,
+        kind,
+        number: Some("SAMPLE-2026-042".to_owned()),
+        language,
+        currency: "EUR".to_owned(),
+        issue_date: Some("2026-03-27".to_owned()),
+        title: None,
+        intro: Some("Sample introduction.".to_owned()),
+        outro: Some("Sample closing text.".to_owned()),
+        business: BusinessData {
+            name: Some("Beispiel UG (haftungsbeschränkt)".to_owned()),
+            street: Some("Musterweg 7".to_owned()),
+            postcode: Some("01067".to_owned()),
+            city: Some("Dresden".to_owned()),
+            country: "DE".to_owned(),
+            email: Some("post@beispiel.example".to_owned()),
+            phone: Some("+49 351 000000".to_owned()),
+            website: Some("beispiel.example".to_owned()),
+            tax_number: Some("201/234/56789".to_owned()),
+            vat_id: (!small_business).then(|| "DE123456789".to_owned()),
+            small_business,
+            legal_form: Some("UG (haftungsbeschränkt)".to_owned()),
+            register_court: Some("Amtsgericht Dresden".to_owned()),
+            register_number: Some("HRB 12345".to_owned()),
+            managing_directors: Some("Erika Muster".to_owned()),
+            bank_name: Some("Beispielbank".to_owned()),
+            iban: Some("DE89370400440532013000".to_owned()),
+            bic: Some("COBADEFFXXX".to_owned()),
+        },
+        customer: CustomerData {
+            number: "K-007".to_owned(),
+            name: "Kundin GmbH".to_owned(),
+            street: Some("Kundenstraße 3".to_owned()),
+            postcode: Some("04109".to_owned()),
+            city: Some("Leipzig".to_owned()),
+            country: "DE".to_owned(),
+            email: Some("rechnung@kundin.example".to_owned()),
+        },
+        lines: if priced {
+            lines
+        } else {
+            lines
+                .into_iter()
+                .map(|l| LineData {
+                    unit_price: None,
+                    net: None,
+                    vat_rate: None,
+                    ..l
+                })
+                .collect()
+        },
+        vat: if priced { vat } else { Vec::new() },
+        totals: priced.then(|| Totals {
+            net: d("1234.00"),
+            tax,
+            gross: d("1234.00") + tax,
+        }),
+        due_date: matches!(kind, Kind::Invoice | Kind::Cancellation)
+            .then(|| "2026-04-10".to_owned()),
+        valid_until: (kind == Kind::Quote).then(|| "2026-04-26".to_owned()),
+        service_from: matches!(kind, Kind::Invoice | Kind::Cancellation)
+            .then(|| "2026-03-02".to_owned()),
+        service_to: matches!(kind, Kind::Invoice | Kind::Cancellation)
+            .then(|| "2026-03-20".to_owned()),
+        reference: (kind == Kind::Cancellation)
+            .then(|| "Storniert Rechnung RE-2026-041".to_owned()),
+        timesheet: (kind == Kind::Invoice).then(|| {
+            vec![TimesheetEntry {
+                date: "2026-03-02".to_owned(),
+                user: "Erika Muster".to_owned(),
+                description: "Konzeption".to_owned(),
+                hours: d("4.25"),
+            }]
+        }),
+    }
 }
