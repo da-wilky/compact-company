@@ -5,7 +5,7 @@
 	import Dialog from '#lib/components/Dialog.svelte';
 	import Field from '#lib/components/Field.svelte';
 	import TodoForm from '#lib/components/TodoForm.svelte';
-	import { dueLabel } from '#lib/dates.ts';
+	import { dueLabel, formatDay } from '#lib/dates.ts';
 	import { i18n, t } from '#lib/i18n.svelte.ts';
 	import { toast } from '#lib/toast.svelte.ts';
 	import { loadWork } from '#lib/work.svelte.ts';
@@ -123,7 +123,9 @@
 				<dt>{t('term.priority')}</dt>
 				<dd>{t(`priority.${todo.priority}`)}</dd>
 				<dt>{t('todos.due_date')}</dt>
-				<dd class:overdue={due?.overdue}>{due?.text ?? '–'}</dd>
+				<dd class:overdue={due?.overdue}>
+					{todo.due_date ? formatDay(todo.due_date, { dateStyle: 'medium' }) : '–'}
+				</dd>
 				<dt>{t('todos.assignee')}</dt>
 				<dd>{todo.assignee_name ?? t('todos.nobody')}</dd>
 				<dt>{t('term.customer')}</dt>
@@ -166,9 +168,15 @@
 		gap: 1rem;
 		align-items: start;
 	}
+	.layout aside {
+		order: -1;
+	}
 	@media (min-width: 900px) {
 		.layout {
 			grid-template-columns: minmax(0, 1fr) 18rem;
+		}
+		.layout aside {
+			order: 0;
 		}
 	}
 	.pre {

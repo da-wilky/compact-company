@@ -302,7 +302,7 @@
 	.track {
 		display: grid;
 		grid-auto-flow: column;
-		grid-auto-columns: minmax(15rem, 1fr);
+		grid-auto-columns: minmax(13rem, 1fr);
 		gap: 1rem;
 		touch-action: pan-y;
 	}

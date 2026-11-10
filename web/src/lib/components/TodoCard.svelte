@@ -123,7 +123,9 @@
 	}
 	.status {
 		display: none;
-		min-height: 36px;
+		align-self: flex-start;
+		width: auto;
+		min-height: 34px;
 		padding: 0.25rem 0.5rem;
 		font-size: 0.8125rem;
 	}

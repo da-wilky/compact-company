@@ -244,7 +244,99 @@ try {
 	await click('form button.primary');
 	await settle();
 
+	// seeds data through the API with the session's own CSRF token
+	const api = (method, path, body) =>
+		evaluate(`(async () => {
+			const { csrf_token } = await (await fetch('/api/session')).json();
+			const response = await fetch(${JSON.stringify(path)}, {
+				method: ${JSON.stringify(method)},
+				headers: { 'content-type': 'application/json', 'x-csrf-token': csrf_token },
+				body: ${JSON.stringify(body === undefined ? null : JSON.stringify(body))}
+			});
+			return response.status === 204 ? null : response.json();
+		})()`);
+	const krume = await api('POST', '/api/customers', {
+		name: 'Bäckerei Krume',
+		language: 'de',
+		email: 'info@krume.example',
+		address: 'Brotgasse 3\n12345 Musterstadt',
+		hourly_rate: 8500
+	});
+	const zurich = await api('POST', '/api/customers', { name: 'Atelier Zürich', language: 'en', currency: 'CHF', hourly_rate: 12000 });
+	const relaunch = await api('POST', '/api/projects', { customer_id: krume.id, name: 'Website-Relaunch', hourly_rate: 9000 });
+	await api('POST', '/api/projects', { customer_id: krume.id, name: 'Wartung', billable: false });
+	const portal = await api('POST', '/api/projects', { customer_id: zurich.id, name: 'Kundenportal' });
+	await api('POST', '/api/activities', { name: 'Beratung', rates: [{ currency: 'EUR', minor: 12000 }, { currency: 'CHF', minor: 15000 }] });
+	const todos = [];
+	for (const [project, title, status_id, priority, due_date] of [
+		[relaunch, 'Impressum und Datenschutz prüfen', 1, 'high', '2026-01-08'],
+		[relaunch, 'Fotos der Filialen einsammeln', 1, 'normal', '2030-11-14'],
+		[portal, 'Angebot Wartungsvertrag vorbereiten', 1, 'low', null],
+		[relaunch, 'Startseite überarbeiten', 2, 'high', '2030-11-12'],
+		[portal, 'Sendungsverfolgung an die API anbinden', 2, 'normal', null],
+		[relaunch, 'Freigabe der Texte durch die Kundin', 3, 'normal', null],
+		[relaunch, 'Domain umziehen', 4, 'normal', null]
+	]) {
+		todos.push(await api('POST', '/api/todos', { project_id: project.id, title, status_id, priority, due_date, assignee_id: 1 }));
+	}
+	await api('POST', `/api/todos/${todos[3].id}/comments`, { body: 'Entwurf steht, Bilder fehlen noch.' });
+
 	await screen('overview', `${origin}/`);
+	await screen('customers', `${origin}/customers`);
+	await screen('customer', `${origin}/customers/${krume.id}`);
+	await screen('activities', `${origin}/activities`);
+	await screen('statuses', `${origin}/statuses`);
+	await screen('todos-board', `${origin}/todos`, () => evaluate("localStorage.setItem('todos.view', 'board')"));
+	await screen('todos-list', `${origin}/todos`, async () => {
+		await click('[role=radiogroup] [role=radio]');
+		await settle();
+	});
+	await screen('todo', `${origin}/todos/${todos[3].id}`);
+
+	// drags a card for real: with the mouse on a desktop board, by long press and holding it at
+	// the edge on a phone, then checks where the server put it
+	const center = (selector) =>
+		evaluate(`(() => {
+			const r = document.querySelector(${JSON.stringify(selector)}).getBoundingClientRect();
+			return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+		})()`);
+	const statusOf = async (todo) => (await api('GET', `/api/todos/${todo.id}`)).todo.status_id;
+
+	await view('desktop', 'light');
+	await open(`${origin}/todos`);
+	await click('[role=radiogroup] [role=radio]:nth-child(2)');
+	await settle();
+	let from = await center(`[data-todo="${todos[0].id}"]`);
+	let to = await center('[data-status="3"] h2');
+	const mouse = (type, { x, y }) =>
+		cdp.send('Input.dispatchMouseEvent', { type, x, y, button: 'left', buttons: type === 'mouseReleased' ? 0 : 1, clickCount: 1 });
+	await mouse('mousePressed', from);
+	for (let i = 1; i <= 10; i++) {
+		await mouse('mouseMoved', { x: from.x + ((to.x - from.x) * i) / 10, y: from.y + ((to.y + 40 - from.y) * i) / 10 });
+		await sleep(30);
+	}
+	await mouse('mouseReleased', { x: to.x, y: to.y + 40 });
+	await settle();
+	if ((await statusOf(todos[0])) !== 3) failures.push('desktop board: dragging a card to "Wartet" did not move it');
+
+	await view('phone', 'light');
+	await open(`${origin}/todos`);
+	from = await center(`[data-todo="${todos[1].id}"]`);
+	const touch = (type, points) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: points });
+	await touch('touchStart', [from]);
+	await sleep(500);
+	const edge = { x: widths.phone.width - 10, y: from.y };
+	for (let i = 1; i <= 8; i++) {
+		await touch('touchMove', [{ x: from.x + ((edge.x - from.x) * i) / 8, y: from.y }]);
+		await sleep(30);
+	}
+	await shoot('board-drag', 'phone', 'light');
+	await sleep(800);
+	await touch('touchMove', [{ x: widths.phone.width / 2, y: from.y + 20 }]);
+	await sleep(100);
+	await touch('touchEnd', []);
+	await settle();
+	if ((await statusOf(todos[1])) !== 2) failures.push('phone board: holding a card at the right edge did not move it to "In Arbeit"');
 	await screen('business', `${origin}/business`);
 	await screen('audit', `${origin}/audit`);
 	await screen('account', `${origin}/account`);
