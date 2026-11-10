@@ -16,7 +16,7 @@
       "name": "Web dev server",
       "type": "node-terminal",
       "request": "launch",
-      "command": "npm run dev",
+      "command": "npm run dev -- --port 9441 --strictPort",
       "cwd": "${workspaceFolder}/web"
     }
   ],
