@@ -11,6 +11,20 @@
       "args": ["serve"],
       "cwd": "${workspaceFolder}",
       "preLaunchTask": "web: build"
+    },
+    {
+      "name": "Web dev server",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "npm run dev",
+      "cwd": "${workspaceFolder}/web"
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Server + web dev server",
+      "configurations": ["Server", "Web dev server"],
+      "stopAll": true
     }
   ]
 }

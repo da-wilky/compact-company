@@ -7,14 +7,6 @@
       "script": "build",
       "path": "web",
       "problemMatcher": []
-    },
-    {
-      "label": "web: dev",
-      "type": "npm",
-      "script": "dev",
-      "path": "web",
-      "isBackground": true,
-      "problemMatcher": []
     }
   ]
 }
