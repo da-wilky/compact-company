@@ -435,8 +435,15 @@ async fn record_changes(
     after: &TodoFields,
 ) -> Result<(), ApiError> {
     if let Some((old, new)) = audit::changes(before, after) {
-        audit::record(db, user_id, "todo.update", &format!("todo:{id}"), Some(old), Some(new))
-            .await?;
+        audit::record(
+            db,
+            user_id,
+            "todo.update",
+            &format!("todo:{id}"),
+            Some(old),
+            Some(new),
+        )
+        .await?;
     }
     Ok(())
 }
@@ -477,9 +484,11 @@ async fn validate(
         }
         None => match current {
             Some(todo) => todo.fields.status_id,
-            None => sqlx::query_scalar("SELECT id FROM todo_status ORDER BY position LIMIT 1")
-                .fetch_one(&mut *db)
-                .await?,
+            None => {
+                sqlx::query_scalar("SELECT id FROM todo_status ORDER BY position LIMIT 1")
+                    .fetch_one(&mut *db)
+                    .await?
+            }
         },
     };
     if let Some(assignee) = input.assignee_id {
@@ -522,9 +531,11 @@ pub fn is_date(value: &str) -> bool {
     {
         return false;
     }
-    let (Ok(year), Ok(month), Ok(day)) =
-        (year.parse::<u32>(), month.parse::<u32>(), day.parse::<u32>())
-    else {
+    let (Ok(year), Ok(month), Ok(day)) = (
+        year.parse::<u32>(),
+        month.parse::<u32>(),
+        day.parse::<u32>(),
+    ) else {
         return false;
     };
     let leap = year % 4 == 0 && (year % 100 != 0 || year % 400 == 0);

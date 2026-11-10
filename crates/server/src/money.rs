@@ -26,3 +26,10 @@ pub struct Money {
     pub minor: i64,
     pub currency: String,
 }
+
+/// Hourly rates stay below a million in the major unit, so rate times seconds never nears i64.
+pub const MAX_RATE: i64 = 100_000_000;
+
+pub fn is_rate(minor: i64) -> bool {
+    (0..=MAX_RATE).contains(&minor)
+}

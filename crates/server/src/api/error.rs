@@ -102,9 +102,7 @@ impl ErrorCode {
             | Self::OidcIdentityTaken
             | Self::Archived
             | Self::StatusInUse
-            | Self::HasTime => {
-                StatusCode::CONFLICT
-            }
+            | Self::HasTime => StatusCode::CONFLICT,
             Self::RateLimited => StatusCode::TOO_MANY_REQUESTS,
             Self::Internal => StatusCode::INTERNAL_SERVER_ERROR,
         }

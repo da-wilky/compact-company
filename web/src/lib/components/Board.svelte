@@ -42,6 +42,9 @@
 		return () => query.removeEventListener('change', change);
 	});
 
+	// leaving the page mid-drag must not leave window listeners behind
+	$effect(() => finish);
+
 	$effect(() => {
 		if (index > columns.length - 1) index = Math.max(0, columns.length - 1);
 	});

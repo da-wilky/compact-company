@@ -58,11 +58,12 @@ pub async fn list_activities(
     Query(filter): Query<ActivityFilter>,
 ) -> Result<Json<Vec<Activity>>, ApiError> {
     let mut db = app.db.acquire().await?;
-    let ids: Vec<i64> =
-        sqlx::query_scalar("SELECT id FROM activity WHERE archived = ? ORDER BY name COLLATE NOCASE")
-            .bind(filter.archived)
-            .fetch_all(&mut *db)
-            .await?;
+    let ids: Vec<i64> = sqlx::query_scalar(
+        "SELECT id FROM activity WHERE archived = ? ORDER BY name COLLATE NOCASE",
+    )
+    .bind(filter.archived)
+    .fetch_all(&mut *db)
+    .await?;
     let mut activities = Vec::with_capacity(ids.len());
     for id in ids {
         activities.push(find(&mut db, id).await?);
@@ -143,12 +144,14 @@ async fn store_rates(db: &mut SqliteConnection, id: i64, rates: &[Money]) -> Res
         .execute(&mut *db)
         .await?;
     for rate in rates {
-        sqlx::query("INSERT INTO activity_rate (activity_id, currency, hourly_rate) VALUES (?, ?, ?)")
-            .bind(id)
-            .bind(&rate.currency)
-            .bind(rate.minor)
-            .execute(&mut *db)
-            .await?;
+        sqlx::query(
+            "INSERT INTO activity_rate (activity_id, currency, hourly_rate) VALUES (?, ?, ?)",
+        )
+        .bind(id)
+        .bind(&rate.currency)
+        .bind(rate.minor)
+        .execute(&mut *db)
+        .await?;
     }
     Ok(())
 }
@@ -186,7 +189,10 @@ fn validate(input: ActivityInput) -> Result<ActivityFields, ApiError> {
     let mut rates = input.rates;
     rates.sort_by(|a, b| a.currency.cmp(&b.currency));
     for rate in &rates {
-        if !money::is_currency(&rate.currency) || rate.minor < 0 || !seen.insert(&rate.currency) {
+        if !money::is_currency(&rate.currency)
+            || !money::is_rate(rate.minor)
+            || !seen.insert(&rate.currency)
+        {
             check.fail("rates", FieldError::InvalidFormat);
         }
     }

@@ -55,7 +55,13 @@ pub async fn put_statuses(
     let statuses: Vec<(Option<i64>, String, bool)> = input
         .into_iter()
         .enumerate()
-        .map(|(i, s)| (s.id, check.required(&format!("{i}.name"), s.name, 100), s.done))
+        .map(|(i, s)| {
+            (
+                s.id,
+                check.required(&format!("{i}.name"), s.name, 100),
+                s.done,
+            )
+        })
         .collect();
     check.done()?;
     if statuses.is_empty() {
@@ -64,6 +70,9 @@ pub async fn put_statuses(
     let mut tx = app.db.begin_with("BEGIN IMMEDIATE").await?;
     let before = list(&mut tx).await?;
     let kept: Vec<i64> = statuses.iter().filter_map(|(id, _, _)| *id).collect();
+    if kept.iter().collect::<std::collections::HashSet<_>>().len() < kept.len() {
+        return Err(ApiError::new(ErrorCode::MalformedRequest));
+    }
     if kept.iter().any(|id| !before.iter().any(|s| s.id == *id)) {
         return Err(ApiError::new(ErrorCode::NotFound));
     }

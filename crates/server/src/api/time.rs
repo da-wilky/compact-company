@@ -239,8 +239,15 @@ pub async fn put_entry(
     .execute(&mut *tx)
     .await?;
     if let Some((old, new)) = audit::changes(&before.fields, &fields) {
-        audit::record(&mut tx, auth.user.id, "time.update", &format!("time:{id}"), Some(old), Some(new))
-            .await?;
+        audit::record(
+            &mut tx,
+            auth.user.id,
+            "time.update",
+            &format!("time:{id}"),
+            Some(old),
+            Some(new),
+        )
+        .await?;
     }
     let entry = find(&mut tx, &auth.user, id).await?;
     tx.commit().await?;
@@ -273,7 +280,12 @@ pub async fn delete_entry(
     Ok(StatusCode::NO_CONTENT)
 }
 
-async fn create(app: &App, user: &User, input: EntryInput, running: bool) -> Result<TimeEntry, ApiError> {
+async fn create(
+    app: &App,
+    user: &User,
+    input: EntryInput,
+    running: bool,
+) -> Result<TimeEntry, ApiError> {
     let owner = match input.user_id {
         Some(other) if other != user.id => {
             if user.role != Role::Owner {
@@ -381,12 +393,13 @@ async fn validate(
         Some((_, billable)) => billable,
     };
     if let Some(todo) = input.todo_id {
-        let on_project: bool =
-            sqlx::query_scalar("SELECT EXISTS (SELECT 1 FROM todo WHERE id = ? AND project_id = ?)")
-                .bind(todo)
-                .bind(input.project_id)
-                .fetch_one(&mut *db)
-                .await?;
+        let on_project: bool = sqlx::query_scalar(
+            "SELECT EXISTS (SELECT 1 FROM todo WHERE id = ? AND project_id = ?)",
+        )
+        .bind(todo)
+        .bind(input.project_id)
+        .fetch_one(&mut *db)
+        .await?;
         if !on_project {
             check.fail("todo_id", FieldError::InvalidFormat);
         }
@@ -413,7 +426,9 @@ async fn validate(
         check.fail("started_at", FieldError::InvalidFormat);
     }
     if let Some(secs) = input.billable_secs {
-        let tracked = input.ended_at.map(|ended| ended.saturating_sub(input.started_at));
+        let tracked = input
+            .ended_at
+            .map(|ended| ended.saturating_sub(input.started_at));
         if secs < 0 || tracked.is_none_or(|tracked| secs > tracked) {
             check.fail("billable_secs", FieldError::InvalidFormat);
         }

@@ -12,6 +12,7 @@ use super::{
 use crate::{
     App, audit,
     auth::{Auth, OwnerOnly, now},
+    money,
 };
 
 #[derive(Debug, Deserialize, ToSchema)]
@@ -57,7 +58,6 @@ pub struct Project {
     fields: ProjectFields,
     created_at: i64,
 }
-
 
 #[derive(Deserialize, IntoParams)]
 #[into_params(parameter_in = Query)]
@@ -195,7 +195,7 @@ pub async fn find(db: &mut SqliteConnection, id: i64) -> Result<Project, ApiErro
 
 fn validate(input: ProjectInput) -> Result<ProjectFields, ApiError> {
     let mut check = Check::default();
-    if input.hourly_rate.is_some_and(|rate| rate < 0) {
+    if input.hourly_rate.is_some_and(|rate| !money::is_rate(rate)) {
         check.fail("hourly_rate", FieldError::InvalidFormat);
     }
     let fields = ProjectFields {

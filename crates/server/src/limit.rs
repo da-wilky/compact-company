@@ -39,7 +39,10 @@ impl Limiter {
 
     fn allow(&self, client: IpAddr) -> bool {
         let now = Instant::now();
-        let mut buckets = self.buckets.lock().expect("no panic while holding the lock");
+        let mut buckets = self
+            .buckets
+            .lock()
+            .expect("no panic while holding the lock");
         if buckets.len() >= REMEMBERED {
             buckets.retain(|_, (tokens, at)| {
                 *tokens + now.duration_since(*at).as_secs_f64() * REFILL < BURST

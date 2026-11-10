@@ -205,7 +205,6 @@ pub async fn find(db: &mut SqliteConnection, id: i64) -> Result<Customer, ApiErr
         .ok_or(ApiError::new(ErrorCode::NotFound))
 }
 
-
 async fn validate(app: &App, input: CustomerInput) -> Result<CustomerFields, ApiError> {
     let mut check = Check::default();
     let currency = match input.currency {
@@ -228,7 +227,7 @@ async fn validate(app: &App, input: CustomerInput) -> Result<CustomerFields, Api
     {
         check.fail("email", FieldError::InvalidFormat);
     }
-    if input.hourly_rate.is_some_and(|rate| rate < 0) {
+    if input.hourly_rate.is_some_and(|rate| !money::is_rate(rate)) {
         check.fail("hourly_rate", FieldError::InvalidFormat);
     }
     let fields = CustomerFields {

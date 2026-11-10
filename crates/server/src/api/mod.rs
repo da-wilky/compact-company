@@ -53,16 +53,26 @@ pub fn routes() -> OpenApiRouter<Arc<App>> {
         .routes(routes!(oidc::oidc_callback))
         .routes(routes!(audit::list_audit))
         .routes(routes!(currencies))
-        .routes(routes!(customers::list_customers, customers::create_customer))
+        .routes(routes!(
+            customers::list_customers,
+            customers::create_customer
+        ))
         .routes(routes!(customers::get_customer, customers::put_customer))
         .routes(routes!(projects::list_projects, projects::create_project))
         .routes(routes!(projects::get_project, projects::put_project))
-        .routes(routes!(activities::list_activities, activities::create_activity))
+        .routes(routes!(
+            activities::list_activities,
+            activities::create_activity
+        ))
         .routes(routes!(activities::put_activity))
         .routes(routes!(statuses::list_statuses, statuses::put_statuses))
         .routes(routes!(todos::list_assignees))
         .routes(routes!(todos::list_todos, todos::create_todo))
-        .routes(routes!(todos::get_todo, todos::put_todo, todos::delete_todo))
+        .routes(routes!(
+            todos::get_todo,
+            todos::put_todo,
+            todos::delete_todo
+        ))
         .routes(routes!(todos::move_todo))
         .routes(routes!(todos::add_comment))
         .routes(routes!(time::list_time, time::create_entry))
@@ -87,5 +97,10 @@ async fn health() -> Json<Health> {
 #[utoipa::path(get, path = "/currencies", tag = "customers",
     responses((status = OK, body = Vec<String>), (status = "default", body = ApiError)))]
 async fn currencies(_: crate::auth::Auth) -> Json<Vec<&'static str>> {
-    Json(crate::money::CURRENCIES.iter().map(|(code, _)| *code).collect())
+    Json(
+        crate::money::CURRENCIES
+            .iter()
+            .map(|(code, _)| *code)
+            .collect(),
+    )
 }
