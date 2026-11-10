@@ -30,72 +30,69 @@
 	load();
 </script>
 
-<h1>{t('audit.title')}</h1>
-
-<form onsubmit={filter}>
-	<input placeholder={t('audit.subject')} bind:value={subject} />
-	<input placeholder={t('audit.action')} bind:value={action} />
-	<button>{t('audit.filter')}</button>
-</form>
-
-{#if error}<p class="error" role="alert">{t(error.message)}</p>{/if}
-
-<div class="scroll">
-	<table>
-		<thead>
-			<tr>
-				<th>{t('audit.at')}</th>
-				<th>{t('audit.user')}</th>
-				<th>{t('audit.action')}</th>
-				<th>{t('audit.subject')}</th>
-				<th>{t('audit.change')}</th>
-			</tr>
-		</thead>
-		<tbody>
-			{#each entries as entry (entry.id)}
-				<tr>
-					<td>{new Date(entry.at * 1000).toLocaleString(i18n.locale)}</td>
-					<td>{entry.user_name}</td>
-					<td>{entry.action}</td>
-					<td>{entry.subject}</td>
-					<td><code>{change(entry)}</code></td>
-				</tr>
-			{:else}
-				<tr><td colspan="5">{t('audit.empty')}</td></tr>
-			{/each}
-		</tbody>
-	</table>
+<div class="page-head">
+	<h1>{t('audit.title')}</h1>
 </div>
 
-{#if more}
-	<button onclick={() => load(entries.at(-1)?.id)}>{t('audit.more')}</button>
-{/if}
+<div class="stack">
+	<form class="filter" onsubmit={filter}>
+		<input aria-label={t('audit.subject')} placeholder={t('audit.subject')} bind:value={subject} />
+		<input aria-label={t('audit.action')} placeholder={t('audit.action')} bind:value={action} />
+		<button>{t('audit.filter')}</button>
+	</form>
+
+	{#if error}<p class="alert" role="alert">{t(error.message)}</p>{/if}
+
+	<div class="table-wrap stacked">
+		<table>
+			<thead>
+				<tr>
+					<th>{t('audit.at')}</th>
+					<th>{t('audit.user')}</th>
+					<th>{t('audit.action')}</th>
+					<th>{t('audit.subject')}</th>
+					<th>{t('audit.change')}</th>
+				</tr>
+			</thead>
+			<tbody>
+				{#each entries as entry (entry.id)}
+					<tr>
+						<td class="nowrap" data-label={t('audit.at')}>
+							{new Date(entry.at * 1000).toLocaleString(i18n.locale)}
+						</td>
+						<td data-label={t('audit.user')}>{entry.user_name}</td>
+						<td data-label={t('audit.action')}><span class="badge">{entry.action}</span></td>
+						<td data-label={t('audit.subject')}>{entry.subject}</td>
+						<td><code>{change(entry)}</code></td>
+					</tr>
+				{:else}
+					<tr><td colspan="5" class="empty">{t('audit.empty')}</td></tr>
+				{/each}
+			</tbody>
+		</table>
+	</div>
+
+	{#if more}
+		<div><button onclick={() => load(entries.at(-1)?.id)}>{t('audit.more')}</button></div>
+	{/if}
+</div>
 
 <style>
-	.scroll {
-		overflow-x: auto;
-	}
-	form input {
-		flex: 1 1 10rem;
-		min-width: 0;
-	}
-	form {
+	.filter {
 		display: flex;
 		flex-wrap: wrap;
 		gap: 0.5rem;
-		margin-bottom: 1rem;
 	}
-	table {
-		border-collapse: collapse;
-		width: 100%;
-		margin-bottom: 1rem;
+	.filter input {
+		flex: 1 1 10rem;
+		width: auto;
+		min-width: 0;
 	}
-	th,
 	td {
-		text-align: left;
-		padding: 0.4rem;
-		border-bottom: 1px solid #ddd;
 		vertical-align: top;
+	}
+	.nowrap {
+		white-space: nowrap;
 	}
 	code {
 		word-break: break-word;

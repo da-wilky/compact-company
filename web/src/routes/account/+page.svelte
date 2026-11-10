@@ -1,12 +1,18 @@
 <script lang="ts">
 	import { api, call, type ApiError, type Schemas } from '#lib/api/index.ts';
+	import Dialog from '#lib/components/Dialog.svelte';
 	import Field from '#lib/components/Field.svelte';
+	import Icon from '#lib/components/Icon.svelte';
+	import Preferences from '#lib/components/Preferences.svelte';
 	import { i18n, t } from '#lib/i18n.svelte.ts';
+	import { session } from '#lib/session.svelte.ts';
 	import { createPasskey } from '#lib/webauthn.ts';
 
 	let passkeys = $state<Schemas['PasskeyView'][]>([]);
 	let name = $state('');
 	let error = $state<ApiError>();
+	let removing = $state<Schemas['PasskeyView']>();
+	let confirming = $state(false);
 
 	async function load() {
 		const result = await call(api.GET('/api/passkeys'));
@@ -38,7 +44,15 @@
 		}
 	}
 
-	async function remove(id: number) {
+	function ask(passkey: Schemas['PasskeyView']) {
+		removing = passkey;
+		confirming = true;
+	}
+
+	async function remove() {
+		if (!removing) return;
+		const id = removing.id;
+		confirming = false;
 		const result = await call(api.DELETE('/api/passkeys/{id}', { params: { path: { id } } }));
 		if (result.data) passkeys = result.data;
 		error = result.error;
@@ -50,52 +64,95 @@
 	load();
 </script>
 
-<h1>{t('account.title')}</h1>
+<div class="page-head">
+	<div>
+		<p class="muted">{t('account.title')}</p>
+		<h1>{session.view?.user?.name}</h1>
+	</div>
+	{#if session.view?.user}<span class="badge accent">{t(`term.${session.view.user.role}`)}</span>{/if}
+</div>
 
-<h2>{t('passkeys.title')}</h2>
-<table>
-	<thead>
-		<tr>
-			<th>{t('passkeys.name')}</th>
-			<th>{t('passkeys.created')}</th>
-			<th>{t('passkeys.last_used')}</th>
-			<th></th>
-		</tr>
-	</thead>
-	<tbody>
-		{#each passkeys as passkey (passkey.id)}
-			<tr>
-				<td>{passkey.name}</td>
-				<td>{date(passkey.created_at)}</td>
-				<td>{date(passkey.last_used_at)}</td>
-				<td>
-					<button onclick={() => remove(passkey.id)} disabled={passkeys.length === 1}>
+<div class="stack">
+	<section class="card stack">
+		<h2>{t('passkeys.title')}</h2>
+		<ul>
+			{#each passkeys as passkey (passkey.id)}
+				<li>
+					<Icon name="passkey" />
+					<div>
+						<strong>{passkey.name}</strong>
+						<small class="muted">
+							{t('passkeys.created')}
+							{date(passkey.created_at)} · {t('passkeys.last_used')}
+							{date(passkey.last_used_at)}
+						</small>
+					</div>
+					<button
+						class="ghost danger"
+						onclick={() => ask(passkey)}
+						disabled={passkeys.length === 1}
+						title={passkeys.length === 1 ? t('error.last_passkey') : undefined}
+					>
 						{t('app.remove')}
 					</button>
-				</td>
-			</tr>
-		{/each}
-	</tbody>
-</table>
+				</li>
+			{/each}
+		</ul>
+		<form class="stack" onsubmit={add}>
+			<Field
+				label={t('passkeys.name')}
+				note={t('passkeys.name_hint')}
+				error={error?.fields?.passkey_name}
+			>
+				<input bind:value={name} />
+			</Field>
+			<div><button class="primary">{t('passkeys.add')}</button></div>
+		</form>
+		{#if error}<p class="alert" role="alert">{t(error.message)}</p>{/if}
+	</section>
 
-<form onsubmit={add}>
-	<Field label={t('passkeys.name')} note={t('passkeys.name_hint')} error={error?.fields?.passkey_name}>
-		<input bind:value={name} />
-	</Field>
-	{#if error}<p class="error" role="alert">{t(error.message)}</p>{/if}
-	<button>{t('passkeys.add')}</button>
-</form>
+	<section class="card stack">
+		<h2>{t('appearance.title')}</h2>
+		<Preferences />
+	</section>
+</div>
+
+<Dialog bind:open={confirming} title={t('passkeys.remove_title')}>
+	<p>{t('passkeys.remove_confirm', { name: removing?.name ?? '' })}</p>
+	{#snippet actions()}
+		<button onclick={() => (confirming = false)}>{t('app.cancel')}</button>
+		<button class="primary" onclick={remove}>{t('app.remove')}</button>
+	{/snippet}
+</Dialog>
 
 <style>
-	table {
-		border-collapse: collapse;
-		width: 100%;
-		margin-bottom: 1.5rem;
+	section {
+		max-width: 48rem;
 	}
-	th,
-	td {
-		text-align: left;
-		padding: 0.4rem;
-		border-bottom: 1px solid #ddd;
+	ul {
+		margin: 0;
+		padding: 0;
+		list-style: none;
+		border: 1px solid var(--border);
+		border-radius: var(--radius);
+	}
+	li {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+		padding: 0.75rem 0.5rem 0.75rem 1rem;
+	}
+	li + li {
+		border-top: 1px solid var(--border);
+	}
+	li > div {
+		flex: 1;
+		min-width: 0;
+		display: flex;
+		flex-direction: column;
+	}
+	li > :global(svg) {
+		flex: none;
+		color: var(--muted);
 	}
 </style>

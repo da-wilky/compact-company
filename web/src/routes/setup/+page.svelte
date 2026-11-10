@@ -35,8 +35,8 @@
 <h1>{t('setup.title')}</h1>
 
 {#if token}
-	<p>{t('setup.intro')}</p>
-	<form onsubmit={submit}>
+	<p class="muted">{t('setup.intro')}</p>
+	<form class="stack" onsubmit={submit}>
 		<Field label={t('setup.name')} error={error?.fields?.name}>
 			<input bind:value={name} autocomplete="name" />
 		</Field>
@@ -47,8 +47,8 @@
 		>
 			<input bind:value={passkeyName} />
 		</Field>
-		{#if error}<p class="error" role="alert">{t(error.message)}</p>{/if}
-		<button>{t('passkeys.create')}</button>
+		{#if error}<p class="alert" role="alert">{t(error.message)}</p>{/if}
+		<button class="primary">{t('passkeys.create')}</button>
 	</form>
 {:else}
 	<p>{t('setup.no_token')}</p>
