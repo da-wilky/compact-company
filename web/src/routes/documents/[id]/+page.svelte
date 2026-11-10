@@ -311,6 +311,9 @@
 			<a class="button ghost" href={`/api/documents/${doc.id}/pdf`} target="_blank" rel="noopener">
 				<Icon name="pdf" size={18} />{t(doc.status === 'draft' ? 'documents.preview' : 'documents.pdf')}
 			</a>
+			{#if doc.kind === 'invoice' || doc.kind === 'cancellation'}
+				<a class="button ghost" href={`/api/documents/${doc.id}/xml`}>{t('documents.xml')}</a>
+			{/if}
 			{#if owner}
 				<button class="ghost" onclick={duplicate}>{t('documents.duplicate')}</button>
 			{/if}

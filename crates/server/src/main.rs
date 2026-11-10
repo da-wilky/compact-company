@@ -4,7 +4,7 @@ use clap::{Parser, Subcommand};
 use compact_company::{
     App,
     config::Config,
-    documents,
+    documents, einvoice,
     render::{self, Layout},
 };
 
@@ -38,6 +38,16 @@ enum Command {
         #[arg(long)]
         small_business: bool,
     },
+    /// Write the e-invoice XML of sample data to stdout, for checking it with a validator
+    Einvoice {
+        #[arg(long, default_value = "invoice")]
+        kind: String,
+        #[arg(long)]
+        small_business: bool,
+        /// XRechnung instead of the XML embedded as ZUGFeRD
+        #[arg(long)]
+        xrechnung: bool,
+    },
 }
 
 #[tokio::main]
@@ -51,6 +61,11 @@ async fn main() -> ExitCode {
             language,
             small_business,
         } => sample(layout, &kind, &language, small_business),
+        Command::Einvoice {
+            kind,
+            small_business,
+            xrechnung,
+        } => einvoice(&kind, small_business, xrechnung),
     };
     match result {
         Ok(()) => ExitCode::SUCCESS,
@@ -106,5 +121,25 @@ fn sample(
         eprintln!("not shown: {key}");
     }
     std::io::stdout().write_all(&rendered.pdf()?)?;
+    Ok(())
+}
+
+fn einvoice(
+    kind: &str,
+    small_business: bool,
+    xrechnung: bool,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let kind = serde_json::from_value(serde_json::Value::from(kind))?;
+    let data = documents::sample(
+        kind,
+        compact_company::api::customers::Language::De,
+        small_business,
+    );
+    let flavour = if xrechnung {
+        einvoice::Flavour::Xrechnung
+    } else {
+        einvoice::Flavour::Zugferd
+    };
+    std::io::stdout().write_all(&einvoice::cii(&data, flavour))?;
     Ok(())
 }

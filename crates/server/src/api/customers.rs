@@ -48,6 +48,12 @@ pub struct CustomerInput {
     /// In the minor unit of the currency.
     hourly_rate: Option<i64>,
     note: Option<String>,
+    vat_id: Option<String>,
+    /// The buyer reference public customers give for XRechnung.
+    leitweg_id: Option<String>,
+    /// Whether invoices also go out as XRechnung.
+    #[serde(default)]
+    xrechnung: bool,
     #[serde(default)]
     archived: bool,
 }
@@ -77,6 +83,9 @@ pub struct CustomerFields {
     /// In the minor unit of the currency.
     hourly_rate: Option<i64>,
     note: Option<String>,
+    vat_id: Option<String>,
+    leitweg_id: Option<String>,
+    xrechnung: bool,
     archived: bool,
 }
 
@@ -130,8 +139,8 @@ pub async fn create_customer(
     let id: i64 = sqlx::query_scalar(
         "INSERT INTO customer
          (number, name, street, postcode, city, country, email, language, currency, hourly_rate, note,
-          archived, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id",
+          vat_id, leitweg_id, xrechnung, archived, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id",
     )
     .bind(format!("K-{next:03}"))
     .bind(&fields.name)
@@ -144,6 +153,9 @@ pub async fn create_customer(
     .bind(&fields.currency)
     .bind(fields.hourly_rate)
     .bind(&fields.note)
+    .bind(&fields.vat_id)
+    .bind(&fields.leitweg_id)
+    .bind(fields.xrechnung)
     .bind(fields.archived)
     .bind(now())
     .fetch_one(&mut *tx)
@@ -189,7 +201,7 @@ pub async fn put_customer(
     sqlx::query(
         "UPDATE customer SET name = ?, street = ?, postcode = ?, city = ?, country = ?, email = ?,
          language = ?, currency = ?,
-         hourly_rate = ?, note = ?, archived = ? WHERE id = ?",
+         hourly_rate = ?, note = ?, vat_id = ?, leitweg_id = ?, xrechnung = ?, archived = ? WHERE id = ?",
     )
     .bind(&fields.name)
     .bind(&fields.street)
@@ -201,6 +213,9 @@ pub async fn put_customer(
     .bind(&fields.currency)
     .bind(fields.hourly_rate)
     .bind(&fields.note)
+    .bind(&fields.vat_id)
+    .bind(&fields.leitweg_id)
+    .bind(fields.xrechnung)
     .bind(fields.archived)
     .bind(id)
     .execute(&mut *tx)
@@ -265,6 +280,11 @@ async fn validate(app: &App, input: CustomerInput) -> Result<CustomerFields, Api
         currency,
         hourly_rate: input.hourly_rate,
         note: check.text("note", input.note, 2000),
+        vat_id: check
+            .text("vat_id", input.vat_id, 20)
+            .map(|v| v.replace(' ', "").to_ascii_uppercase()),
+        leitweg_id: check.text("leitweg_id", input.leitweg_id, 50),
+        xrechnung: input.xrechnung,
         archived: input.archived,
     };
     check.done()?;

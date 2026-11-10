@@ -23,6 +23,7 @@ pub mod audit;
 pub mod auth;
 pub mod config;
 pub mod documents;
+pub mod einvoice;
 pub mod files;
 pub mod layouts;
 pub mod limit;

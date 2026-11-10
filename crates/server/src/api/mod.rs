@@ -91,6 +91,7 @@ pub fn routes() -> OpenApiRouter<Arc<App>> {
         ))
         .routes(routes!(documents::issue_document))
         .routes(routes!(documents::document_pdf))
+        .routes(routes!(documents::document_xml))
         .routes(routes!(documents::duplicate_document))
         .routes(routes!(documents::follow_up))
         .routes(routes!(documents::set_outcome))

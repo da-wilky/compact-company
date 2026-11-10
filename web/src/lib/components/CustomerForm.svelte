@@ -23,6 +23,9 @@
 	let currency = $state(initial?.currency ?? '');
 	let rate = $state(initial ? moneyInput(initial.hourly_rate, initial.currency) : '');
 	let note = $state(initial?.note ?? '');
+	let vatId = $state(initial?.vat_id ?? '');
+	let leitwegId = $state(initial?.leitweg_id ?? '');
+	let xrechnung = $state(initial?.xrechnung ?? false);
 	let currencies = $state<string[]>([]);
 	let error = $state<ApiError>();
 
@@ -49,6 +52,9 @@
 			currency,
 			hourly_rate,
 			note,
+			vat_id: vatId,
+			leitweg_id: leitwegId,
+			xrechnung,
 			archived: initial?.archived ?? false
 		};
 		const result = initial
@@ -94,6 +100,17 @@
 	<Field label={t('term.hourly_rate')} error={error?.fields?.hourly_rate} note={currency}>
 		<input inputmode="decimal" bind:value={rate} />
 	</Field>
+	<Field label={t('customers.vat_id')} error={error?.fields?.vat_id}>
+		<input bind:value={vatId} />
+	</Field>
+	<Field label={t('customers.leitweg_id')} error={error?.fields?.leitweg_id}>
+		<input bind:value={leitwegId} />
+	</Field>
+	<div class="wide">
+		<Field label={t('customers.xrechnung')} note={t('customers.xrechnung_hint')} inline>
+			<input type="checkbox" bind:checked={xrechnung} />
+		</Field>
+	</div>
 	<div class="wide">
 		<Field label={t('customers.note')} error={error?.fields?.note}>
 			<textarea rows="2" bind:value={note}></textarea>

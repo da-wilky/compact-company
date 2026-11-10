@@ -1014,6 +1014,46 @@
         }
       }
     },
+    "/api/documents/{id}/xml": {
+      "get": {
+        "tags": [
+          "documents"
+        ],
+        "summary": "The e-invoice XML of an invoice or cancellation invoice: the XRechnung as issued, or else the\nEN 16931 XML it carries as ZUGFeRD.",
+        "operationId": "document_xml",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/xml": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/health": {
       "get": {
         "tags": [
@@ -3700,7 +3740,8 @@
         "required": [
           "number",
           "name",
-          "country"
+          "country",
+          "xrechnung"
         ],
         "properties": {
           "city": {
@@ -3717,6 +3758,13 @@
               "string",
               "null"
             ]
+          },
+          "leitweg_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The buyer reference of an XRechnung, required by public customers."
           },
           "name": {
             "type": "string"
@@ -3735,6 +3783,16 @@
               "string",
               "null"
             ]
+          },
+          "vat_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "xrechnung": {
+            "type": "boolean",
+            "description": "Whether invoices also go out as XRechnung."
           }
         }
       },
@@ -3746,6 +3804,7 @@
           "country",
           "language",
           "currency",
+          "xrechnung",
           "archived"
         ],
         "properties": {
@@ -3781,6 +3840,12 @@
           "language": {
             "$ref": "#/components/schemas/Language"
           },
+          "leitweg_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "name": {
             "type": "string"
           },
@@ -3801,6 +3866,15 @@
               "string",
               "null"
             ]
+          },
+          "vat_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "xrechnung": {
+            "type": "boolean"
           }
         }
       },
@@ -3850,6 +3924,13 @@
           "language": {
             "$ref": "#/components/schemas/Language"
           },
+          "leitweg_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The buyer reference public customers give for XRechnung."
+          },
           "name": {
             "type": [
               "string",
@@ -3873,6 +3954,16 @@
               "string",
               "null"
             ]
+          },
+          "vat_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "xrechnung": {
+            "type": "boolean",
+            "description": "Whether invoices also go out as XRechnung."
           }
         },
         "additionalProperties": false
@@ -4133,6 +4224,17 @@
             "type": [
               "string",
               "null"
+            ]
+          },
+          "preceding": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Preceding",
+                "description": "The invoice a cancellation invoice reverses."
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "pricing": {
@@ -5172,6 +5274,22 @@
             "format": "int64"
           },
           "name": {
+            "type": "string"
+          }
+        }
+      },
+      "Preceding": {
+        "type": "object",
+        "required": [
+          "number",
+          "issue_date"
+        ],
+        "properties": {
+          "issue_date": {
+            "type": "string",
+            "description": "ISO date."
+          },
+          "number": {
             "type": "string"
           }
         }

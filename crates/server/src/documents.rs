@@ -243,6 +243,8 @@ pub struct Data {
     pub reference: Option<String>,
     /// The time entries behind an invoice, for its timesheet.
     pub timesheet: Option<Vec<TimesheetEntry>>,
+    /// The invoice a cancellation invoice reverses.
+    pub preceding: Option<Preceding>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
@@ -276,6 +278,11 @@ pub struct CustomerData {
     pub city: Option<String>,
     pub country: String,
     pub email: Option<String>,
+    pub vat_id: Option<String>,
+    /// The buyer reference of an XRechnung, required by public customers.
+    pub leitweg_id: Option<String>,
+    /// Whether invoices also go out as XRechnung.
+    pub xrechnung: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
@@ -359,6 +366,7 @@ pub struct Row {
     pub data: Option<String>,
     pub pdf: Option<String>,
     pub layout: Option<String>,
+    pub xml: Option<String>,
     pub valid_until: Option<String>,
     pub pricing: Option<Pricing>,
     pub source_id: Option<i64>,
@@ -471,7 +479,8 @@ pub async fn draft_data(
     row: &Row,
 ) -> Result<Data, sqlx::Error> {
     let customer: CustomerData = sqlx::query_as(
-        "SELECT number, name, street, postcode, city, country, email FROM customer WHERE id = ?",
+        "SELECT number, name, street, postcode, city, country, email, vat_id, leitweg_id, xrechnung
+         FROM customer WHERE id = ?",
     )
     .bind(row.customer_id)
     .fetch_one(&mut *db)
@@ -538,6 +547,7 @@ pub async fn draft_data(
         service_to,
         reference: reference(db, row).await?,
         timesheet,
+        preceding: preceding(db, row).await?,
     })
 }
 
@@ -575,6 +585,11 @@ pub fn missing(data: &Data) -> BTreeMap<String, FieldError> {
             }
         }
     }
+    if matches!(data.kind, Kind::Invoice | Kind::Cancellation) && data.customer.xrechnung {
+        for key in crate::einvoice::missing(data, crate::einvoice::Flavour::Xrechnung) {
+            missing.insert(key.to_owned(), FieldError::Required);
+        }
+    }
     if data.lines.is_empty() {
         missing.insert("lines".to_owned(), FieldError::Required);
     }
@@ -596,9 +611,8 @@ pub struct TimesheetEntry {
     pub hours: Decimal,
 }
 
-/// Sample data for checking a layout before it is saved: every field filled, amounts with
-/// thousands, and VAT unless the business is a small business.
-pub fn sample(kind: Kind, language: Language, small_business: bool) -> Data {
+/// The sample amounts as an invoice would carry them.
+fn sample_amounts(kind: Kind, language: Language, small_business: bool) -> Data {
     let d = |s: &str| s.parse::<Decimal>().expect("sample decimals parse");
     let lines = vec![
         LineData {
@@ -680,6 +694,9 @@ pub fn sample(kind: Kind, language: Language, small_business: bool) -> Data {
             city: Some("Leipzig".to_owned()),
             country: "DE".to_owned(),
             email: Some("rechnung@kundin.example".to_owned()),
+            vat_id: (!small_business).then(|| "DE987654321".to_owned()),
+            leitweg_id: Some("991-12345-67".to_owned()),
+            xrechnung: false,
         },
         lines: if priced {
             lines
@@ -708,6 +725,10 @@ pub fn sample(kind: Kind, language: Language, small_business: bool) -> Data {
             .then(|| "2026-03-02".to_owned()),
         service_to: matches!(kind, Kind::Invoice | Kind::Cancellation)
             .then(|| "2026-03-20".to_owned()),
+        preceding: (kind == Kind::Cancellation).then(|| Preceding {
+            number: "RE-2026-041".to_owned(),
+            issue_date: "2026-03-20".to_owned(),
+        }),
         reference: (kind == Kind::Cancellation)
             .then(|| "Storniert Rechnung RE-2026-041".to_owned()),
         timesheet: (kind == Kind::Invoice).then(|| {
@@ -834,4 +855,44 @@ struct BilledEntry {
     description: Option<String>,
     todo_title: Option<String>,
     project_name: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, sqlx::FromRow)]
+pub struct Preceding {
+    pub number: String,
+    /// ISO date.
+    pub issue_date: String,
+}
+
+async fn preceding(db: &mut SqliteConnection, row: &Row) -> Result<Option<Preceding>, sqlx::Error> {
+    if row.kind != Kind::Cancellation {
+        return Ok(None);
+    }
+    sqlx::query_as("SELECT number, issue_date FROM document WHERE id = ? AND status = 'issued'")
+        .bind(row.source_id)
+        .fetch_optional(db)
+        .await
+}
+
+/// Sample data for checking a layout before it is saved: every field filled, amounts with
+/// thousands, VAT unless the business is a small business, and a cancellation invoice's amounts
+/// negative.
+pub fn sample(kind: Kind, language: Language, small_business: bool) -> Data {
+    let mut data = sample_amounts(kind, language, small_business);
+    if kind == Kind::Cancellation {
+        for line in &mut data.lines {
+            line.quantity = -line.quantity;
+            line.net = line.net.map(|n| -n);
+        }
+        for group in &mut data.vat {
+            group.net = -group.net;
+            group.tax = -group.tax;
+        }
+        if let Some(totals) = &mut data.totals {
+            totals.net = -totals.net;
+            totals.tax = -totals.tax;
+            totals.gross = -totals.gross;
+        }
+    }
+    data
 }

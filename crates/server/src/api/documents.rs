@@ -19,7 +19,7 @@ use crate::{
     App, audit,
     auth::{Auth, OwnerOnly, OwnerOrAccountant, now},
     documents::{self, Data, Kind, LineRow, Pricing, Row, Status, Unit},
-    layouts, render,
+    einvoice, layouts, render,
     settings::Business,
 };
 
@@ -678,7 +678,17 @@ pub async fn issue(
     }
     let layout = layouts::for_document(app, tx, row.kind, row.customer_id).await?;
     let layout_name = layout.name.clone();
-    let (rendered, data) = render::render_blocking(layout, data, Vec::new())
+    let e_invoice = matches!(row.kind, Kind::Invoice | Kind::Cancellation);
+    let attachments = if e_invoice {
+        vec![render::Attachment {
+            name: einvoice::ZUGFERD_NAME.to_owned(),
+            description: "Factur-X / ZUGFeRD".to_owned(),
+            bytes: einvoice::cii(&data, einvoice::Flavour::Zugferd),
+        }]
+    } else {
+        Vec::new()
+    };
+    let (rendered, data) = render::render_blocking(layout, data, attachments)
         .await
         .map_err(ApiError::layout)?;
     let not_shown = render::missing(&data, &rendered);
@@ -690,12 +700,25 @@ pub async fn issue(
                 .collect(),
         ));
     }
-    let pdf = rendered.pdf().map_err(ApiError::layout)?;
+    let mut pdf = rendered.pdf().map_err(ApiError::layout)?;
+    if e_invoice {
+        pdf = einvoice::mark_zugferd(&pdf).map_err(ApiError::internal)?;
+    }
     let pdf = app
         .files
         .put(pdf.into())
         .await
         .map_err(ApiError::internal)?;
+    let xml = match e_invoice && data.customer.xrechnung {
+        true => Some(
+            app.files
+                .put(einvoice::cii(&data, einvoice::Flavour::Xrechnung).into())
+                .await
+                .map_err(ApiError::internal)?
+                .to_string(),
+        ),
+        false => None,
+    };
     for line in documents::lines(tx, id).await? {
         let (price, vat) = documents::effective(tx, business, &line).await?;
         sqlx::query("UPDATE document_line SET unit_price = ?, vat_rate = ? WHERE id = ?")
@@ -708,7 +731,7 @@ pub async fn issue(
     let at = now();
     sqlx::query(
         "UPDATE document SET status = 'issued', number = ?, issue_date = ?, data = ?, pdf = ?,
-         layout = ?, valid_until = ?, due_date = ?, issued_at = ?, issued_by = ?, updated_at = ? WHERE id = ?",
+         layout = ?, valid_until = ?, due_date = ?, xml = ?, issued_at = ?, issued_by = ?, updated_at = ? WHERE id = ?",
     )
     .bind(&number)
     .bind(today.to_string())
@@ -717,6 +740,7 @@ pub async fn issue(
     .bind(layout_name)
     .bind(valid_until)
     .bind(due_date)
+    .bind(xml)
     .bind(at)
     .bind(user_id)
     .bind(at)
@@ -1172,4 +1196,49 @@ async fn unreversed(db: &mut SqliteConnection, invoice_id: i64) -> Result<Vec<i6
             .fetch_all(db)
             .await?,
     )
+}
+
+/// The e-invoice XML of an invoice or cancellation invoice: the XRechnung as issued, or else the
+/// EN 16931 XML it carries as ZUGFeRD.
+#[utoipa::path(get, path = "/documents/{id}/xml", tag = "documents", params(("id" = i64, Path)),
+    responses((status = OK, content_type = "application/xml", body = String),
+        (status = "default", body = ApiError)))]
+pub async fn document_xml(
+    State(app): State<Arc<App>>,
+    _: Auth<OwnerOrAccountant>,
+    Path(id): Path<i64>,
+) -> Result<Response, ApiError> {
+    let mut db = app.db.acquire().await?;
+    let row = row(&mut db, id).await?;
+    if !matches!(row.kind, Kind::Invoice | Kind::Cancellation) {
+        return Err(ApiError::new(ErrorCode::NotFound));
+    }
+    let bytes = match &row.xml {
+        Some(hash) => app
+            .files
+            .get(hash.parse().map_err(ApiError::internal)?)
+            .await
+            .map_err(ApiError::internal)?
+            .to_vec(),
+        None => {
+            let data = data(&mut db, &business(&app).await?, &row).await?;
+            let flavour = match data.customer.xrechnung && row.status == Status::Draft {
+                true => einvoice::Flavour::Xrechnung,
+                false => einvoice::Flavour::Zugferd,
+            };
+            einvoice::cii(&data, flavour)
+        }
+    };
+    let name = row.number.unwrap_or_else(|| format!("draft-{id}"));
+    Ok((
+        [
+            (header::CONTENT_TYPE, "application/xml".to_owned()),
+            (
+                header::CONTENT_DISPOSITION,
+                format!("attachment; filename=\"{name}.xml\""),
+            ),
+        ],
+        bytes,
+    )
+        .into_response())
 }
