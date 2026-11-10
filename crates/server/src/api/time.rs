@@ -404,15 +404,16 @@ async fn validate(
         }
     }
     if let Some(ended) = input.ended_at {
-        if ended < input.started_at || ended - input.started_at > MAX_SECS {
+        // saturating, so absurd timestamps cannot wrap around into a valid-looking duration
+        if ended < input.started_at || ended.saturating_sub(input.started_at) > MAX_SECS {
             check.fail("ended_at", FieldError::InvalidFormat);
         }
     }
-    if input.started_at > now() + 60 {
+    if input.started_at <= 0 || input.started_at > now() + 60 {
         check.fail("started_at", FieldError::InvalidFormat);
     }
     if let Some(secs) = input.billable_secs {
-        let tracked = input.ended_at.map(|ended| ended - input.started_at);
+        let tracked = input.ended_at.map(|ended| ended.saturating_sub(input.started_at));
         if secs < 0 || tracked.is_none_or(|tracked| secs > tracked) {
             check.fail("billable_secs", FieldError::InvalidFormat);
         }

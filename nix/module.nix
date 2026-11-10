@@ -46,6 +46,15 @@ in
             type = lib.types.str;
             default = "127.0.0.1:9440";
           };
+          trusted_proxies = lib.mkOption {
+            type = lib.types.listOf lib.types.str;
+            # the service listens on localhost for a reverse proxy on the same host; without
+            # this every client would share that proxy's rate limit
+            default = [
+              "127.0.0.1"
+              "::1"
+            ];
+          };
           data_dir = lib.mkOption {
             type = lib.types.str;
             default = "/var/lib/compact-company";
