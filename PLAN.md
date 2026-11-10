@@ -21,6 +21,7 @@ Time tracking, invoicing and bookkeeping usually live in two or three tools with
 | Login | Passkeys, OIDC optional | 0014 |
 | Roles | Owner, staff, accountant | 0015 |
 | Storage | SQLite only; files content-addressed on disk or S3 | 0016 |
+| Settings | Owner edits business data and defaults; config may pin any key | 0017 |
 | Languages | UI and documents in German and English | – |
 | Platforms | x86_64 and arm64; NixOS module and OCI image | – |
 
@@ -127,7 +128,6 @@ Crate names are candidates; verify each before the foundation phase settles them
 2. Layout data schema: versioned, so uploaded layouts survive schema changes?
 3. Retention: how long receipts and issued documents are kept, and whether deletion after the period is supported.
 4. Process documentation (GoBD Verfahrensdokumentation): generated from settings, or written by hand?
-5. Business data and defaults: may config pin them (read-only in the app), or are they only edited by the owner in the app?
 
 ## Context (swilk)
 
