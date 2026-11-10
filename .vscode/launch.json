@@ -1,0 +1,16 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Server",
+      "type": "lldb",
+      "request": "launch",
+      "cargo": {
+        "args": ["build", "--package=compact-company", "--bin=compact-company"]
+      },
+      "args": ["serve"],
+      "cwd": "${workspaceFolder}",
+      "preLaunchTask": "web: build"
+    }
+  ]
+}
