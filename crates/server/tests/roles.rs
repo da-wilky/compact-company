@@ -24,6 +24,7 @@ const PUBLIC: &[(&str, &str)] = &[
 const ANY: &[&str] = &["owner", "staff", "accountant"];
 const OWNER: &[&str] = &["owner"];
 const OWNER_ACCOUNTANT: &[&str] = &["owner", "accountant"];
+const OWNER_STAFF: &[&str] = &["owner", "staff"];
 
 /// Every endpoint that needs a session, with the roles that may call it.
 const SIGNED_IN: &[(&str, &str, &[&str])] = &[
@@ -52,6 +53,16 @@ const SIGNED_IN: &[(&str, &str, &[&str])] = &[
     ("GET", "/api/activities", ANY),
     ("POST", "/api/activities", OWNER),
     ("PUT", "/api/activities/{id}", OWNER),
+    ("GET", "/api/statuses", OWNER_STAFF),
+    ("PUT", "/api/statuses", OWNER),
+    ("GET", "/api/assignees", OWNER_STAFF),
+    ("GET", "/api/todos", OWNER_STAFF),
+    ("POST", "/api/todos", OWNER_STAFF),
+    ("GET", "/api/todos/{id}", OWNER_STAFF),
+    ("PUT", "/api/todos/{id}", OWNER_STAFF),
+    ("DELETE", "/api/todos/{id}", OWNER_STAFF),
+    ("POST", "/api/todos/{id}/move", OWNER_STAFF),
+    ("POST", "/api/todos/{id}/comments", OWNER_STAFF),
 ];
 
 #[test]

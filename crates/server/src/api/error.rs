@@ -42,6 +42,7 @@ pub enum ErrorCode {
     OidcUnknownIdentity,
     OidcIdentityTaken,
     Archived,
+    StatusInUse,
     Internal,
 }
 
@@ -74,6 +75,7 @@ impl ErrorCode {
         Self::OidcUnknownIdentity,
         Self::OidcIdentityTaken,
         Self::Archived,
+        Self::StatusInUse,
         Self::Internal,
     ];
 
@@ -94,7 +96,8 @@ impl ErrorCode {
             | Self::LastPasskey
             | Self::LastOwner
             | Self::OidcIdentityTaken
-            | Self::Archived => {
+            | Self::Archived
+            | Self::StatusInUse => {
                 StatusCode::CONFLICT
             }
             Self::Internal => StatusCode::INTERNAL_SERVER_ERROR,

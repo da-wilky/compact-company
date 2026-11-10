@@ -17,6 +17,8 @@ pub mod oidc;
 pub mod passkeys;
 pub mod projects;
 pub mod session;
+pub mod statuses;
+pub mod todos;
 pub mod users;
 
 use error::{ApiError, ErrorCode, Json};
@@ -56,6 +58,12 @@ pub fn routes() -> OpenApiRouter<Arc<App>> {
         .routes(routes!(projects::get_project, projects::put_project))
         .routes(routes!(activities::list_activities, activities::create_activity))
         .routes(routes!(activities::put_activity))
+        .routes(routes!(statuses::list_statuses, statuses::put_statuses))
+        .routes(routes!(todos::list_assignees))
+        .routes(routes!(todos::list_todos, todos::create_todo))
+        .routes(routes!(todos::get_todo, todos::put_todo, todos::delete_todo))
+        .routes(routes!(todos::move_todo))
+        .routes(routes!(todos::add_comment))
         .fallback(async || ApiError::new(ErrorCode::NotFound));
     OpenApiRouter::with_openapi(Doc::openapi()).nest("/api", api)
 }

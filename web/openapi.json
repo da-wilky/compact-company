@@ -137,6 +137,38 @@
         }
       }
     },
+    "/api/assignees": {
+      "get": {
+        "tags": [
+          "todos"
+        ],
+        "summary": "Users a todo may be assigned to: active owners and staff.",
+        "operationId": "list_assignees",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Assignee"
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/audit": {
       "get": {
         "tags": [
@@ -1301,6 +1333,417 @@
         }
       }
     },
+    "/api/statuses": {
+      "get": {
+        "tags": [
+          "todos"
+        ],
+        "operationId": "list_statuses",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Status"
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "todos"
+        ],
+        "summary": "Replaces the whole list in the given order; a status left out is removed, which only works\nwhile no todo is in it.",
+        "operationId": "put_statuses",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/StatusInput"
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Status"
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/todos": {
+      "get": {
+        "tags": [
+          "todos"
+        ],
+        "operationId": "list_todos",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "customer_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "assignee_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "status_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "done",
+            "in": "query",
+            "description": "Only todos whose status counts as done (`true`) or not (`false`).",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "due_before",
+            "in": "query",
+            "description": "Only todos due before this day (`YYYY-MM-DD`), e.g. today for overdue ones.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Todo"
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "todos"
+        ],
+        "operationId": "create_todo",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TodoInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Todo"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/todos/{id}": {
+      "get": {
+        "tags": [
+          "todos"
+        ],
+        "operationId": "get_todo",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TodoDetail"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "todos"
+        ],
+        "operationId": "put_todo",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TodoInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Todo"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "todos"
+        ],
+        "operationId": "delete_todo",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "204": {},
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/todos/{id}/comments": {
+      "post": {
+        "tags": [
+          "todos"
+        ],
+        "operationId": "add_comment",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CommentInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Comment"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/todos/{id}/move": {
+      "post": {
+        "tags": [
+          "todos"
+        ],
+        "summary": "Moves a todo on the board: to another status, another place in the same status, or both.",
+        "operationId": "move_todo",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TodoMove"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Todo"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/users": {
       "get": {
         "tags": [
@@ -1478,6 +1921,22 @@
           }
         }
       },
+      "Assignee": {
+        "type": "object",
+        "required": [
+          "id",
+          "name"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
       "AuditEntry": {
         "type": "object",
         "required": [
@@ -1595,6 +2054,48 @@
             }
           }
         }
+      },
+      "Comment": {
+        "type": "object",
+        "required": [
+          "id",
+          "user_id",
+          "user_name",
+          "body",
+          "created_at"
+        ],
+        "properties": {
+          "body": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "user_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "user_name": {
+            "type": "string"
+          }
+        }
+      },
+      "CommentInput": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": false
       },
       "Customer": {
         "allOf": [
@@ -1749,6 +2250,7 @@
           "oidc_unknown_identity",
           "oidc_identity_taken",
           "archived",
+          "status_in_use",
           "internal"
         ]
       },
@@ -1935,6 +2437,14 @@
             "type": "string"
           }
         }
+      },
+      "Priority": {
+        "type": "string",
+        "enum": [
+          "low",
+          "normal",
+          "high"
+        ]
       },
       "Project": {
         "allOf": [
@@ -2146,6 +2656,253 @@
             }
           }
         }
+      },
+      "Status": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "done"
+        ],
+        "properties": {
+          "done": {
+            "type": "boolean",
+            "description": "Todos in this status count as done."
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "StatusInput": {
+        "type": "object",
+        "properties": {
+          "done": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Left out for a new status."
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "Todo": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/TodoFields"
+          },
+          {
+            "type": "object",
+            "required": [
+              "id",
+              "project_name",
+              "customer_id",
+              "customer_name",
+              "done",
+              "position",
+              "comments",
+              "created_by",
+              "created_at",
+              "updated_at"
+            ],
+            "properties": {
+              "assignee_name": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "comments": {
+                "type": "integer",
+                "format": "int64"
+              },
+              "created_at": {
+                "type": "integer",
+                "format": "int64"
+              },
+              "created_by": {
+                "type": "integer",
+                "format": "int64"
+              },
+              "customer_id": {
+                "type": "integer",
+                "format": "int64"
+              },
+              "customer_name": {
+                "type": "string"
+              },
+              "done": {
+                "type": "boolean",
+                "description": "Whether its status counts as done."
+              },
+              "id": {
+                "type": "integer",
+                "format": "int64"
+              },
+              "position": {
+                "type": "integer",
+                "format": "int64",
+                "description": "Order within its status on the board."
+              },
+              "project_name": {
+                "type": "string"
+              },
+              "updated_at": {
+                "type": "integer",
+                "format": "int64"
+              }
+            }
+          }
+        ]
+      },
+      "TodoDetail": {
+        "type": "object",
+        "required": [
+          "todo",
+          "comments"
+        ],
+        "properties": {
+          "comments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Comment"
+            }
+          },
+          "todo": {
+            "$ref": "#/components/schemas/Todo"
+          }
+        }
+      },
+      "TodoFields": {
+        "type": "object",
+        "description": "What an edit may change; also the snapshot the audit log compares.",
+        "required": [
+          "project_id",
+          "title",
+          "status_id",
+          "priority"
+        ],
+        "properties": {
+          "assignee_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "due_date": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "priority": {
+            "$ref": "#/components/schemas/Priority"
+          },
+          "project_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "status_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "title": {
+            "type": "string"
+          }
+        }
+      },
+      "TodoInput": {
+        "type": "object",
+        "required": [
+          "project_id"
+        ],
+        "properties": {
+          "assignee_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "due_date": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "`YYYY-MM-DD`."
+          },
+          "priority": {
+            "$ref": "#/components/schemas/Priority"
+          },
+          "project_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "status_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "The first status when left out."
+          },
+          "title": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "TodoMove": {
+        "type": "object",
+        "required": [
+          "status_id"
+        ],
+        "properties": {
+          "before_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "The todo it lands in front of, in the same status; at the end when left out."
+          },
+          "status_id": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "additionalProperties": false
       },
       "User": {
         "type": "object",
