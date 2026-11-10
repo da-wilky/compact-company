@@ -1055,6 +1055,287 @@
         }
       }
     },
+    "/api/layout-choices": {
+      "get": {
+        "tags": [
+          "layouts"
+        ],
+        "operationId": "list_choices",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LayoutChoice"
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "layouts"
+        ],
+        "summary": "Replaces every choice; a kind without one uses the built-in layout.",
+        "operationId": "put_choices",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/LayoutChoice"
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LayoutChoice"
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/layouts": {
+      "get": {
+        "tags": [
+          "layouts"
+        ],
+        "operationId": "list_layouts",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LayoutView"
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "layouts"
+        ],
+        "operationId": "create_layout",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/LayoutUpload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LayoutView"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/layouts/{id}": {
+      "put": {
+        "tags": [
+          "layouts"
+        ],
+        "operationId": "put_layout",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/LayoutUpload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LayoutView"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "layouts"
+        ],
+        "summary": "Documents it was chosen for fall back to the built-in layout; issued ones keep their PDF.",
+        "operationId": "delete_layout",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "204": {},
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/layouts/{id}/sample": {
+      "get": {
+        "tags": [
+          "layouts"
+        ],
+        "summary": "The layout rendered with sample data, as PDF.",
+        "operationId": "layout_sample",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "kind",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/DocumentKind"
+            }
+          },
+          {
+            "name": "language",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Language"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "integer",
+                    "format": "int32",
+                    "minimum": 0
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/oidc/callback": {
       "get": {
         "tags": [
@@ -1107,6 +1388,74 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/OidcRedirect"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/packages": {
+      "get": {
+        "tags": [
+          "layouts"
+        ],
+        "operationId": "list_packages",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Package"
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "layouts"
+        ],
+        "summary": "Downloads a package by name and version and approves it for layouts.",
+        "operationId": "approve_package",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PackageInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Package"
                 }
               }
             }
@@ -3204,6 +3553,13 @@
           "language": {
             "$ref": "#/components/schemas/Language"
           },
+          "layout": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The uploaded layout it was issued with; none for the built-in one."
+          },
           "lines": {
             "type": "array",
             "items": {
@@ -3783,6 +4139,8 @@
           "has_time",
           "issued",
           "layout_failed",
+          "package_not_approved",
+          "package_unavailable",
           "rate_limited",
           "internal"
         ]
@@ -3886,6 +4244,140 @@
           "de",
           "en"
         ]
+      },
+      "LayoutChoice": {
+        "type": "object",
+        "required": [
+          "kind",
+          "layout_id"
+        ],
+        "properties": {
+          "customer_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Only for this customer; for every customer when left out."
+          },
+          "kind": {
+            "$ref": "#/components/schemas/DocumentKind"
+          },
+          "layout_id": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "additionalProperties": false
+      },
+      "LayoutFile": {
+        "type": "object",
+        "required": [
+          "name",
+          "font"
+        ],
+        "properties": {
+          "font": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "LayoutUpload": {
+        "type": "object",
+        "description": "A layout as uploaded: multipart fields `name`, `kinds` (repeated), the Typst file `source`\n(`layout.typ`, defining `schema` and `render(data)`), and `files`: images it reads under\n`assets/` and the fonts it uses.",
+        "required": [
+          "name",
+          "kinds",
+          "files"
+        ],
+        "properties": {
+          "files": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "binary"
+            },
+            "description": "When sent with an update, they replace all files."
+          },
+          "kinds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DocumentKind"
+            }
+          },
+          "name": {
+            "type": "string"
+          },
+          "source": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "binary",
+            "description": "Required when uploading; kept when left out of an update."
+          }
+        }
+      },
+      "LayoutView": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "kinds",
+          "schema",
+          "current",
+          "files",
+          "packages",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "created_at": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "current": {
+            "type": "boolean"
+          },
+          "files": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LayoutFile"
+            }
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "kinds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DocumentKind"
+            }
+          },
+          "name": {
+            "type": "string"
+          },
+          "packages": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "schema": {
+            "type": "integer",
+            "format": "int32",
+            "description": "The data schema it is written for; it renders only while that is the app's.",
+            "minimum": 0
+          },
+          "updated_at": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
       },
       "LineInput": {
         "type": "object",
@@ -3994,6 +4486,47 @@
             "description": "Set when an invitee signs up through the identity provider."
           }
         }
+      },
+      "Package": {
+        "type": "object",
+        "required": [
+          "spec",
+          "approved_at",
+          "approved_by",
+          "requires"
+        ],
+        "properties": {
+          "approved_at": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "approved_by": {
+            "type": "string"
+          },
+          "requires": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Packages it imports that are not approved yet."
+          },
+          "spec": {
+            "type": "string",
+            "description": "Such as `@preview/tablex:0.0.8`."
+          }
+        }
+      },
+      "PackageInput": {
+        "type": "object",
+        "required": [
+          "spec"
+        ],
+        "properties": {
+          "spec": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
       },
       "PasskeyView": {
         "type": "object",

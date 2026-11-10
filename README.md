@@ -21,6 +21,7 @@ listen = "127.0.0.1:9440"
 public_url = "http://localhost:9440"   # the address browsers use; passkeys are bound to its host
 data_dir = "data"              # database, and stored files unless S3 is set
 trusted_proxies = ["127.0.0.1"] # reverse proxies whose X-Forwarded-For names the client, for rate limits
+typst_packages = "https://packages.typst.org/"  # where approved Typst packages are downloaded from
 
 [storage.s3]                   # S3-compatible bucket for stored files
 bucket = "compact-company"

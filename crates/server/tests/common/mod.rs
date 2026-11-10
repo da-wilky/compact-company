@@ -267,6 +267,48 @@ impl TestApp {
         serde_json::from_str(&body).unwrap()
     }
 
+    /// Sends `parts` (name, file name, content) as multipart/form-data.
+    pub async fn multipart(
+        &self,
+        browser: &mut Browser,
+        method: &str,
+        path: &str,
+        parts: &[(&str, Option<&str>, &[u8])],
+    ) -> Response {
+        let boundary = "compact-company-test-boundary";
+        let mut body = Vec::new();
+        for (name, file_name, content) in parts {
+            body.extend(
+                format!("--{boundary}\r\nContent-Disposition: form-data; name=\"{name}\"").bytes(),
+            );
+            if let Some(file_name) = file_name {
+                body.extend(format!("; filename=\"{file_name}\"").bytes());
+            }
+            body.extend(b"\r\n\r\n");
+            body.extend(*content);
+            body.extend(b"\r\n");
+        }
+        body.extend(format!("--{boundary}--\r\n").bytes());
+        let mut request = Request::builder()
+            .method(method)
+            .uri(path)
+            .header(
+                header::CONTENT_TYPE,
+                format!("multipart/form-data; boundary={boundary}"),
+            )
+            .header(
+                "x-csrf-token",
+                browser.csrf_token.clone().unwrap_or_default(),
+            );
+        let cookies: Vec<_> = browser
+            .cookies
+            .iter()
+            .map(|(name, value)| format!("{name}={value}"))
+            .collect();
+        request = request.header(header::COOKIE, cookies.join("; "));
+        self.request(request.body(Body::from(body)).unwrap()).await
+    }
+
     /// A business ready to issue documents, and a customer with an address.
     pub async fn ready_to_issue(&self, owner: &mut Browser) -> i64 {
         self.ok(

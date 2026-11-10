@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use axum::extract::DefaultBodyLimit;
 use serde::Serialize;
 use utoipa::{OpenApi, ToSchema};
 use utoipa_axum::{router::OpenApiRouter, routes};
@@ -14,6 +15,7 @@ pub mod documents;
 pub mod error;
 pub mod input;
 pub mod invitations;
+pub mod layouts;
 pub mod oidc;
 pub mod passkeys;
 pub mod projects;
@@ -87,6 +89,16 @@ pub fn routes() -> OpenApiRouter<Arc<App>> {
         ))
         .routes(routes!(documents::issue_document))
         .routes(routes!(documents::document_pdf))
+        .merge(
+            OpenApiRouter::new()
+                .routes(routes!(layouts::list_layouts, layouts::create_layout))
+                .routes(routes!(layouts::put_layout, layouts::delete_layout))
+                // layouts come with their fonts and images
+                .layer(DefaultBodyLimit::max(25 << 20)),
+        )
+        .routes(routes!(layouts::layout_sample))
+        .routes(routes!(layouts::list_choices, layouts::put_choices))
+        .routes(routes!(layouts::list_packages, layouts::approve_package))
         .routes(routes!(time::list_time, time::create_entry))
         .routes(routes!(time::put_entry, time::delete_entry))
         .routes(routes!(time::stop_timer))

@@ -27,6 +27,9 @@ pub struct Config {
     /// Reverse proxies whose X-Forwarded-For names the real client, e.g. `["127.0.0.1"]`.
     #[serde(default)]
     pub trusted_proxies: Vec<std::net::IpAddr>,
+    /// Where approved Typst packages are downloaded from.
+    #[serde(default = "default_typst_packages")]
+    pub typst_packages: Url,
 }
 
 #[derive(Debug, Deserialize)]
@@ -113,4 +116,8 @@ fn default_data_dir() -> PathBuf {
 
 fn default_oidc_name() -> String {
     "Single sign-on".into()
+}
+
+fn default_typst_packages() -> Url {
+    "https://packages.typst.org/".parse().expect("valid URL")
 }

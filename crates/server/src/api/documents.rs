@@ -79,6 +79,8 @@ pub struct Document {
     data: Data,
     /// What must be filled in before the draft can be issued; empty once issued.
     missing: BTreeMap<String, FieldError>,
+    /// The uploaded layout it was issued with; none for the built-in one.
+    layout: Option<String>,
     issued_at: Option<i64>,
     created_at: i64,
     updated_at: i64,
@@ -316,7 +318,7 @@ pub async fn document_pdf(
         None => {
             let business = business(&app).await?;
             let data = data(&mut db, &business, &row).await?;
-            let layout = layouts::for_document(&mut db, row.kind, row.customer_id).await?;
+            let layout = layouts::for_document(&app, &mut db, row.kind, row.customer_id).await?;
             drop(db);
             let (rendered, _) = render::render_blocking(layout, data, Vec::new())
                 .await
@@ -359,7 +361,8 @@ pub async fn issue(
     let number = documents::next_number(tx, row.kind, business, today.year()).await?;
     data.number = Some(number.clone());
     data.issue_date = Some(today.to_string());
-    let layout = layouts::for_document(tx, row.kind, row.customer_id).await?;
+    let layout = layouts::for_document(app, tx, row.kind, row.customer_id).await?;
+    let layout_name = layout.name.clone();
     let (rendered, data) = render::render_blocking(layout, data, Vec::new())
         .await
         .map_err(ApiError::layout)?;
@@ -390,12 +393,14 @@ pub async fn issue(
     let at = now();
     sqlx::query(
         "UPDATE document SET status = 'issued', number = ?, issue_date = ?, data = ?, pdf = ?,
+         layout = ?,
          issued_at = ?, issued_by = ?, updated_at = ? WHERE id = ?",
     )
     .bind(&number)
     .bind(today.to_string())
     .bind(serde_json::to_string(&data).map_err(ApiError::internal)?)
     .bind(pdf.to_string())
+    .bind(layout_name)
     .bind(at)
     .bind(user_id)
     .bind(at)
@@ -487,6 +492,7 @@ pub async fn find(
         lines: documents::lines(db, id).await?,
         data,
         missing,
+        layout: row.layout,
         issued_at,
         created_at,
         updated_at,

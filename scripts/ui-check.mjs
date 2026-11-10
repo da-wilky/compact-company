@@ -238,8 +238,11 @@ try {
 
 	await open(`${origin}/business`);
 	await fill([
-		['form label:nth-of-type(1) input', 'Beispiel GmbH'],
-		['form textarea', 'Hauptstraße 1\n12345 Musterstadt']
+		['form section:first-of-type label:nth-of-type(1) input', 'Beispiel GmbH'],
+		['form section:first-of-type label:nth-of-type(2) input', 'Hauptstraße 1'],
+		['form section:first-of-type label:nth-of-type(3) input', '12345'],
+		['form section:first-of-type label:nth-of-type(4) input', 'Musterstadt'],
+		['form section:nth-of-type(2) label:nth-of-type(1) input', '201/123/45678']
 	]);
 	await click('form button.primary');
 	await settle();
@@ -259,7 +262,9 @@ try {
 		name: 'Bäckerei Krume',
 		language: 'de',
 		email: 'info@krume.example',
-		address: 'Brotgasse 3\n12345 Musterstadt',
+		street: 'Brotgasse 3',
+		postcode: '12345',
+		city: 'Musterstadt',
 		hourly_rate: 8500
 	});
 	const zurich = await api('POST', '/api/customers', { name: 'Atelier Zürich', language: 'en', currency: 'CHF', hourly_rate: 12000 });
@@ -291,6 +296,7 @@ try {
 	await screen('customer', `${origin}/customers/${krume.id}`);
 	await screen('activities', `${origin}/activities`);
 	await screen('statuses', `${origin}/statuses`);
+	await screen('layouts', `${origin}/layouts`);
 	await screen('todos-board', `${origin}/todos`, () => evaluate("localStorage.setItem('todos.view', 'board')"));
 	await screen('todos-list', `${origin}/todos`, async () => {
 		await click('[role=radiogroup] [role=radio]');

@@ -38,6 +38,8 @@ static LIB: LazyLock<LazyHash<Library>> = LazyLock::new(|| LazyHash::new(Library
 /// the approved packages it imports.
 #[derive(Clone, Default)]
 pub struct Layout {
+    /// None for the built-in layout.
+    pub name: Option<String>,
     pub source: String,
     pub assets: HashMap<String, Bytes>,
     pub fonts: Vec<Bytes>,
@@ -75,6 +77,7 @@ impl Layout {
                 .map(|(_, bytes)| bytes)
                 .collect(),
             packages: HashMap::new(),
+            name: None,
         })
     }
 }

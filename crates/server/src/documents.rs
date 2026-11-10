@@ -57,7 +57,7 @@ impl Kind {
         }
     }
 
-    fn name(self) -> &'static str {
+    pub fn name(self) -> &'static str {
         match self {
             Self::Quote => "quote",
             Self::OrderConfirmation => "order_confirmation",
@@ -346,6 +346,7 @@ pub struct Row {
     pub issue_date: Option<String>,
     pub data: Option<String>,
     pub pdf: Option<String>,
+    pub layout: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, ToSchema, sqlx::FromRow)]

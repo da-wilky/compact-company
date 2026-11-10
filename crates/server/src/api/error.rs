@@ -49,6 +49,8 @@ pub enum ErrorCode {
     HasTime,
     Issued,
     LayoutFailed,
+    PackageNotApproved,
+    PackageUnavailable,
     RateLimited,
     Internal,
 }
@@ -87,6 +89,8 @@ impl ErrorCode {
         Self::HasTime,
         Self::Issued,
         Self::LayoutFailed,
+        Self::PackageNotApproved,
+        Self::PackageUnavailable,
         Self::RateLimited,
         Self::Internal,
     ];
@@ -98,7 +102,10 @@ impl ErrorCode {
             | Self::CeremonyExpired
             | Self::PasskeyRejected
             | Self::OidcFailed => StatusCode::BAD_REQUEST,
-            Self::InvalidInput | Self::LayoutFailed => StatusCode::UNPROCESSABLE_ENTITY,
+            Self::InvalidInput | Self::LayoutFailed | Self::PackageNotApproved => {
+                StatusCode::UNPROCESSABLE_ENTITY
+            }
+            Self::PackageUnavailable => StatusCode::BAD_GATEWAY,
             Self::Unauthenticated => StatusCode::UNAUTHORIZED,
             Self::Forbidden
             | Self::CsrfToken
@@ -162,12 +169,16 @@ impl ApiError {
         }
     }
 
+    pub fn with_detail(self, detail: String) -> Self {
+        Self {
+            detail: Some(detail),
+            ..self
+        }
+    }
+
     /// A layout that does not render, with Typst's errors as the detail.
     pub fn layout(error: crate::render::Error) -> Self {
-        Self {
-            detail: Some(error.to_string()),
-            ..Self::new(ErrorCode::LayoutFailed)
-        }
+        Self::new(ErrorCode::LayoutFailed).with_detail(error.to_string())
     }
 
     pub fn internal(error: impl std::fmt::Display) -> Self {

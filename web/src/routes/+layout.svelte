@@ -34,6 +34,7 @@
 		{ href: '/customers', label: t('customers.title'), icon: 'customers', roles: all, group: 'main' },
 		{ href: '/activities', label: t('activities.title'), icon: 'activities', roles: ['owner'], group: 'admin' },
 		{ href: '/statuses', label: t('statuses.title'), icon: 'statuses', roles: ['owner'], group: 'admin' },
+		{ href: '/layouts', label: t('layouts.title'), icon: 'layouts', roles: ['owner'], group: 'admin' },
 		{ href: '/business', label: t('term.business'), icon: 'business', roles: ['owner', 'accountant'], group: 'admin' },
 		{ href: '/users', label: t('users.title'), icon: 'users', roles: ['owner'], group: 'admin' },
 		{ href: '/audit', label: t('audit.title'), icon: 'audit', roles: ['owner', 'accountant'], group: 'admin' },

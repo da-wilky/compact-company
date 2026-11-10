@@ -76,6 +76,15 @@ const SIGNED_IN: &[(&str, &str, &[&str])] = &[
     ("DELETE", "/api/documents/{id}", OWNER),
     ("POST", "/api/documents/{id}/issue", OWNER),
     ("GET", "/api/documents/{id}/pdf", OWNER_ACCOUNTANT),
+    ("GET", "/api/layouts", OWNER),
+    ("POST", "/api/layouts", OWNER),
+    ("PUT", "/api/layouts/{id}", OWNER),
+    ("DELETE", "/api/layouts/{id}", OWNER),
+    ("GET", "/api/layouts/{id}/sample", OWNER),
+    ("GET", "/api/layout-choices", OWNER),
+    ("PUT", "/api/layout-choices", OWNER),
+    ("GET", "/api/packages", OWNER),
+    ("POST", "/api/packages", OWNER),
     ("POST", "/api/timers", OWNER_STAFF),
 ];
 

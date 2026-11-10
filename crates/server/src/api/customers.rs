@@ -23,6 +23,15 @@ pub enum Language {
     En,
 }
 
+impl Language {
+    pub fn code(self) -> &'static str {
+        match self {
+            Self::De => "de",
+            Self::En => "en",
+        }
+    }
+}
+
 #[derive(Debug, Deserialize, ToSchema)]
 #[serde(deny_unknown_fields)]
 pub struct CustomerInput {

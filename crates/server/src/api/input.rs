@@ -2,6 +2,11 @@ use std::collections::BTreeMap;
 
 use super::error::{ApiError, FieldError};
 
+/// An error about a single field.
+pub fn field_error(key: &str, error: FieldError) -> ApiError {
+    ApiError::fields(BTreeMap::from([(key.to_owned(), error)]))
+}
+
 /// Collects field errors while cleaning up a request's values.
 #[derive(Default)]
 pub struct Check {

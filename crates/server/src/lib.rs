@@ -42,6 +42,7 @@ pub struct App {
     pub setup_token: String,
     pub oidc: Option<oidc::Provider>,
     pub limiter: limit::Limiter,
+    pub typst_packages: Url,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -101,6 +102,7 @@ impl App {
                 .map(|oidc| oidc::Provider::new(oidc, url))
                 .transpose()?,
             limiter: limit::Limiter::new(config.trusted_proxies.clone()),
+            typst_packages: config.typst_packages.clone(),
         })
     }
 
