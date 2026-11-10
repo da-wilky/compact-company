@@ -47,6 +47,7 @@ pub trait Allowed {
 pub struct AnyRole;
 pub struct OwnerOnly;
 pub struct OwnerOrAccountant;
+pub struct OwnerOrStaff;
 
 impl Allowed for AnyRole {
     const ROLES: &[Role] = &[Role::Owner, Role::Staff, Role::Accountant];
@@ -58,6 +59,10 @@ impl Allowed for OwnerOnly {
 
 impl Allowed for OwnerOrAccountant {
     const ROLES: &[Role] = &[Role::Owner, Role::Accountant];
+}
+
+impl Allowed for OwnerOrStaff {
+    const ROLES: &[Role] = &[Role::Owner, Role::Staff];
 }
 
 /// A signed-in user whose role is one of `R::ROLES`; state-changing requests must also carry the

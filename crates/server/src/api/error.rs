@@ -41,6 +41,10 @@ pub enum ErrorCode {
     OidcFailed,
     OidcUnknownIdentity,
     OidcIdentityTaken,
+    Archived,
+    StatusInUse,
+    HasTime,
+    RateLimited,
     Internal,
 }
 
@@ -51,6 +55,7 @@ pub enum FieldError {
     TooLong,
     InvalidFormat,
     Pinned,
+    Locked,
 }
 
 impl ErrorCode {
@@ -71,6 +76,10 @@ impl ErrorCode {
         Self::OidcFailed,
         Self::OidcUnknownIdentity,
         Self::OidcIdentityTaken,
+        Self::Archived,
+        Self::StatusInUse,
+        Self::HasTime,
+        Self::RateLimited,
         Self::Internal,
     ];
 
@@ -87,9 +96,14 @@ impl ErrorCode {
             | Self::CsrfToken
             | Self::InvalidSetupToken
             | Self::OidcUnknownIdentity => StatusCode::FORBIDDEN,
-            Self::SetupDone | Self::LastPasskey | Self::LastOwner | Self::OidcIdentityTaken => {
-                StatusCode::CONFLICT
-            }
+            Self::SetupDone
+            | Self::LastPasskey
+            | Self::LastOwner
+            | Self::OidcIdentityTaken
+            | Self::Archived
+            | Self::StatusInUse
+            | Self::HasTime => StatusCode::CONFLICT,
+            Self::RateLimited => StatusCode::TOO_MANY_REQUESTS,
             Self::Internal => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
@@ -105,6 +119,7 @@ impl FieldError {
         Self::TooLong,
         Self::InvalidFormat,
         Self::Pinned,
+        Self::Locked,
     ];
 
     pub fn key(self) -> String {

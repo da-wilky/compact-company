@@ -23,7 +23,10 @@ pub mod audit;
 pub mod auth;
 pub mod config;
 pub mod files;
+pub mod limit;
+pub mod money;
 pub mod oidc;
+pub mod rates;
 pub mod settings;
 
 pub struct App {
@@ -35,6 +38,7 @@ pub struct App {
     /// Required to create the first owner, so that only whoever can read the server log can.
     pub setup_token: String,
     pub oidc: Option<oidc::Provider>,
+    pub limiter: limit::Limiter,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -93,6 +97,7 @@ impl App {
                 .as_ref()
                 .map(|oidc| oidc::Provider::new(oidc, url))
                 .transpose()?,
+            limiter: limit::Limiter::new(config.trusted_proxies.clone()),
         })
     }
 

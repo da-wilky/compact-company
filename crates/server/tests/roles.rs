@@ -24,6 +24,7 @@ const PUBLIC: &[(&str, &str)] = &[
 const ANY: &[&str] = &["owner", "staff", "accountant"];
 const OWNER: &[&str] = &["owner"];
 const OWNER_ACCOUNTANT: &[&str] = &["owner", "accountant"];
+const OWNER_STAFF: &[&str] = &["owner", "staff"];
 
 /// Every endpoint that needs a session, with the roles that may call it.
 const SIGNED_IN: &[(&str, &str, &[&str])] = &[
@@ -40,6 +41,35 @@ const SIGNED_IN: &[(&str, &str, &[&str])] = &[
     ("POST", "/api/invitations", OWNER),
     ("DELETE", "/api/invitations/{id}", OWNER),
     ("GET", "/api/audit", OWNER_ACCOUNTANT),
+    ("GET", "/api/currencies", ANY),
+    ("GET", "/api/customers", ANY),
+    ("POST", "/api/customers", OWNER),
+    ("GET", "/api/customers/{id}", ANY),
+    ("PUT", "/api/customers/{id}", OWNER),
+    ("GET", "/api/projects", ANY),
+    ("POST", "/api/projects", OWNER),
+    ("GET", "/api/projects/{id}", ANY),
+    ("PUT", "/api/projects/{id}", OWNER),
+    ("GET", "/api/activities", ANY),
+    ("POST", "/api/activities", OWNER),
+    ("PUT", "/api/activities/{id}", OWNER),
+    ("GET", "/api/statuses", OWNER_STAFF),
+    ("PUT", "/api/statuses", OWNER),
+    ("GET", "/api/assignees", OWNER_STAFF),
+    ("GET", "/api/todos", OWNER_STAFF),
+    ("POST", "/api/todos", OWNER_STAFF),
+    ("GET", "/api/todos/{id}", OWNER_STAFF),
+    ("PUT", "/api/todos/{id}", OWNER_STAFF),
+    ("DELETE", "/api/todos/{id}", OWNER_STAFF),
+    ("POST", "/api/todos/{id}/move", OWNER_STAFF),
+    ("POST", "/api/todos/{id}/comments", OWNER_STAFF),
+    ("GET", "/api/time", OWNER_STAFF),
+    ("POST", "/api/time", OWNER_STAFF),
+    ("PUT", "/api/time/{id}", OWNER_STAFF),
+    ("DELETE", "/api/time/{id}", OWNER_STAFF),
+    ("POST", "/api/time/{id}/stop", OWNER_STAFF),
+    ("GET", "/api/timers", OWNER_STAFF),
+    ("POST", "/api/timers", OWNER_STAFF),
 ];
 
 #[test]

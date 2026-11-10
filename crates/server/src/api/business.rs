@@ -8,6 +8,7 @@ use super::error::{ApiError, FieldError, Json};
 use crate::{
     App,
     auth::{Auth, OwnerOnly, OwnerOrAccountant},
+    money,
     settings::{self, Business},
 };
 
@@ -71,7 +72,15 @@ fn validate(business: Business) -> Result<Business, ApiError> {
         vat_id: text("vat_id", business.vat_id, 20)
             .map(|v| v.replace(' ', "").to_ascii_uppercase()),
         small_business: business.small_business,
+        currency: business.currency,
     };
+    if business
+        .currency
+        .as_deref()
+        .is_some_and(|c| !money::is_currency(c))
+    {
+        fields.insert("currency".to_owned(), FieldError::InvalidFormat);
+    }
     if business.vat_id.as_deref().is_some_and(|v| !is_vat_id(v)) {
         fields.insert("vat_id".to_owned(), FieldError::InvalidFormat);
     }

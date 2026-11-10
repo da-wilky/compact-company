@@ -74,6 +74,10 @@ How urgent a todo is: low, normal or high; normal unless chosen otherwise.
 Where a todo stands, from one ordered list shared by the whole business; a status either counts as done or not.
 _Avoid_: Column, stage, state
 
+**Comment** (de: Kommentar):
+A note a user adds to a todo; comments are kept as written.
+_Avoid_: Note, reply
+
 **Time entry** (de: Zeiteintrag):
 A span of work by one user on a project or todo, with a duration and a description.
 _Avoid_: Time record, timesheet row, booking

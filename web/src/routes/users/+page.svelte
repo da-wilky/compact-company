@@ -128,7 +128,7 @@
 	<section class="card stack">
 		<h2>{t('invitations.title')}</h2>
 		{#if invitations.length}
-			<ul>
+			<ul class="list">
 				{#each invitations as invitation (invitation.id)}
 					<li>
 						<div>
@@ -190,28 +190,6 @@
 	}
 	.inactive td {
 		color: var(--muted);
-	}
-	ul {
-		margin: 0;
-		padding: 0;
-		list-style: none;
-		border: 1px solid var(--border);
-		border-radius: var(--radius);
-	}
-	li {
-		display: flex;
-		align-items: center;
-		gap: 0.75rem;
-		padding: 0.75rem 0.5rem 0.75rem 1rem;
-	}
-	li + li {
-		border-top: 1px solid var(--border);
-	}
-	li > div {
-		flex: 1;
-		min-width: 0;
-		display: flex;
-		flex-direction: column;
 	}
 	.invite {
 		display: flex;

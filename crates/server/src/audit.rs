@@ -1,4 +1,5 @@
-use serde_json::Value;
+use serde::Serialize;
+use serde_json::{Map, Value};
 use sqlx::SqliteConnection;
 
 use crate::auth::now;
@@ -25,4 +26,26 @@ pub async fn record(
     .execute(tx)
     .await?;
     Ok(())
+}
+
+/// The fields that differ between two snapshots of the same thing, as before and after maps;
+/// `None` when nothing changed.
+pub fn changes(before: &impl Serialize, after: &impl Serialize) -> Option<(Value, Value)> {
+    let (Ok(Value::Object(before)), Ok(Value::Object(after))) =
+        (serde_json::to_value(before), serde_json::to_value(after))
+    else {
+        unreachable!("snapshots serialize to objects")
+    };
+    let changed: Map<String, Value> = after
+        .into_iter()
+        .filter(|(key, value)| before.get(key) != Some(value))
+        .collect();
+    if changed.is_empty() {
+        return None;
+    }
+    let old = changed
+        .keys()
+        .map(|key| (key.clone(), before.get(key).cloned().unwrap_or(Value::Null)))
+        .collect();
+    Some((Value::Object(old), Value::Object(changed)))
 }

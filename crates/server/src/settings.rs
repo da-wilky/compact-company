@@ -13,6 +13,8 @@ pub struct Business {
     pub tax_number: Option<String>,
     pub vat_id: Option<String>,
     pub small_business: Option<bool>,
+    /// ISO 4217 code new customers are billed in; EUR when unset.
+    pub currency: Option<String>,
 }
 
 /// Business data and defaults: stored in the database unless the config pins them (ADR 0017).

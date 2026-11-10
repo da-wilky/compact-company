@@ -20,6 +20,7 @@ Every config key is optional:
 listen = "127.0.0.1:9440"
 public_url = "http://localhost:9440"   # the address browsers use; passkeys are bound to its host
 data_dir = "data"              # database, and stored files unless S3 is set
+trusted_proxies = ["127.0.0.1"] # reverse proxies whose X-Forwarded-For names the client, for rate limits
 
 [storage.s3]                   # S3-compatible bucket for stored files
 bucket = "compact-company"
@@ -40,6 +41,7 @@ address = "…"
 tax_number = "…"
 vat_id = "…"
 small_business = true
+currency = "EUR"               # currency new customers start with
 ```
 
 ## NixOS
@@ -51,6 +53,7 @@ small_business = true
     enable = true;
     settings = {
       public_url = "https://cc.example.com/";
+      trusted_proxies = [ "127.0.0.1" ];  # the reverse proxy on this host
       business.name = "Example GmbH";
       # any *_file setting, such as oidc.client_secret_file, reaches the service as a systemd credential
     };
@@ -58,7 +61,7 @@ small_business = true
 }
 ```
 
-The service listens on `127.0.0.1:9440` for a reverse proxy and keeps its data in `/var/lib/compact-company`; `journalctl -u compact-company` shows the setup link.
+The service listens on `127.0.0.1:9440` for a reverse proxy and keeps its data in `/var/lib/compact-company`; `journalctl -u compact-company` shows the setup link. Sign-in, setup, invitation and OIDC starts are limited to a burst of 20 and then 10 a minute per client address (per /64 for IPv6); without `trusted_proxies` every request through the proxy counts as one client.
 
 ## Developing
 
