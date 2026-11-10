@@ -27,6 +27,8 @@ pub struct Config {
     /// Reverse proxies whose X-Forwarded-For names the real client, e.g. `["127.0.0.1"]`.
     #[serde(default)]
     pub trusted_proxies: Vec<std::net::IpAddr>,
+    /// Outgoing mail for sending documents; documents cannot be sent without it.
+    pub smtp: Option<Smtp>,
     /// Where approved Typst packages are downloaded from.
     #[serde(default = "default_typst_packages")]
     pub typst_packages: Url,
@@ -43,6 +45,36 @@ pub struct Oidc {
     /// Label of the sign-in button.
     #[serde(default = "default_oidc_name")]
     pub name: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Smtp {
+    pub host: String,
+    #[serde(default = "default_smtp_port")]
+    pub port: u16,
+    #[serde(default)]
+    pub security: SmtpSecurity,
+    pub username: Option<String>,
+    password_file: Option<PathBuf>,
+    #[serde(skip)]
+    pub password: Option<String>,
+    /// Sender, such as `swilk <rechnung@swilk.eu>`.
+    pub from: String,
+    /// Gets a blind copy of every document sent, for the business's own records.
+    pub bcc: Option<String>,
+}
+
+#[derive(Debug, Default, Clone, Copy, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum SmtpSecurity {
+    /// TLS from the first byte, usually port 465.
+    Tls,
+    /// Upgraded with STARTTLS, usually port 587.
+    #[default]
+    Starttls,
+    /// Plain text, only for a relay on the same host.
+    None,
 }
 
 #[derive(Debug, Default, Deserialize)]
@@ -91,6 +123,11 @@ impl Config {
         if let Some(s3) = &mut config.storage.s3 {
             s3.secret_access_key = read(&s3.secret_access_key_file)?.trim_end().to_owned();
         }
+        if let Some(smtp) = &mut config.smtp
+            && let Some(file) = &smtp.password_file
+        {
+            smtp.password = Some(read(file)?.trim_end().to_owned());
+        }
         if let Some(oidc) = &mut config.oidc {
             oidc.client_secret = read(&oidc.client_secret_file)?.trim_end().to_owned();
         }
@@ -120,4 +157,8 @@ fn default_oidc_name() -> String {
 
 fn default_typst_packages() -> Url {
     "https://packages.typst.org/".parse().expect("valid URL")
+}
+
+fn default_smtp_port() -> u16 {
+    587
 }

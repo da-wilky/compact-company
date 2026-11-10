@@ -36,6 +36,15 @@ client_id = "compact-company"  # redirect URI: <public_url>/api/oidc/callback
 client_secret_file = "/run/secrets/oidc"
 name = "Keycloak"              # label of the sign-in button
 
+[smtp]                         # for sending documents by email
+host = "smtp.example.com"
+port = 587
+security = "starttls"          # or "tls" (port 465), or "none" for a relay on this host
+username = "rechnung@example.com"
+password_file = "/run/secrets/smtp"
+from = "Example GmbH <rechnung@example.com>"
+bcc = "archiv@example.com"     # optional copy of everything sent
+
 [business]                     # each key set here is fixed; the app shows it read-only
 name = "…"
 street = "…"

@@ -228,6 +228,42 @@
 	let unbilled = $state<Schemas['UnbilledProject'][]>([]);
 	let timeError = $state<ApiError>();
 
+	let sendOpen = $state(false);
+	let sendTo = $state('');
+	let sendSubject = $state('');
+	let sendBody = $state('');
+	let sendError = $state<ApiError>();
+
+	function openSend() {
+		sendTo = doc?.data.customer.email ?? '';
+		sendSubject = '';
+		sendBody = '';
+		sendError = undefined;
+		sendOpen = true;
+		if (!snippets.length) call(api.GET('/api/snippets')).then(({ data }) => (snippets = data ?? []));
+	}
+
+	async function send(event: SubmitEvent) {
+		event.preventDefault();
+		busy = true;
+		const result = await call(
+			api.POST('/api/documents/{id}/send', {
+				params: { path: { id } },
+				body: { to: sendTo || null, subject: sendSubject || null, body: sendBody || null }
+			})
+		);
+		busy = false;
+		sendError = result.error;
+		if (result.data) {
+			show(result.data);
+			sendOpen = false;
+			toast(t('documents.sent_done', { to: sendTo }));
+		} else {
+			const reload = await call(api.GET('/api/documents/{id}', { params: { path: { id } } }));
+			if (reload.data) doc = reload.data;
+		}
+	}
+
 	async function openTime() {
 		if (dirty && !(await save())) return;
 		timeError = undefined;
@@ -316,6 +352,9 @@
 			{/if}
 			{#if owner}
 				<button class="ghost" onclick={duplicate}>{t('documents.duplicate')}</button>
+			{/if}
+			{#if owner && doc.status === 'issued'}
+				<button class="primary" onclick={openSend}><Icon name="send" size={18} />{t('documents.send')}</button>
 			{/if}
 			{#if draft}
 				<button class="ghost" onclick={remove}>{t('app.delete')}</button>
@@ -577,6 +616,21 @@
 				{#if doc.data.due_date}<p class="muted">{t('documents.due_date')}: {formatDay(doc.data.due_date, { dateStyle: 'medium' })}</p>{/if}
 			</section>
 		{/if}
+		{#if doc.sent.length}
+			<section class="card">
+				<h2>{t('documents.sent_log')}</h2>
+				<ul class="sent">
+					{#each doc.sent as entry, i (i)}
+						<li>
+							<span>{new Date(entry.at * 1000).toLocaleString()}</span>
+							<span>{entry.recipient}</span>
+							<span class="muted">{entry.user_name}</span>
+							{#if entry.error}<span class="error">{t('documents.send_failed')}: {entry.error}</span>{:else}<span class="badge accent">{t('documents.sent_ok')}</span>{/if}
+						</li>
+					{/each}
+				</ul>
+			</section>
+		{/if}
 	</div>
 {:else if error}
 	<p class="alert" role="alert">{t(error.message)}</p>
@@ -628,6 +682,31 @@
 		</Field>
 		{#if timeError && !timeError.fields}<p class="alert" role="alert">{t(timeError.message)}</p>{/if}
 		<div><button class="primary">{t('documents.add_time')}</button></div>
+	</form>
+</Dialog>
+
+
+<Dialog bind:open={sendOpen} title={t('documents.send')}>
+	<form class="stack" onsubmit={send}>
+		<Field label={t('documents.send_to')} error={sendError?.fields?.to}>
+			<input type="email" bind:value={sendTo} />
+		</Field>
+		<Field label={t('documents.send_subject')} error={sendError?.fields?.subject} note={t('documents.send_default')}>
+			<input bind:value={sendSubject} />
+		</Field>
+		<Field label={t('documents.send_body')} error={sendError?.fields?.body} note={t('documents.send_default')}>
+			<textarea rows="6" bind:value={sendBody}></textarea>
+		</Field>
+		{#if snippets.length}
+			<select class="snippet" aria-label={t('documents.insert_snippet')} onchange={(e) => { const s = snippets.find((x) => String(x.id) === e.currentTarget.value); if (s) sendBody = sendBody ? `${sendBody}\n\n${s.body}` : s.body; e.currentTarget.value = ''; }}>
+				<option value="">{t('documents.insert_snippet')}</option>
+				{#each snippets.filter((s) => s.language === doc?.language) as s (s.id)}<option value={s.id}>{s.name}</option>{/each}
+			</select>
+		{/if}
+		{#if sendError && !sendError.fields}
+			<div class="alert" role="alert">{t(sendError.message)}{#if sendError.detail}<pre>{sendError.detail}</pre>{/if}</div>
+		{/if}
+		<div><button class="primary" disabled={busy}>{t('documents.send')}</button></div>
 	</form>
 </Dialog>
 
@@ -750,6 +829,22 @@
 		align-items: center;
 		padding: 0.5rem 0;
 		border-bottom: 1px solid var(--border);
+	}
+	.sent {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: grid;
+		gap: 0.5rem;
+	}
+	.sent li {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.25rem 1rem;
+		align-items: center;
+	}
+	.error {
+		color: var(--danger);
 	}
 	.add {
 		display: flex;

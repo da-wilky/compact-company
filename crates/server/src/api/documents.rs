@@ -108,6 +108,8 @@ pub struct Document {
     quote_state: Option<QuoteState>,
     /// Documents that follow from this one.
     follow_ups: Vec<FollowUp>,
+    /// Every attempt to email it, newest first.
+    sent: Vec<super::sending::Sent>,
     /// The uploaded layout it was issued with; none for the built-in one.
     layout: Option<String>,
     issued_at: Option<i64>,
@@ -855,6 +857,7 @@ pub async fn find(
         rounding: row.rounding,
         quote_state,
         follow_ups,
+        sent: super::sending::sent(db, id).await?,
         layout: row.layout,
         issued_at,
         created_at,

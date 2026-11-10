@@ -964,6 +964,56 @@
         }
       }
     },
+    "/api/documents/{id}/send": {
+      "post": {
+        "tags": [
+          "documents"
+        ],
+        "summary": "Emails an issued document as PDF, with the XRechnung XML when the customer gets one; every\nattempt is logged.",
+        "operationId": "send_document",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Document"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/documents/{id}/time": {
       "post": {
         "tags": [
@@ -3984,6 +4034,7 @@
           "timesheet",
           "rounding",
           "follow_ups",
+          "sent",
           "created_at",
           "updated_at"
         ],
@@ -4114,6 +4165,13 @@
             "type": "integer",
             "format": "int64",
             "description": "Minutes each time entry is rounded up to."
+          },
+          "sent": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Sent"
+            },
+            "description": "Every attempt to email it, newest first."
           },
           "service_from": {
             "type": [
@@ -4786,6 +4844,8 @@
           "billed",
           "no_unbilled_time",
           "already_cancelled",
+          "mail_not_configured",
+          "mail_failed",
           "rate_limited",
           "internal"
         ]
@@ -5459,6 +5519,64 @@
           "staff",
           "accountant"
         ]
+      },
+      "SendInput": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "A short greeting in the document's language when left out."
+          },
+          "subject": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "`<kind> <number>` when left out."
+          },
+          "to": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The customer's email when left out."
+          }
+        },
+        "additionalProperties": false
+      },
+      "Sent": {
+        "type": "object",
+        "required": [
+          "at",
+          "user_name",
+          "recipient",
+          "subject"
+        ],
+        "properties": {
+          "at": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "error": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "What the mail server answered when it refused; none once sent."
+          },
+          "recipient": {
+            "type": "string"
+          },
+          "subject": {
+            "type": "string"
+          },
+          "user_name": {
+            "type": "string"
+          }
+        }
       },
       "SessionView": {
         "type": "object",

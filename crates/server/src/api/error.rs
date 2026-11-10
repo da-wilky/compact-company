@@ -57,6 +57,8 @@ pub enum ErrorCode {
     Billed,
     NoUnbilledTime,
     AlreadyCancelled,
+    MailNotConfigured,
+    MailFailed,
     RateLimited,
     Internal,
 }
@@ -103,6 +105,8 @@ impl ErrorCode {
         Self::Billed,
         Self::NoUnbilledTime,
         Self::AlreadyCancelled,
+        Self::MailNotConfigured,
+        Self::MailFailed,
         Self::RateLimited,
         Self::Internal,
     ];
@@ -117,7 +121,7 @@ impl ErrorCode {
             Self::InvalidInput | Self::LayoutFailed | Self::PackageNotApproved => {
                 StatusCode::UNPROCESSABLE_ENTITY
             }
-            Self::PackageUnavailable => StatusCode::BAD_GATEWAY,
+            Self::PackageUnavailable | Self::MailFailed => StatusCode::BAD_GATEWAY,
             Self::Unauthenticated => StatusCode::UNAUTHORIZED,
             Self::Forbidden
             | Self::CsrfToken
@@ -136,7 +140,8 @@ impl ErrorCode {
             | Self::QuoteDecided
             | Self::Billed
             | Self::NoUnbilledTime
-            | Self::AlreadyCancelled => StatusCode::CONFLICT,
+            | Self::AlreadyCancelled
+            | Self::MailNotConfigured => StatusCode::CONFLICT,
             Self::RateLimited => StatusCode::TOO_MANY_REQUESTS,
             Self::Internal => StatusCode::INTERNAL_SERVER_ERROR,
         }
