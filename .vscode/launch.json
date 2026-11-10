@@ -1,0 +1,30 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Server",
+      "type": "lldb",
+      "request": "launch",
+      "cargo": {
+        "args": ["build", "--package=compact-company", "--bin=compact-company"]
+      },
+      "args": ["serve"],
+      "cwd": "${workspaceFolder}",
+      "preLaunchTask": "web: build"
+    },
+    {
+      "name": "Web dev server",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "npm run dev -- --port 9441 --strictPort",
+      "cwd": "${workspaceFolder}/web"
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Server + web dev server",
+      "configurations": ["Server", "Web dev server"],
+      "stopAll": true
+    }
+  ]
+}
