@@ -41,8 +41,8 @@
 <h1>{t('invitation.title')}</h1>
 
 {#if info}
-	<p>{t('invitation.intro', { name: info.name, role: t(`term.${info.role}`) })}</p>
-	<form onsubmit={accept}>
+	<p class="muted">{t('invitation.intro', { name: info.name, role: t(`term.${info.role}`) })}</p>
+	<form class="stack" onsubmit={accept}>
 		<Field
 			label={t('passkeys.name')}
 			note={t('passkeys.name_hint')}
@@ -50,7 +50,7 @@
 		>
 			<input bind:value={passkeyName} />
 		</Field>
-		<button>{t('passkeys.create')}</button>
+		<button class="primary">{t('passkeys.create')}</button>
 		{#if session.view?.oidc}
 			<button type="button" onclick={async () => (error = await startOidc(token))}>
 				{t('invitation.oidc', { name: session.view.oidc })}
@@ -58,4 +58,4 @@
 		{/if}
 	</form>
 {/if}
-{#if error}<p class="error" role="alert">{t(error.message)}</p>{/if}
+{#if error}<p class="alert" role="alert">{t(error.message)}</p>{/if}

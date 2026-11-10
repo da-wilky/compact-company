@@ -6,3 +6,4 @@ node_modules/
 /web/build/
 /web/.svelte-kit/
 /web/src/lib/api/schema.d.ts
+/ui-check/

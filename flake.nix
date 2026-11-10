@@ -38,7 +38,7 @@
             pname = "compact-company-web";
             version = "0.1.0";
             src = ./web;
-            npmDepsHash = "sha256-7R0fIsVBCax2Dlc8MHBziMC8TO0a7Ll9XK5IrMv/pWI=";
+            npmDepsHash = "sha256-AsAlfrIffiIRWO9k++Aw2OI2kXVEx1YL9pQlUv+7q58=";
             installPhase = "cp -r build $out";
           };
           cargoArtifacts = craneLib.buildDepsOnly {
@@ -114,6 +114,22 @@
       );
 
       apps = forAll (pkgs: {
+        ui-check = {
+          type = "app";
+          program = pkgs.lib.getExe (
+            pkgs.writeShellApplication {
+              name = "ui-check";
+              runtimeInputs = [ pkgs.nodejs ];
+              text = ''
+                # a host LD_LIBRARY_PATH pointing at other libraries breaks Chromium
+                unset LD_LIBRARY_PATH
+                exec node ${./scripts/ui-check.mjs} \
+                  ${pkgs.lib.getExe self.packages.${pkgs.stdenv.hostPlatform.system}.default} \
+                  ${pkgs.lib.getExe pkgs.chromium} "$@"
+              '';
+            }
+          );
+        };
         default = {
           type = "app";
           program = toString (
