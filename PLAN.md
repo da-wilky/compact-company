@@ -93,6 +93,8 @@ Crate names are candidates; verify each before the foundation phase settles them
 ### Phase 2 – Work
 - Customers, projects, activities, rates, todos with list and board, statuses
 - Parallel timers, manual entries, week view, billable duration
+- Dark mode
+- Rate limiting of unauthenticated endpoints (sign-in, setup, invitation and OIDC starts)
 - Done when: a staff user tracks time on a todo of a new customer's project
 
 ### Phase 3 – Documents (first release, replaces the Go version)
