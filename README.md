@@ -68,6 +68,9 @@ npm --prefix web ci && npm --prefix web run build   # the server embeds web/buil
 cargo run -- serve
 npm --prefix web run dev     # client with hot reload, proxies /api to the server
 nix flake check              # fmt, clippy, tests, svelte-check, NixOS VM test (x86_64)
+nix run .#ui-check           # every screen at desktop and phone width, light and dark, into ui-check/
 ```
+
+`ui-check` sets up a fresh instance with a virtual passkey and fails on horizontal overflow or browser errors.
 
 Licensed under AGPL-3.0-or-later.

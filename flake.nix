@@ -114,6 +114,22 @@
       );
 
       apps = forAll (pkgs: {
+        ui-check = {
+          type = "app";
+          program = pkgs.lib.getExe (
+            pkgs.writeShellApplication {
+              name = "ui-check";
+              runtimeInputs = [ pkgs.nodejs ];
+              text = ''
+                # a host LD_LIBRARY_PATH pointing at other libraries breaks Chromium
+                unset LD_LIBRARY_PATH
+                exec node ${./scripts/ui-check.mjs} \
+                  ${pkgs.lib.getExe self.packages.${pkgs.stdenv.hostPlatform.system}.default} \
+                  ${pkgs.lib.getExe pkgs.chromium} "$@"
+              '';
+            }
+          );
+        };
         default = {
           type = "app";
           program = toString (
