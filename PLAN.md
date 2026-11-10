@@ -133,7 +133,7 @@ Crate names are candidates; verify each before the foundation phase settles them
 
 ## Context (swilk)
 
-- Brand and Typst library for swilk's layouts: `~/workspace/mine/gewerbe/corporate-design` (`typst/lib/vorlagen.typ`, `typst/firma.toml`, private `typst/firma.local.toml`); never commit them, the repo is public
+- Brand and Typst library for swilk's layouts: `~/workspace/swilk/gewerbe/corporate-design` (`typst/lib/vorlagen.typ`, `typst/firma.toml`, private `typst/firma.local.toml`); never commit them, the repo is public
 - Server: pi5dd (arm64), `/etc/nix-config/hosts/pi5dd/apps/`
 - Login today: Keycloak `https://user.swilk.eu/realms/public`
 - Tax: Kleinunternehmer (§ 19 UStG); receiving e-invoices is mandatory, issuing is not
