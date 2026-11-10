@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use std::sync::Arc;
+use std::{collections::BTreeMap, sync::Arc};
 
 use axum::{
     Router,
@@ -25,7 +25,7 @@ pub struct TestApp {
 
 /// A browser: its session cookie and CSRF token, and an authenticator holding its passkeys.
 pub struct Browser {
-    pub cookie: Option<String>,
+    pub cookies: BTreeMap<String, String>,
     pub csrf_token: Option<String>,
     pub authenticator: SoftPasskey,
     pub credential_ids: Vec<String>,
@@ -45,7 +45,7 @@ pub async fn start(config: Config) -> TestApp {
 impl Browser {
     pub fn new() -> Self {
         Self {
-            cookie: None,
+            cookies: BTreeMap::new(),
             csrf_token: None,
             // the soft authenticator cannot verify a user, so it only claims to
             authenticator: SoftPasskey::new(true),
@@ -112,8 +112,13 @@ impl TestApp {
             .uri(path)
             .header(header::CONTENT_TYPE, "application/json");
         if let Some(browser) = &browser {
-            if let Some(cookie) = &browser.cookie {
-                request = request.header(header::COOKIE, cookie);
+            if !browser.cookies.is_empty() {
+                let cookies: Vec<_> = browser
+                    .cookies
+                    .iter()
+                    .map(|(name, value)| format!("{name}={value}"))
+                    .collect();
+                request = request.header(header::COOKIE, cookies.join("; "));
             }
             if let Some(csrf) = &browser.csrf_token {
                 request = request.header("x-csrf-token", csrf);
@@ -122,11 +127,16 @@ impl TestApp {
         let response = self
             .request(request.body(Body::from(body.to_string())).unwrap())
             .await;
-        if let (Some(browser), Some(set_cookie)) =
-            (browser, response.headers().get(header::SET_COOKIE))
-        {
-            let pair = set_cookie.to_str().unwrap().split(';').next().unwrap();
-            browser.cookie = Some(pair.to_owned()).filter(|p| !p.ends_with('='));
+        if let Some(browser) = browser {
+            for set_cookie in response.headers().get_all(header::SET_COOKIE) {
+                let pair = set_cookie.to_str().unwrap().split(';').next().unwrap();
+                let (name, value) = pair.split_once('=').unwrap();
+                if value.is_empty() {
+                    browser.cookies.remove(name);
+                } else {
+                    browser.cookies.insert(name.into(), value.into());
+                }
+            }
         }
         response
     }

@@ -120,7 +120,7 @@ pub async fn setup_finish(
     }
     let user = create_user(&mut tx, &state.name, state.handle, Role::Owner).await?;
     insert_passkey(&mut tx, user.id, &passkey_name, &passkey).await?;
-    let session = auth::start_session(&mut *tx, &app, user.id).await?;
+    let session = auth::start_session(&mut tx, &app, user.id).await?;
     tx.commit().await?;
     Ok(signed_in(&app, session, user))
 }
@@ -251,7 +251,7 @@ pub async fn sign_in_finish(
         .bind(passkey_id)
         .execute(&mut *tx)
         .await?;
-    let session = auth::start_session(&mut *tx, &app, user_id).await?;
+    let session = auth::start_session(&mut tx, &app, user_id).await?;
     tx.commit().await?;
     let user = User {
         id: user_id,

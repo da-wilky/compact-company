@@ -79,7 +79,11 @@ impl Settings {
         let changed_pins: Vec<String> = self
             .pinned
             .iter()
-            .filter(|(key, pinned)| values.get(*key) != Some(pinned))
+            .filter(|(key, pinned)| {
+                values
+                    .get(*key)
+                    .is_some_and(|v| !v.is_null() && v != *pinned)
+            })
             .map(|(key, _)| key.clone())
             .collect();
         if !changed_pins.is_empty() {
@@ -87,10 +91,9 @@ impl Settings {
         }
         let current = to_map(&self.read(&mut *tx).await?);
         let (mut before, mut after) = (Map::new(), Map::new());
-        for (key, value) in values
-            .iter()
-            .filter(|(key, value)| current.get(*key) != Some(value))
-        {
+        for (key, value) in values.iter().filter(|(key, value)| {
+            !self.pinned.contains_key(*key) && current.get(*key) != Some(value)
+        }) {
             before.insert(key.clone(), current[key].clone());
             after.insert(key.clone(), value.clone());
             if value.is_null() {

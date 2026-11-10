@@ -104,3 +104,29 @@ async fn pinned_keys_win_and_cannot_be_changed() {
     assert_eq!(view["values"]["vat_id"], "DE123456789");
     assert_eq!(view["pinned"], json!(["name"]));
 }
+
+#[tokio::test]
+async fn a_save_may_leave_out_pinned_keys() {
+    let (app, mut owner) = owner_app(pinning(Business {
+        name: Some("Pinned".into()),
+        ..Business::default()
+    }))
+    .await;
+    let response = app
+        .as_browser(
+            &mut owner,
+            "PUT",
+            "/api/business",
+            json!({ "vat_id": "DE123456789" }),
+        )
+        .await;
+    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(json(response).await["values"]["name"], "Pinned");
+    let log = app
+        .as_browser(&mut owner, "GET", "/api/audit?subject=business", json!({}))
+        .await;
+    assert_eq!(
+        json(log).await[0]["after"],
+        json!({ "vat_id": "DE123456789" })
+    );
+}

@@ -10,7 +10,7 @@ use axum::{
 };
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use sha2::{Digest, Sha256};
-use sqlx::SqliteExecutor;
+use sqlx::SqliteConnection;
 use utoipa::ToSchema;
 
 use crate::{
@@ -140,13 +140,18 @@ pub struct NewSession {
 }
 
 pub async fn start_session(
-    db: impl SqliteExecutor<'_>,
+    db: &mut SqliteConnection,
     app: &App,
     user_id: i64,
 ) -> Result<NewSession, sqlx::Error> {
     let token = random_token();
     let csrf_token = random_token();
     let now = now();
+    sqlx::query("DELETE FROM session WHERE last_seen_at <= ? OR created_at <= ?")
+        .bind(now - SESSION_IDLE_SECS)
+        .bind(now - SESSION_MAX_SECS)
+        .execute(&mut *db)
+        .await?;
     sqlx::query(
         "INSERT INTO session (token_hash, user_id, csrf_token, created_at, last_seen_at)
          VALUES (?, ?, ?, ?, ?)",
@@ -169,19 +174,22 @@ pub fn clear_session_cookie(app: &App) -> HeaderValue {
 }
 
 fn session_cookie(app: &App, token: &str, max_age: i64) -> HeaderValue {
+    set_cookie(app, SESSION_COOKIE, token, "/; SameSite=Strict", max_age)
+}
+
+/// A `Set-Cookie` value; `path` may carry further attributes.
+pub fn set_cookie(app: &App, name: &str, value: &str, path: &str, max_age: i64) -> HeaderValue {
     let secure = if app.public_url.scheme() == "https" {
         "; Secure"
     } else {
         ""
     };
-    format!(
-        "{SESSION_COOKIE}={token}; Path=/; HttpOnly; SameSite=Strict; Max-Age={max_age}{secure}"
-    )
-    .parse()
-    .expect("cookie is ASCII")
+    format!("{name}={value}; Path={path}; HttpOnly; Max-Age={max_age}{secure}")
+        .parse()
+        .expect("cookie is ASCII")
 }
 
-fn cookie<'a>(headers: &'a HeaderMap, name: &str) -> Option<&'a str> {
+pub fn cookie<'a>(headers: &'a HeaderMap, name: &str) -> Option<&'a str> {
     headers
         .get_all(header::COOKIE)
         .iter()

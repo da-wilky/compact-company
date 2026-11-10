@@ -113,7 +113,8 @@ async fn sign_in_as(
     invitation: Option<&str>,
 ) -> String {
     let start = app
-        .send_json(
+        .as_browser(
+            browser,
             "POST",
             "/api/oidc/start",
             json!({ "invitation": invitation }),
@@ -192,7 +193,7 @@ async fn an_unknown_identity_creates_no_user() {
     let mut stranger = Browser::new();
     let location = sign_in_as(&app, &provider, &mut stranger, "mallory", None).await;
     assert_eq!(location, "/sign-in#error.oidc_unknown_identity");
-    assert_eq!(stranger.cookie, None);
+    assert!(!stranger.cookies.contains_key("session"));
     let users = json(
         app.as_browser(&mut owner, "GET", "/api/users", json!({}))
             .await,
@@ -211,4 +212,41 @@ async fn an_identity_links_to_one_user_only() {
     sign_in_as(&app, &provider, &mut Browser::new(), "alex", Some(&first)).await;
     let location = sign_in_as(&app, &provider, &mut Browser::new(), "alex", Some(&second)).await;
     assert_eq!(location, "/sign-in#error.oidc_identity_taken");
+}
+
+#[tokio::test]
+async fn a_callback_from_another_browser_is_refused() {
+    let provider = provider().await;
+    let app = app_with(&provider).await;
+    let mut owner = app.setup_owner().await;
+    let token = app.invite(&mut owner, "Mallory", "staff").await;
+    let mut mallory = Browser::new();
+    sign_in_as(&app, &provider, &mut mallory, "mallory", Some(&token)).await;
+
+    // Mallory starts a sign-in as herself, then hands the callback link to Alex
+    let start = json(
+        app.as_browser(&mut mallory, "POST", "/api/oidc/start", json!({}))
+            .await,
+    )
+    .await;
+    let url = url::Url::parse(start["url"].as_str().unwrap()).unwrap();
+    let query: HashMap<_, _> = url.query_pairs().into_owned().collect();
+    provider.codes.lock().unwrap().insert(
+        "code-trap".into(),
+        ("mallory".into(), query["nonce"].clone()),
+    );
+    let mut alex = Browser::new();
+    let callback = app
+        .as_browser(
+            &mut alex,
+            "GET",
+            &format!("/api/oidc/callback?state={}&code=code-trap", query["state"]),
+            json!({}),
+        )
+        .await;
+    assert_eq!(
+        callback.headers()[header::LOCATION],
+        "/sign-in#error.oidc_failed"
+    );
+    assert!(!alex.cookies.contains_key("session"));
 }

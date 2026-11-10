@@ -43,3 +43,12 @@ fn secrets_are_read_only_from_files() {
     let config = load(&format!("{s3}secret_access_key_file = {secret:?}")).unwrap();
     assert_eq!(config.storage.s3.unwrap().secret_access_key, "from-file");
 }
+
+#[test]
+fn public_url_is_an_origin() {
+    assert!(load("public_url = \"https://cc.example.com\"").is_ok());
+    assert!(matches!(
+        load("public_url = \"https://example.com/cc/\""),
+        Err(Error::PublicUrl(_))
+    ));
+}

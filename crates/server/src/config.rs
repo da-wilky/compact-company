@@ -63,6 +63,8 @@ pub enum Error {
     Read(PathBuf, std::io::Error),
     #[error("invalid config {0}: {1}")]
     Parse(PathBuf, toml::de::Error),
+    #[error("public_url must be an origin such as https://cc.example.com, not {0}")]
+    PublicUrl(Url),
 }
 
 impl Default for Config {
@@ -76,6 +78,10 @@ impl Config {
         let text = read(path)?;
         let mut config: Self =
             toml::from_str(&text).map_err(|e| Error::Parse(path.to_owned(), e))?;
+        let url = &config.public_url;
+        if url.path() != "/" || url.query().is_some() || url.fragment().is_some() {
+            return Err(Error::PublicUrl(url.clone()));
+        }
         if let Some(s3) = &mut config.storage.s3 {
             s3.secret_access_key = read(&s3.secret_access_key_file)?.trim_end().to_owned();
         }

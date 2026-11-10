@@ -72,12 +72,16 @@
 		border: 1px solid #bbb;
 		border-radius: 4px;
 	}
+	:global(input[type='checkbox']) {
+		justify-self: start;
+	}
 	:global(.error) {
 		color: #b00020;
 	}
 	header {
 		display: flex;
-		gap: 1.5rem;
+		flex-wrap: wrap;
+		gap: 0.5rem 1.5rem;
 		align-items: center;
 		padding: 0.75rem 1rem;
 		border-bottom: 1px solid #ddd;
