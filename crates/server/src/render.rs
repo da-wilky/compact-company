@@ -54,32 +54,39 @@ impl Layout {
         }
     }
 
-    /// Reads `layout.typ` with the files in `assets/` and `fonts/` next to it.
+    /// Reads `layout.typ` with the files next to it, as the upload takes them: fonts by their
+    /// extension, everything else under `/assets/`.
     pub fn from_dir(dir: &std::path::Path) -> std::io::Result<Self> {
-        let files = |sub: &str| -> std::io::Result<Vec<(String, Bytes)>> {
-            let Ok(entries) = std::fs::read_dir(dir.join(sub)) else {
-                return Ok(Vec::new());
-            };
-            entries
-                .filter_map(Result::ok)
-                .filter(|e| e.path().is_file())
-                .map(|e| {
-                    let name = e.file_name().to_string_lossy().into_owned();
-                    std::fs::read(e.path()).map(|bytes| (name, Bytes::new(bytes)))
-                })
-                .collect()
-        };
-        Ok(Self {
+        let mut layout = Self {
             source: std::fs::read_to_string(dir.join("layout.typ"))?,
-            assets: files("assets")?.into_iter().collect(),
-            fonts: files("fonts")?
-                .into_iter()
-                .map(|(_, bytes)| bytes)
-                .collect(),
-            packages: HashMap::new(),
-            name: None,
-        })
+            ..Self::default()
+        };
+        for entry in std::fs::read_dir(dir)? {
+            let path = entry?.path();
+            let name = path
+                .file_name()
+                .map(|n| n.to_string_lossy().into_owned())
+                .unwrap_or_default();
+            if !path.is_file() || name == "layout.typ" || name.ends_with(".md") {
+                continue;
+            }
+            let bytes = Bytes::new(std::fs::read(&path)?);
+            if is_font(&name) {
+                layout.fonts.push(bytes);
+            } else {
+                layout.assets.insert(name, bytes);
+            }
+        }
+        Ok(layout)
     }
+}
+
+/// Whether an uploaded file is a font, by its extension.
+pub fn is_font(name: &str) -> bool {
+    let lower = name.to_ascii_lowercase();
+    [".ttf", ".otf", ".ttc", ".otc"]
+        .iter()
+        .any(|ext| lower.ends_with(ext))
 }
 
 /// An attachment embedded in the PDF, such as the e-invoice XML.

@@ -21,7 +21,7 @@ use crate::{
     auth::{Auth, OwnerOnly, now},
     documents::{self, Kind, SCHEMA},
     layouts,
-    render::{self, Layout},
+    render::{self, Layout, is_font},
 };
 
 const MAX_SOURCE: usize = 1 << 20;
@@ -572,13 +572,6 @@ async fn read(multipart: Result<Multipart, MultipartRejection>) -> Result<Upload
         source,
         files,
     })
-}
-
-fn is_font(name: &str) -> bool {
-    let lower = name.to_ascii_lowercase();
-    [".ttf", ".otf", ".ttc", ".otc"]
-        .iter()
-        .any(|ext| lower.ends_with(ext))
 }
 
 /// Checks the packages it imports are approved and that it renders every kind it lays out with
