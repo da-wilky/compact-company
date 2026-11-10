@@ -10,6 +10,7 @@ pub mod activities;
 pub mod audit;
 pub mod business;
 pub mod customers;
+pub mod documents;
 pub mod error;
 pub mod input;
 pub mod invitations;
@@ -75,6 +76,16 @@ pub fn routes() -> OpenApiRouter<Arc<App>> {
         ))
         .routes(routes!(todos::move_todo))
         .routes(routes!(todos::add_comment))
+        .routes(routes!(
+            documents::list_documents,
+            documents::create_document
+        ))
+        .routes(routes!(
+            documents::get_document,
+            documents::put_document,
+            documents::delete_document
+        ))
+        .routes(routes!(documents::issue_document))
         .routes(routes!(time::list_time, time::create_entry))
         .routes(routes!(time::put_entry, time::delete_entry))
         .routes(routes!(time::stop_timer))

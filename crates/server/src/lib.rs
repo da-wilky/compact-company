@@ -22,6 +22,7 @@ pub mod api;
 pub mod audit;
 pub mod auth;
 pub mod config;
+pub mod documents;
 pub mod files;
 pub mod limit;
 pub mod money;

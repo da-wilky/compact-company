@@ -14,7 +14,10 @@
 	// the form edits a copy; later changes to the prop do not reset what the user typed
 	const initial = untrack(() => customer);
 	let name = $state(initial?.name ?? '');
-	let address = $state(initial?.address ?? '');
+	let street = $state(initial?.street ?? '');
+	let postcode = $state(initial?.postcode ?? '');
+	let city = $state(initial?.city ?? '');
+	let country = $state(initial?.country ?? 'DE');
 	let email = $state(initial?.email ?? '');
 	let language = $state<Schemas['Language']>(initial?.language ?? 'de');
 	let currency = $state(initial?.currency ?? '');
@@ -37,7 +40,10 @@
 		}
 		const body: Schemas['CustomerInput'] = {
 			name,
-			address,
+			street,
+			postcode,
+			city,
+			country,
 			email,
 			language,
 			currency,
@@ -61,10 +67,19 @@
 		<input type="email" bind:value={email} autocomplete="email" />
 	</Field>
 	<div class="wide">
-		<Field label={t('customers.address')} error={error?.fields?.address}>
-			<textarea rows="3" bind:value={address}></textarea>
+		<Field label={t('customers.street')} error={error?.fields?.street}>
+			<textarea rows="2" bind:value={street} autocomplete="street-address"></textarea>
 		</Field>
 	</div>
+	<Field label={t('customers.postcode')} error={error?.fields?.postcode}>
+		<input bind:value={postcode} autocomplete="postal-code" />
+	</Field>
+	<Field label={t('customers.city')} error={error?.fields?.city}>
+		<input bind:value={city} autocomplete="address-level2" />
+	</Field>
+	<Field label={t('customers.country')} error={error?.fields?.country}>
+		<input bind:value={country} maxlength="2" autocomplete="country" />
+	</Field>
 	<Field label={t('customers.language')}>
 		<select bind:value={language}>
 			<option value="de">{t('language.de')}</option>

@@ -5,9 +5,14 @@
 	import { session } from '#lib/session.svelte.ts';
 	import { toast } from '#lib/toast.svelte.ts';
 
+	type Business = Schemas['Business'];
+	type TextKey = {
+		[K in keyof Business]-?: NonNullable<Business[K]> extends string ? K : never;
+	}[keyof Business];
+
 	const owner = $derived(session.view?.user?.role === 'owner');
 
-	let values = $state<Schemas['Business']>({});
+	let values = $state<Business>({});
 	let pinned = $state<string[]>([]);
 	let error = $state<ApiError>();
 
@@ -21,7 +26,10 @@
 
 	async function save(event: SubmitEvent) {
 		event.preventDefault();
-		const result = await call(api.PUT('/api/business', { body: values }));
+		const body = Object.fromEntries(
+			Object.entries(values).map(([key, value]) => [key, value === '' ? null : value])
+		) as Business;
+		const result = await call(api.PUT('/api/business', { body }));
 		show(result);
 		if (!result.error) toast(t('app.saved'));
 	}
@@ -31,41 +39,119 @@
 	call(api.GET('/api/currencies')).then(({ data }) => (currencies = data ?? []));
 
 	const note = (key: string) => (pinned.includes(key) ? t('business.pinned') : undefined);
-	const texts = ['name', 'tax_number', 'vat_id'] as const;
+	const sections: { title: string; keys: TextKey[] }[] = [
+		{
+			title: 'business.section_company',
+			keys: ['name', 'street', 'postcode', 'city', 'country', 'email', 'phone', 'website']
+		},
+		{
+			title: 'business.section_legal',
+			keys: [
+				'tax_number',
+				'vat_id',
+				'legal_form',
+				'register_court',
+				'register_number',
+				'managing_directors'
+			]
+		},
+		{ title: 'business.section_bank', keys: ['bank_name', 'iban', 'bic'] },
+		{
+			title: 'business.section_numbers',
+			keys: [
+				'quote_number_format',
+				'order_confirmation_number_format',
+				'invoice_number_format',
+				'delivery_note_number_format',
+				'acceptance_report_number_format'
+			]
+		}
+	];
+	const placeholders: Partial<Record<TextKey, string>> = {
+		country: 'DE',
+		quote_number_format: 'AN-{yyyy}-{nnn}',
+		order_confirmation_number_format: 'AB-{yyyy}-{nnn}',
+		invoice_number_format: 'RE-{yyyy}-{nnn}',
+		delivery_note_number_format: 'LS-{yyyy}-{nnn}',
+		acceptance_report_number_format: 'AP-{yyyy}-{nnn}',
+		legal_form: 'UG (haftungsbeschränkt)'
+	};
 </script>
 
 <div class="page-head">
 	<h1>{t('business.title')}</h1>
 </div>
 
-<form class="card" onsubmit={save}>
+<form onsubmit={save}>
 	<fieldset disabled={!owner}>
-		{#each texts as key (key)}
-			<Field label={t(`business.${key}`)} error={error?.fields?.[key]} note={note(key)}>
-				<input bind:value={values[key]} readonly={pinned.includes(key)} />
-			</Field>
+		{#each sections as section (section.title)}
+			<section class="card">
+				<h2>{t(section.title)}</h2>
+				{#if section.title === 'business.section_numbers'}
+					<p class="muted wide">{t('business.numbers_hint')}</p>
+				{/if}
+				{#each section.keys as key (key)}
+					<Field label={t(`business.${key}`)} error={error?.fields?.[key]} note={note(key)}>
+						<input
+							bind:value={values[key]}
+							readonly={pinned.includes(key)}
+							placeholder={placeholders[key]}
+						/>
+					</Field>
+				{/each}
+				{#if section.title === 'business.section_legal'}
+					<div class="wide">
+						<Field label={t('business.small_business')} note={note('small_business')} inline>
+							<input
+								type="checkbox"
+								bind:checked={values.small_business}
+								disabled={pinned.includes('small_business')}
+							/>
+						</Field>
+					</div>
+				{/if}
+			</section>
 		{/each}
-		<Field label={t('business.address')} error={error?.fields?.address} note={note('address')}>
-			<textarea rows="3" bind:value={values.address} readonly={pinned.includes('address')}
-			></textarea>
-		</Field>
-		<Field label={t('business.currency')} error={error?.fields?.currency} note={note('currency')}>
-			<select bind:value={values.currency} disabled={pinned.includes('currency')}>
-				{#each currencies as code (code)}<option value={code}>{code}</option>{/each}
-			</select>
-		</Field>
-		<div class="wide">
-			<Field label={t('business.small_business')} note={note('small_business')} inline>
+		<section class="card">
+			<h2>{t('business.section_defaults')}</h2>
+			<Field label={t('business.currency')} error={error?.fields?.currency} note={note('currency')}>
+				<select bind:value={values.currency} disabled={pinned.includes('currency')}>
+					{#each currencies as code (code)}<option value={code}>{code}</option>{/each}
+				</select>
+			</Field>
+			<Field label={t('business.vat_rate')} error={error?.fields?.vat_rate} note={note('vat_rate')}>
 				<input
-					type="checkbox"
-					bind:checked={values.small_business}
-					disabled={pinned.includes('small_business')}
+					inputmode="decimal"
+					bind:value={values.vat_rate}
+					readonly={pinned.includes('vat_rate')}
+					placeholder="19"
 				/>
 			</Field>
-		</div>
+			<Field
+				label={t('business.payment_days')}
+				error={error?.fields?.payment_days}
+				note={note('payment_days')}
+			>
+				<input
+					type="number"
+					min="0"
+					max="365"
+					bind:value={values.payment_days}
+					readonly={pinned.includes('payment_days')}
+					placeholder="14"
+				/>
+			</Field>
+			<Field label={t('business.timezone')} error={error?.fields?.timezone} note={note('timezone')}>
+				<input
+					bind:value={values.timezone}
+					readonly={pinned.includes('timezone')}
+					placeholder="Europe/Berlin"
+				/>
+			</Field>
+		</section>
 
-		{#if error}<p class="alert wide" role="alert">{t(error.message)}</p>{/if}
-		{#if owner}<div class="wide"><button class="primary">{t('app.save')}</button></div>{/if}
+		{#if error}<p class="alert" role="alert">{t(error.message)}</p>{/if}
+		{#if owner}<div><button class="primary">{t('app.save')}</button></div>{/if}
 	</fieldset>
 </form>
 
@@ -75,13 +161,19 @@
 	}
 	fieldset {
 		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
 		gap: 1.25rem;
 		border: 0;
 		padding: 0;
 		margin: 0;
 	}
+	section {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+		gap: 1.25rem;
+	}
+	h2,
 	.wide {
 		grid-column: 1 / -1;
+		margin: 0;
 	}
 </style>

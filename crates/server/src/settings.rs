@@ -9,12 +9,40 @@ use crate::audit;
 #[serde(deny_unknown_fields)]
 pub struct Business {
     pub name: Option<String>,
-    pub address: Option<String>,
+    pub street: Option<String>,
+    pub postcode: Option<String>,
+    pub city: Option<String>,
+    /// ISO 3166-1 alpha-2; DE when unset.
+    pub country: Option<String>,
+    pub email: Option<String>,
+    pub phone: Option<String>,
+    pub website: Option<String>,
     pub tax_number: Option<String>,
     pub vat_id: Option<String>,
     pub small_business: Option<bool>,
+    /// The legal form of a UG or GmbH, such as `UG (haftungsbeschränkt)`; with it, documents
+    /// must also carry the register and managing directors (§ 35a GmbHG).
+    pub legal_form: Option<String>,
+    pub register_court: Option<String>,
+    pub register_number: Option<String>,
+    pub managing_directors: Option<String>,
+    pub bank_name: Option<String>,
+    pub iban: Option<String>,
+    pub bic: Option<String>,
     /// ISO 4217 code new customers are billed in; EUR when unset.
     pub currency: Option<String>,
+    /// IANA name such as `Europe/Berlin`, which is the default; dates on documents are in it.
+    pub timezone: Option<String>,
+    /// Percent charged on new lines unless the business is a small business; 19 when unset.
+    pub vat_rate: Option<rust_decimal::Decimal>,
+    /// Days from issue until an invoice is due; 14 when unset.
+    pub payment_days: Option<u32>,
+    pub quote_number_format: Option<String>,
+    pub order_confirmation_number_format: Option<String>,
+    /// Also numbers cancellation invoices, which are invoices.
+    pub invoice_number_format: Option<String>,
+    pub delivery_note_number_format: Option<String>,
+    pub acceptance_report_number_format: Option<String>,
 }
 
 /// Business data and defaults: stored in the database unless the config pins them (ADR 0017).

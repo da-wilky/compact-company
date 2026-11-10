@@ -257,6 +257,45 @@ impl TestApp {
     }
 }
 
+impl TestApp {
+    /// Sends a request that must succeed and returns its JSON body.
+    pub async fn ok(&self, browser: &mut Browser, method: &str, path: &str, body: Value) -> Value {
+        let response = self.as_browser(browser, method, path, body).await;
+        let status = response.status();
+        let body = text(response).await;
+        assert_eq!(status, StatusCode::OK, "{method} {path}: {body}");
+        serde_json::from_str(&body).unwrap()
+    }
+
+    /// A business ready to issue documents, and a customer with an address.
+    pub async fn ready_to_issue(&self, owner: &mut Browser) -> i64 {
+        self.ok(
+            owner,
+            "PUT",
+            "/api/business",
+            json!({
+                "name": "swilk UG (haftungsbeschränkt)", "street": "Hauptstraße 1",
+                "postcode": "01067", "city": "Dresden", "tax_number": "201/123/45678",
+                "small_business": true, "iban": "DE89370400440532013000"
+            }),
+        )
+        .await;
+        let customer = self
+            .ok(
+                owner,
+                "POST",
+                "/api/customers",
+                json!({
+                    "name": "Bäckerei Krume", "language": "de", "hourly_rate": 8000,
+                    "street": "Brotgasse 2", "postcode": "04109", "city": "Leipzig",
+                    "email": "info@krume.example"
+                }),
+            )
+            .await;
+        customer["id"].as_i64().unwrap()
+    }
+}
+
 pub async fn text(response: Response) -> String {
     let bytes = response.into_body().collect().await.unwrap().to_bytes();
     String::from_utf8(bytes.to_vec()).unwrap()

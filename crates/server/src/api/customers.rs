@@ -27,7 +27,11 @@ pub enum Language {
 #[serde(deny_unknown_fields)]
 pub struct CustomerInput {
     name: Option<String>,
-    address: Option<String>,
+    street: Option<String>,
+    postcode: Option<String>,
+    city: Option<String>,
+    /// ISO 3166-1 alpha-2; DE when left out.
+    country: Option<String>,
     email: Option<String>,
     language: Language,
     /// The business's currency when left out.
@@ -54,7 +58,10 @@ pub struct Customer {
 #[derive(Debug, Serialize, ToSchema, sqlx::FromRow)]
 pub struct CustomerFields {
     name: String,
-    address: Option<String>,
+    street: Option<String>,
+    postcode: Option<String>,
+    city: Option<String>,
+    country: String,
     email: Option<String>,
     language: Language,
     currency: String,
@@ -113,12 +120,16 @@ pub async fn create_customer(
     .await?;
     let id: i64 = sqlx::query_scalar(
         "INSERT INTO customer
-         (number, name, address, email, language, currency, hourly_rate, note, archived, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id",
+         (number, name, street, postcode, city, country, email, language, currency, hourly_rate, note,
+          archived, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id",
     )
     .bind(format!("K-{next:03}"))
     .bind(&fields.name)
-    .bind(&fields.address)
+    .bind(&fields.street)
+    .bind(&fields.postcode)
+    .bind(&fields.city)
+    .bind(&fields.country)
     .bind(&fields.email)
     .bind(fields.language)
     .bind(&fields.currency)
@@ -167,11 +178,15 @@ pub async fn put_customer(
         check.done()?;
     }
     sqlx::query(
-        "UPDATE customer SET name = ?, address = ?, email = ?, language = ?, currency = ?,
+        "UPDATE customer SET name = ?, street = ?, postcode = ?, city = ?, country = ?, email = ?,
+         language = ?, currency = ?,
          hourly_rate = ?, note = ?, archived = ? WHERE id = ?",
     )
     .bind(&fields.name)
-    .bind(&fields.address)
+    .bind(&fields.street)
+    .bind(&fields.postcode)
+    .bind(&fields.city)
+    .bind(&fields.country)
     .bind(&fields.email)
     .bind(fields.language)
     .bind(&fields.currency)
@@ -232,7 +247,10 @@ async fn validate(app: &App, input: CustomerInput) -> Result<CustomerFields, Api
     }
     let fields = CustomerFields {
         name: check.required("name", input.name, 200),
-        address: check.text("address", input.address, 500),
+        street: check.text("street", input.street, 500),
+        postcode: check.text("postcode", input.postcode, 20),
+        city: check.text("city", input.city, 100),
+        country: check.country("country", input.country),
         email,
         language: input.language,
         currency,

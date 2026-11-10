@@ -37,11 +37,14 @@ name = "Keycloak"              # label of the sign-in button
 
 [business]                     # each key set here is fixed; the app shows it read-only
 name = "…"
-address = "…"
+street = "…"
+postcode = "…"
+city = "…"
 tax_number = "…"
 vat_id = "…"
 small_business = true
 currency = "EUR"               # currency new customers start with
+invoice_number_format = "RE-{yyyy}-{nnn}"  # also quote_, order_confirmation_, delivery_note_, acceptance_report_
 ```
 
 ## NixOS

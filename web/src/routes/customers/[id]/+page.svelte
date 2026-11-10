@@ -115,7 +115,9 @@
 				<dt>{t('customers.email')}</dt>
 				<dd>{customer.email ?? '–'}</dd>
 				<dt>{t('customers.address')}</dt>
-				<dd class="pre">{customer.address ?? '–'}</dd>
+				<dd class="pre">{[customer.street, [customer.postcode, customer.city].filter(Boolean).join(' '), customer.country]
+						.filter(Boolean)
+						.join('\n')}</dd>
 				<dt>{t('customers.language')}</dt>
 				<dd>{t(`language.${customer.language}`)}</dd>
 				<dt>{t('customers.currency')}</dt>
