@@ -1,19 +1,15 @@
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use sqlx::SqlitePool;
+use utoipa::ToSchema;
 
-#[derive(Debug, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize, ToSchema)]
 #[serde(deny_unknown_fields)]
 pub struct Business {
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub address: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub tax_number: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub vat_id: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub small_business: Option<bool>,
 }
 
@@ -27,22 +23,30 @@ pub struct Settings {
 pub enum Error {
     #[error(transparent)]
     Db(#[from] sqlx::Error),
-    #[error("{0} is pinned by the config")]
-    Pinned(String),
-    #[error("invalid setting: {0}")]
-    Invalid(serde_json::Error),
+    #[error("pinned by the config: {}", .0.join(", "))]
+    Pinned(Vec<String>),
+    #[error("stored setting is invalid: {0}")]
+    Corrupt(serde_json::Error),
+}
+
+fn to_map(business: &Business) -> Map<String, Value> {
+    let Ok(Value::Object(map)) = serde_json::to_value(business) else {
+        unreachable!("Business serializes to an object")
+    };
+    map
 }
 
 impl Settings {
     pub fn new(db: SqlitePool, pinned: &Business) -> Self {
-        let Ok(Value::Object(pinned)) = serde_json::to_value(pinned) else {
-            unreachable!("Business serializes to an object")
-        };
+        let pinned = to_map(pinned)
+            .into_iter()
+            .filter(|(_, value)| !value.is_null())
+            .collect();
         Self { db, pinned }
     }
 
-    pub fn is_pinned(&self, key: &str) -> bool {
-        self.pinned.contains_key(key)
+    pub fn pinned(&self) -> impl Iterator<Item = &str> {
+        self.pinned.keys().map(String::as_str)
     }
 
     pub async fn business(&self) -> Result<Business, Error> {
@@ -51,26 +55,46 @@ impl Settings {
             .await?;
         let mut values = Map::new();
         for (key, value) in rows {
-            values.insert(key, serde_json::from_str(&value).map_err(Error::Invalid)?);
+            values.insert(key, serde_json::from_str(&value).map_err(Error::Corrupt)?);
         }
         values.extend(self.pinned.clone());
-        serde_json::from_value(Value::Object(values)).map_err(Error::Invalid)
+        serde_json::from_value(Value::Object(values)).map_err(Error::Corrupt)
     }
 
-    pub async fn set(&self, key: &str, value: Value) -> Result<(), Error> {
-        if self.is_pinned(key) {
-            return Err(Error::Pinned(key.to_owned()));
+    /// Stores every key that is not pinned; a pinned key must keep its pinned value.
+    pub async fn update(&self, business: &Business) -> Result<(), Error> {
+        let values = to_map(business);
+        let changed_pins: Vec<String> = self
+            .pinned
+            .iter()
+            .filter(|(key, pinned)| values.get(*key) != Some(pinned))
+            .map(|(key, _)| key.clone())
+            .collect();
+        if !changed_pins.is_empty() {
+            return Err(Error::Pinned(changed_pins));
         }
-        let single = Value::Object(Map::from_iter([(key.to_owned(), value.clone())]));
-        serde_json::from_value::<Business>(single).map_err(Error::Invalid)?;
-        sqlx::query(
-            "INSERT INTO setting (key, value) VALUES (?, ?)
-             ON CONFLICT (key) DO UPDATE SET value = excluded.value",
-        )
-        .bind(key)
-        .bind(value.to_string())
-        .execute(&self.db)
-        .await?;
+        let mut tx = self.db.begin().await?;
+        for (key, value) in values
+            .iter()
+            .filter(|(key, _)| !self.pinned.contains_key(*key))
+        {
+            if value.is_null() {
+                sqlx::query("DELETE FROM setting WHERE key = ?")
+                    .bind(key)
+                    .execute(&mut *tx)
+                    .await?;
+            } else {
+                sqlx::query(
+                    "INSERT INTO setting (key, value) VALUES (?, ?)
+                     ON CONFLICT (key) DO UPDATE SET value = excluded.value",
+                )
+                .bind(key)
+                .bind(value.to_string())
+                .execute(&mut *tx)
+                .await?;
+            }
+        }
+        tx.commit().await?;
         Ok(())
     }
 }

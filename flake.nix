@@ -27,6 +27,9 @@
             fileset = pkgs.lib.fileset.unions [
               (craneLib.fileset.commonCargoSources ./.)
               ./crates/server/migrations
+              ./web/openapi.json
+              ./web/i18n
+              ./GLOSSARY.md
             ];
           };
           pname = "compact-company";
@@ -35,7 +38,7 @@
             pname = "compact-company-web";
             version = "0.1.0";
             src = ./web;
-            npmDepsHash = "sha256-m2jY3xxc4pQ4PGuDJc42olCqawROsGmG38VySABOmDI=";
+            npmDepsHash = "sha256-7R0fIsVBCax2Dlc8MHBziMC8TO0a7Ll9XK5IrMv/pWI=";
             installPhase = "cp -r build $out";
           };
           cargoArtifacts = craneLib.buildDepsOnly {

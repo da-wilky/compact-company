@@ -3,17 +3,32 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite dev",
-    "build": "vite build",
-    "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --fail-on-warnings"
+    "api": "openapi-typescript openapi.json -o src/lib/api/schema.d.ts",
+    "dev": "npm run api && vite dev",
+    "build": "npm run api && vite build",
+    "check": "npm run api && svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --fail-on-warnings"
   },
   "devDependencies": {
     "@sveltejs/adapter-static": "^4.0.1",
     "@sveltejs/kit": "^3.1.1",
     "@sveltejs/vite-plugin-svelte": "^7.3.1",
+    "openapi-typescript": "^7.13.0",
     "svelte": "^5.57.3",
     "svelte-check": "^4.7.8",
     "typescript": "^6.0.3",
     "vite": "^8.3.7"
+  },
+  "overrides": {
+    "openapi-typescript": {
+      "typescript": "$typescript"
+    }
+  },
+  "dependencies": {
+    "openapi-fetch": "^0.17.0"
+  },
+  "imports": {
+    "#lib": "./src/lib",
+    "#lib/*": "./src/lib/*",
+    "#i18n/*": "./i18n/*"
   }
 }
