@@ -144,6 +144,7 @@
     v(0.6em)
     cc.vat-note(data)
   }
+  if data.pricing == "effort" { v(0.6em); text(fill: muted, cc.t(data, "effort")) }
   if data.outro != none { v(0.8em); par(data.outro) }
   if data.kind == "acceptance_report" {
     v(1.2em)

@@ -40,6 +40,16 @@ pub enum Status {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema, sqlx::Type)]
 #[serde(rename_all = "snake_case")]
 #[sqlx(rename_all = "snake_case")]
+pub enum Pricing {
+    /// The total is what will be invoiced.
+    Fixed,
+    /// The total is an estimate; the time spent is invoiced.
+    Effort,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema, sqlx::Type)]
+#[serde(rename_all = "snake_case")]
+#[sqlx(rename_all = "snake_case")]
 pub enum Unit {
     Hour,
     Day,
@@ -224,6 +234,8 @@ pub struct Data {
     pub due_date: Option<String>,
     /// ISO date until which a quote stands.
     pub valid_until: Option<String>,
+    /// Whether a quote's total is fixed or an estimate.
+    pub pricing: Option<Pricing>,
     /// ISO dates of the service period.
     pub service_from: Option<String>,
     pub service_to: Option<String>,
@@ -347,6 +359,9 @@ pub struct Row {
     pub data: Option<String>,
     pub pdf: Option<String>,
     pub layout: Option<String>,
+    pub valid_until: Option<String>,
+    pub pricing: Option<Pricing>,
+    pub source_id: Option<i64>,
 }
 
 #[derive(Debug, Clone, Serialize, ToSchema, sqlx::FromRow)]
@@ -493,10 +508,11 @@ pub async fn draft_data(
         vat,
         totals,
         due_date: None,
-        valid_until: None,
+        valid_until: row.valid_until.clone(),
+        pricing: row.pricing,
         service_from: None,
         service_to: None,
-        reference: None,
+        reference: reference(db, row).await?,
         timesheet: None,
     })
 }
@@ -663,6 +679,7 @@ pub fn sample(kind: Kind, language: Language, small_business: bool) -> Data {
         due_date: matches!(kind, Kind::Invoice | Kind::Cancellation)
             .then(|| "2026-04-10".to_owned()),
         valid_until: (kind == Kind::Quote).then(|| "2026-04-26".to_owned()),
+        pricing: (kind == Kind::Quote).then_some(Pricing::Effort),
         service_from: matches!(kind, Kind::Invoice | Kind::Cancellation)
             .then(|| "2026-03-02".to_owned()),
         service_to: matches!(kind, Kind::Invoice | Kind::Cancellation)
@@ -678,4 +695,28 @@ pub fn sample(kind: Kind, language: Language, small_business: bool) -> Data {
             }]
         }),
     }
+}
+
+/// The sentence naming the document this one follows from, in the document's language.
+async fn reference(db: &mut SqliteConnection, row: &Row) -> Result<Option<String>, sqlx::Error> {
+    let Some(source_id) = row.source_id else {
+        return Ok(None);
+    };
+    let (kind, number): (Kind, Option<String>) =
+        sqlx::query_as("SELECT kind, number FROM document WHERE id = ?")
+            .bind(source_id)
+            .fetch_one(db)
+            .await?;
+    let number = number.unwrap_or_default();
+    let de = row.language == Language::De;
+    Ok(Some(match (row.kind, kind) {
+        (Kind::Cancellation, _) if de => format!("Storniert Rechnung {number}"),
+        (Kind::Cancellation, _) => format!("Cancels invoice {number}"),
+        (_, Kind::Quote) if de => format!("Zu Angebot {number}"),
+        (_, Kind::Quote) => format!("For quote {number}"),
+        (_, Kind::OrderConfirmation) if de => format!("Zu Auftragsbestätigung {number}"),
+        (_, Kind::OrderConfirmation) => format!("For order confirmation {number}"),
+        (_, _) if de => format!("Zu Rechnung {number}"),
+        (_, _) => format!("For invoice {number}"),
+    }))
 }

@@ -35,6 +35,8 @@ pub struct Business {
     pub timezone: Option<String>,
     /// Percent charged on new lines unless the business is a small business; 19 when unset.
     pub vat_rate: Option<rust_decimal::Decimal>,
+    /// Days a quote stands after it is issued; 30 when unset.
+    pub quote_valid_days: Option<u32>,
     /// Days from issue until an invoice is due; 14 when unset.
     pub payment_days: Option<u32>,
     pub quote_number_format: Option<String>,

@@ -291,12 +291,35 @@ try {
 	await api('POST', '/api/timers', { project_id: relaunch.id, todo_id: todos[3].id });
 	await api('POST', '/api/timers', { project_id: portal.id, description: 'Telefonat' });
 
+	const quote = await api('POST', '/api/documents', {
+		kind: 'quote',
+		customer_id: krume.id,
+		project_id: relaunch.id,
+		title: 'Relaunch der Website',
+		intro: 'Vielen Dank für Ihre Anfrage. Gerne bieten wir an:',
+		lines: [
+			{ description: 'Konzeption und Gestaltung', quantity: '12', unit: 'hour', project_id: relaunch.id },
+			{ description: 'Hosting (12 Monate)', quantity: '12', unit: 'month', unit_price: 1500 }
+		]
+	});
+	await api('POST', `/api/documents/${quote.id}/issue`);
+	const invoice = await api('POST', '/api/documents', {
+		kind: 'invoice',
+		customer_id: krume.id,
+		lines: [{ description: 'Wartung im Oktober', quantity: '2.5', unit: 'hour', unit_price: 8500 }]
+	});
+	await api('POST', '/api/snippets', { name: 'Zahlungshinweis', language: 'de', body: 'Bitte überweisen Sie den Betrag ohne Abzug.' });
+
 	await screen('overview', `${origin}/`);
 	await screen('customers', `${origin}/customers`);
 	await screen('customer', `${origin}/customers/${krume.id}`);
 	await screen('activities', `${origin}/activities`);
 	await screen('statuses', `${origin}/statuses`);
 	await screen('layouts', `${origin}/layouts`);
+	await screen('snippets', `${origin}/snippets`);
+	await screen('documents', `${origin}/documents`);
+	await screen('document-draft', `${origin}/documents/${invoice.id}`);
+	await screen('document-quote', `${origin}/documents/${quote.id}`);
 	await screen('todos-board', `${origin}/todos`, () => evaluate("localStorage.setItem('todos.view', 'board')"));
 	await screen('todos-list', `${origin}/todos`, async () => {
 		await click('[role=radiogroup] [role=radio]');

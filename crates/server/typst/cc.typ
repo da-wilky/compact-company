@@ -70,6 +70,10 @@
     "Gemäß § 19 UStG wird keine Umsatzsteuer berechnet.",
     "No VAT is charged under § 19 UStG (small business).",
   ),
+  effort: (
+    "Abrechnung nach Aufwand: Die Summe ist eine Schätzung, berechnet wird die tatsächlich geleistete Zeit.",
+    "Charged by effort: the total is an estimate; the time actually spent is invoiced.",
+  ),
   cancels: ("Storniert Rechnung", "Cancels invoice"),
   confirms: ("Zu Angebot", "For quote"),
   user: ("Mitarbeiter", "Staff"),

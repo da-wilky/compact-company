@@ -20,6 +20,7 @@ pub mod oidc;
 pub mod passkeys;
 pub mod projects;
 pub mod session;
+pub mod snippets;
 pub mod statuses;
 pub mod time;
 pub mod todos;
@@ -89,6 +90,11 @@ pub fn routes() -> OpenApiRouter<Arc<App>> {
         ))
         .routes(routes!(documents::issue_document))
         .routes(routes!(documents::document_pdf))
+        .routes(routes!(documents::duplicate_document))
+        .routes(routes!(documents::follow_up))
+        .routes(routes!(documents::set_outcome))
+        .routes(routes!(snippets::list_snippets, snippets::create_snippet))
+        .routes(routes!(snippets::put_snippet, snippets::delete_snippet))
         .merge(
             OpenApiRouter::new()
                 .routes(routes!(layouts::list_layouts, layouts::create_layout))

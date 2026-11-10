@@ -739,6 +739,96 @@
         }
       }
     },
+    "/api/documents/{id}/duplicate": {
+      "post": {
+        "tags": [
+          "documents"
+        ],
+        "summary": "A new draft with the same customer, texts and lines.",
+        "operationId": "duplicate_document",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Document"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/documents/{id}/follow-up": {
+      "post": {
+        "tags": [
+          "documents"
+        ],
+        "summary": "A draft that follows from an issued document: an order confirmation, invoice, delivery note\nor acceptance report for an accepted quote; an invoice, delivery note or acceptance report\nfor an order confirmation; a cancellation invoice, delivery note or acceptance report for an\ninvoice.",
+        "operationId": "follow_up",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FollowUpInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Document"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/documents/{id}/issue": {
       "post": {
         "tags": [
@@ -757,6 +847,56 @@
             }
           }
         ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Document"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/documents/{id}/outcome": {
+      "post": {
+        "tags": [
+          "documents"
+        ],
+        "summary": "Records that the customer accepted or declined an issued quote.",
+        "operationId": "set_outcome",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OutcomeInput"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
@@ -1977,6 +2117,152 @@
         }
       }
     },
+    "/api/snippets": {
+      "get": {
+        "tags": [
+          "documents"
+        ],
+        "operationId": "list_snippets",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Snippet"
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "documents"
+        ],
+        "operationId": "create_snippet",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SnippetInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Snippet"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/snippets/{id}": {
+      "put": {
+        "tags": [
+          "documents"
+        ],
+        "operationId": "put_snippet",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SnippetInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Snippet"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "documents"
+        ],
+        "summary": "Documents keep the text copied from it.",
+        "operationId": "delete_snippet",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "204": {},
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/statuses": {
       "get": {
         "tags": [
@@ -3027,6 +3313,15 @@
               "null"
             ]
           },
+          "quote_valid_days": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Days a quote stands after it is issued; 30 when unset.",
+            "minimum": 0
+          },
           "register_court": {
             "type": [
               "string",
@@ -3502,6 +3797,7 @@
           "lines",
           "data",
           "missing",
+          "follow_ups",
           "created_at",
           "updated_at"
         ],
@@ -3523,6 +3819,13 @@
           "data": {
             "$ref": "#/components/schemas/DocumentData",
             "description": "What the layout renders: as issued, or for a draft as it would be issued now."
+          },
+          "follow_ups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FollowUp"
+            },
+            "description": "Documents that follow from this one."
           },
           "id": {
             "type": "integer",
@@ -3588,12 +3891,40 @@
               "null"
             ]
           },
+          "pricing": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Pricing"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "project_id": {
             "type": [
               "integer",
               "null"
             ],
             "format": "int64"
+          },
+          "quote_state": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/QuoteState"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "source_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "The document this one follows from."
           },
           "status": {
             "$ref": "#/components/schemas/DocumentStatus"
@@ -3607,6 +3938,12 @@
           "updated_at": {
             "type": "integer",
             "format": "int64"
+          },
+          "valid_until": {
+            "type": [
+              "string",
+              "null"
+            ]
           }
         }
       },
@@ -3675,6 +4012,17 @@
             "type": [
               "string",
               "null"
+            ]
+          },
+          "pricing": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Pricing",
+                "description": "Whether a quote's total is fixed or an estimate."
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "reference": {
@@ -3788,6 +4136,17 @@
               "null"
             ]
           },
+          "pricing": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Pricing",
+                "description": "Quotes only; fixed when left out."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "project_id": {
             "type": [
               "integer",
@@ -3800,6 +4159,13 @@
               "string",
               "null"
             ]
+          },
+          "valid_until": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Quotes only: ISO date until which the quote stands; 30 days after issuing when left out."
           }
         },
         "additionalProperties": false
@@ -3971,6 +4337,16 @@
               "null"
             ]
           },
+          "quote_state": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/QuoteState"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "status": {
             "$ref": "#/components/schemas/DocumentStatus"
           },
@@ -3983,6 +4359,12 @@
           "updated_at": {
             "type": "integer",
             "format": "int64"
+          },
+          "valid_until": {
+            "type": [
+              "string",
+              "null"
+            ]
           }
         }
       },
@@ -4141,6 +4523,9 @@
           "layout_failed",
           "package_not_approved",
           "package_unavailable",
+          "follow_up_not_allowed",
+          "quote_not_accepted",
+          "quote_decided",
           "rate_limited",
           "internal"
         ]
@@ -4155,6 +4540,44 @@
           "locked",
           "not_shown"
         ]
+      },
+      "FollowUp": {
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "status"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/DocumentKind"
+          },
+          "number": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/DocumentStatus"
+          }
+        }
+      },
+      "FollowUpInput": {
+        "type": "object",
+        "required": [
+          "kind"
+        ],
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/DocumentKind"
+          }
+        },
+        "additionalProperties": false
       },
       "Health": {
         "type": "object",
@@ -4487,6 +4910,19 @@
           }
         }
       },
+      "OutcomeInput": {
+        "type": "object",
+        "required": [
+          "outcome"
+        ],
+        "properties": {
+          "outcome": {
+            "$ref": "#/components/schemas/QuoteState",
+            "description": "`accepted` or `declined`."
+          }
+        },
+        "additionalProperties": false
+      },
       "Package": {
         "type": "object",
         "required": [
@@ -4555,6 +4991,13 @@
             "type": "string"
           }
         }
+      },
+      "Pricing": {
+        "type": "string",
+        "enum": [
+          "fixed",
+          "effort"
+        ]
       },
       "Priority": {
         "type": "string",
@@ -4673,6 +5116,16 @@
         },
         "additionalProperties": false
       },
+      "QuoteState": {
+        "type": "string",
+        "description": "Where an issued quote stands.",
+        "enum": [
+          "open",
+          "accepted",
+          "declined",
+          "expired"
+        ]
+      },
       "RegistrationFinish": {
         "type": "object",
         "required": [
@@ -4774,6 +5227,74 @@
             }
           }
         }
+      },
+      "Snippet": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/SnippetFields"
+          },
+          {
+            "type": "object",
+            "required": [
+              "id",
+              "updated_at"
+            ],
+            "properties": {
+              "id": {
+                "type": "integer",
+                "format": "int64"
+              },
+              "updated_at": {
+                "type": "integer",
+                "format": "int64"
+              }
+            }
+          }
+        ]
+      },
+      "SnippetFields": {
+        "type": "object",
+        "description": "What an edit may change; also the snapshot the audit log compares.",
+        "required": [
+          "name",
+          "language",
+          "body"
+        ],
+        "properties": {
+          "body": {
+            "type": "string"
+          },
+          "language": {
+            "$ref": "#/components/schemas/Language"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "SnippetInput": {
+        "type": "object",
+        "required": [
+          "language"
+        ],
+        "properties": {
+          "body": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "language": {
+            "$ref": "#/components/schemas/Language"
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": false
       },
       "Status": {
         "type": "object",

@@ -13,12 +13,12 @@ use utoipa::{IntoParams, ToSchema};
 use super::{
     customers::Language,
     error::{ApiError, ErrorCode, FieldError, Json, Path, Query},
-    input::Check,
+    input::{Check, field_error},
 };
 use crate::{
     App, audit,
     auth::{Auth, OwnerOnly, OwnerOrAccountant, now},
-    documents::{self, Data, Kind, LineRow, Row, Status, Unit},
+    documents::{self, Data, Kind, LineRow, Pricing, Row, Status, Unit},
     layouts, render,
     settings::Business,
 };
@@ -38,6 +38,10 @@ pub struct DocumentInput {
     title: Option<String>,
     intro: Option<String>,
     outro: Option<String>,
+    /// Quotes only: ISO date until which the quote stands; 30 days after issuing when left out.
+    valid_until: Option<String>,
+    /// Quotes only; fixed when left out.
+    pricing: Option<Pricing>,
     #[serde(default)]
     lines: Vec<LineInput>,
 }
@@ -79,6 +83,13 @@ pub struct Document {
     data: Data,
     /// What must be filled in before the draft can be issued; empty once issued.
     missing: BTreeMap<String, FieldError>,
+    valid_until: Option<String>,
+    pricing: Option<Pricing>,
+    /// The document this one follows from.
+    source_id: Option<i64>,
+    quote_state: Option<QuoteState>,
+    /// Documents that follow from this one.
+    follow_ups: Vec<FollowUp>,
     /// The uploaded layout it was issued with; none for the built-in one.
     layout: Option<String>,
     issued_at: Option<i64>,
@@ -96,6 +107,8 @@ pub struct DocumentSummary {
     customer_name: String,
     title: Option<String>,
     issue_date: Option<String>,
+    valid_until: Option<String>,
+    quote_state: Option<QuoteState>,
     currency: String,
     /// Major units; none for documents without prices.
     #[sqlx(skip)]
@@ -103,6 +116,43 @@ pub struct DocumentSummary {
     gross: Option<Decimal>,
     updated_at: i64,
 }
+
+/// Where an issued quote stands.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema, sqlx::Type)]
+#[serde(rename_all = "snake_case")]
+#[sqlx(rename_all = "snake_case")]
+pub enum QuoteState {
+    Open,
+    Accepted,
+    Declined,
+    Expired,
+}
+
+#[derive(Debug, Serialize, ToSchema, sqlx::FromRow)]
+pub struct FollowUp {
+    id: i64,
+    kind: Kind,
+    status: Status,
+    number: Option<String>,
+}
+
+#[derive(Debug, Deserialize, ToSchema)]
+#[serde(deny_unknown_fields)]
+pub struct OutcomeInput {
+    /// `accepted` or `declined`.
+    outcome: QuoteState,
+}
+
+#[derive(Debug, Deserialize, ToSchema)]
+#[serde(deny_unknown_fields)]
+pub struct FollowUpInput {
+    kind: Kind,
+}
+
+/// SQL for an issued quote's state, given the document as `d` and today as `?`.
+const QUOTE_STATE: &str = "CASE WHEN d.kind = 'quote' AND d.status = 'issued' THEN coalesce(
+    (SELECT outcome FROM quote_outcome WHERE document_id = d.id),
+    CASE WHEN d.valid_until < ? THEN 'expired' ELSE 'open' END) END";
 
 #[derive(Deserialize, IntoParams)]
 #[into_params(parameter_in = Query)]
@@ -120,20 +170,22 @@ pub async fn list_documents(
     Query(filter): Query<DocumentFilter>,
 ) -> Result<Json<Vec<DocumentSummary>>, ApiError> {
     let mut db = app.db.acquire().await?;
-    let mut list: Vec<DocumentSummary> = sqlx::query_as(
-        "SELECT d.id, d.kind, d.status, d.number, d.customer_id, c.name AS customer_name, d.title,
-         d.issue_date, d.currency, d.updated_at
-         FROM document d JOIN customer c ON c.id = d.customer_id
-         WHERE (?1 IS NULL OR d.kind = ?1) AND (?2 IS NULL OR d.status = ?2)
-         AND (?3 IS NULL OR d.customer_id = ?3)
-         ORDER BY d.status = 'issued', d.issue_date DESC, d.number DESC, d.updated_at DESC",
-    )
-    .bind(filter.kind)
-    .bind(filter.status)
-    .bind(filter.customer_id)
-    .fetch_all(&mut *db)
-    .await?;
     let business = business(&app).await?;
+    let sql = format!(
+        "SELECT d.id, d.kind, d.status, d.number, d.customer_id, c.name AS customer_name, d.title,
+         d.issue_date, d.currency, d.valid_until, {QUOTE_STATE} AS quote_state, d.updated_at
+         FROM document d JOIN customer c ON c.id = d.customer_id
+         WHERE (?2 IS NULL OR d.kind = ?2) AND (?3 IS NULL OR d.status = ?3)
+         AND (?4 IS NULL OR d.customer_id = ?4)
+         ORDER BY d.status = 'issued', d.issue_date DESC, d.number DESC, d.updated_at DESC"
+    );
+    let mut list: Vec<DocumentSummary> = sqlx::query_as(sqlx::AssertSqlSafe(sql))
+        .bind(today(&business)?.to_string())
+        .bind(filter.kind)
+        .bind(filter.status)
+        .bind(filter.customer_id)
+        .fetch_all(&mut *db)
+        .await?;
     for summary in &mut list {
         let row = row(&mut db, summary.id).await?;
         let data = data(&mut db, &business, &row).await?;
@@ -165,11 +217,174 @@ pub async fn create_document(
     let business = business(&app).await?;
     let mut tx = app.db.begin_with("BEGIN IMMEDIATE").await?;
     let draft = validate(&mut tx, input).await?;
+    let id = insert_draft(&mut tx, auth.user.id, &draft).await?;
+    let document = find(&mut tx, &business, id).await?;
+    tx.commit().await?;
+    Ok(Json(document))
+}
+
+/// A new draft with the same customer, texts and lines.
+#[utoipa::path(post, path = "/documents/{id}/duplicate", tag = "documents",
+    params(("id" = i64, Path)),
+    responses((status = OK, body = Document), (status = "default", body = ApiError)))]
+pub async fn duplicate_document(
+    State(app): State<Arc<App>>,
+    auth: Auth<OwnerOnly>,
+    Path(id): Path<i64>,
+) -> Result<Json<Document>, ApiError> {
+    let business = business(&app).await?;
+    let mut tx = app.db.begin_with("BEGIN IMMEDIATE").await?;
+    let source = row(&mut tx, id).await?;
+    let original = snapshot(&mut tx, &source).await?;
+    let archived: bool = sqlx::query_scalar("SELECT archived FROM customer WHERE id = ?")
+        .bind(original.customer_id)
+        .fetch_one(&mut *tx)
+        .await?;
+    if archived {
+        return Err(ApiError::new(ErrorCode::Archived));
+    }
+    let copy = Draft {
+        valid_until: None,
+        source_id: None,
+        ..original
+    };
+    let copy_id = insert_draft(&mut tx, auth.user.id, &copy).await?;
+    let document = find(&mut tx, &business, copy_id).await?;
+    tx.commit().await?;
+    Ok(Json(document))
+}
+
+/// A draft that follows from an issued document: an order confirmation, invoice, delivery note
+/// or acceptance report for an accepted quote; an invoice, delivery note or acceptance report
+/// for an order confirmation; a cancellation invoice, delivery note or acceptance report for an
+/// invoice.
+#[utoipa::path(post, path = "/documents/{id}/follow-up", tag = "documents",
+    params(("id" = i64, Path)), request_body = FollowUpInput,
+    responses((status = OK, body = Document), (status = "default", body = ApiError)))]
+pub async fn follow_up(
+    State(app): State<Arc<App>>,
+    auth: Auth<OwnerOnly>,
+    Path(id): Path<i64>,
+    Json(input): Json<FollowUpInput>,
+) -> Result<Json<Document>, ApiError> {
+    let business = business(&app).await?;
+    let mut tx = app.db.begin_with("BEGIN IMMEDIATE").await?;
+    let source = row(&mut tx, id).await?;
+    let allowed = match source.kind {
+        Kind::Quote => &[
+            Kind::OrderConfirmation,
+            Kind::Invoice,
+            Kind::DeliveryNote,
+            Kind::AcceptanceReport,
+        ][..],
+        Kind::OrderConfirmation => &[Kind::Invoice, Kind::DeliveryNote, Kind::AcceptanceReport],
+        Kind::Invoice => &[
+            Kind::Cancellation,
+            Kind::DeliveryNote,
+            Kind::AcceptanceReport,
+        ],
+        _ => &[],
+    };
+    if source.status != Status::Issued || !allowed.contains(&input.kind) {
+        return Err(ApiError::new(ErrorCode::FollowUpNotAllowed));
+    }
+    if source.kind == Kind::Quote {
+        let outcome: Option<QuoteState> =
+            sqlx::query_scalar("SELECT outcome FROM quote_outcome WHERE document_id = ?")
+                .bind(id)
+                .fetch_optional(&mut *tx)
+                .await?;
+        if outcome != Some(QuoteState::Accepted) {
+            return Err(ApiError::new(ErrorCode::QuoteNotAccepted));
+        }
+    }
+    let original = snapshot(&mut tx, &source).await?;
+    let priced = input.kind.priced();
+    let draft = Draft {
+        kind: input.kind,
+        intro: None,
+        outro: None,
+        valid_until: None,
+        pricing: None,
+        source_id: Some(id),
+        lines: original
+            .lines
+            .into_iter()
+            .map(|line| Line {
+                quantity: if input.kind == Kind::Cancellation {
+                    -line.quantity
+                } else {
+                    line.quantity
+                },
+                unit_price: line.unit_price.filter(|_| priced),
+                vat_rate: line.vat_rate.filter(|_| priced),
+                ..line
+            })
+            .collect(),
+        ..original
+    };
+    let follow_up_id = insert_draft(&mut tx, auth.user.id, &draft).await?;
+    let document = find(&mut tx, &business, follow_up_id).await?;
+    tx.commit().await?;
+    Ok(Json(document))
+}
+
+/// Records that the customer accepted or declined an issued quote.
+#[utoipa::path(post, path = "/documents/{id}/outcome", tag = "documents",
+    params(("id" = i64, Path)), request_body = OutcomeInput,
+    responses((status = OK, body = Document), (status = "default", body = ApiError)))]
+pub async fn set_outcome(
+    State(app): State<Arc<App>>,
+    auth: Auth<OwnerOnly>,
+    Path(id): Path<i64>,
+    Json(input): Json<OutcomeInput>,
+) -> Result<Json<Document>, ApiError> {
+    if !matches!(input.outcome, QuoteState::Accepted | QuoteState::Declined) {
+        return Err(field_error("outcome", FieldError::InvalidFormat));
+    }
+    let business = business(&app).await?;
+    let mut tx = app.db.begin_with("BEGIN IMMEDIATE").await?;
+    let quote = row(&mut tx, id).await?;
+    if quote.kind != Kind::Quote || quote.status != Status::Issued {
+        return Err(ApiError::new(ErrorCode::FollowUpNotAllowed));
+    }
+    let done = sqlx::query(
+        "INSERT INTO quote_outcome (document_id, outcome, decided_at, decided_by)
+         VALUES (?, ?, ?, ?) ON CONFLICT DO NOTHING",
+    )
+    .bind(id)
+    .bind(input.outcome)
+    .bind(now())
+    .bind(auth.user.id)
+    .execute(&mut *tx)
+    .await?;
+    if done.rows_affected() == 0 {
+        return Err(ApiError::new(ErrorCode::QuoteDecided));
+    }
+    audit::record(
+        &mut tx,
+        auth.user.id,
+        "quote.outcome",
+        &format!("document:{id}"),
+        None,
+        Some(serde_json::json!({ "outcome": input.outcome })),
+    )
+    .await?;
+    let document = find(&mut tx, &business, id).await?;
+    tx.commit().await?;
+    Ok(Json(document))
+}
+
+async fn insert_draft(
+    tx: &mut SqliteConnection,
+    user_id: i64,
+    draft: &Draft,
+) -> Result<i64, ApiError> {
     let at = now();
     let id: i64 = sqlx::query_scalar(
         "INSERT INTO document (kind, status, customer_id, project_id, language, currency, title,
-         intro, outro, created_at, updated_at)
-         VALUES (?, 'draft', ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id",
+         intro, outro, valid_until, pricing, source_id, created_at, updated_at)
+         VALUES (?, 'draft', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id",
     )
     .bind(draft.kind)
     .bind(draft.customer_id)
@@ -179,23 +394,24 @@ pub async fn create_document(
     .bind(&draft.title)
     .bind(&draft.intro)
     .bind(&draft.outro)
+    .bind(&draft.valid_until)
+    .bind(draft.pricing)
+    .bind(draft.source_id)
     .bind(at)
     .bind(at)
     .fetch_one(&mut *tx)
     .await?;
-    write_lines(&mut tx, id, &draft.lines).await?;
+    write_lines(tx, id, &draft.lines).await?;
     audit::record(
-        &mut tx,
-        auth.user.id,
+        tx,
+        user_id,
         "document.create",
         &format!("document:{id}"),
         None,
-        Some(serde_json::to_value(&draft).map_err(ApiError::internal)?),
+        Some(serde_json::to_value(draft).map_err(ApiError::internal)?),
     )
     .await?;
-    let document = find(&mut tx, &business, id).await?;
-    tx.commit().await?;
-    Ok(Json(document))
+    Ok(id)
 }
 
 #[utoipa::path(put, path = "/documents/{id}", tag = "documents", request_body = DocumentInput,
@@ -215,11 +431,13 @@ pub async fn put_document(
         check.fail("kind", FieldError::Locked);
         check.done()?;
     }
-    let draft = validate(&mut tx, input).await?;
+    let mut draft = validate(&mut tx, input).await?;
     let before = snapshot(&mut tx, &before).await?;
+    draft.source_id = before.source_id;
     sqlx::query(
         "UPDATE document SET customer_id = ?, project_id = ?, language = ?, currency = ?,
-         title = ?, intro = ?, outro = ?, updated_at = ? WHERE id = ?",
+         title = ?, intro = ?, outro = ?, valid_until = ?, pricing = ?, updated_at = ?
+         WHERE id = ?",
     )
     .bind(draft.customer_id)
     .bind(draft.project_id)
@@ -228,6 +446,8 @@ pub async fn put_document(
     .bind(&draft.title)
     .bind(&draft.intro)
     .bind(&draft.outro)
+    .bind(&draft.valid_until)
+    .bind(draft.pricing)
     .bind(now())
     .bind(id)
     .execute(&mut *tx)
@@ -358,9 +578,25 @@ pub async fn issue(
         return Err(ApiError::fields(missing));
     }
     let today = today(business)?;
+    let valid_until = match (row.kind, row.valid_until.as_deref()) {
+        (Kind::Quote, Some(date)) if date < today.to_string().as_str() => {
+            return Err(field_error("valid_until", FieldError::InvalidFormat));
+        }
+        (Kind::Quote, Some(date)) => Some(date.to_owned()),
+        (Kind::Quote, None) => {
+            let days = i64::from(business.quote_valid_days.unwrap_or(30));
+            Some(
+                today
+                    .saturating_add(jiff::Span::new().days(days))
+                    .to_string(),
+            )
+        }
+        _ => None,
+    };
     let number = documents::next_number(tx, row.kind, business, today.year()).await?;
     data.number = Some(number.clone());
     data.issue_date = Some(today.to_string());
+    data.valid_until = valid_until.clone();
     let layout = layouts::for_document(app, tx, row.kind, row.customer_id).await?;
     let layout_name = layout.name.clone();
     let (rendered, data) = render::render_blocking(layout, data, Vec::new())
@@ -393,14 +629,14 @@ pub async fn issue(
     let at = now();
     sqlx::query(
         "UPDATE document SET status = 'issued', number = ?, issue_date = ?, data = ?, pdf = ?,
-         layout = ?,
-         issued_at = ?, issued_by = ?, updated_at = ? WHERE id = ?",
+         layout = ?, valid_until = ?, issued_at = ?, issued_by = ?, updated_at = ? WHERE id = ?",
     )
     .bind(&number)
     .bind(today.to_string())
     .bind(serde_json::to_string(&data).map_err(ApiError::internal)?)
     .bind(pdf.to_string())
     .bind(layout_name)
+    .bind(valid_until)
     .bind(at)
     .bind(user_id)
     .bind(at)
@@ -467,14 +703,27 @@ pub async fn find(
         Status::Draft => documents::missing(&data),
         Status::Issued => BTreeMap::new(),
     };
-    let (customer_name, issued_at, created_at, updated_at): (String, Option<i64>, i64, i64) =
-        sqlx::query_as(
-            "SELECT c.name, d.issued_at, d.created_at, d.updated_at
-             FROM document d JOIN customer c ON c.id = d.customer_id WHERE d.id = ?",
-        )
+    let sql = format!(
+        "SELECT {QUOTE_STATE}, c.name, d.issued_at, d.created_at, d.updated_at
+         FROM document d JOIN customer c ON c.id = d.customer_id WHERE d.id = ?"
+    );
+    let (quote_state, customer_name, issued_at, created_at, updated_at): (
+        Option<QuoteState>,
+        String,
+        Option<i64>,
+        i64,
+        i64,
+    ) = sqlx::query_as(sqlx::AssertSqlSafe(sql))
+        .bind(today(business)?.to_string())
         .bind(id)
         .fetch_one(&mut *db)
         .await?;
+    let follow_ups = sqlx::query_as(
+        "SELECT id, kind, status, number FROM document WHERE source_id = ? ORDER BY id",
+    )
+    .bind(id)
+    .fetch_all(&mut *db)
+    .await?;
     Ok(Document {
         id,
         kind: row.kind,
@@ -492,6 +741,11 @@ pub async fn find(
         lines: documents::lines(db, id).await?,
         data,
         missing,
+        valid_until: row.valid_until,
+        pricing: row.pricing,
+        source_id: row.source_id,
+        quote_state,
+        follow_ups,
         layout: row.layout,
         issued_at,
         created_at,
@@ -510,6 +764,9 @@ pub struct Draft {
     title: Option<String>,
     intro: Option<String>,
     outro: Option<String>,
+    valid_until: Option<String>,
+    pricing: Option<Pricing>,
+    source_id: Option<i64>,
     lines: Vec<Line>,
 }
 
@@ -534,6 +791,9 @@ async fn snapshot(db: &mut SqliteConnection, row: &Row) -> Result<Draft, ApiErro
         title: row.title.clone(),
         intro: row.intro.clone(),
         outro: row.outro.clone(),
+        valid_until: row.valid_until.clone(),
+        pricing: row.pricing,
+        source_id: row.source_id,
         lines: documents::lines(db, row.id)
             .await?
             .into_iter()
@@ -636,6 +896,17 @@ async fn validate(db: &mut SqliteConnection, input: DocumentInput) -> Result<Dra
             activity_id: line.activity_id,
         });
     }
+    let quote = input.kind == Kind::Quote;
+    if input
+        .valid_until
+        .as_deref()
+        .is_some_and(|d| !quote || d.parse::<jiff::civil::Date>().is_err())
+    {
+        check.fail("valid_until", FieldError::InvalidFormat);
+    }
+    if input.pricing.is_some() && !quote {
+        check.fail("pricing", FieldError::InvalidFormat);
+    }
     let draft = Draft {
         kind: input.kind,
         customer_id: input.customer_id,
@@ -645,6 +916,13 @@ async fn validate(db: &mut SqliteConnection, input: DocumentInput) -> Result<Dra
         title: check.text("title", input.title, 200),
         intro: check.text("intro", input.intro, 10_000),
         outro: check.text("outro", input.outro, 10_000),
+        valid_until: input.valid_until.filter(|d| !d.is_empty()),
+        pricing: if quote {
+            Some(input.pricing.unwrap_or(Pricing::Fixed))
+        } else {
+            None
+        },
+        source_id: None,
         lines,
     };
     check.done()?;

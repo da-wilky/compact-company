@@ -51,6 +51,9 @@ pub enum ErrorCode {
     LayoutFailed,
     PackageNotApproved,
     PackageUnavailable,
+    FollowUpNotAllowed,
+    QuoteNotAccepted,
+    QuoteDecided,
     RateLimited,
     Internal,
 }
@@ -91,6 +94,9 @@ impl ErrorCode {
         Self::LayoutFailed,
         Self::PackageNotApproved,
         Self::PackageUnavailable,
+        Self::FollowUpNotAllowed,
+        Self::QuoteNotAccepted,
+        Self::QuoteDecided,
         Self::RateLimited,
         Self::Internal,
     ];
@@ -118,7 +124,10 @@ impl ErrorCode {
             | Self::Archived
             | Self::StatusInUse
             | Self::HasTime
-            | Self::Issued => StatusCode::CONFLICT,
+            | Self::Issued
+            | Self::FollowUpNotAllowed
+            | Self::QuoteNotAccepted
+            | Self::QuoteDecided => StatusCode::CONFLICT,
             Self::RateLimited => StatusCode::TOO_MANY_REQUESTS,
             Self::Internal => StatusCode::INTERNAL_SERVER_ERROR,
         }

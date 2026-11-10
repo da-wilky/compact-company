@@ -1,0 +1,604 @@
+<script lang="ts">
+	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
+	import { api, call, clientError, type ApiError, type Schemas } from '#lib/api/index.ts';
+	import Field from '#lib/components/Field.svelte';
+	import Icon from '#lib/components/Icon.svelte';
+	import Segmented from '#lib/components/Segmented.svelte';
+	import {
+		decimalInput,
+		formatAmount,
+		kindLabel,
+		missingLabel,
+		parseDecimal,
+		units,
+		type Kind
+	} from '#lib/documents.ts';
+	import { formatDay } from '#lib/dates.ts';
+	import { t } from '#lib/i18n.svelte.ts';
+	import { moneyInput, parseMoney } from '#lib/money.ts';
+	import { session } from '#lib/session.svelte.ts';
+	import { toast } from '#lib/toast.svelte.ts';
+
+	type Doc = Schemas['Document'];
+	type EditLine = {
+		description: string;
+		quantity: string;
+		unit: Schemas['Unit'];
+		price: string;
+		vat: string;
+		project_id: number | null;
+		activity_id: number | null;
+	};
+
+	const id = $derived(Number(page.params.id));
+	const owner = $derived(session.view?.user?.role === 'owner');
+	let doc = $state<Doc>();
+	let error = $state<ApiError>();
+	let busy = $state(false);
+	let issueError = $state<ApiError>();
+
+	let customerId = $state(0);
+	let projectId = $state<number | null>(null);
+	let language = $state<Schemas['Language']>('de');
+	let title = $state('');
+	let intro = $state('');
+	let outro = $state('');
+	let validUntil = $state('');
+	let pricing = $state<Schemas['Pricing']>('fixed');
+	let lines = $state<EditLine[]>([]);
+	let dirty = $state(false);
+
+	let customers = $state<Schemas['Customer'][]>([]);
+	let projects = $state<Schemas['Project'][]>([]);
+	let activities = $state<Schemas['Activity'][]>([]);
+	let snippets = $state<Schemas['Snippet'][]>([]);
+
+	function show(next: Doc) {
+		doc = next;
+		customerId = next.customer_id;
+		projectId = next.project_id ?? null;
+		language = next.language;
+		title = next.title ?? '';
+		intro = next.intro ?? '';
+		outro = next.outro ?? '';
+		validUntil = next.valid_until ?? '';
+		pricing = next.pricing ?? 'fixed';
+		lines = next.lines.map((line) => ({
+			description: line.description,
+			quantity: decimalInput(line.quantity),
+			unit: line.unit,
+			price: moneyInput(line.unit_price, next.currency),
+			vat: decimalInput(line.vat_rate),
+			project_id: line.project_id ?? null,
+			activity_id: line.activity_id ?? null
+		}));
+		dirty = false;
+		issueError = undefined;
+	}
+
+	$effect(() => {
+		call(api.GET('/api/documents/{id}', { params: { path: { id } } })).then((result) => {
+			if (result.data) show(result.data);
+			error = result.error;
+		});
+	});
+
+	$effect(() => {
+		if (!owner || doc?.status !== 'draft') return;
+		call(api.GET('/api/customers')).then(({ data }) => (customers = data ?? []));
+		call(api.GET('/api/activities')).then(({ data }) => (activities = data ?? []));
+		call(api.GET('/api/snippets')).then(({ data }) => (snippets = data ?? []));
+	});
+
+	$effect(() => {
+		const customer_id = customerId;
+		if (!customer_id || doc?.status !== 'draft') return;
+		call(api.GET('/api/projects', { params: { query: { customer_id } } })).then(
+			({ data }) => (projects = data ?? [])
+		);
+	});
+
+	function body(): Schemas['DocumentInput'] | undefined {
+		if (!doc) return;
+		const parsed = lines.map((line) => ({
+			description: line.description,
+			quantity: parseDecimal(line.quantity),
+			unit: line.unit,
+			unit_price: parseMoney(line.price, doc!.currency),
+			vat_rate: parseDecimal(line.vat),
+			project_id: line.project_id,
+			activity_id: line.activity_id
+		}));
+		const fields: Record<string, Schemas['FieldError']> = {};
+		parsed.forEach((line, i) => {
+			if (line.quantity == null || Number.isNaN(line.quantity)) fields[`lines.${i}.quantity`] = 'invalid_format';
+			if (Number.isNaN(line.unit_price)) fields[`lines.${i}.unit_price`] = 'invalid_format';
+			if (Number.isNaN(line.vat_rate)) fields[`lines.${i}.vat_rate`] = 'invalid_format';
+		});
+		if (Object.keys(fields).length) {
+			error = { ...clientError('error.invalid_input'), fields };
+			return;
+		}
+		return {
+			kind: doc.kind,
+			customer_id: customerId,
+			project_id: projectId,
+			language,
+			title,
+			intro,
+			outro,
+			valid_until: doc.kind === 'quote' ? validUntil || null : null,
+			pricing: doc.kind === 'quote' ? pricing : null,
+			lines: parsed as Schemas['LineInput'][]
+		};
+	}
+
+	async function save(): Promise<boolean> {
+		const input = body();
+		if (!input) return false;
+		busy = true;
+		const result = await call(api.PUT('/api/documents/{id}', { params: { path: { id } }, body: input }));
+		busy = false;
+		error = result.error;
+		if (result.data) show(result.data);
+		return !result.error;
+	}
+
+	async function issue() {
+		if (dirty && !(await save())) return;
+		if (!confirm(t('documents.issue_confirm'))) return;
+		busy = true;
+		const result = await call(api.POST('/api/documents/{id}/issue', { params: { path: { id } } }));
+		busy = false;
+		issueError = result.error?.fields ? result.error : undefined;
+		error = result.error?.fields ? undefined : result.error;
+		if (result.data) {
+			show(result.data);
+			toast(t('documents.issued_done', { number: result.data.number ?? '' }));
+		}
+	}
+
+	async function remove() {
+		if (!confirm(t('documents.delete_confirm'))) return;
+		const result = await call(api.DELETE('/api/documents/{id}', { params: { path: { id } } }));
+		error = result.error;
+		if (!result.error) goto('/documents');
+	}
+
+	async function duplicate() {
+		const result = await call(api.POST('/api/documents/{id}/duplicate', { params: { path: { id } } }));
+		error = result.error;
+		if (result.data) goto(`/documents/${result.data.id}`);
+	}
+
+	async function followUp(kind: Kind) {
+		const result = await call(
+			api.POST('/api/documents/{id}/follow-up', { params: { path: { id } }, body: { kind } })
+		);
+		error = result.error;
+		if (result.data) goto(`/documents/${result.data.id}`);
+	}
+
+	async function decide(outcome: 'accepted' | 'declined') {
+		const result = await call(
+			api.POST('/api/documents/{id}/outcome', { params: { path: { id } }, body: { outcome } })
+		);
+		error = result.error;
+		if (result.data) show(result.data);
+	}
+
+	function addLine() {
+		lines.push({
+			description: '',
+			quantity: '1',
+			unit: 'hour',
+			price: '',
+			vat: '',
+			project_id: projectId,
+			activity_id: null
+		});
+		dirty = true;
+	}
+
+	function move(i: number, by: number) {
+		const [line] = lines.splice(i, 1);
+		lines.splice(i + by, 0, line);
+		dirty = true;
+	}
+
+	function insertSnippet(target: 'intro' | 'outro', snippetId: string) {
+		const snippet = snippets.find((s) => String(s.id) === snippetId);
+		if (!snippet) return;
+		if (target === 'intro') intro = intro ? `${intro}\n\n${snippet.body}` : snippet.body;
+		else outro = outro ? `${outro}\n\n${snippet.body}` : snippet.body;
+		dirty = true;
+	}
+
+	const followUps: Record<Kind, Kind[]> = {
+		quote: ['order_confirmation', 'invoice', 'delivery_note', 'acceptance_report'],
+		order_confirmation: ['invoice', 'delivery_note', 'acceptance_report'],
+		invoice: ['cancellation', 'delivery_note', 'acceptance_report'],
+		cancellation: [],
+		delivery_note: [],
+		acceptance_report: []
+	};
+	const draft = $derived(doc?.status === 'draft' && owner);
+	const priced = $derived(doc?.data.totals != null || (doc ? !['delivery_note', 'acceptance_report'].includes(doc.kind) : false));
+	const canFollow = $derived(
+		owner && doc?.status === 'issued' && (doc.kind !== 'quote' || doc.quote_state === 'accepted')
+	);
+	const fieldError = (key: string) => error?.fields?.[key] as Schemas['FieldError'] | undefined;
+	const missing = $derived(Object.keys(issueError?.fields ?? doc?.missing ?? {}));
+	const unitLabel = (unit: Schemas['Unit']) => t(`documents.unit.${unit}`);
+</script>
+
+{#if doc}
+	<div class="page-head">
+		<div>
+			<p class="muted eyebrow">
+				<a href="/documents">{t('documents.title')}</a> · {kindLabel(doc.kind)}
+			</p>
+			<h1>
+				{doc.number ?? t('term.draft')}
+				{#if doc.quote_state}<small class="badge" class:accent={doc.quote_state === 'accepted'}>{t(`documents.state.${doc.quote_state}`)}</small>{/if}
+			</h1>
+			<p class="muted">
+				{doc.customer_name}{#if doc.issue_date}&nbsp;· {formatDay(doc.issue_date, { dateStyle: 'medium' })}{/if}
+				{#if doc.layout}&nbsp;· {t('term.layout')}: {doc.layout}{/if}
+			</p>
+		</div>
+		<div class="actions">
+			<a class="button ghost" href={`/api/documents/${doc.id}/pdf`} target="_blank" rel="noopener">
+				<Icon name="pdf" size={18} />{t(doc.status === 'draft' ? 'documents.preview' : 'documents.pdf')}
+			</a>
+			{#if owner}
+				<button class="ghost" onclick={duplicate}>{t('documents.duplicate')}</button>
+			{/if}
+			{#if draft}
+				<button class="ghost" onclick={remove}>{t('app.delete')}</button>
+				<button class="primary" onclick={issue} disabled={busy}>{t('documents.issue')}</button>
+			{/if}
+		</div>
+	</div>
+
+	<div class="stack">
+		{#if error && error.code !== 'invalid_input' && !error.fields}
+			<div class="alert" role="alert">
+				{t(error.message)}
+				{#if error.detail}<pre>{error.detail}</pre>{/if}
+			</div>
+		{/if}
+		{#if draft && missing.length}
+			<div class="card notice">
+				<strong>{t(issueError ? 'documents.cannot_issue' : 'documents.before_issue')}</strong>
+				<ul>
+					{#each missing as key (key)}
+						<li>{missingLabel(key)}{#if issueError?.fields?.[key] === 'not_shown'}&nbsp;– {t('field.not_shown')}{/if}</li>
+					{/each}
+				</ul>
+			</div>
+		{/if}
+
+		{#if doc.source_id || doc.follow_ups.length}
+			<div class="card links">
+				{#if doc.source_id}
+					<a href={`/documents/${doc.source_id}`}>{doc.data.reference ?? t('documents.source')}</a>
+				{/if}
+				{#each doc.follow_ups as follow (follow.id)}
+					<a href={`/documents/${follow.id}`}>{kindLabel(follow.kind)} {follow.number ?? t('term.draft')}</a>
+				{/each}
+			</div>
+		{/if}
+
+		{#if owner && doc.kind === 'quote' && doc.status === 'issued' && (doc.quote_state === 'open' || doc.quote_state === 'expired')}
+			<div class="card actions">
+				<span>{t('documents.quote_answer')}</span>
+				<button class="primary" onclick={() => decide('accepted')}><Icon name="check" size={18} />{t('documents.accept')}</button>
+				<button class="ghost" onclick={() => decide('declined')}>{t('documents.decline')}</button>
+			</div>
+		{/if}
+		{#if canFollow && followUps[doc.kind].length}
+			<div class="card actions">
+				<span>{t('documents.follow_up')}</span>
+				{#each followUps[doc.kind] as kind (kind)}
+					<button class="ghost" onclick={() => followUp(kind)}><Icon name="plus" size={18} />{kindLabel(kind)}</button>
+				{/each}
+			</div>
+		{/if}
+
+		{#if draft}
+			<form
+				class="card grid"
+				oninput={() => (dirty = true)}
+				onchange={() => (dirty = true)}
+				onsubmit={(e) => {
+					e.preventDefault();
+					save();
+				}}
+			>
+				<Field label={t('term.customer')} error={fieldError('customer_id')}>
+					<select bind:value={customerId}>
+						{#each customers as customer (customer.id)}<option value={customer.id}>{customer.name}</option>{/each}
+					</select>
+				</Field>
+				<Field label={t('term.project')} error={fieldError('project_id')}>
+					<select bind:value={projectId}>
+						<option value={null}>–</option>
+						{#each projects as project (project.id)}<option value={project.id}>{project.name}</option>{/each}
+					</select>
+				</Field>
+				<Field label={t('customers.language')}>
+					<select bind:value={language}>
+						<option value="de">{t('language.de')}</option>
+						<option value="en">{t('language.en')}</option>
+					</select>
+				</Field>
+				{#if doc.kind === 'quote'}
+					<Field label={t('documents.valid_until')} error={fieldError('valid_until')} note={t('documents.valid_until_hint')}>
+						<input type="date" bind:value={validUntil} />
+					</Field>
+					<div class="wide">
+						<Segmented
+							label={t('documents.pricing')}
+							options={[
+								{ value: 'fixed', label: t('term.fixed_price') },
+								{ value: 'effort', label: t('term.by_effort') }
+							]}
+							value={pricing}
+							onchange={(v) => {
+								pricing = v;
+								dirty = true;
+							}}
+						/>
+					</div>
+				{/if}
+				<div class="wide">
+					<Field label={t('documents.doc_title')} error={fieldError('title')}>
+						<input bind:value={title} />
+					</Field>
+				</div>
+				<div class="wide">
+					<Field label={t('documents.intro')} error={fieldError('intro')}>
+						<textarea rows="3" bind:value={intro}></textarea>
+					</Field>
+					{#if snippets.length}
+						<select class="snippet" aria-label={t('documents.insert_snippet')} onchange={(e) => { insertSnippet('intro', e.currentTarget.value); e.currentTarget.value = ''; }}>
+							<option value="">{t('documents.insert_snippet')}</option>
+							{#each snippets.filter((s) => s.language === language) as s (s.id)}<option value={s.id}>{s.name}</option>{/each}
+						</select>
+					{/if}
+				</div>
+
+				<div class="wide lines">
+					<h2>{t('documents.lines')}</h2>
+					{#each lines as line, i (i)}
+						<div class="line">
+							<div class="description">
+								<Field label={t('documents.description')} error={fieldError(`lines.${i}.description`)}>
+									<textarea rows="2" bind:value={line.description}></textarea>
+								</Field>
+							</div>
+							<Field label={t('documents.quantity')} error={fieldError(`lines.${i}.quantity`)}>
+								<input inputmode="decimal" bind:value={line.quantity} />
+							</Field>
+							<Field label={t('documents.unit')}>
+								<select bind:value={line.unit}>
+									{#each units as unit (unit)}<option value={unit}>{unitLabel(unit)}</option>{/each}
+								</select>
+							</Field>
+							{#if priced}
+								<Field
+									label={t('documents.unit_price')}
+									error={fieldError(`lines.${i}.unit_price`)}
+									note={!line.price && line.project_id ? t('documents.rate_hint') : doc.currency}
+								>
+									<input inputmode="decimal" bind:value={line.price} />
+								</Field>
+								<Field label={t('documents.vat')} error={fieldError(`lines.${i}.vat_rate`)}>
+									<input inputmode="decimal" bind:value={line.vat} placeholder={doc.data.business.small_business ? '0' : '19'} />
+								</Field>
+								<Field label={t('term.project')}>
+									<select bind:value={line.project_id}>
+										<option value={null}>–</option>
+										{#each projects as project (project.id)}<option value={project.id}>{project.name}</option>{/each}
+									</select>
+								</Field>
+								<Field label={t('term.activity')}>
+									<select bind:value={line.activity_id}>
+										<option value={null}>–</option>
+										{#each activities as activity (activity.id)}<option value={activity.id}>{activity.name}</option>{/each}
+									</select>
+								</Field>
+							{/if}
+							<div class="line-actions">
+								<button type="button" class="ghost icon" aria-label={t('documents.up')} disabled={i === 0} onclick={() => move(i, -1)}><Icon name="chevron_up" size={18} /></button>
+								<button type="button" class="ghost icon" aria-label={t('documents.down')} disabled={i === lines.length - 1} onclick={() => move(i, 1)}><Icon name="chevron_down" size={18} /></button>
+								<button type="button" class="ghost icon" aria-label={t('app.remove')} onclick={() => { lines.splice(i, 1); dirty = true; }}><Icon name="close" size={18} /></button>
+							</div>
+						</div>
+					{/each}
+					<div><button type="button" class="ghost" onclick={addLine}><Icon name="plus" size={18} />{t('documents.add_line')}</button></div>
+				</div>
+
+				<div class="wide">
+					<Field label={t('documents.outro')} error={fieldError('outro')}>
+						<textarea rows="3" bind:value={outro}></textarea>
+					</Field>
+					{#if snippets.length}
+						<select class="snippet" aria-label={t('documents.insert_snippet')} onchange={(e) => { insertSnippet('outro', e.currentTarget.value); e.currentTarget.value = ''; }}>
+							<option value="">{t('documents.insert_snippet')}</option>
+							{#each snippets.filter((s) => s.language === language) as s (s.id)}<option value={s.id}>{s.name}</option>{/each}
+						</select>
+					{/if}
+				</div>
+				<div class="wide save">
+					{#if doc.data.totals}
+						<span class="muted">{t('documents.total')}: <strong>{formatAmount(doc.data.totals.gross, doc.currency)}</strong>{#if dirty}&nbsp;({t('documents.unsaved')}){/if}</span>
+					{/if}
+					<button class="primary" disabled={busy || !dirty}>{t('app.save')}</button>
+				</div>
+			</form>
+		{:else}
+			<section class="card">
+				{#if doc.data.title}<h2>{doc.data.title}</h2>{/if}
+				{#if doc.data.intro}<p class="pre">{doc.data.intro}</p>{/if}
+				<div class="table">
+					<table>
+						<thead>
+							<tr>
+								<th>{t('documents.description')}</th>
+								<th class="num">{t('documents.quantity')}</th>
+								{#if doc.data.totals}<th class="num wide-only">{t('documents.unit_price')}</th><th class="num">{t('documents.amount')}</th>{/if}
+							</tr>
+						</thead>
+						<tbody>
+							{#each doc.data.lines as line (line.position)}
+								<tr>
+									<td class="pre">{line.description}</td>
+									<td class="num">{decimalInput(line.quantity)} {unitLabel(line.unit)}</td>
+									{#if doc.data.totals}
+										<td class="num wide-only">{formatAmount(line.unit_price, doc.currency)}</td>
+										<td class="num">{formatAmount(line.net, doc.currency)}</td>
+									{/if}
+								</tr>
+							{/each}
+						</tbody>
+					</table>
+				</div>
+				{#if doc.data.totals}
+					<dl class="totals">
+						<dt>{t('documents.net')}</dt><dd>{formatAmount(doc.data.totals.net, doc.currency)}</dd>
+						{#each doc.data.vat.filter((v) => Number(v.rate) > 0) as group (group.rate)}
+							<dt>{t('documents.vat_at', { rate: decimalInput(group.rate) })}</dt><dd>{formatAmount(group.tax, doc.currency)}</dd>
+						{/each}
+						<dt><strong>{t('documents.total')}</strong></dt><dd><strong>{formatAmount(doc.data.totals.gross, doc.currency)}</strong></dd>
+					</dl>
+				{/if}
+				{#if doc.data.outro}<p class="pre">{doc.data.outro}</p>{/if}
+				{#if doc.data.valid_until}<p class="muted">{t('documents.valid_until')}: {formatDay(doc.data.valid_until, { dateStyle: 'medium' })}</p>{/if}
+			</section>
+		{/if}
+	</div>
+{:else if error}
+	<p class="alert" role="alert">{t(error.message)}</p>
+{/if}
+
+<style>
+	.eyebrow {
+		margin: 0;
+		font-size: 0.875rem;
+	}
+	h1 {
+		display: flex;
+		gap: 0.5rem;
+		align-items: center;
+		flex-wrap: wrap;
+	}
+	.actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem 0.75rem;
+		align-items: center;
+	}
+	.links {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem 1.25rem;
+	}
+	.notice ul {
+		margin: 0.5rem 0 0;
+		padding-left: 1.25rem;
+	}
+	.grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+		gap: 1rem 1.25rem;
+		max-width: 64rem;
+	}
+	.wide {
+		grid-column: 1 / -1;
+	}
+	h2 {
+		margin: 0 0 0.75rem;
+		font-size: 1.125rem;
+	}
+	.lines {
+		display: grid;
+		gap: 1rem;
+	}
+	.line {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+		gap: 0.75rem;
+		padding: 0.875rem;
+		border: 1px solid var(--border);
+		border-radius: var(--radius, 0.5rem);
+		align-items: start;
+	}
+	.description {
+		grid-column: 1 / -1;
+	}
+	.line-actions {
+		display: flex;
+		gap: 0.25rem;
+		align-self: end;
+		justify-content: end;
+	}
+	.snippet {
+		margin-top: 0.375rem;
+		width: auto;
+		max-width: 100%;
+	}
+	.save {
+		display: flex;
+		flex-wrap: wrap;
+		justify-content: space-between;
+		align-items: center;
+		gap: 0.75rem;
+	}
+	section {
+		max-width: 64rem;
+	}
+	.table {
+		overflow-x: auto;
+	}
+	table {
+		width: 100%;
+		border-collapse: collapse;
+	}
+	th,
+	td {
+		padding: 0.5rem;
+		border-bottom: 1px solid var(--border);
+		text-align: left;
+		vertical-align: top;
+	}
+	.num {
+		text-align: right;
+		white-space: nowrap;
+		font-variant-numeric: tabular-nums;
+	}
+	.totals {
+		display: grid;
+		grid-template-columns: auto auto;
+		justify-content: end;
+		gap: 0.375rem 1.5rem;
+		margin: 1rem 0;
+	}
+	.totals dd {
+		margin: 0;
+		text-align: right;
+		font-variant-numeric: tabular-nums;
+	}
+	pre {
+		white-space: pre-wrap;
+		font-size: 0.75rem;
+		margin: 0.5rem 0 0;
+	}
+	@media (max-width: 40rem) {
+		.wide-only {
+			display: none;
+		}
+	}
+</style>

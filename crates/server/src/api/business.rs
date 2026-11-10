@@ -92,6 +92,7 @@ fn validate(business: Business) -> Result<Business, ApiError> {
         timezone: check.text("timezone", b.timezone, 64),
         vat_rate: b.vat_rate,
         payment_days: b.payment_days,
+        quote_valid_days: b.quote_valid_days,
         quote_number_format: check.text("quote_number_format", b.quote_number_format, 40),
         order_confirmation_number_format: check.text(
             "order_confirmation_number_format",
@@ -146,6 +147,9 @@ fn validate(business: Business) -> Result<Business, ApiError> {
         v.is_sign_negative() || v > rust_decimal::Decimal::ONE_HUNDRED || v.scale() > 2
     }) {
         check.fail("vat_rate", FieldError::InvalidFormat);
+    }
+    if business.quote_valid_days.is_some_and(|d| d > 365) {
+        check.fail("quote_valid_days", FieldError::InvalidFormat);
     }
     if business.payment_days.is_some_and(|d| d > 365) {
         check.fail("payment_days", FieldError::InvalidFormat);

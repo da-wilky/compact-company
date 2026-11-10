@@ -141,6 +141,20 @@
 					placeholder="14"
 				/>
 			</Field>
+			<Field
+				label={t('business.quote_valid_days')}
+				error={error?.fields?.quote_valid_days}
+				note={note('quote_valid_days')}
+			>
+				<input
+					type="number"
+					min="1"
+					max="365"
+					bind:value={values.quote_valid_days}
+					readonly={pinned.includes('quote_valid_days')}
+					placeholder="30"
+				/>
+			</Field>
 			<Field label={t('business.timezone')} error={error?.fields?.timezone} note={note('timezone')}>
 				<input
 					bind:value={values.timezone}
