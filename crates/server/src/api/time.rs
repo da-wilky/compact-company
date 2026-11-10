@@ -461,7 +461,8 @@ async fn validate(
 async fn invoiced(db: &mut SqliteConnection, id: i64) -> Result<Option<Status>, ApiError> {
     Ok(sqlx::query_scalar(
         "SELECT d.status FROM line_time_entry x JOIN document_line l ON l.id = x.line_id
-         JOIN document d ON d.id = l.document_id WHERE x.time_entry_id = ?",
+         JOIN document d ON d.id = l.document_id WHERE x.time_entry_id = ?
+         ORDER BY d.status = 'issued' DESC LIMIT 1",
     )
     .bind(id)
     .fetch_optional(db)

@@ -70,6 +70,9 @@ pub struct LineInput {
     /// Invoices only: the billable time entries this line charges.
     #[serde(default)]
     time_entry_ids: Vec<i64>,
+    /// Cancellation invoices only: the invoice line it reverses; its text and amounts are
+    /// taken from that line.
+    cancels_line_id: Option<i64>,
 }
 
 #[derive(Debug, Serialize, ToSchema)]
@@ -231,6 +234,9 @@ pub async fn create_document(
 ) -> Result<Json<Document>, ApiError> {
     let business = business(&app).await?;
     let mut tx = app.db.begin_with("BEGIN IMMEDIATE").await?;
+    if input.kind == Kind::Cancellation {
+        return Err(ApiError::new(ErrorCode::FollowUpNotAllowed));
+    }
     let draft = validate(&mut tx, input, None).await?;
     let id = insert_draft(&mut tx, auth.user.id, &draft).await?;
     let document = find(&mut tx, &business, id).await?;
@@ -327,6 +333,25 @@ pub async fn follow_up(
     // an invoice for a quote by effort charges the time spent, added to it afterwards
     let by_effort = original.pricing == Some(Pricing::Effort) && input.kind == Kind::Invoice;
     let cancels = input.kind == Kind::Cancellation;
+    let lines = if cancels {
+        let wanted = unreversed(&mut tx, id).await?;
+        if wanted.is_empty() {
+            return Err(ApiError::new(ErrorCode::AlreadyCancelled));
+        }
+        reversal_lines(&mut tx, id, &wanted).await?
+    } else {
+        original
+            .lines
+            .into_iter()
+            .filter(|_| !by_effort)
+            .map(|line| Line {
+                unit_price: line.unit_price.filter(|_| priced),
+                vat_rate: line.vat_rate.filter(|_| priced),
+                time_entry_ids: Vec::new(),
+                ..line
+            })
+            .collect()
+    };
     let draft = Draft {
         kind: input.kind,
         intro: None,
@@ -337,22 +362,7 @@ pub async fn follow_up(
         service_from: source_data.service_from.filter(|_| cancels),
         service_to: source_data.service_to.filter(|_| cancels),
         timesheet: false,
-        lines: original
-            .lines
-            .into_iter()
-            .filter(|_| !by_effort)
-            .map(|line| Line {
-                quantity: if input.kind == Kind::Cancellation {
-                    -line.quantity
-                } else {
-                    line.quantity
-                },
-                unit_price: line.unit_price.filter(|_| priced),
-                vat_rate: line.vat_rate.filter(|_| priced),
-                time_entry_ids: Vec::new(),
-                ..line
-            })
-            .collect(),
+        lines,
         ..original
     };
     let follow_up_id = insert_draft(&mut tx, auth.user.id, &draft).await?;
@@ -472,6 +482,14 @@ pub async fn put_document(
     let before = snapshot(&mut tx, &before).await?;
     draft.source_id = before.source_id;
     draft.rounding = before.rounding;
+    if let (Kind::Cancellation, Some(invoice)) = (draft.kind, draft.source_id) {
+        let wanted: Vec<i64> = draft
+            .lines
+            .iter()
+            .filter_map(|l| l.cancels_line_id)
+            .collect();
+        draft.lines = reversal_lines(&mut tx, invoice, &wanted).await?;
+    }
     sqlx::query(
         "UPDATE document SET customer_id = ?, project_id = ?, language = ?, currency = ?,
          title = ?, intro = ?, outro = ?, valid_until = ?, pricing = ?, service_from = ?,
@@ -614,6 +632,14 @@ pub async fn issue(
     id: i64,
 ) -> Result<Data, ApiError> {
     let row = draft_row(tx, id).await?;
+    if let (Kind::Cancellation, Some(invoice)) = (row.kind, row.source_id) {
+        let wanted: Vec<i64> = documents::lines(tx, id)
+            .await?
+            .iter()
+            .filter_map(|l| l.cancels_line_id)
+            .collect();
+        reversal_lines(tx, invoice, &wanted).await?;
+    }
     let mut data = documents::draft_data(tx, business, &row).await?;
     let missing = documents::missing(&data);
     if !missing.is_empty() {
@@ -843,6 +869,7 @@ pub struct Line {
     project_id: Option<i64>,
     activity_id: Option<i64>,
     time_entry_ids: Vec<i64>,
+    cancels_line_id: Option<i64>,
 }
 
 async fn snapshot(db: &mut SqliteConnection, row: &Row) -> Result<Draft, ApiError> {
@@ -874,6 +901,7 @@ async fn snapshot(db: &mut SqliteConnection, row: &Row) -> Result<Draft, ApiErro
                 project_id: l.project_id,
                 activity_id: l.activity_id,
                 time_entry_ids: l.time_entry_ids,
+                cancels_line_id: l.cancels_line_id,
             })
             .collect(),
     })
@@ -883,8 +911,8 @@ async fn write_lines(tx: &mut SqliteConnection, id: i64, lines: &[Line]) -> Resu
     for (position, line) in lines.iter().enumerate() {
         let line_id: i64 = sqlx::query_scalar(
             "INSERT INTO document_line (document_id, position, description, quantity, unit,
-             unit_price, vat_rate, project_id, activity_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-             RETURNING id",
+             unit_price, vat_rate, project_id, activity_id, cancels_line_id)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id",
         )
         .bind(id)
         .bind(i64::try_from(position).expect("lines are capped"))
@@ -895,6 +923,7 @@ async fn write_lines(tx: &mut SqliteConnection, id: i64, lines: &[Line]) -> Resu
         .bind(line.vat_rate.map(|v| v.to_string()))
         .bind(line.project_id)
         .bind(line.activity_id)
+        .bind(line.cancels_line_id)
         .fetch_one(&mut *tx)
         .await?;
         for entry in &line.time_entry_ids {
@@ -969,11 +998,14 @@ async fn validate(
         if line.activity_id.is_some_and(|a| !activities.contains(&a)) {
             check.fail(&key("activity_id"), FieldError::InvalidFormat);
         }
+        if line.cancels_line_id.is_some() != (input.kind == Kind::Cancellation) {
+            check.fail(&key("cancels_line_id"), FieldError::InvalidFormat);
+        }
         for entry in &line.time_entry_ids {
             let usable: bool = sqlx::query_scalar(
                 "SELECT EXISTS (SELECT 1 FROM time_entry e JOIN project p ON p.id = e.project_id
                  WHERE e.id = ?1 AND e.billable AND e.ended_at IS NOT NULL AND p.customer_id = ?2
-                 AND NOT EXISTS (SELECT 1 FROM line_time_entry x JOIN document_line l ON l.id = x.line_id
+                 AND NOT EXISTS (SELECT 1 FROM line_time_entry x JOIN billed_line l ON l.id = x.line_id
                      WHERE x.time_entry_id = e.id AND l.document_id IS NOT ?3))",
             )
             .bind(entry)
@@ -994,6 +1026,7 @@ async fn validate(
             project_id: line.project_id,
             activity_id: line.activity_id,
             time_entry_ids: line.time_entry_ids,
+            cancels_line_id: line.cancels_line_id,
         });
     }
     let quote = input.kind == Kind::Quote;
@@ -1068,6 +1101,7 @@ impl Line {
             project_id: Some(project_id),
             activity_id,
             time_entry_ids,
+            cancels_line_id: None,
         }
     }
 }
@@ -1088,4 +1122,54 @@ pub async fn write_all_lines(
         .execute(&mut *tx)
         .await?;
     write_lines(tx, id, lines).await
+}
+
+/// Lines reversing the given lines of an issued invoice, with its stored text and amounts; a line
+/// an issued cancellation invoice already reverses cannot be reversed again.
+async fn reversal_lines(
+    db: &mut SqliteConnection,
+    invoice_id: i64,
+    wanted: &[i64],
+) -> Result<Vec<Line>, ApiError> {
+    let mut lines = Vec::new();
+    for line in documents::lines(db, invoice_id).await? {
+        if !wanted.contains(&line.id) {
+            continue;
+        }
+        let reversed: bool = sqlx::query_scalar(
+            "SELECT EXISTS (SELECT 1 FROM document_line c JOIN document d ON d.id = c.document_id
+             WHERE c.cancels_line_id = ? AND d.status = 'issued')",
+        )
+        .bind(line.id)
+        .fetch_one(&mut *db)
+        .await?;
+        if reversed {
+            return Err(ApiError::new(ErrorCode::AlreadyCancelled));
+        }
+        lines.push(Line {
+            description: line.description,
+            quantity: -line.quantity.0,
+            unit: line.unit,
+            unit_price: line.unit_price,
+            vat_rate: line.vat_rate.map(|v| v.0),
+            project_id: line.project_id,
+            activity_id: line.activity_id,
+            time_entry_ids: Vec::new(),
+            cancels_line_id: Some(line.id),
+        });
+    }
+    if lines.len() != wanted.len() {
+        return Err(field_error("lines", FieldError::InvalidFormat));
+    }
+    Ok(lines)
+}
+
+/// The lines of an issued invoice no issued cancellation invoice reverses yet.
+async fn unreversed(db: &mut SqliteConnection, invoice_id: i64) -> Result<Vec<i64>, ApiError> {
+    Ok(
+        sqlx::query_scalar("SELECT id FROM billed_line WHERE document_id = ? ORDER BY position")
+            .bind(invoice_id)
+            .fetch_all(db)
+            .await?,
+    )
 }

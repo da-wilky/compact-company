@@ -4337,6 +4337,14 @@
             ],
             "format": "int64"
           },
+          "cancels_line_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "On a cancellation invoice: the invoice line it reverses."
+          },
           "description": {
             "type": "string"
           },
@@ -4675,6 +4683,7 @@
           "quote_decided",
           "billed",
           "no_unbilled_time",
+          "already_cancelled",
           "rate_limited",
           "internal"
         ]
@@ -4974,6 +4983,14 @@
               "null"
             ],
             "format": "int64"
+          },
+          "cancels_line_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Cancellation invoices only: the invoice line it reverses; its text and amounts are\ntaken from that line."
           },
           "description": {
             "type": [

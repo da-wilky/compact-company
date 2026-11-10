@@ -110,7 +110,8 @@ pub async fn list_unbilled(
 }
 
 const UNBILLED: &str = "v.billable AND v.ended_at IS NOT NULL
-    AND NOT EXISTS (SELECT 1 FROM line_time_entry x WHERE x.time_entry_id = v.id)";
+    AND NOT EXISTS (SELECT 1 FROM line_time_entry x JOIN billed_line l ON l.id = x.line_id
+        WHERE x.time_entry_id = v.id)";
 const MINUTES: &str = "(coalesce(v.billable_secs, v.ended_at - v.started_at) + 30) / 60";
 
 /// Adds the customer's unbilled time to a draft invoice as lines priced at the hourly rate when

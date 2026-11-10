@@ -56,6 +56,7 @@ pub enum ErrorCode {
     QuoteDecided,
     Billed,
     NoUnbilledTime,
+    AlreadyCancelled,
     RateLimited,
     Internal,
 }
@@ -101,6 +102,7 @@ impl ErrorCode {
         Self::QuoteDecided,
         Self::Billed,
         Self::NoUnbilledTime,
+        Self::AlreadyCancelled,
         Self::RateLimited,
         Self::Internal,
     ];
@@ -133,7 +135,8 @@ impl ErrorCode {
             | Self::QuoteNotAccepted
             | Self::QuoteDecided
             | Self::Billed
-            | Self::NoUnbilledTime => StatusCode::CONFLICT,
+            | Self::NoUnbilledTime
+            | Self::AlreadyCancelled => StatusCode::CONFLICT,
             Self::RateLimited => StatusCode::TOO_MANY_REQUESTS,
             Self::Internal => StatusCode::INTERNAL_SERVER_ERROR,
         }

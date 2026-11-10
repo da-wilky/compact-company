@@ -31,6 +31,7 @@
 		project_id: number | null;
 		activity_id: number | null;
 		time_entry_ids: number[];
+		cancels_line_id: number | null;
 	};
 
 	const id = $derived(Number(page.params.id));
@@ -80,7 +81,8 @@
 			vat: decimalInput(line.vat_rate),
 			project_id: line.project_id ?? null,
 			activity_id: line.activity_id ?? null,
-			time_entry_ids: line.time_entry_ids
+			time_entry_ids: line.time_entry_ids,
+			cancels_line_id: line.cancels_line_id ?? null
 		}));
 		dirty = false;
 		issueError = undefined;
@@ -118,7 +120,8 @@
 			vat_rate: parseDecimal(line.vat),
 			project_id: line.project_id,
 			activity_id: line.activity_id,
-			time_entry_ids: line.time_entry_ids
+			time_entry_ids: line.time_entry_ids,
+			cancels_line_id: line.cancels_line_id
 		}));
 		const fields: Record<string, Schemas['FieldError']> = {};
 		parsed.forEach((line, i) => {
@@ -210,7 +213,8 @@
 			vat: '',
 			project_id: projectId,
 			activity_id: null,
-			time_entry_ids: []
+			time_entry_ids: [],
+			cancels_line_id: null
 		});
 		dirty = true;
 	}
@@ -440,6 +444,16 @@
 
 				<div class="wide lines">
 					<h2>{t('documents.lines')}</h2>
+					{#if doc.kind === 'cancellation'}
+						<p class="muted">{t('documents.cancellation_hint')}</p>
+						{#each lines as line, i (line.cancels_line_id)}
+							<div class="reversal">
+								<span>{line.description}</span>
+								<span class="muted">{line.quantity} {unitLabel(line.unit)}</span>
+								<button type="button" class="ghost icon" aria-label={t('app.remove')} disabled={lines.length === 1} onclick={() => { lines.splice(i, 1); dirty = true; }}><Icon name="close" size={18} /></button>
+							</div>
+						{/each}
+					{:else}
 					{#each lines as line, i (i)}
 						<div class="line">
 							<div class="description">
@@ -489,12 +503,15 @@
 							</div>
 						</div>
 					{/each}
+					{/if}
+					{#if doc.kind !== 'cancellation'}
 					<div class="add">
 						<button type="button" class="ghost" onclick={addLine}><Icon name="plus" size={18} />{t('documents.add_line')}</button>
 						{#if doc.kind === 'invoice'}
 							<button type="button" class="ghost" onclick={openTime}><Icon name="time" size={18} />{t('documents.add_time')}</button>
 						{/if}
 					</div>
+					{/if}
 				</div>
 
 				<div class="wide">
@@ -722,6 +739,14 @@
 		white-space: pre-wrap;
 		font-size: 0.75rem;
 		margin: 0.5rem 0 0;
+	}
+	.reversal {
+		display: grid;
+		grid-template-columns: 1fr auto auto;
+		gap: 0.75rem;
+		align-items: center;
+		padding: 0.5rem 0;
+		border-bottom: 1px solid var(--border);
 	}
 	.add {
 		display: flex;

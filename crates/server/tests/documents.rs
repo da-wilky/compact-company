@@ -101,10 +101,8 @@ async fn an_issued_document_keeps_its_data_amounts_and_number() {
         .ok(
             &mut owner,
             "POST",
-            "/api/documents",
-            json!({ "kind": "cancellation", "customer_id": customer, "lines": [
-                { "description": "Hosting", "quantity": "-1", "unit": "month", "unit_price": 1250 }
-            ] }),
+            &format!("/api/documents/{id}/follow-up"),
+            json!({ "kind": "cancellation" }),
         )
         .await;
     let second = app

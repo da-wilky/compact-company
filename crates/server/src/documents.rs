@@ -386,6 +386,8 @@ pub struct LineRow {
     /// The time entries this line charges.
     #[sqlx(skip)]
     pub time_entry_ids: Vec<i64>,
+    /// On a cancellation invoice: the invoice line it reverses.
+    pub cancels_line_id: Option<i64>,
 }
 
 /// A decimal stored as text, since SQLite has no decimal type.
@@ -450,7 +452,10 @@ pub async fn effective(
             .map(|m| m.minor),
         (None, None) => None,
     };
-    let vat = if business.small_business.unwrap_or(false) {
+    // a reversal charges the VAT the invoice charged, whatever the business is now
+    let vat = if let (Some(_), Some(rate)) = (line.cancels_line_id, line.vat_rate) {
+        rate.0
+    } else if business.small_business.unwrap_or(false) {
         Decimal::ZERO
     } else {
         line.vat_rate
