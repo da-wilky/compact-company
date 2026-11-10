@@ -309,6 +309,14 @@ try {
 		lines: [{ description: 'Wartung im Oktober', quantity: '2.5', unit: 'hour', unit_price: 8500 }]
 	});
 	await api('POST', `/api/documents/${invoice.id}/time`, { group: 'todo', rounding: 15 });
+	const issuedInvoice = await api('POST', '/api/documents', {
+		kind: 'invoice',
+		customer_id: krume.id,
+		timesheet: true,
+		lines: [{ description: 'Lizenz Kassensystem', quantity: '1', unit: 'piece', unit_price: 49000 }]
+	});
+	await api('POST', `/api/documents/${issuedInvoice.id}/issue`);
+	await api('POST', `/api/documents/${issuedInvoice.id}/payments`, { date: '2026-11-01', amount: 20000 });
 	await api('POST', '/api/snippets', { name: 'Zahlungshinweis', language: 'de', body: 'Bitte überweisen Sie den Betrag ohne Abzug.' });
 
 	await screen('overview', `${origin}/`);
@@ -321,6 +329,7 @@ try {
 	await screen('documents', `${origin}/documents`);
 	await screen('document-draft', `${origin}/documents/${invoice.id}`);
 	await screen('document-quote', `${origin}/documents/${quote.id}`);
+	await screen('document-invoice', `${origin}/documents/${issuedInvoice.id}`);
 	await screen('todos-board', `${origin}/todos`, () => evaluate("localStorage.setItem('todos.view', 'board')"));
 	await screen('todos-list', `${origin}/todos`, async () => {
 		await click('[role=radiogroup] [role=radio]');

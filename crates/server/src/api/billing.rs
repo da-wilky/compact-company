@@ -73,14 +73,22 @@ pub async fn list_unbilled(
     _: Auth<OwnerOrAccountant>,
     Query(filter): Query<UnbilledFilter>,
 ) -> Result<Json<Vec<UnbilledProject>>, ApiError> {
-    let mut db = app.db.acquire().await?;
+    Ok(Json(
+        unbilled(&mut *app.db.acquire().await?, filter.customer_id).await?,
+    ))
+}
+
+pub async fn unbilled(
+    db: &mut sqlx::SqliteConnection,
+    customer_id: Option<i64>,
+) -> Result<Vec<UnbilledProject>, ApiError> {
     let mut list: Vec<UnbilledProject> = sqlx::query_as(sqlx::AssertSqlSafe(format!(
         "SELECT v.customer_id, v.customer_name, v.project_id, v.project_name,
          count(*) AS entries, sum({MINUTES}) AS minutes
          FROM time_entry_view v WHERE {UNBILLED} AND (?1 IS NULL OR v.customer_id = ?1)
          GROUP BY v.project_id ORDER BY v.customer_name, v.project_name"
     )))
-    .bind(filter.customer_id)
+    .bind(customer_id)
     .fetch_all(&mut *db)
     .await?;
     for project in &mut list {
@@ -106,7 +114,7 @@ pub async fn list_unbilled(
             }
         }
     }
-    Ok(Json(list))
+    Ok(list)
 }
 
 const UNBILLED: &str = "v.billable AND v.ended_at IS NOT NULL

@@ -110,6 +110,10 @@ pub struct Document {
     follow_ups: Vec<FollowUp>,
     /// Every attempt to email it, newest first.
     sent: Vec<super::sending::Sent>,
+    /// Money received, for an issued invoice.
+    payments: Vec<super::overview::Payment>,
+    /// What is still owed on an issued invoice.
+    amount_due: Option<crate::money::Money>,
     /// The uploaded layout it was issued with; none for the built-in one.
     layout: Option<String>,
     issued_at: Option<i64>,
@@ -858,6 +862,11 @@ pub async fn find(
         quote_state,
         follow_ups,
         sent: super::sending::sent(db, id).await?,
+        payments: super::overview::payments(db, id).await?,
+        amount_due: match (row.kind, row.status) {
+            (Kind::Invoice, Status::Issued) => Some(super::overview::amount_due(db, id).await?),
+            _ => None,
+        },
         layout: row.layout,
         issued_at,
         created_at,

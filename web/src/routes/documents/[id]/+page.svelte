@@ -17,7 +17,7 @@
 	} from '#lib/documents.ts';
 	import { formatDay } from '#lib/dates.ts';
 	import { t } from '#lib/i18n.svelte.ts';
-	import { moneyInput, parseMoney } from '#lib/money.ts';
+	import { formatMoney, moneyInput, parseMoney } from '#lib/money.ts';
 	import { session } from '#lib/session.svelte.ts';
 	import { toast } from '#lib/toast.svelte.ts';
 
@@ -227,6 +227,36 @@
 	let rounding = $state(15);
 	let unbilled = $state<Schemas['UnbilledProject'][]>([]);
 	let timeError = $state<ApiError>();
+
+	let payDate = $state(new Date().toISOString().slice(0, 10));
+	let payAmount = $state('');
+	let payError = $state<ApiError>();
+
+	async function pay(event: SubmitEvent) {
+		event.preventDefault();
+		if (!doc) return;
+		const amount = parseMoney(payAmount, doc.currency);
+		if (amount == null || Number.isNaN(amount)) {
+			payError = { ...clientError('error.invalid_input'), fields: { amount: 'invalid_format' } };
+			return;
+		}
+		const result = await call(
+			api.POST('/api/documents/{id}/payments', { params: { path: { id } }, body: { date: payDate, amount } })
+		);
+		payError = result.error;
+		if (result.data) {
+			show(result.data);
+			payAmount = '';
+		}
+	}
+
+	async function unpay(paymentId: number) {
+		if (!confirm(t('documents.payment_delete_confirm'))) return;
+		const result = await call(api.DELETE('/api/payments/{id}', { params: { path: { id: paymentId } } }));
+		error = result.error;
+		const reload = await call(api.GET('/api/documents/{id}', { params: { path: { id } } }));
+		if (reload.data) show(reload.data);
+	}
 
 	let sendOpen = $state(false);
 	let sendTo = $state('');
@@ -616,6 +646,39 @@
 				{#if doc.data.due_date}<p class="muted">{t('documents.due_date')}: {formatDay(doc.data.due_date, { dateStyle: 'medium' })}</p>{/if}
 			</section>
 		{/if}
+		{#if doc.amount_due}
+			<section class="card stack">
+				<h2>{t('documents.payments')}</h2>
+				<p>
+					{t('documents.amount_due')}:
+					<strong>{formatMoney(doc.amount_due.minor, doc.amount_due.currency)}</strong>
+					{#if doc.amount_due.minor <= 0}<small class="badge accent">{t('documents.paid')}</small>{/if}
+				</p>
+				{#if doc.payments.length}
+					<ul class="sent">
+						{#each doc.payments as payment (payment.id)}
+							<li>
+								<span>{formatDay(payment.date, { dateStyle: 'medium' })}</span>
+								<span>{formatMoney(payment.amount, doc.currency)}</span>
+								<span class="muted">{payment.user_name}</span>
+								{#if owner}<button class="ghost icon" aria-label={t('app.remove')} onclick={() => unpay(payment.id)}><Icon name="close" size={18} /></button>{/if}
+							</li>
+						{/each}
+					</ul>
+				{/if}
+				{#if owner && doc.amount_due.minor > 0}
+					<form class="pay" onsubmit={pay}>
+						<Field label={t('documents.payment_date')} error={payError?.fields?.date}>
+							<input type="date" bind:value={payDate} />
+						</Field>
+						<Field label={t('documents.payment_amount')} error={payError?.fields?.amount} note={doc.currency}>
+							<input inputmode="decimal" bind:value={payAmount} placeholder={moneyInput(doc.amount_due.minor, doc.currency)} />
+						</Field>
+						<button class="primary">{t('documents.record_payment')}</button>
+					</form>
+				{/if}
+			</section>
+		{/if}
 		{#if doc.sent.length}
 			<section class="card">
 				<h2>{t('documents.sent_log')}</h2>
@@ -829,6 +892,12 @@
 		align-items: center;
 		padding: 0.5rem 0;
 		border-bottom: 1px solid var(--border);
+	}
+	.pay {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.75rem;
+		align-items: end;
 	}
 	.sent {
 		list-style: none;

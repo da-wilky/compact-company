@@ -919,6 +919,56 @@
         }
       }
     },
+    "/api/documents/{id}/payments": {
+      "post": {
+        "tags": [
+          "documents"
+        ],
+        "summary": "Records money received for an issued invoice.",
+        "operationId": "add_payment",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PaymentInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Document"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/documents/{id}/pdf": {
       "get": {
         "tags": [
@@ -1684,6 +1734,34 @@
         }
       }
     },
+    "/api/overview": {
+      "get": {
+        "tags": [
+          "overview"
+        ],
+        "operationId": "get_overview",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Overview"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/packages": {
       "get": {
         "tags": [
@@ -1882,6 +1960,38 @@
               }
             }
           },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/payments/{id}": {
+      "delete": {
+        "tags": [
+          "documents"
+        ],
+        "summary": "Removes a payment recorded by mistake.",
+        "operationId": "delete_payment",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "204": {},
           "default": {
             "content": {
               "application/json": {
@@ -4035,10 +4145,22 @@
           "rounding",
           "follow_ups",
           "sent",
+          "payments",
           "created_at",
           "updated_at"
         ],
         "properties": {
+          "amount_due": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Money",
+                "description": "What is still owed on an issued invoice."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "created_at": {
             "type": "integer",
             "format": "int64"
@@ -4133,6 +4255,13 @@
               "string",
               "null"
             ]
+          },
+          "payments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Payment"
+            },
+            "description": "Money received, for an issued invoice."
           },
           "pricing": {
             "oneOf": [
@@ -5256,6 +5385,44 @@
           }
         }
       },
+      "OpenInvoice": {
+        "type": "object",
+        "required": [
+          "id",
+          "number",
+          "customer_name",
+          "issue_date",
+          "overdue",
+          "due"
+        ],
+        "properties": {
+          "customer_name": {
+            "type": "string"
+          },
+          "due": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "due_date": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "issue_date": {
+            "type": "string"
+          },
+          "number": {
+            "type": "string"
+          },
+          "overdue": {
+            "type": "boolean"
+          }
+        }
+      },
       "OutcomeInput": {
         "type": "object",
         "required": [
@@ -5268,6 +5435,37 @@
           }
         },
         "additionalProperties": false
+      },
+      "Overview": {
+        "type": "object",
+        "required": [
+          "running",
+          "unbilled",
+          "open_invoices"
+        ],
+        "properties": {
+          "open_invoices": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OpenInvoice"
+            },
+            "description": "For the owner and accountant only, oldest due first."
+          },
+          "running": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RunningTimer"
+            },
+            "description": "Everyone's for the owner, your own for staff."
+          },
+          "unbilled": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UnbilledProject"
+            },
+            "description": "For the owner and accountant only."
+          }
+        }
       },
       "Package": {
         "type": "object",
@@ -5337,6 +5535,63 @@
             "type": "string"
           }
         }
+      },
+      "Payment": {
+        "type": "object",
+        "required": [
+          "id",
+          "date",
+          "amount",
+          "user_name"
+        ],
+        "properties": {
+          "amount": {
+            "type": "integer",
+            "format": "int64",
+            "description": "In the minor unit of the invoice's currency."
+          },
+          "date": {
+            "type": "string",
+            "description": "ISO date the money arrived."
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "user_name": {
+            "type": "string"
+          }
+        }
+      },
+      "PaymentInput": {
+        "type": "object",
+        "required": [
+          "date",
+          "amount"
+        ],
+        "properties": {
+          "amount": {
+            "type": "integer",
+            "format": "int64",
+            "description": "In the minor unit of the invoice's currency."
+          },
+          "date": {
+            "type": "string"
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": false
       },
       "Preceding": {
         "type": "object",
@@ -5519,6 +5774,47 @@
           "staff",
           "accountant"
         ]
+      },
+      "RunningTimer": {
+        "type": "object",
+        "required": [
+          "id",
+          "user_name",
+          "project_name",
+          "customer_name",
+          "started_at"
+        ],
+        "properties": {
+          "customer_name": {
+            "type": "string"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "project_name": {
+            "type": "string"
+          },
+          "started_at": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "todo_title": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "user_name": {
+            "type": "string"
+          }
+        }
       },
       "SendInput": {
         "type": "object",

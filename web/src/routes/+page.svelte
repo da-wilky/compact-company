@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { api, call, type Schemas } from '#lib/api/index.ts';
-	import { dueLabel } from '#lib/dates.ts';
+	import { dueLabel, formatDay } from '#lib/dates.ts';
+	import { formatMoney } from '#lib/money.ts';
 	import { t } from '#lib/i18n.svelte.ts';
 	import { session } from '#lib/session.svelte.ts';
 	import { clock, timers } from '#lib/timers.svelte.ts';
@@ -24,6 +25,14 @@
 		call(api.GET('/api/time', { params: { query: { from, to: from + 7 * 86400 } } })).then(
 			({ data }) => (week = data ?? [])
 		);
+	});
+
+	let overview = $state<Schemas['Overview']>();
+	const money = $derived(user?.role === 'owner' || user?.role === 'accountant');
+	$effect(() => {
+		if (!user) return;
+		timers.list.length;
+		call(api.GET('/api/overview')).then(({ data }) => (overview = data));
 	});
 
 	const hours = $derived(week.reduce((sum, e) => sum + (e.ended_at ?? timers.now) - e.started_at, 0));
@@ -65,11 +74,67 @@
 			<a href="/time">{t('home.to_time')}</a>
 		</section>
 	</div>
-{:else}
-	<section class="card stack">
-		<p>{t('home.accountant')}</p>
-		<a href="/customers">{t('customers.title')}</a>
-	</section>
+{/if}
+
+
+{#if overview && (money || overview.running.length)}
+	<div class="cards">
+		{#if overview.running.length && user?.role === 'owner'}
+			<section class="card stack">
+				<h2>{t('home.running')}</h2>
+				<ul class="list">
+					{#each overview.running as timer (timer.id)}
+						<li>
+							<div>
+								<strong>{timer.todo_title ?? timer.description ?? timer.project_name}</strong>
+								<small class="muted">{timer.user_name} · {timer.customer_name} · {timer.project_name}</small>
+							</div>
+							<small class="muted">{clock(timers.now - timer.started_at)}</small>
+						</li>
+					{/each}
+				</ul>
+			</section>
+		{/if}
+		{#if money}
+			<section class="card stack">
+				<h2>{t('home.unbilled')}</h2>
+				{#if overview.unbilled.length}
+					<ul class="list">
+						{#each overview.unbilled as project (project.project_id)}
+							<li>
+								<div>
+									<strong>{project.project_name}</strong>
+									<small class="muted">{project.customer_name} · {t('documents.unbilled_hours', { hours: (project.minutes / 60).toLocaleString(undefined, { maximumFractionDigits: 2 }) })}</small>
+								</div>
+								{#if project.amount}<span class="amount">{formatMoney(project.amount.minor, project.amount.currency)}</span>{/if}
+							</li>
+						{/each}
+					</ul>
+				{:else}
+					<p class="muted">{t('home.nothing_unbilled')}</p>
+				{/if}
+			</section>
+			<section class="card stack">
+				<h2>{t('home.open_invoices')}</h2>
+				{#if overview.open_invoices.length}
+					<ul class="list">
+						{#each overview.open_invoices as invoice (invoice.id)}
+							<li>
+								<div>
+									<a href={`/documents/${invoice.id}`}>{invoice.number}</a>
+									<small class="muted">{invoice.customer_name}{#if invoice.due_date}&nbsp;· {t('documents.due_date')} {formatDay(invoice.due_date, { dateStyle: 'medium' })}{/if}</small>
+								</div>
+								<span class="amount" class:overdue={invoice.overdue}>{formatMoney(invoice.due.minor, invoice.due.currency)}</span>
+							</li>
+						{/each}
+					</ul>
+				{:else}
+					<p class="muted">{t('home.no_open_invoices')}</p>
+				{/if}
+				<a href="/documents">{t('documents.title')}</a>
+			</section>
+		{/if}
+	</div>
 {/if}
 
 <style>
@@ -90,6 +155,17 @@
 	}
 	.overdue {
 		color: var(--danger);
+	}
+	.cards {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
+		gap: 1rem;
+		margin-top: 1rem;
+		align-items: start;
+	}
+	.amount {
+		font-variant-numeric: tabular-nums;
+		white-space: nowrap;
 	}
 	.hours {
 		font: 700 2.5rem var(--font-display);

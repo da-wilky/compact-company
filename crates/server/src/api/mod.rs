@@ -18,6 +18,7 @@ pub mod input;
 pub mod invitations;
 pub mod layouts;
 pub mod oidc;
+pub mod overview;
 pub mod passkeys;
 pub mod projects;
 pub mod sending;
@@ -94,6 +95,9 @@ pub fn routes() -> OpenApiRouter<Arc<App>> {
         .routes(routes!(documents::document_pdf))
         .routes(routes!(documents::document_xml))
         .routes(routes!(sending::send_document))
+        .routes(routes!(overview::add_payment))
+        .routes(routes!(overview::delete_payment))
+        .routes(routes!(overview::get_overview))
         .routes(routes!(documents::duplicate_document))
         .routes(routes!(documents::follow_up))
         .routes(routes!(documents::set_outcome))
