@@ -4,6 +4,8 @@
 	import { api, call, type ApiError, type Schemas } from '#lib/api/index.ts';
 	import Dialog from '#lib/components/Dialog.svelte';
 	import Field from '#lib/components/Field.svelte';
+	import Icon from '#lib/components/Icon.svelte';
+	import { openTimer } from '#lib/timers.svelte.ts';
 	import TodoForm from '#lib/components/TodoForm.svelte';
 	import { dueLabel, formatDay } from '#lib/dates.ts';
 	import { i18n, t } from '#lib/i18n.svelte.ts';
@@ -78,6 +80,11 @@
 			<h1>{todo.title}</h1>
 		</div>
 		<div class="row">
+			{#if !todo.done}
+				<button class="primary" onclick={() => openTimer({ project_id: todo.project_id, todo_id: todo.id })}>
+					<Icon name="play" size={16} />{t('time.start')}
+				</button>
+			{/if}
 			<button onclick={() => (editing = true)}>{t('app.edit')}</button>
 			<button class="ghost danger" onclick={() => (deleting = true)}>{t('app.delete')}</button>
 		</div>

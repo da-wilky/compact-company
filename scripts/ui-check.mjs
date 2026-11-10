@@ -280,6 +280,11 @@ try {
 		todos.push(await api('POST', '/api/todos', { project_id: project.id, title, status_id, priority, due_date, assignee_id: 1 }));
 	}
 	await api('POST', `/api/todos/${todos[3].id}/comments`, { body: 'Entwurf steht, Bilder fehlen noch.' });
+	const earlier = Math.floor(Date.now() / 1000) - 4 * 3600;
+	await api('POST', '/api/time', { project_id: relaunch.id, todo_id: todos[0].id, started_at: earlier - 5400, ended_at: earlier - 1800 });
+	await api('POST', '/api/time', { project_id: portal.id, description: 'Abstimmung Texte', started_at: earlier, ended_at: earlier + 2700, billable: false });
+	await api('POST', '/api/timers', { project_id: relaunch.id, todo_id: todos[3].id });
+	await api('POST', '/api/timers', { project_id: portal.id, description: 'Telefonat' });
 
 	await screen('overview', `${origin}/`);
 	await screen('customers', `${origin}/customers`);
@@ -292,6 +297,8 @@ try {
 		await settle();
 	});
 	await screen('todo', `${origin}/todos/${todos[3].id}`);
+	await screen('time', `${origin}/time`);
+	await screen('timers', `${origin}/time`, () => click('.timer-bar'), ['phone']);
 
 	// drags a card for real: with the mouse on a desktop board, by long press and holding it at
 	// the edge on a phone, then checks where the server put it

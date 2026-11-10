@@ -10,7 +10,11 @@
 	import Toaster from '#lib/components/Toaster.svelte';
 	import { i18n, t } from '#lib/i18n.svelte.ts';
 	import { applyTheme } from '#lib/preferences.svelte.ts';
+	import EntryForm from '#lib/components/EntryForm.svelte';
+	import TimerList from '#lib/components/TimerList.svelte';
 	import { load, session } from '#lib/session.svelte.ts';
+	import { clock, entryTitle, loadTimers, timers } from '#lib/timers.svelte.ts';
+	import { toast } from '#lib/toast.svelte.ts';
 	import type { Schemas } from '#lib/api/index.ts';
 
 	let { children } = $props();
@@ -26,6 +30,7 @@
 	const items: Item[] = $derived([
 		{ href: '/', label: t('nav.overview'), icon: 'overview', roles: all, group: 'main' },
 		{ href: '/todos', label: t('todos.title'), icon: 'todos', roles: ['owner', 'staff'], group: 'main' },
+		{ href: '/time', label: t('time.title'), icon: 'time', roles: ['owner', 'staff'], group: 'main' },
 		{ href: '/customers', label: t('customers.title'), icon: 'customers', roles: all, group: 'main' },
 		{ href: '/activities', label: t('activities.title'), icon: 'activities', roles: ['owner'], group: 'admin' },
 		{ href: '/statuses', label: t('statuses.title'), icon: 'statuses', roles: ['owner'], group: 'admin' },
@@ -51,6 +56,20 @@
 			.toUpperCase()
 	);
 	let more = $state(false);
+	let timerSheet = $state(false);
+	const tracks = $derived(user?.role === 'owner' || user?.role === 'staff');
+	const newest = $derived(timers.list[0]);
+
+	$effect(() => {
+		if (tracks) loadTimers();
+		else timers.list = [];
+	});
+
+	async function timerStarted() {
+		timers.dialog = false;
+		toast(t('time.started'));
+		await loadTimers();
+	}
 
 	applyTheme();
 	load();
@@ -105,6 +124,9 @@
 					</a>
 				{/each}
 			{/if}
+			<div class="bottom">
+				{#if tracks}<TimerList />{/if}
+			</div>
 			<div class="me">
 				<a href="/account" aria-current={current('/account')}>
 					<span class="avatar" aria-hidden="true">{initials}</span>
@@ -119,7 +141,18 @@
 			</div>
 		</nav>
 
-		<main>{@render children()}</main>
+		<main class:with-timer={newest}>{@render children()}</main>
+
+		{#if newest}
+			<button class="timer-bar" onclick={() => (timerSheet = true)} aria-expanded={timerSheet}>
+				<span class="timer-text">
+					<span>{entryTitle(newest)}{#if timers.list.length > 1}&nbsp;· +{timers.list.length - 1}{/if}</span>
+					<strong>{clock(Math.max(0, timers.now - newest.started_at), true)}</strong>
+				</span>
+				<span class="badge">{t('time.timers_running', { count: timers.list.length })}</span>
+				<Icon name="chevron_up" size={18} />
+			</button>
+		{/if}
 
 		<nav class="bar" aria-label={t('nav.main')}>
 			{#each bar as item (item.href)}
@@ -145,6 +178,16 @@
 			<Preferences />
 			<button onclick={signOut}><Icon name="sign_out" />{t('sign_out')}</button>
 		</div>
+	</Dialog>
+
+	<Dialog bind:open={timerSheet} title={t('time.running_timers')} sheet>
+		<TimerList large />
+	</Dialog>
+
+	<Dialog bind:open={timers.dialog} title={t('time.start')}>
+		{#if timers.dialog}
+			<EntryForm mode="timer" preset={timers.preset} onsaved={timerStarted} />
+		{/if}
 	</Dialog>
 {:else if open.includes(page.url.pathname) && session.view}
 	<div class="auth">
@@ -226,6 +269,47 @@
 		font-weight: 600;
 	}
 
+	main.with-timer {
+		padding-bottom: calc(var(--bottom-bar) + 6rem + env(safe-area-inset-bottom));
+	}
+	.timer-bar {
+		position: fixed;
+		left: 0.75rem;
+		right: 0.75rem;
+		bottom: calc(var(--bottom-bar) + 0.625rem + env(safe-area-inset-bottom));
+		z-index: 5;
+		display: flex;
+		align-items: center;
+		gap: 0.625rem;
+		min-height: 3.5rem;
+		padding: 0 0.875rem 0 1rem;
+		border: 0;
+		border-radius: var(--radius-lg);
+		background: var(--accent);
+		color: var(--accent-fg);
+		box-shadow: var(--shadow-raised);
+		text-align: left;
+	}
+	.timer-text {
+		display: flex;
+		flex-direction: column;
+		min-width: 0;
+		font-size: 0.75rem;
+		font-weight: 400;
+	}
+	.timer-text span {
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+	.timer-text strong {
+		font: 600 1.0625rem var(--font-display);
+		font-variant-numeric: tabular-nums;
+	}
+	.timer-bar .badge {
+		margin-left: auto;
+		background: rgb(255 255 255 / 0.2);
+		color: inherit;
+	}
 	.sheet-nav {
 		display: flex;
 		flex-direction: column;
@@ -267,11 +351,20 @@
 			letter-spacing: 0.04em;
 			text-transform: uppercase;
 		}
+		.sidebar .item {
+			min-height: 2.25rem;
+		}
+		.bottom {
+			margin-top: auto;
+			padding: 1rem 0 0.75rem;
+		}
+		.timer-bar {
+			display: none;
+		}
 		.me {
 			display: flex;
 			align-items: center;
 			gap: 0.25rem;
-			margin-top: auto;
 			padding-top: 0.75rem;
 			border-top: 1px solid var(--border);
 		}

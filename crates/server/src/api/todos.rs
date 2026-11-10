@@ -229,6 +229,11 @@ pub async fn put_todo(
 ) -> Result<Json<Todo>, ApiError> {
     let mut tx = app.db.begin_with("BEGIN IMMEDIATE").await?;
     let before = find(&mut tx, id).await?;
+    if input.project_id != before.fields.project_id && has_time(&mut tx, id).await? {
+        let mut check = Check::default();
+        check.fail("project_id", FieldError::Locked);
+        check.done()?;
+    }
     let fields = validate(&mut tx, input, Some(&before)).await?;
     sqlx::query(
         "UPDATE todo SET project_id = ?, title = ?, description = ?, status_id = ?, priority = ?,
@@ -303,6 +308,9 @@ pub async fn delete_todo(
 ) -> Result<axum::http::StatusCode, ApiError> {
     let mut tx = app.db.begin_with("BEGIN IMMEDIATE").await?;
     let todo = find(&mut tx, id).await?;
+    if has_time(&mut tx, id).await? {
+        return Err(ApiError::new(ErrorCode::HasTime));
+    }
     sqlx::query("DELETE FROM todo_comment WHERE todo_id = ?")
         .bind(id)
         .execute(&mut *tx)
@@ -372,6 +380,15 @@ pub async fn add_comment(
     .await?;
     tx.commit().await?;
     Ok(Json(comment))
+}
+
+async fn has_time(db: &mut SqliteConnection, id: i64) -> Result<bool, ApiError> {
+    Ok(
+        sqlx::query_scalar("SELECT EXISTS (SELECT 1 FROM time_entry WHERE todo_id = ?)")
+            .bind(id)
+            .fetch_one(db)
+            .await?,
+    )
 }
 
 pub async fn find(db: &mut SqliteConnection, id: i64) -> Result<Todo, ApiError> {

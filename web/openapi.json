@@ -1407,6 +1407,291 @@
         }
       }
     },
+    "/api/time": {
+      "get": {
+        "tags": [
+          "time"
+        ],
+        "operationId": "list_time",
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "description": "Unix seconds; entries that end after it.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "description": "Unix seconds; entries that start before it.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "user_id",
+            "in": "query",
+            "description": "Whose time; your own when left out. Only the owner sees other people's.",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TimeEntry"
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "time"
+        ],
+        "operationId": "create_entry",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EntryInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TimeEntry"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/time/{id}": {
+      "put": {
+        "tags": [
+          "time"
+        ],
+        "operationId": "put_entry",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EntryInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TimeEntry"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "time"
+        ],
+        "operationId": "delete_entry",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "204": {},
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/time/{id}/stop": {
+      "post": {
+        "tags": [
+          "time"
+        ],
+        "operationId": "stop_timer",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TimeEntry"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/timers": {
+      "get": {
+        "tags": [
+          "time"
+        ],
+        "summary": "Your running timers, newest first.",
+        "operationId": "list_timers",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TimeEntry"
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "time"
+        ],
+        "summary": "Starts a timer now; other running timers keep running.",
+        "operationId": "start_timer",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TimerInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TimeEntry"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/todos": {
       "get": {
         "tags": [
@@ -2230,6 +2515,135 @@
         },
         "additionalProperties": false
       },
+      "EntryFields": {
+        "type": "object",
+        "description": "What an edit may change; also the snapshot the audit log compares.",
+        "required": [
+          "project_id",
+          "started_at",
+          "billable"
+        ],
+        "properties": {
+          "activity_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "billable": {
+            "type": "boolean"
+          },
+          "billable_secs": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Seconds charged when that is not the whole tracked duration."
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ended_at": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Unix seconds; a running timer has none."
+          },
+          "project_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "started_at": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Unix seconds."
+          },
+          "todo_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          }
+        }
+      },
+      "EntryInput": {
+        "type": "object",
+        "required": [
+          "project_id",
+          "started_at"
+        ],
+        "properties": {
+          "activity_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "billable": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "The project's setting when left out."
+          },
+          "billable_secs": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Seconds charged when that is not the whole tracked duration."
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ended_at": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Unix seconds; left out keeps a timer running."
+          },
+          "project_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "started_at": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Unix seconds."
+          },
+          "todo_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "user_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Whose time; your own when left out. Only the owner enters time for others."
+          }
+        },
+        "additionalProperties": false
+      },
       "ErrorCode": {
         "type": "string",
         "enum": [
@@ -2251,6 +2665,7 @@
           "oidc_identity_taken",
           "archived",
           "status_in_use",
+          "has_time",
           "internal"
         ]
       },
@@ -2697,6 +3112,113 @@
               "string",
               "null"
             ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "TimeEntry": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/EntryFields"
+          },
+          {
+            "type": "object",
+            "required": [
+              "id",
+              "user_id",
+              "user_name",
+              "project_name",
+              "customer_id",
+              "customer_name",
+              "created_at",
+              "updated_at"
+            ],
+            "properties": {
+              "activity_name": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "created_at": {
+                "type": "integer",
+                "format": "int64"
+              },
+              "customer_id": {
+                "type": "integer",
+                "format": "int64"
+              },
+              "customer_name": {
+                "type": "string"
+              },
+              "id": {
+                "type": "integer",
+                "format": "int64"
+              },
+              "project_name": {
+                "type": "string"
+              },
+              "rate": {
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/Money",
+                    "description": "The hourly rate this work is worth, if any applies."
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "todo_title": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "updated_at": {
+                "type": "integer",
+                "format": "int64"
+              },
+              "user_id": {
+                "type": "integer",
+                "format": "int64"
+              },
+              "user_name": {
+                "type": "string"
+              }
+            }
+          }
+        ]
+      },
+      "TimerInput": {
+        "type": "object",
+        "required": [
+          "project_id"
+        ],
+        "properties": {
+          "activity_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "project_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "todo_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
           }
         },
         "additionalProperties": false

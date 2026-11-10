@@ -63,6 +63,13 @@ const SIGNED_IN: &[(&str, &str, &[&str])] = &[
     ("DELETE", "/api/todos/{id}", OWNER_STAFF),
     ("POST", "/api/todos/{id}/move", OWNER_STAFF),
     ("POST", "/api/todos/{id}/comments", OWNER_STAFF),
+    ("GET", "/api/time", OWNER_STAFF),
+    ("POST", "/api/time", OWNER_STAFF),
+    ("PUT", "/api/time/{id}", OWNER_STAFF),
+    ("DELETE", "/api/time/{id}", OWNER_STAFF),
+    ("POST", "/api/time/{id}/stop", OWNER_STAFF),
+    ("GET", "/api/timers", OWNER_STAFF),
+    ("POST", "/api/timers", OWNER_STAFF),
 ];
 
 #[test]

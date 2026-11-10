@@ -18,6 +18,7 @@ pub mod passkeys;
 pub mod projects;
 pub mod session;
 pub mod statuses;
+pub mod time;
 pub mod todos;
 pub mod users;
 
@@ -64,6 +65,10 @@ pub fn routes() -> OpenApiRouter<Arc<App>> {
         .routes(routes!(todos::get_todo, todos::put_todo, todos::delete_todo))
         .routes(routes!(todos::move_todo))
         .routes(routes!(todos::add_comment))
+        .routes(routes!(time::list_time, time::create_entry))
+        .routes(routes!(time::put_entry, time::delete_entry))
+        .routes(routes!(time::stop_timer))
+        .routes(routes!(time::list_timers, time::start_timer))
         .fallback(async || ApiError::new(ErrorCode::NotFound));
     OpenApiRouter::with_openapi(Doc::openapi()).nest("/api", api)
 }

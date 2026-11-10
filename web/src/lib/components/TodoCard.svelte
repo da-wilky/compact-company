@@ -2,6 +2,7 @@
 	import type { Schemas } from '#lib/api/index.ts';
 	import { dueLabel } from '#lib/dates.ts';
 	import { t } from '#lib/i18n.svelte.ts';
+	import { openTimer, stopTimer, timers } from '#lib/timers.svelte.ts';
 	import Icon from './Icon.svelte';
 
 	let {
@@ -17,6 +18,7 @@
 	} = $props();
 
 	const due = $derived(dueLabel(todo.due_date, todo.done));
+	const running = $derived(timers.list.find((e) => e.todo_id === todo.id));
 	const initials = $derived(
 		(todo.assignee_name ?? '')
 			.split(/\s+/)
@@ -40,6 +42,20 @@
 		{/if}
 		{#if todo.assignee_name}
 			<span class="avatar" title={todo.assignee_name}>{initials}</span>
+		{/if}
+		{#if running}
+			<button class="timer on" aria-label={t('time.stop')} title={t('time.stop')} onclick={() => stopTimer(running.id)}>
+				<Icon name="stop" size={12} />
+			</button>
+		{:else if !todo.done}
+			<button
+				class="timer"
+				aria-label={t('time.start_on', { title: todo.title })}
+				title={t('time.start')}
+				onclick={() => openTimer({ project_id: todo.project_id, todo_id: todo.id })}
+			>
+				<Icon name="play" size={12} />
+			</button>
 		{/if}
 	</div>
 	{#if onstatus}
@@ -120,6 +136,25 @@
 		color: var(--accent-text);
 		font-size: 0.625rem;
 		font-weight: 700;
+	}
+	.timer {
+		flex: none;
+		width: 2rem;
+		min-height: 2rem;
+		padding: 0;
+		border-color: transparent;
+		background: var(--accent-soft);
+		color: var(--accent-text);
+	}
+	.avatar + .timer {
+		margin-left: 0;
+	}
+	:not(.avatar) + .timer {
+		margin-left: auto;
+	}
+	.timer.on {
+		background: var(--accent);
+		color: var(--accent-fg);
 	}
 	.status {
 		display: none;
