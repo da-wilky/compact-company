@@ -20,6 +20,9 @@ pub struct ApiError {
     pub message: String,
     #[serde(skip_serializing_if = "BTreeMap::is_empty")]
     pub fields: BTreeMap<String, FieldError>,
+    /// What went wrong in detail, such as the errors of a layout.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub detail: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, ToSchema)]
@@ -44,6 +47,18 @@ pub enum ErrorCode {
     Archived,
     StatusInUse,
     HasTime,
+    Issued,
+    LayoutFailed,
+    PackageNotApproved,
+    PackageUnavailable,
+    FollowUpNotAllowed,
+    QuoteNotAccepted,
+    QuoteDecided,
+    Billed,
+    NoUnbilledTime,
+    AlreadyCancelled,
+    MailNotConfigured,
+    MailFailed,
     RateLimited,
     Internal,
 }
@@ -56,6 +71,7 @@ pub enum FieldError {
     InvalidFormat,
     Pinned,
     Locked,
+    NotShown,
 }
 
 impl ErrorCode {
@@ -79,6 +95,18 @@ impl ErrorCode {
         Self::Archived,
         Self::StatusInUse,
         Self::HasTime,
+        Self::Issued,
+        Self::LayoutFailed,
+        Self::PackageNotApproved,
+        Self::PackageUnavailable,
+        Self::FollowUpNotAllowed,
+        Self::QuoteNotAccepted,
+        Self::QuoteDecided,
+        Self::Billed,
+        Self::NoUnbilledTime,
+        Self::AlreadyCancelled,
+        Self::MailNotConfigured,
+        Self::MailFailed,
         Self::RateLimited,
         Self::Internal,
     ];
@@ -90,7 +118,10 @@ impl ErrorCode {
             | Self::CeremonyExpired
             | Self::PasskeyRejected
             | Self::OidcFailed => StatusCode::BAD_REQUEST,
-            Self::InvalidInput => StatusCode::UNPROCESSABLE_ENTITY,
+            Self::InvalidInput | Self::LayoutFailed | Self::PackageNotApproved => {
+                StatusCode::UNPROCESSABLE_ENTITY
+            }
+            Self::PackageUnavailable | Self::MailFailed => StatusCode::BAD_GATEWAY,
             Self::Unauthenticated => StatusCode::UNAUTHORIZED,
             Self::Forbidden
             | Self::CsrfToken
@@ -102,7 +133,15 @@ impl ErrorCode {
             | Self::OidcIdentityTaken
             | Self::Archived
             | Self::StatusInUse
-            | Self::HasTime => StatusCode::CONFLICT,
+            | Self::HasTime
+            | Self::Issued
+            | Self::FollowUpNotAllowed
+            | Self::QuoteNotAccepted
+            | Self::QuoteDecided
+            | Self::Billed
+            | Self::NoUnbilledTime
+            | Self::AlreadyCancelled
+            | Self::MailNotConfigured => StatusCode::CONFLICT,
             Self::RateLimited => StatusCode::TOO_MANY_REQUESTS,
             Self::Internal => StatusCode::INTERNAL_SERVER_ERROR,
         }
@@ -120,6 +159,7 @@ impl FieldError {
         Self::InvalidFormat,
         Self::Pinned,
         Self::Locked,
+        Self::NotShown,
     ];
 
     pub fn key(self) -> String {
@@ -141,6 +181,7 @@ impl ApiError {
             code,
             message: code.key(),
             fields: BTreeMap::new(),
+            detail: None,
         }
     }
 
@@ -149,6 +190,18 @@ impl ApiError {
             fields,
             ..Self::new(ErrorCode::InvalidInput)
         }
+    }
+
+    pub fn with_detail(self, detail: String) -> Self {
+        Self {
+            detail: Some(detail),
+            ..self
+        }
+    }
+
+    /// A layout that does not render, with Typst's errors as the detail.
+    pub fn layout(error: crate::render::Error) -> Self {
+        Self::new(ErrorCode::LayoutFailed).with_detail(error.to_string())
     }
 
     pub fn internal(error: impl std::fmt::Display) -> Self {

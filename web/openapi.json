@@ -529,6 +529,631 @@
         }
       }
     },
+    "/api/documents": {
+      "get": {
+        "tags": [
+          "documents"
+        ],
+        "operationId": "list_documents",
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/DocumentKind"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/DocumentStatus"
+            }
+          },
+          {
+            "name": "customer_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DocumentSummary"
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "documents"
+        ],
+        "operationId": "create_document",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DocumentInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Document"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/documents/{id}": {
+      "get": {
+        "tags": [
+          "documents"
+        ],
+        "operationId": "get_document",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Document"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "documents"
+        ],
+        "operationId": "put_document",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DocumentInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Document"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "documents"
+        ],
+        "summary": "Only drafts can be deleted.",
+        "operationId": "delete_document",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "204": {},
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/documents/{id}/duplicate": {
+      "post": {
+        "tags": [
+          "documents"
+        ],
+        "summary": "A new draft with the same customer, texts and lines.",
+        "operationId": "duplicate_document",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Document"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/documents/{id}/follow-up": {
+      "post": {
+        "tags": [
+          "documents"
+        ],
+        "summary": "A draft that follows from an issued document: an order confirmation, invoice, delivery note\nor acceptance report for an accepted quote; an invoice, delivery note or acceptance report\nfor an order confirmation; a cancellation invoice, delivery note or acceptance report for an\ninvoice.",
+        "operationId": "follow_up",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FollowUpInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Document"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/documents/{id}/issue": {
+      "post": {
+        "tags": [
+          "documents"
+        ],
+        "summary": "Gives the draft its number and freezes it with its data as of now.",
+        "operationId": "issue_document",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Document"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/documents/{id}/outcome": {
+      "post": {
+        "tags": [
+          "documents"
+        ],
+        "summary": "Records that the customer accepted or declined an issued quote.",
+        "operationId": "set_outcome",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OutcomeInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Document"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/documents/{id}/payments": {
+      "post": {
+        "tags": [
+          "documents"
+        ],
+        "summary": "Records money received for an issued invoice.",
+        "operationId": "add_payment",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PaymentInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Document"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/documents/{id}/pdf": {
+      "get": {
+        "tags": [
+          "documents"
+        ],
+        "summary": "The document as PDF: as issued, or for a draft as it would look now.",
+        "operationId": "document_pdf",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "integer",
+                    "format": "int32",
+                    "minimum": 0
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/documents/{id}/send": {
+      "post": {
+        "tags": [
+          "documents"
+        ],
+        "summary": "Emails an issued document as PDF, with the XRechnung XML when the customer gets one; every\nattempt is logged.",
+        "operationId": "send_document",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Document"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/documents/{id}/time": {
+      "post": {
+        "tags": [
+          "documents"
+        ],
+        "summary": "Adds the customer's unbilled time to a draft invoice as lines priced at the hourly rate when\nissued.",
+        "operationId": "add_time",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TimeInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Document"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/documents/{id}/xml": {
+      "get": {
+        "tags": [
+          "documents"
+        ],
+        "summary": "The e-invoice XML of an invoice or cancellation invoice: the XRechnung as issued, or else the\nEN 16931 XML it carries as ZUGFeRD.",
+        "operationId": "document_xml",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/xml": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/health": {
       "get": {
         "tags": [
@@ -760,6 +1385,287 @@
         }
       }
     },
+    "/api/layout-choices": {
+      "get": {
+        "tags": [
+          "layouts"
+        ],
+        "operationId": "list_choices",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LayoutChoice"
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "layouts"
+        ],
+        "summary": "Replaces every choice; a kind without one uses the built-in layout.",
+        "operationId": "put_choices",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/LayoutChoice"
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LayoutChoice"
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/layouts": {
+      "get": {
+        "tags": [
+          "layouts"
+        ],
+        "operationId": "list_layouts",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LayoutView"
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "layouts"
+        ],
+        "operationId": "create_layout",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/LayoutUpload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LayoutView"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/layouts/{id}": {
+      "put": {
+        "tags": [
+          "layouts"
+        ],
+        "operationId": "put_layout",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/LayoutUpload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LayoutView"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "layouts"
+        ],
+        "summary": "Documents it was chosen for fall back to the built-in layout; issued ones keep their PDF.",
+        "operationId": "delete_layout",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "204": {},
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/layouts/{id}/sample": {
+      "get": {
+        "tags": [
+          "layouts"
+        ],
+        "summary": "The layout rendered with sample data, as PDF.",
+        "operationId": "layout_sample",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "kind",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/DocumentKind"
+            }
+          },
+          {
+            "name": "language",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Language"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "integer",
+                    "format": "int32",
+                    "minimum": 0
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/oidc/callback": {
       "get": {
         "tags": [
@@ -812,6 +1718,102 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/OidcRedirect"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/overview": {
+      "get": {
+        "tags": [
+          "overview"
+        ],
+        "operationId": "get_overview",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Overview"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/packages": {
+      "get": {
+        "tags": [
+          "layouts"
+        ],
+        "operationId": "list_packages",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Package"
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "layouts"
+        ],
+        "summary": "Downloads a package by name and version and approves it for layouts.",
+        "operationId": "approve_package",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PackageInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Package"
                 }
               }
             }
@@ -958,6 +1960,38 @@
               }
             }
           },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/payments/{id}": {
+      "delete": {
+        "tags": [
+          "documents"
+        ],
+        "summary": "Removes a payment recorded by mistake.",
+        "operationId": "delete_payment",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "204": {},
           "default": {
             "content": {
               "application/json": {
@@ -1319,6 +2353,152 @@
           "session"
         ],
         "operationId": "sign_out",
+        "responses": {
+          "204": {},
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/snippets": {
+      "get": {
+        "tags": [
+          "documents"
+        ],
+        "operationId": "list_snippets",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Snippet"
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "documents"
+        ],
+        "operationId": "create_snippet",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SnippetInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Snippet"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/snippets/{id}": {
+      "put": {
+        "tags": [
+          "documents"
+        ],
+        "operationId": "put_snippet",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SnippetInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Snippet"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "documents"
+        ],
+        "summary": "Documents keep the text copied from it.",
+        "operationId": "delete_snippet",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
         "responses": {
           "204": {},
           "default": {
@@ -2029,6 +3209,49 @@
         }
       }
     },
+    "/api/unbilled": {
+      "get": {
+        "tags": [
+          "documents"
+        ],
+        "summary": "Billable time, ended and on no invoice, per project.",
+        "operationId": "list_unbilled",
+        "parameters": [
+          {
+            "name": "customer_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/UnbilledProject"
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/users": {
       "get": {
         "tags": [
@@ -2192,6 +3415,13 @@
           "code": {
             "$ref": "#/components/schemas/ErrorCode"
           },
+          "detail": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "What went wrong in detail, such as the errors of a layout."
+          },
           "fields": {
             "type": "object",
             "additionalProperties": {
@@ -2261,11 +3491,36 @@
       "Business": {
         "type": "object",
         "properties": {
-          "address": {
+          "acceptance_report_number_format": {
             "type": [
               "string",
               "null"
             ]
+          },
+          "bank_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "bic": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "city": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "country": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "ISO 3166-1 alpha-2; DE when unset."
           },
           "currency": {
             "type": [
@@ -2274,7 +3529,99 @@
             ],
             "description": "ISO 4217 code new customers are billed in; EUR when unset."
           },
+          "delivery_note_number_format": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "email": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "iban": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "invoice_number_format": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Also numbers cancellation invoices, which are invoices."
+          },
+          "legal_form": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The legal form of a UG or GmbH, such as `UG (haftungsbeschränkt)`; with it, documents\nmust also carry the register and managing directors (§ 35a GmbHG)."
+          },
+          "managing_directors": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "order_confirmation_number_format": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "payment_days": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Days from issue until an invoice is due; 14 when unset.",
+            "minimum": 0
+          },
+          "phone": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "postcode": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "quote_number_format": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "quote_valid_days": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Days a quote stands after it is issued; 30 when unset.",
+            "minimum": 0
+          },
+          "register_court": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "register_number": {
             "type": [
               "string",
               "null"
@@ -2283,6 +3630,138 @@
           "small_business": {
             "type": [
               "boolean",
+              "null"
+            ]
+          },
+          "street": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "tax_number": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "timezone": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "IANA name such as `Europe/Berlin`, which is the default; dates on documents are in it."
+          },
+          "vat_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "vat_rate": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Percent charged on new lines unless the business is a small business; 19 when unset."
+          },
+          "website": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "BusinessData": {
+        "type": "object",
+        "required": [
+          "country",
+          "small_business"
+        ],
+        "properties": {
+          "bank_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "bic": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "city": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "country": {
+            "type": "string"
+          },
+          "email": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "iban": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "legal_form": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "managing_directors": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "phone": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "postcode": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "register_court": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "register_number": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "small_business": {
+            "type": "boolean"
+          },
+          "street": {
+            "type": [
+              "string",
               "null"
             ]
           },
@@ -2297,9 +3776,14 @@
               "string",
               "null"
             ]
+          },
+          "website": {
+            "type": [
+              "string",
+              "null"
+            ]
           }
-        },
-        "additionalProperties": false
+        }
       },
       "BusinessView": {
         "type": "object",
@@ -2411,24 +3895,90 @@
           }
         ]
       },
-      "CustomerFields": {
+      "CustomerData": {
         "type": "object",
-        "description": "What an edit may change; also the snapshot the audit log compares.",
         "required": [
+          "number",
           "name",
-          "language",
-          "currency",
-          "archived"
+          "country",
+          "xrechnung"
         ],
         "properties": {
-          "address": {
+          "city": {
             "type": [
               "string",
               "null"
             ]
           },
+          "country": {
+            "type": "string"
+          },
+          "email": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "leitweg_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The buyer reference of an XRechnung, required by public customers."
+          },
+          "name": {
+            "type": "string"
+          },
+          "number": {
+            "type": "string"
+          },
+          "postcode": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "street": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "vat_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "xrechnung": {
+            "type": "boolean",
+            "description": "Whether invoices also go out as XRechnung."
+          }
+        }
+      },
+      "CustomerFields": {
+        "type": "object",
+        "description": "What an edit may change; also the snapshot the audit log compares.",
+        "required": [
+          "name",
+          "country",
+          "language",
+          "currency",
+          "xrechnung",
+          "archived"
+        ],
+        "properties": {
           "archived": {
             "type": "boolean"
+          },
+          "city": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "country": {
+            "type": "string"
           },
           "currency": {
             "type": "string"
@@ -2450,6 +4000,12 @@
           "language": {
             "$ref": "#/components/schemas/Language"
           },
+          "leitweg_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "name": {
             "type": "string"
           },
@@ -2458,6 +4014,27 @@
               "string",
               "null"
             ]
+          },
+          "postcode": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "street": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "vat_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "xrechnung": {
+            "type": "boolean"
           }
         }
       },
@@ -2467,14 +4044,21 @@
           "language"
         ],
         "properties": {
-          "address": {
+          "archived": {
+            "type": "boolean"
+          },
+          "city": {
             "type": [
               "string",
               "null"
             ]
           },
-          "archived": {
-            "type": "boolean"
+          "country": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "ISO 3166-1 alpha-2; DE when left out."
           },
           "currency": {
             "type": [
@@ -2500,6 +4084,13 @@
           "language": {
             "$ref": "#/components/schemas/Language"
           },
+          "leitweg_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The buyer reference public customers give for XRechnung."
+          },
           "name": {
             "type": [
               "string",
@@ -2511,9 +4102,715 @@
               "string",
               "null"
             ]
+          },
+          "postcode": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "street": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "vat_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "xrechnung": {
+            "type": "boolean",
+            "description": "Whether invoices also go out as XRechnung."
           }
         },
         "additionalProperties": false
+      },
+      "Document": {
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "status",
+          "customer_id",
+          "customer_name",
+          "language",
+          "currency",
+          "lines",
+          "data",
+          "missing",
+          "timesheet",
+          "rounding",
+          "follow_ups",
+          "sent",
+          "payments",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "amount_due": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Money",
+                "description": "What is still owed on an issued invoice."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "created_at": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "customer_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "customer_name": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/DocumentData",
+            "description": "What the layout renders: as issued, or for a draft as it would be issued now."
+          },
+          "due_date": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "follow_ups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FollowUp"
+            },
+            "description": "Documents that follow from this one."
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "intro": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "issue_date": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "issued_at": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/DocumentKind"
+          },
+          "language": {
+            "$ref": "#/components/schemas/Language"
+          },
+          "layout": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The uploaded layout it was issued with; none for the built-in one."
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DocumentLine"
+            }
+          },
+          "missing": {
+            "type": "object",
+            "description": "What must be filled in before the draft can be issued; empty once issued.",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/FieldError"
+            },
+            "propertyNames": {
+              "type": "string"
+            }
+          },
+          "number": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "outro": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "payments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Payment"
+            },
+            "description": "Money received, for an issued invoice."
+          },
+          "pricing": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Pricing"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "project_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "quote_state": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/QuoteState"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "rounding": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Minutes each time entry is rounded up to."
+          },
+          "sent": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Sent"
+            },
+            "description": "Every attempt to email it, newest first."
+          },
+          "service_from": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "service_to": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "source_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "The document this one follows from."
+          },
+          "status": {
+            "$ref": "#/components/schemas/DocumentStatus"
+          },
+          "timesheet": {
+            "type": "boolean"
+          },
+          "title": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "updated_at": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "valid_until": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "DocumentData": {
+        "type": "object",
+        "description": "The data a layout renders, as issued or, for a draft, as it would be issued now.",
+        "required": [
+          "schema",
+          "kind",
+          "language",
+          "currency",
+          "business",
+          "customer",
+          "lines",
+          "vat"
+        ],
+        "properties": {
+          "business": {
+            "$ref": "#/components/schemas/BusinessData"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "customer": {
+            "$ref": "#/components/schemas/CustomerData"
+          },
+          "due_date": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "ISO date."
+          },
+          "intro": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "issue_date": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "ISO date; a draft has none yet."
+          },
+          "kind": {
+            "$ref": "#/components/schemas/DocumentKind"
+          },
+          "language": {
+            "$ref": "#/components/schemas/Language"
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DocumentLineData"
+            }
+          },
+          "number": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "outro": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "preceding": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Preceding",
+                "description": "The invoice a cancellation invoice reverses."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "pricing": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Pricing",
+                "description": "Whether a quote's total is fixed or an estimate."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reference": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The document this one refers to, as a sentence such as `Cancels invoice RE-2026-001`."
+          },
+          "schema": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "service_from": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "ISO dates of the service period."
+          },
+          "service_to": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "timesheet": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/TimesheetEntry"
+            },
+            "description": "The time entries behind an invoice, for its timesheet."
+          },
+          "title": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "totals": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Totals"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "valid_until": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "ISO date until which a quote stands."
+          },
+          "vat": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VatData"
+            },
+            "description": "One entry per VAT rate; empty for a document without prices."
+          }
+        }
+      },
+      "DocumentInput": {
+        "type": "object",
+        "required": [
+          "kind",
+          "customer_id"
+        ],
+        "properties": {
+          "customer_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "intro": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "kind": {
+            "$ref": "#/components/schemas/DocumentKind",
+            "description": "Fixed once the draft exists."
+          },
+          "language": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Language",
+                "description": "The customer's language when left out."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LineInput"
+            }
+          },
+          "outro": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "pricing": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Pricing",
+                "description": "Quotes only; fixed when left out."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "project_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "service_from": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Invoices only: ISO dates of the service period when it has no time entries."
+          },
+          "service_to": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "timesheet": {
+            "type": "boolean",
+            "description": "Invoices only: whether a timesheet of its time entries is attached."
+          },
+          "title": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "valid_until": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Quotes only: ISO date until which the quote stands; 30 days after issuing when left out."
+          }
+        },
+        "additionalProperties": false
+      },
+      "DocumentKind": {
+        "type": "string",
+        "enum": [
+          "quote",
+          "order_confirmation",
+          "invoice",
+          "cancellation",
+          "delivery_note",
+          "acceptance_report"
+        ]
+      },
+      "DocumentLine": {
+        "type": "object",
+        "required": [
+          "id",
+          "position",
+          "description",
+          "quantity",
+          "unit",
+          "time_entry_ids"
+        ],
+        "properties": {
+          "activity_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "cancels_line_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "On a cancellation invoice: the invoice line it reverses."
+          },
+          "description": {
+            "type": "string"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "position": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "project_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "quantity": {
+            "type": "string"
+          },
+          "time_entry_ids": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "description": "The time entries this line charges."
+          },
+          "unit": {
+            "$ref": "#/components/schemas/Unit"
+          },
+          "unit_price": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "vat_rate": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "DocumentLineData": {
+        "type": "object",
+        "required": [
+          "position",
+          "description",
+          "quantity",
+          "unit"
+        ],
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "net": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "position": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "quantity": {
+            "type": "string"
+          },
+          "unit": {
+            "$ref": "#/components/schemas/Unit"
+          },
+          "unit_price": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Major units; none on an unpriced document or a draft line without a rate."
+          },
+          "vat_rate": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Percent."
+          }
+        }
+      },
+      "DocumentStatus": {
+        "type": "string",
+        "enum": [
+          "draft",
+          "issued"
+        ]
+      },
+      "DocumentSummary": {
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "status",
+          "customer_id",
+          "customer_name",
+          "currency",
+          "updated_at"
+        ],
+        "properties": {
+          "currency": {
+            "type": "string"
+          },
+          "customer_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "customer_name": {
+            "type": "string"
+          },
+          "gross": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Major units; none for documents without prices."
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "issue_date": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "kind": {
+            "$ref": "#/components/schemas/DocumentKind"
+          },
+          "number": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "quote_state": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/QuoteState"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/DocumentStatus"
+          },
+          "title": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "updated_at": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "valid_until": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
       },
       "EntryFields": {
         "type": "object",
@@ -2666,6 +4963,18 @@
           "archived",
           "status_in_use",
           "has_time",
+          "issued",
+          "layout_failed",
+          "package_not_approved",
+          "package_unavailable",
+          "follow_up_not_allowed",
+          "quote_not_accepted",
+          "quote_decided",
+          "billed",
+          "no_unbilled_time",
+          "already_cancelled",
+          "mail_not_configured",
+          "mail_failed",
           "rate_limited",
           "internal"
         ]
@@ -2677,7 +4986,56 @@
           "too_long",
           "invalid_format",
           "pinned",
-          "locked"
+          "locked",
+          "not_shown"
+        ]
+      },
+      "FollowUp": {
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "status"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/DocumentKind"
+          },
+          "number": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/DocumentStatus"
+          }
+        }
+      },
+      "FollowUpInput": {
+        "type": "object",
+        "required": [
+          "kind"
+        ],
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/DocumentKind"
+          }
+        },
+        "additionalProperties": false
+      },
+      "Grouping": {
+        "type": "string",
+        "description": "How time entries become invoice lines; entries with different rates never share a line.",
+        "enum": [
+          "entry",
+          "project",
+          "todo",
+          "activity"
         ]
       },
       "Health": {
@@ -2769,6 +5127,207 @@
           "en"
         ]
       },
+      "LayoutChoice": {
+        "type": "object",
+        "required": [
+          "kind",
+          "layout_id"
+        ],
+        "properties": {
+          "customer_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Only for this customer; for every customer when left out."
+          },
+          "kind": {
+            "$ref": "#/components/schemas/DocumentKind"
+          },
+          "layout_id": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "additionalProperties": false
+      },
+      "LayoutFile": {
+        "type": "object",
+        "required": [
+          "name",
+          "font"
+        ],
+        "properties": {
+          "font": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "LayoutUpload": {
+        "type": "object",
+        "description": "A layout as uploaded: multipart fields `name`, `kinds` (repeated), the Typst file `source`\n(`layout.typ`, defining `schema` and `render(data)`), and `files`: images it reads under\n`assets/` and the fonts it uses.",
+        "required": [
+          "name",
+          "kinds",
+          "files"
+        ],
+        "properties": {
+          "files": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "binary"
+            },
+            "description": "When sent with an update, they replace all files."
+          },
+          "kinds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DocumentKind"
+            }
+          },
+          "name": {
+            "type": "string"
+          },
+          "source": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "binary",
+            "description": "Required when uploading; kept when left out of an update."
+          }
+        }
+      },
+      "LayoutView": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "kinds",
+          "schema",
+          "current",
+          "files",
+          "packages",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "created_at": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "current": {
+            "type": "boolean"
+          },
+          "files": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LayoutFile"
+            }
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "kinds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DocumentKind"
+            }
+          },
+          "name": {
+            "type": "string"
+          },
+          "packages": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "schema": {
+            "type": "integer",
+            "format": "int32",
+            "description": "The data schema it is written for; it renders only while that is the app's.",
+            "minimum": 0
+          },
+          "updated_at": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "LineInput": {
+        "type": "object",
+        "required": [
+          "quantity",
+          "unit"
+        ],
+        "properties": {
+          "activity_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "cancels_line_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Cancellation invoices only: the invoice line it reverses; its text and amounts are\ntaken from that line."
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "project_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "quantity": {
+            "type": "string"
+          },
+          "time_entry_ids": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "description": "Invoices only: the billable time entries this line charges."
+          },
+          "unit": {
+            "$ref": "#/components/schemas/Unit"
+          },
+          "unit_price": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "In the minor unit of the document's currency; without one, a line with a project is\npriced at the hourly rate when issued."
+          },
+          "vat_rate": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Percent; the business default when left out."
+          }
+        },
+        "additionalProperties": false
+      },
       "Money": {
         "type": "object",
         "description": "An amount in the minor unit of its currency (cents for EUR), never a float.",
@@ -2826,6 +5385,129 @@
           }
         }
       },
+      "OpenInvoice": {
+        "type": "object",
+        "required": [
+          "id",
+          "number",
+          "customer_name",
+          "issue_date",
+          "overdue",
+          "due"
+        ],
+        "properties": {
+          "customer_name": {
+            "type": "string"
+          },
+          "due": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "due_date": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "issue_date": {
+            "type": "string"
+          },
+          "number": {
+            "type": "string"
+          },
+          "overdue": {
+            "type": "boolean"
+          }
+        }
+      },
+      "OutcomeInput": {
+        "type": "object",
+        "required": [
+          "outcome"
+        ],
+        "properties": {
+          "outcome": {
+            "$ref": "#/components/schemas/QuoteState",
+            "description": "`accepted` or `declined`."
+          }
+        },
+        "additionalProperties": false
+      },
+      "Overview": {
+        "type": "object",
+        "required": [
+          "running",
+          "unbilled",
+          "open_invoices"
+        ],
+        "properties": {
+          "open_invoices": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OpenInvoice"
+            },
+            "description": "For the owner and accountant only, oldest due first."
+          },
+          "running": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RunningTimer"
+            },
+            "description": "Everyone's for the owner, your own for staff."
+          },
+          "unbilled": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UnbilledProject"
+            },
+            "description": "For the owner and accountant only."
+          }
+        }
+      },
+      "Package": {
+        "type": "object",
+        "required": [
+          "spec",
+          "approved_at",
+          "approved_by",
+          "requires"
+        ],
+        "properties": {
+          "approved_at": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "approved_by": {
+            "type": "string"
+          },
+          "requires": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Packages it imports that are not approved yet."
+          },
+          "spec": {
+            "type": "string",
+            "description": "Such as `@preview/tablex:0.0.8`."
+          }
+        }
+      },
+      "PackageInput": {
+        "type": "object",
+        "required": [
+          "spec"
+        ],
+        "properties": {
+          "spec": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
       "PasskeyView": {
         "type": "object",
         "required": [
@@ -2853,6 +5535,86 @@
             "type": "string"
           }
         }
+      },
+      "Payment": {
+        "type": "object",
+        "required": [
+          "id",
+          "date",
+          "amount",
+          "user_name"
+        ],
+        "properties": {
+          "amount": {
+            "type": "integer",
+            "format": "int64",
+            "description": "In the minor unit of the invoice's currency."
+          },
+          "date": {
+            "type": "string",
+            "description": "ISO date the money arrived."
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "user_name": {
+            "type": "string"
+          }
+        }
+      },
+      "PaymentInput": {
+        "type": "object",
+        "required": [
+          "date",
+          "amount"
+        ],
+        "properties": {
+          "amount": {
+            "type": "integer",
+            "format": "int64",
+            "description": "In the minor unit of the invoice's currency."
+          },
+          "date": {
+            "type": "string"
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "Preceding": {
+        "type": "object",
+        "required": [
+          "number",
+          "issue_date"
+        ],
+        "properties": {
+          "issue_date": {
+            "type": "string",
+            "description": "ISO date."
+          },
+          "number": {
+            "type": "string"
+          }
+        }
+      },
+      "Pricing": {
+        "type": "string",
+        "enum": [
+          "fixed",
+          "effort"
+        ]
       },
       "Priority": {
         "type": "string",
@@ -2971,6 +5733,16 @@
         },
         "additionalProperties": false
       },
+      "QuoteState": {
+        "type": "string",
+        "description": "Where an issued quote stands.",
+        "enum": [
+          "open",
+          "accepted",
+          "declined",
+          "expired"
+        ]
+      },
       "RegistrationFinish": {
         "type": "object",
         "required": [
@@ -3002,6 +5774,105 @@
           "staff",
           "accountant"
         ]
+      },
+      "RunningTimer": {
+        "type": "object",
+        "required": [
+          "id",
+          "user_name",
+          "project_name",
+          "customer_name",
+          "started_at"
+        ],
+        "properties": {
+          "customer_name": {
+            "type": "string"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "project_name": {
+            "type": "string"
+          },
+          "started_at": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "todo_title": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "user_name": {
+            "type": "string"
+          }
+        }
+      },
+      "SendInput": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "A short greeting in the document's language when left out."
+          },
+          "subject": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "`<kind> <number>` when left out."
+          },
+          "to": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The customer's email when left out."
+          }
+        },
+        "additionalProperties": false
+      },
+      "Sent": {
+        "type": "object",
+        "required": [
+          "at",
+          "user_name",
+          "recipient",
+          "subject"
+        ],
+        "properties": {
+          "at": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "error": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "What the mail server answered when it refused; none once sent."
+          },
+          "recipient": {
+            "type": "string"
+          },
+          "subject": {
+            "type": "string"
+          },
+          "user_name": {
+            "type": "string"
+          }
+        }
       },
       "SessionView": {
         "type": "object",
@@ -3072,6 +5943,74 @@
             }
           }
         }
+      },
+      "Snippet": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/SnippetFields"
+          },
+          {
+            "type": "object",
+            "required": [
+              "id",
+              "updated_at"
+            ],
+            "properties": {
+              "id": {
+                "type": "integer",
+                "format": "int64"
+              },
+              "updated_at": {
+                "type": "integer",
+                "format": "int64"
+              }
+            }
+          }
+        ]
+      },
+      "SnippetFields": {
+        "type": "object",
+        "description": "What an edit may change; also the snapshot the audit log compares.",
+        "required": [
+          "name",
+          "language",
+          "body"
+        ],
+        "properties": {
+          "body": {
+            "type": "string"
+          },
+          "language": {
+            "$ref": "#/components/schemas/Language"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "SnippetInput": {
+        "type": "object",
+        "required": [
+          "language"
+        ],
+        "properties": {
+          "body": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "language": {
+            "$ref": "#/components/schemas/Language"
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": false
       },
       "Status": {
         "type": "object",
@@ -3191,6 +6130,45 @@
           }
         ]
       },
+      "TimeInput": {
+        "type": "object",
+        "required": [
+          "group"
+        ],
+        "properties": {
+          "from": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "ISO date of the first day whose time to bill; all earlier unbilled time when left out."
+          },
+          "group": {
+            "$ref": "#/components/schemas/Grouping"
+          },
+          "project_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Only this project's time."
+          },
+          "rounding": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Minutes each entry is rounded up to: 0, 5, 10, 15 or 30."
+          },
+          "to": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "ISO date of the last day, inclusive."
+          }
+        },
+        "additionalProperties": false
+      },
       "TimerInput": {
         "type": "object",
         "required": [
@@ -3223,6 +6201,30 @@
           }
         },
         "additionalProperties": false
+      },
+      "TimesheetEntry": {
+        "type": "object",
+        "required": [
+          "date",
+          "user",
+          "description",
+          "hours"
+        ],
+        "properties": {
+          "date": {
+            "type": "string",
+            "description": "ISO date."
+          },
+          "description": {
+            "type": "string"
+          },
+          "hours": {
+            "type": "string"
+          },
+          "user": {
+            "type": "string"
+          }
+        }
       },
       "Todo": {
         "allOf": [
@@ -3427,6 +6429,82 @@
         },
         "additionalProperties": false
       },
+      "Totals": {
+        "type": "object",
+        "required": [
+          "net",
+          "tax",
+          "gross"
+        ],
+        "properties": {
+          "gross": {
+            "type": "string"
+          },
+          "net": {
+            "type": "string"
+          },
+          "tax": {
+            "type": "string"
+          }
+        }
+      },
+      "UnbilledProject": {
+        "type": "object",
+        "required": [
+          "customer_id",
+          "customer_name",
+          "project_id",
+          "project_name",
+          "entries",
+          "minutes"
+        ],
+        "properties": {
+          "amount": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Money",
+                "description": "What the time is worth at today's rates; none when no rate applies."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "customer_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "customer_name": {
+            "type": "string"
+          },
+          "entries": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "minutes": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Billable minutes, each entry to the minute."
+          },
+          "project_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "project_name": {
+            "type": "string"
+          }
+        }
+      },
+      "Unit": {
+        "type": "string",
+        "enum": [
+          "hour",
+          "day",
+          "month",
+          "piece",
+          "lump_sum"
+        ]
+      },
       "User": {
         "type": "object",
         "required": [
@@ -3504,6 +6582,25 @@
           },
           "role": {
             "$ref": "#/components/schemas/Role"
+          }
+        }
+      },
+      "VatData": {
+        "type": "object",
+        "required": [
+          "rate",
+          "net",
+          "tax"
+        ],
+        "properties": {
+          "net": {
+            "type": "string"
+          },
+          "rate": {
+            "type": "string"
+          },
+          "tax": {
+            "type": "string"
           }
         }
       }

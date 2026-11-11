@@ -33,3 +33,22 @@ export async function call<T>(
 		return { error: clientError('error.network') };
 	}
 }
+
+/** Sends a multipart form, such as a layout with its files, which openapi-fetch cannot. */
+export async function upload<T>(
+	method: 'POST' | 'PUT',
+	path: string,
+	form: FormData
+): Promise<{ data?: T; error?: ApiError }> {
+	try {
+		const response = await fetch(path, {
+			method,
+			body: form,
+			headers: csrfToken ? { 'x-csrf-token': csrfToken } : {}
+		});
+		const body = await response.json();
+		return response.ok ? { data: body as T } : { error: body as ApiError };
+	} catch {
+		return { error: clientError('error.network') };
+	}
+}

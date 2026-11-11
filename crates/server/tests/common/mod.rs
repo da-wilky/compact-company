@@ -257,6 +257,87 @@ impl TestApp {
     }
 }
 
+impl TestApp {
+    /// Sends a request that must succeed and returns its JSON body.
+    pub async fn ok(&self, browser: &mut Browser, method: &str, path: &str, body: Value) -> Value {
+        let response = self.as_browser(browser, method, path, body).await;
+        let status = response.status();
+        let body = text(response).await;
+        assert_eq!(status, StatusCode::OK, "{method} {path}: {body}");
+        serde_json::from_str(&body).unwrap()
+    }
+
+    /// Sends `parts` (name, file name, content) as multipart/form-data.
+    pub async fn multipart(
+        &self,
+        browser: &mut Browser,
+        method: &str,
+        path: &str,
+        parts: &[(&str, Option<&str>, &[u8])],
+    ) -> Response {
+        let boundary = "compact-company-test-boundary";
+        let mut body = Vec::new();
+        for (name, file_name, content) in parts {
+            body.extend(
+                format!("--{boundary}\r\nContent-Disposition: form-data; name=\"{name}\"").bytes(),
+            );
+            if let Some(file_name) = file_name {
+                body.extend(format!("; filename=\"{file_name}\"").bytes());
+            }
+            body.extend(b"\r\n\r\n");
+            body.extend(*content);
+            body.extend(b"\r\n");
+        }
+        body.extend(format!("--{boundary}--\r\n").bytes());
+        let mut request = Request::builder()
+            .method(method)
+            .uri(path)
+            .header(
+                header::CONTENT_TYPE,
+                format!("multipart/form-data; boundary={boundary}"),
+            )
+            .header(
+                "x-csrf-token",
+                browser.csrf_token.clone().unwrap_or_default(),
+            );
+        let cookies: Vec<_> = browser
+            .cookies
+            .iter()
+            .map(|(name, value)| format!("{name}={value}"))
+            .collect();
+        request = request.header(header::COOKIE, cookies.join("; "));
+        self.request(request.body(Body::from(body)).unwrap()).await
+    }
+
+    /// A business ready to issue documents, and a customer with an address.
+    pub async fn ready_to_issue(&self, owner: &mut Browser) -> i64 {
+        self.ok(
+            owner,
+            "PUT",
+            "/api/business",
+            json!({
+                "name": "swilk UG (haftungsbeschränkt)", "street": "Hauptstraße 1",
+                "postcode": "01067", "city": "Dresden", "tax_number": "201/123/45678",
+                "small_business": true, "iban": "DE89370400440532013000"
+            }),
+        )
+        .await;
+        let customer = self
+            .ok(
+                owner,
+                "POST",
+                "/api/customers",
+                json!({
+                    "name": "Bäckerei Krume", "language": "de", "hourly_rate": 8000,
+                    "street": "Brotgasse 2", "postcode": "04109", "city": "Leipzig",
+                    "email": "info@krume.example"
+                }),
+            )
+            .await;
+        customer["id"].as_i64().unwrap()
+    }
+}
+
 pub async fn text(response: Response) -> String {
     let bytes = response.into_body().collect().await.unwrap().to_bytes();
     String::from_utf8(bytes.to_vec()).unwrap()

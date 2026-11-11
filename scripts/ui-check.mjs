@@ -238,8 +238,11 @@ try {
 
 	await open(`${origin}/business`);
 	await fill([
-		['form label:nth-of-type(1) input', 'Beispiel GmbH'],
-		['form textarea', 'Hauptstraße 1\n12345 Musterstadt']
+		['form section:first-of-type label:nth-of-type(1) input', 'Beispiel GmbH'],
+		['form section:first-of-type label:nth-of-type(2) input', 'Hauptstraße 1'],
+		['form section:first-of-type label:nth-of-type(3) input', '12345'],
+		['form section:first-of-type label:nth-of-type(4) input', 'Musterstadt'],
+		['form section:nth-of-type(2) label:nth-of-type(1) input', '201/123/45678']
 	]);
 	await click('form button.primary');
 	await settle();
@@ -259,7 +262,9 @@ try {
 		name: 'Bäckerei Krume',
 		language: 'de',
 		email: 'info@krume.example',
-		address: 'Brotgasse 3\n12345 Musterstadt',
+		street: 'Brotgasse 3',
+		postcode: '12345',
+		city: 'Musterstadt',
 		hourly_rate: 8500
 	});
 	const zurich = await api('POST', '/api/customers', { name: 'Atelier Zürich', language: 'en', currency: 'CHF', hourly_rate: 12000 });
@@ -286,11 +291,45 @@ try {
 	await api('POST', '/api/timers', { project_id: relaunch.id, todo_id: todos[3].id });
 	await api('POST', '/api/timers', { project_id: portal.id, description: 'Telefonat' });
 
+	const quote = await api('POST', '/api/documents', {
+		kind: 'quote',
+		customer_id: krume.id,
+		project_id: relaunch.id,
+		title: 'Relaunch der Website',
+		intro: 'Vielen Dank für Ihre Anfrage. Gerne bieten wir an:',
+		lines: [
+			{ description: 'Konzeption und Gestaltung', quantity: '12', unit: 'hour', project_id: relaunch.id },
+			{ description: 'Hosting (12 Monate)', quantity: '12', unit: 'month', unit_price: 1500 }
+		]
+	});
+	await api('POST', `/api/documents/${quote.id}/issue`);
+	const invoice = await api('POST', '/api/documents', {
+		kind: 'invoice',
+		customer_id: krume.id,
+		lines: [{ description: 'Wartung im Oktober', quantity: '2.5', unit: 'hour', unit_price: 8500 }]
+	});
+	await api('POST', `/api/documents/${invoice.id}/time`, { group: 'todo', rounding: 15 });
+	const issuedInvoice = await api('POST', '/api/documents', {
+		kind: 'invoice',
+		customer_id: krume.id,
+		timesheet: true,
+		lines: [{ description: 'Lizenz Kassensystem', quantity: '1', unit: 'piece', unit_price: 49000 }]
+	});
+	await api('POST', `/api/documents/${issuedInvoice.id}/issue`);
+	await api('POST', `/api/documents/${issuedInvoice.id}/payments`, { date: '2026-11-01', amount: 20000 });
+	await api('POST', '/api/snippets', { name: 'Zahlungshinweis', language: 'de', body: 'Bitte überweisen Sie den Betrag ohne Abzug.' });
+
 	await screen('overview', `${origin}/`);
 	await screen('customers', `${origin}/customers`);
 	await screen('customer', `${origin}/customers/${krume.id}`);
 	await screen('activities', `${origin}/activities`);
 	await screen('statuses', `${origin}/statuses`);
+	await screen('layouts', `${origin}/layouts`);
+	await screen('snippets', `${origin}/snippets`);
+	await screen('documents', `${origin}/documents`);
+	await screen('document-draft', `${origin}/documents/${invoice.id}`);
+	await screen('document-quote', `${origin}/documents/${quote.id}`);
+	await screen('document-invoice', `${origin}/documents/${issuedInvoice.id}`);
 	await screen('todos-board', `${origin}/todos`, () => evaluate("localStorage.setItem('todos.view', 'board')"));
 	await screen('todos-list', `${origin}/todos`, async () => {
 		await click('[role=radiogroup] [role=radio]');

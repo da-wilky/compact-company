@@ -23,11 +23,24 @@ pub enum Language {
     En,
 }
 
+impl Language {
+    pub fn code(self) -> &'static str {
+        match self {
+            Self::De => "de",
+            Self::En => "en",
+        }
+    }
+}
+
 #[derive(Debug, Deserialize, ToSchema)]
 #[serde(deny_unknown_fields)]
 pub struct CustomerInput {
     name: Option<String>,
-    address: Option<String>,
+    street: Option<String>,
+    postcode: Option<String>,
+    city: Option<String>,
+    /// ISO 3166-1 alpha-2; DE when left out.
+    country: Option<String>,
     email: Option<String>,
     language: Language,
     /// The business's currency when left out.
@@ -35,6 +48,12 @@ pub struct CustomerInput {
     /// In the minor unit of the currency.
     hourly_rate: Option<i64>,
     note: Option<String>,
+    vat_id: Option<String>,
+    /// The buyer reference public customers give for XRechnung.
+    leitweg_id: Option<String>,
+    /// Whether invoices also go out as XRechnung.
+    #[serde(default)]
+    xrechnung: bool,
     #[serde(default)]
     archived: bool,
 }
@@ -54,13 +73,19 @@ pub struct Customer {
 #[derive(Debug, Serialize, ToSchema, sqlx::FromRow)]
 pub struct CustomerFields {
     name: String,
-    address: Option<String>,
+    street: Option<String>,
+    postcode: Option<String>,
+    city: Option<String>,
+    country: String,
     email: Option<String>,
     language: Language,
     currency: String,
     /// In the minor unit of the currency.
     hourly_rate: Option<i64>,
     note: Option<String>,
+    vat_id: Option<String>,
+    leitweg_id: Option<String>,
+    xrechnung: bool,
     archived: bool,
 }
 
@@ -113,17 +138,24 @@ pub async fn create_customer(
     .await?;
     let id: i64 = sqlx::query_scalar(
         "INSERT INTO customer
-         (number, name, address, email, language, currency, hourly_rate, note, archived, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id",
+         (number, name, street, postcode, city, country, email, language, currency, hourly_rate, note,
+          vat_id, leitweg_id, xrechnung, archived, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id",
     )
     .bind(format!("K-{next:03}"))
     .bind(&fields.name)
-    .bind(&fields.address)
+    .bind(&fields.street)
+    .bind(&fields.postcode)
+    .bind(&fields.city)
+    .bind(&fields.country)
     .bind(&fields.email)
     .bind(fields.language)
     .bind(&fields.currency)
     .bind(fields.hourly_rate)
     .bind(&fields.note)
+    .bind(&fields.vat_id)
+    .bind(&fields.leitweg_id)
+    .bind(fields.xrechnung)
     .bind(fields.archived)
     .bind(now())
     .fetch_one(&mut *tx)
@@ -167,16 +199,23 @@ pub async fn put_customer(
         check.done()?;
     }
     sqlx::query(
-        "UPDATE customer SET name = ?, address = ?, email = ?, language = ?, currency = ?,
-         hourly_rate = ?, note = ?, archived = ? WHERE id = ?",
+        "UPDATE customer SET name = ?, street = ?, postcode = ?, city = ?, country = ?, email = ?,
+         language = ?, currency = ?,
+         hourly_rate = ?, note = ?, vat_id = ?, leitweg_id = ?, xrechnung = ?, archived = ? WHERE id = ?",
     )
     .bind(&fields.name)
-    .bind(&fields.address)
+    .bind(&fields.street)
+    .bind(&fields.postcode)
+    .bind(&fields.city)
+    .bind(&fields.country)
     .bind(&fields.email)
     .bind(fields.language)
     .bind(&fields.currency)
     .bind(fields.hourly_rate)
     .bind(&fields.note)
+    .bind(&fields.vat_id)
+    .bind(&fields.leitweg_id)
+    .bind(fields.xrechnung)
     .bind(fields.archived)
     .bind(id)
     .execute(&mut *tx)
@@ -232,12 +271,20 @@ async fn validate(app: &App, input: CustomerInput) -> Result<CustomerFields, Api
     }
     let fields = CustomerFields {
         name: check.required("name", input.name, 200),
-        address: check.text("address", input.address, 500),
+        street: check.text("street", input.street, 500),
+        postcode: check.text("postcode", input.postcode, 20),
+        city: check.text("city", input.city, 100),
+        country: check.country("country", input.country),
         email,
         language: input.language,
         currency,
         hourly_rate: input.hourly_rate,
         note: check.text("note", input.note, 2000),
+        vat_id: check
+            .text("vat_id", input.vat_id, 20)
+            .map(|v| v.replace(' ', "").to_ascii_uppercase()),
+        leitweg_id: check.text("leitweg_id", input.leitweg_id, 50),
+        xrechnung: input.xrechnung,
         archived: input.archived,
     };
     check.done()?;

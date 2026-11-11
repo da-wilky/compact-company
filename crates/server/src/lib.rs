@@ -22,11 +22,16 @@ pub mod api;
 pub mod audit;
 pub mod auth;
 pub mod config;
+pub mod documents;
+pub mod einvoice;
 pub mod files;
+pub mod layouts;
 pub mod limit;
+pub mod mail;
 pub mod money;
 pub mod oidc;
 pub mod rates;
+pub mod render;
 pub mod settings;
 
 pub struct App {
@@ -39,6 +44,8 @@ pub struct App {
     pub setup_token: String,
     pub oidc: Option<oidc::Provider>,
     pub limiter: limit::Limiter,
+    pub typst_packages: Url,
+    pub mailer: Option<mail::Mailer>,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -53,6 +60,8 @@ pub enum Error {
     Files(#[from] files::Error),
     #[error(transparent)]
     Oidc(#[from] oidc::Error),
+    #[error(transparent)]
+    Mail(#[from] mail::Error),
     #[error("invalid public_url {0}: {1}")]
     PublicUrl(Url, WebauthnError),
 }
@@ -98,6 +107,8 @@ impl App {
                 .map(|oidc| oidc::Provider::new(oidc, url))
                 .transpose()?,
             limiter: limit::Limiter::new(config.trusted_proxies.clone()),
+            typst_packages: config.typst_packages.clone(),
+            mailer: config.smtp.as_ref().map(mail::Mailer::new).transpose()?,
         })
     }
 

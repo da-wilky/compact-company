@@ -22,6 +22,8 @@ Time tracking, invoicing and bookkeeping usually live in two or three tools with
 | Roles | Owner, staff, accountant | 0015 |
 | Storage | SQLite only; files content-addressed on disk or S3 | 0016 |
 | Settings | Owner edits business data and defaults; config may pin any key | 0017 |
+| Numbers | One range per document type, owner-set format, assigned when issued | 0018 |
+| Layout data | Schema-versioned; layouts declare the version they were written for | 0019 |
 | Languages | UI and documents in German and English | – |
 | Platforms | x86_64 and arm64; NixOS module and OCI image | – |
 
@@ -126,14 +128,12 @@ Crate names are candidates; verify each before the foundation phase settles them
 
 ## Open questions
 
-1. Number ranges: one per document type, format per range, yearly reset?
-2. Layout data schema: versioned, so uploaded layouts survive schema changes?
-3. Retention: how long receipts and issued documents are kept, and whether deletion after the period is supported.
-4. Process documentation (GoBD Verfahrensdokumentation): generated from settings, or written by hand?
+1. Retention: how long receipts and issued documents are kept, and whether deletion after the period is supported.
+2. Process documentation (GoBD Verfahrensdokumentation): generated from settings, or written by hand?
 
 ## Context (swilk)
 
-- Brand and Typst library for swilk's layouts: `~/workspace/mine/gewerbe/corporate-design` (`typst/lib/vorlagen.typ`, `typst/firma.toml`, private `typst/firma.local.toml`); never commit them, the repo is public
+- Brand and Typst library for swilk's layouts: `~/workspace/swilk/gewerbe/corporate-design` (`typst/lib/vorlagen.typ`, `typst/firma.toml`, private `typst/firma.local.toml`); never commit them, the repo is public
 - Server: pi5dd (arm64), `/etc/nix-config/hosts/pi5dd/apps/`
 - Login today: Keycloak `https://user.swilk.eu/realms/public`
 - Tax: Kleinunternehmer (§ 19 UStG); receiving e-invoices is mandatory, issuing is not

@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use axum::extract::DefaultBodyLimit;
 use serde::Serialize;
 use utoipa::{OpenApi, ToSchema};
 use utoipa_axum::{router::OpenApiRouter, routes};
@@ -8,15 +9,21 @@ use crate::App;
 
 pub mod activities;
 pub mod audit;
+pub mod billing;
 pub mod business;
 pub mod customers;
+pub mod documents;
 pub mod error;
 pub mod input;
 pub mod invitations;
+pub mod layouts;
 pub mod oidc;
+pub mod overview;
 pub mod passkeys;
 pub mod projects;
+pub mod sending;
 pub mod session;
+pub mod snippets;
 pub mod statuses;
 pub mod time;
 pub mod todos;
@@ -75,6 +82,39 @@ pub fn routes() -> OpenApiRouter<Arc<App>> {
         ))
         .routes(routes!(todos::move_todo))
         .routes(routes!(todos::add_comment))
+        .routes(routes!(
+            documents::list_documents,
+            documents::create_document
+        ))
+        .routes(routes!(
+            documents::get_document,
+            documents::put_document,
+            documents::delete_document
+        ))
+        .routes(routes!(documents::issue_document))
+        .routes(routes!(documents::document_pdf))
+        .routes(routes!(documents::document_xml))
+        .routes(routes!(sending::send_document))
+        .routes(routes!(overview::add_payment))
+        .routes(routes!(overview::delete_payment))
+        .routes(routes!(overview::get_overview))
+        .routes(routes!(documents::duplicate_document))
+        .routes(routes!(documents::follow_up))
+        .routes(routes!(documents::set_outcome))
+        .routes(routes!(billing::add_time))
+        .routes(routes!(billing::list_unbilled))
+        .routes(routes!(snippets::list_snippets, snippets::create_snippet))
+        .routes(routes!(snippets::put_snippet, snippets::delete_snippet))
+        .merge(
+            OpenApiRouter::new()
+                .routes(routes!(layouts::list_layouts, layouts::create_layout))
+                .routes(routes!(layouts::put_layout, layouts::delete_layout))
+                // layouts come with their fonts and images
+                .layer(DefaultBodyLimit::max(25 << 20)),
+        )
+        .routes(routes!(layouts::layout_sample))
+        .routes(routes!(layouts::list_choices, layouts::put_choices))
+        .routes(routes!(layouts::list_packages, layouts::approve_package))
         .routes(routes!(time::list_time, time::create_entry))
         .routes(routes!(time::put_entry, time::delete_entry))
         .routes(routes!(time::stop_timer))

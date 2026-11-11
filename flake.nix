@@ -27,6 +27,7 @@
             fileset = pkgs.lib.fileset.unions [
               (craneLib.fileset.commonCargoSources ./.)
               ./crates/server/migrations
+              ./crates/server/typst
               ./web/openapi.json
               ./web/i18n
               ./GLOSSARY.md
@@ -148,6 +149,10 @@
         {
           inherit (b) server clippy svelte-check;
           fmt = b.craneLib.cargoFmt { inherit (b) src; };
+          kosit = import ./nix/kosit.nix {
+            inherit pkgs;
+            inherit (b) server;
+          };
         }
         # the VM test needs KVM, which GitHub's arm64 runners lack
         // pkgs.lib.optionalAttrs (pkgs.stdenv.hostPlatform.system == "x86_64-linux") {

@@ -21,6 +21,7 @@ listen = "127.0.0.1:9440"
 public_url = "http://localhost:9440"   # the address browsers use; passkeys are bound to its host
 data_dir = "data"              # database, and stored files unless S3 is set
 trusted_proxies = ["127.0.0.1"] # reverse proxies whose X-Forwarded-For names the client, for rate limits
+typst_packages = "https://packages.typst.org/"  # where approved Typst packages are downloaded from
 
 [storage.s3]                   # S3-compatible bucket for stored files
 bucket = "compact-company"
@@ -35,13 +36,25 @@ client_id = "compact-company"  # redirect URI: <public_url>/api/oidc/callback
 client_secret_file = "/run/secrets/oidc"
 name = "Keycloak"              # label of the sign-in button
 
+[smtp]                         # for sending documents by email
+host = "smtp.example.com"
+port = 587
+security = "starttls"          # or "tls" (port 465), or "none" for a relay on this host
+username = "rechnung@example.com"
+password_file = "/run/secrets/smtp"
+from = "Example GmbH <rechnung@example.com>"
+bcc = "archiv@example.com"     # optional copy of everything sent
+
 [business]                     # each key set here is fixed; the app shows it read-only
 name = "…"
-address = "…"
+street = "…"
+postcode = "…"
+city = "…"
 tax_number = "…"
 vat_id = "…"
 small_business = true
 currency = "EUR"               # currency new customers start with
+invoice_number_format = "RE-{yyyy}-{nnn}"  # also quote_, order_confirmation_, delivery_note_, acceptance_report_
 ```
 
 ## NixOS
