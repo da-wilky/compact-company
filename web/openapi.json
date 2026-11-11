@@ -1027,7 +1027,7 @@
         "tags": [
           "documents"
         ],
-        "summary": "Gives the draft its number and freezes it with its data as of now.",
+        "summary": "Gives the draft its number and freezes it with its data as of now; an invoice is booked.",
         "operationId": "issue_document",
         "parameters": [
           {
@@ -1037,6 +1037,15 @@
             "schema": {
               "type": "integer",
               "format": "int64"
+            }
+          },
+          {
+            "name": "exchange_rate",
+            "in": "query",
+            "description": "EUR per unit of the document's currency, for booking an invoice in another currency\n(ADR 0020); a cancellation invoice takes its invoice's.",
+            "required": false,
+            "schema": {
+              "type": "string"
             }
           }
         ],
@@ -2165,13 +2174,13 @@
         }
       }
     },
-    "/api/payments/{id}": {
-      "delete": {
+    "/api/payments/{id}/reverse": {
+      "post": {
         "tags": [
           "documents"
         ],
-        "summary": "Removes a payment recorded by mistake.",
-        "operationId": "delete_payment",
+        "summary": "Reverses a payment recorded by mistake, with its postings.",
+        "operationId": "reverse_payment",
         "parameters": [
           {
             "name": "id",
@@ -6038,6 +6047,14 @@
           "user_name"
         ],
         "properties": {
+          "account_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "The ledger account it arrived on; none before the books started."
+          },
           "amount": {
             "type": "integer",
             "format": "int64",
@@ -6046,6 +6063,14 @@
           "date": {
             "type": "string",
             "description": "ISO date the money arrived."
+          },
+          "eur_amount": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "EUR cents that arrived, for an invoice in another currency."
           },
           "id": {
             "type": "integer",
@@ -6069,6 +6094,14 @@
           "amount"
         ],
         "properties": {
+          "account_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "The ledger account it arrived on, such as the bank or the cash box; the bank when unset."
+          },
           "amount": {
             "type": "integer",
             "format": "int64",
@@ -6076,6 +6109,14 @@
           },
           "date": {
             "type": "string"
+          },
+          "eur_amount": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "EUR cents that arrived; required for an invoice in another currency once the books are\nstarted."
           },
           "note": {
             "type": [
@@ -6113,7 +6154,8 @@
               "integer",
               "null"
             ],
-            "format": "int64"
+            "format": "int64",
+            "description": "The document it books, or the invoice of the payment it books."
           },
           "document_number": {
             "type": [
@@ -6669,6 +6711,16 @@
         "properties": {
           "chart": {
             "$ref": "#/components/schemas/Chart"
+          },
+          "exchange_rates": {
+            "type": "object",
+            "description": "EUR per unit by document id, for invoices in another currency issued since the first\nday booked (ADR 0020).",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "propertyNames": {
+              "type": "string"
+            }
           },
           "start_date": {
             "type": "string",

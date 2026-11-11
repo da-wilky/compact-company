@@ -8,15 +8,17 @@ use utoipa::ToSchema;
 
 use super::{
     billing::{UnbilledProject, unbilled},
-    documents::{Document, business, find, row, today},
+    documents::{Document, business, find, row, rule_error, today},
     error::{ApiError, ErrorCode, FieldError, Json, Path},
     input::Check,
 };
 use crate::{
     App, audit,
     auth::{Auth, OwnerOnly, Role, now},
+    books,
     documents::{Data, Kind, Status},
     money::Money,
+    rules,
 };
 
 #[derive(Debug, Serialize, ToSchema, sqlx::FromRow)]
@@ -26,6 +28,10 @@ pub struct Payment {
     date: String,
     /// In the minor unit of the invoice's currency.
     amount: i64,
+    /// EUR cents that arrived, for an invoice in another currency.
+    eur_amount: Option<i64>,
+    /// The ledger account it arrived on; none before the books started.
+    account_id: Option<i64>,
     note: Option<String>,
     user_name: String,
 }
@@ -36,6 +42,11 @@ pub struct PaymentInput {
     date: String,
     /// In the minor unit of the invoice's currency.
     amount: i64,
+    /// EUR cents that arrived; required for an invoice in another currency once the books are
+    /// started.
+    eur_amount: Option<i64>,
+    /// The ledger account it arrived on, such as the bank or the cash box; the bank when unset.
+    account_id: Option<i64>,
     note: Option<String>,
 }
 
@@ -161,11 +172,12 @@ pub async fn amount_due(db: &mut SqliteConnection, id: i64) -> Result<Money, Api
             .fetch_one(&mut *db)
             .await?;
     let mut due = gross_minor(&data)?;
-    let paid: i64 =
-        sqlx::query_scalar("SELECT coalesce(sum(amount), 0) FROM payment WHERE document_id = ?")
-            .bind(id)
-            .fetch_one(&mut *db)
-            .await?;
+    let paid: i64 = sqlx::query_scalar(
+        "SELECT coalesce(sum(amount), 0) FROM payment WHERE document_id = ? AND reversed_at IS NULL",
+    )
+    .bind(id)
+    .fetch_one(&mut *db)
+    .await?;
     due -= paid;
     let cancellations: Vec<String> = sqlx::query_scalar(
         "SELECT data FROM document WHERE source_id = ? AND kind = 'cancellation'
@@ -185,8 +197,9 @@ pub async fn amount_due(db: &mut SqliteConnection, id: i64) -> Result<Money, Api
 
 pub async fn payments(db: &mut SqliteConnection, id: i64) -> Result<Vec<Payment>, sqlx::Error> {
     sqlx::query_as(
-        "SELECT p.id, p.date, p.amount, p.note, u.name AS user_name FROM payment p
-         JOIN user u ON u.id = p.user_id WHERE p.document_id = ? ORDER BY p.date, p.id",
+        "SELECT p.id, p.date, p.amount, p.eur_amount, p.account_id, p.note, u.name AS user_name
+         FROM payment p JOIN user u ON u.id = p.user_id
+         WHERE p.document_id = ? AND p.reversed_at IS NULL ORDER BY p.date, p.id",
     )
     .bind(id)
     .fetch_all(db)
@@ -212,19 +225,59 @@ pub async fn add_payment(
         check.fail("amount", FieldError::InvalidFormat);
     }
     let note = check.text("note", input.note, 500);
-    check.done()?;
+    if input
+        .eur_amount
+        .is_some_and(|a| a <= 0 || a > 100_000_000_000)
+    {
+        check.fail("eur_amount", FieldError::InvalidFormat);
+    }
     let mut tx = app.db.begin_with("BEGIN IMMEDIATE").await?;
     let invoice = row(&mut tx, id).await?;
     if invoice.kind != Kind::Invoice || invoice.status != Status::Issued {
         return Err(ApiError::new(ErrorCode::FollowUpNotAllowed));
     }
+    let foreign = invoice.currency != crate::money::DEFAULT_CURRENCY;
+    let books = books::books(&mut tx).await?;
+    let account = match &books {
+        Some(_) => Some(match input.account_id {
+            Some(account) => {
+                let open: bool = sqlx::query_scalar(
+                    "SELECT count(*) > 0 FROM ledger_account
+                     WHERE id = ? AND type = 'asset' AND NOT archived",
+                )
+                .bind(account)
+                .fetch_one(&mut *tx)
+                .await?;
+                if !open {
+                    check.fail("account_id", FieldError::InvalidFormat);
+                }
+                account
+            }
+            None => books::account(&mut tx, "bank")
+                .await?
+                .ok_or(ApiError::new(ErrorCode::NoLedgerAccount).with_detail("bank".to_owned()))?,
+        }),
+        None => None,
+    };
+    let booked = books.is_some_and(|b| input.date >= b.start_date);
+    let eur_amount = match (foreign, input.eur_amount) {
+        (false, _) => None,
+        (true, None) if booked => {
+            check.fail("eur_amount", FieldError::Required);
+            None
+        }
+        (true, amount) => amount,
+    };
+    check.done()?;
     let payment: i64 = sqlx::query_scalar(
-        "INSERT INTO payment (document_id, date, amount, note, user_id, created_at)
-         VALUES (?, ?, ?, ?, ?, ?) RETURNING id",
+        "INSERT INTO payment (document_id, date, amount, eur_amount, account_id, note, user_id,
+         created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING id",
     )
     .bind(id)
     .bind(&input.date)
     .bind(input.amount)
+    .bind(eur_amount)
+    .bind(account)
     .bind(&note)
     .bind(auth.user.id)
     .bind(now())
@@ -236,39 +289,53 @@ pub async fn add_payment(
         "payment.create",
         &format!("document:{id}"),
         None,
-        Some(serde_json::json!({ "payment": payment, "date": input.date, "amount": input.amount, "note": note })),
+        Some(serde_json::json!({
+            "payment": payment, "date": input.date, "amount": input.amount,
+            "eur_amount": eur_amount, "account_id": account, "note": note
+        })),
     )
     .await?;
+    rules::post_payment(&mut tx, &business, auth.user.id, payment)
+        .await
+        .map_err(rule_error)?;
     let document = find(&mut tx, &business, id).await?;
     tx.commit().await?;
     Ok(Json(document))
 }
 
-/// Removes a payment recorded by mistake.
-#[utoipa::path(delete, path = "/payments/{id}", tag = "documents", params(("id" = i64, Path)),
+/// Reverses a payment recorded by mistake, with its postings.
+#[utoipa::path(post, path = "/payments/{id}/reverse", tag = "documents",
+    params(("id" = i64, Path)),
     responses((status = NO_CONTENT), (status = "default", body = ApiError)))]
-pub async fn delete_payment(
+pub async fn reverse_payment(
     State(app): State<Arc<App>>,
     auth: Auth<OwnerOnly>,
     Path(id): Path<i64>,
 ) -> Result<StatusCode, ApiError> {
+    let today = today(&business(&app).await?)?.to_string();
     let mut tx = app.db.begin_with("BEGIN IMMEDIATE").await?;
-    let before: Option<(i64, String, i64, Option<String>)> =
-        sqlx::query_as("SELECT document_id, date, amount, note FROM payment WHERE id = ?")
+    let before: Option<(i64, String, i64, Option<i64>)> =
+        sqlx::query_as("SELECT document_id, date, amount, reversed_at FROM payment WHERE id = ?")
             .bind(id)
             .fetch_optional(&mut *tx)
             .await?;
-    let (document, date, amount, note) = before.ok_or(ApiError::new(ErrorCode::NotFound))?;
-    sqlx::query("DELETE FROM payment WHERE id = ?")
+    let (document, date, amount, reversed) = before.ok_or(ApiError::new(ErrorCode::NotFound))?;
+    if reversed.is_some() {
+        return Err(ApiError::new(ErrorCode::AlreadyReversed));
+    }
+    sqlx::query("UPDATE payment SET reversed_at = ?, reversed_by = ? WHERE id = ?")
+        .bind(now())
+        .bind(auth.user.id)
         .bind(id)
         .execute(&mut *tx)
         .await?;
+    rules::reverse_payment(&mut tx, auth.user.id, id, today.max(date.clone()).as_str()).await?;
     audit::record(
         &mut tx,
         auth.user.id,
-        "payment.delete",
+        "payment.reverse",
         &format!("document:{document}"),
-        Some(serde_json::json!({ "payment": id, "date": date, "amount": amount, "note": note })),
+        Some(serde_json::json!({ "payment": id, "date": date, "amount": amount })),
         None,
     )
     .await?;

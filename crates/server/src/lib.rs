@@ -33,6 +33,7 @@ pub mod money;
 pub mod oidc;
 pub mod rates;
 pub mod render;
+pub mod rules;
 pub mod settings;
 
 pub struct App {

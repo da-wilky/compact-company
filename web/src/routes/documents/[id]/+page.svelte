@@ -165,7 +165,18 @@
 		if (dirty && !(await save())) return;
 		if (!confirm(t('documents.issue_confirm'))) return;
 		busy = true;
-		const result = await call(api.POST('/api/documents/{id}/issue', { params: { path: { id } } }));
+		let result = await call(api.POST('/api/documents/{id}/issue', { params: { path: { id } } }));
+		// the books need the exchange rate of an invoice in another currency
+		if (result.error?.fields?.exchange_rate === 'required' && doc) {
+			const rate = prompt(t('documents.exchange_rate_prompt', { currency: doc.currency }))?.trim().replace(',', '.');
+			if (rate) {
+				result = await call(
+					api.POST('/api/documents/{id}/issue', {
+						params: { path: { id }, query: { exchange_rate: rate } }
+					})
+				);
+			}
+		}
 		busy = false;
 		issueError = result.error?.fields ? result.error : undefined;
 		error = result.error?.fields ? undefined : result.error;
@@ -230,29 +241,49 @@
 
 	let payDate = $state(new Date().toISOString().slice(0, 10));
 	let payAmount = $state('');
+	let payEur = $state('');
 	let payError = $state<ApiError>();
+	// the accounts money can arrive on, once the books are started
+	let payAccounts = $state<Schemas['Account'][]>([]);
+	let payAccount = $state<number>();
+
+	$effect(() => {
+		if (!owner) return;
+		call(api.GET('/api/accounts')).then(({ data }) => {
+			payAccounts = (data ?? []).filter((a) => a.type === 'asset' && ['bank', 'cash', 'money_transit'].includes(a.role ?? ''));
+			payAccount = payAccounts.find((a) => a.role === 'bank')?.id;
+		});
+	});
 
 	async function pay(event: SubmitEvent) {
 		event.preventDefault();
 		if (!doc) return;
 		const amount = parseMoney(payAmount, doc.currency);
-		if (amount == null || Number.isNaN(amount)) {
-			payError = { ...clientError('error.invalid_input'), fields: { amount: 'invalid_format' } };
+		const eur = payEur.trim() ? parseMoney(payEur, 'EUR') : null;
+		if (amount == null || Number.isNaN(amount) || Number.isNaN(eur)) {
+			payError = {
+				...clientError('error.invalid_input'),
+				fields: Number.isNaN(eur) ? { eur_amount: 'invalid_format' } : { amount: 'invalid_format' }
+			};
 			return;
 		}
 		const result = await call(
-			api.POST('/api/documents/{id}/payments', { params: { path: { id } }, body: { date: payDate, amount } })
+			api.POST('/api/documents/{id}/payments', {
+				params: { path: { id } },
+				body: { date: payDate, amount, eur_amount: eur, account_id: payAccount ?? null }
+			})
 		);
 		payError = result.error;
 		if (result.data) {
 			show(result.data);
 			payAmount = '';
+			payEur = '';
 		}
 	}
 
 	async function unpay(paymentId: number) {
-		if (!confirm(t('documents.payment_delete_confirm'))) return;
-		const result = await call(api.DELETE('/api/payments/{id}', { params: { path: { id: paymentId } } }));
+		if (!confirm(t('documents.payment_reverse_confirm'))) return;
+		const result = await call(api.POST('/api/payments/{id}/reverse', { params: { path: { id: paymentId } } }));
 		error = result.error;
 		const reload = await call(api.GET('/api/documents/{id}', { params: { path: { id } } }));
 		if (reload.data) show(reload.data);
@@ -660,8 +691,9 @@
 							<li>
 								<span>{formatDay(payment.date, { dateStyle: 'medium' })}</span>
 								<span>{formatMoney(payment.amount, doc.currency)}</span>
+								{#if payment.eur_amount != null}<span class="muted">{formatMoney(payment.eur_amount, 'EUR')}</span>{/if}
 								<span class="muted">{payment.user_name}</span>
-								{#if owner}<button class="ghost icon" aria-label={t('app.remove')} onclick={() => unpay(payment.id)}><Icon name="close" size={18} /></button>{/if}
+								{#if owner}<button class="ghost" onclick={() => unpay(payment.id)}>{t('books.reverse')}</button>{/if}
 							</li>
 						{/each}
 					</ul>
@@ -674,6 +706,20 @@
 						<Field label={t('documents.payment_amount')} error={payError?.fields?.amount} note={doc.currency}>
 							<input inputmode="decimal" bind:value={payAmount} placeholder={moneyInput(doc.amount_due.minor, doc.currency)} />
 						</Field>
+						{#if payAccounts.length}
+							{#if doc.currency !== 'EUR'}
+								<Field label={t('documents.payment_eur')} error={payError?.fields?.eur_amount} note="EUR">
+									<input inputmode="decimal" bind:value={payEur} />
+								</Field>
+							{/if}
+							<Field label={t('documents.payment_account')} error={payError?.fields?.account_id}>
+								<select bind:value={payAccount}>
+									{#each payAccounts as account (account.id)}
+										<option value={account.id}>{account.number} {account.name}</option>
+									{/each}
+								</select>
+							</Field>
+						{/if}
 						<button class="primary">{t('documents.record_payment')}</button>
 					</form>
 				{/if}

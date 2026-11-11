@@ -57,13 +57,28 @@
 		loadJournal();
 	});
 
+	// invoices in another currency issued since the first day need the rate they are booked at
+	let rates = $state<{ id: number; label: string; rate: string }[]>([]);
+
 	async function startBooks(event: SubmitEvent) {
 		event.preventDefault();
-		const result = await call(api.POST('/api/books', { body: { chart, start_date: startDate } }));
+		const exchange_rates = Object.fromEntries(
+			rates.filter((r) => r.rate.trim()).map((r) => [String(r.id), r.rate.trim().replace(',', '.')])
+		);
+		const result = await call(api.POST('/api/books', { body: { chart, start_date: startDate, exchange_rates } }));
 		error = result.error;
 		if (result.data) {
 			view = result.data;
 			toast(t('books.started'));
+		}
+		const needed = Object.keys(result.error?.fields ?? {})
+			.filter((key) => key.startsWith('exchange_rates.'))
+			.map((key) => Number(key.split('.')[1]))
+			.filter((id) => !rates.some((r) => r.id === id));
+		for (const id of needed) {
+			const document = await call(api.GET('/api/documents/{id}', { params: { path: { id } } }));
+			const d = document.data;
+			rates.push({ id, label: d ? `${d.number} · ${d.customer_name} · ${d.currency}` : String(id), rate: '' });
 		}
 	}
 
@@ -220,6 +235,14 @@
 			<Field label={t('books.start_date')} error={error?.fields?.start_date}>
 				<input type="date" bind:value={startDate} />
 			</Field>
+			{#if rates.length}
+				<p class="muted">{t('books.rates_hint')}</p>
+				{#each rates as entry (entry.id)}
+					<Field label={entry.label} error={error?.fields?.[`exchange_rates.${entry.id}`]} note={t('books.rate_note')}>
+						<input inputmode="decimal" bind:value={entry.rate} />
+					</Field>
+				{/each}
+			{/if}
 			<div><button class="primary">{t('books.start')}</button></div>
 		</form>
 	{:else}
@@ -261,9 +284,10 @@
 						<li class="card" class:reversed={p.reversed_by != null}>
 							<div class="head">
 								<span class="date">{day(p.date)}</span>
-								<strong>{p.description}</strong>
 								{#if p.document_id}
-									<a href="/documents/{p.document_id}">{p.document_number}</a>
+									<a href="/documents/{p.document_id}"><strong>{p.description}</strong></a>
+								{:else}
+									<strong>{p.description}</strong>
 								{/if}
 								{#if p.reversed_by != null}<span class="badge">{t('books.is_reversed')}</span>{/if}
 								{#if p.reverses_id != null}<span class="badge">{t('term.reversal')}</span>{/if}

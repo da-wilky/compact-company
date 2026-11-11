@@ -18,8 +18,9 @@ use super::{
 use crate::{
     App, audit,
     auth::{Auth, OwnerOnly, OwnerOrAccountant, now},
+    books,
     documents::{self, Data, Kind, LineRow, Pricing, Row, Status, Unit},
-    einvoice, layouts, render,
+    einvoice, layouts, render, rules,
     settings::Business,
 };
 
@@ -567,18 +568,42 @@ pub async fn delete_document(
     Ok(StatusCode::NO_CONTENT)
 }
 
-/// Gives the draft its number and freezes it with its data as of now.
+#[derive(Deserialize, IntoParams)]
+#[into_params(parameter_in = Query)]
+pub struct IssueParams {
+    /// EUR per unit of the document's currency, for booking an invoice in another currency
+    /// (ADR 0020); a cancellation invoice takes its invoice's.
+    #[param(value_type = Option<String>)]
+    exchange_rate: Option<Decimal>,
+}
+
+/// Gives the draft its number and freezes it with its data as of now; an invoice is booked.
 #[utoipa::path(post, path = "/documents/{id}/issue", tag = "documents",
-    params(("id" = i64, Path)),
+    params(("id" = i64, Path), IssueParams),
     responses((status = OK, body = Document), (status = "default", body = ApiError)))]
 pub async fn issue_document(
     State(app): State<Arc<App>>,
     auth: Auth<OwnerOnly>,
     Path(id): Path<i64>,
+    Query(params): Query<IssueParams>,
 ) -> Result<Json<Document>, ApiError> {
+    if params
+        .exchange_rate
+        .is_some_and(|r| r <= Decimal::ZERO || r > Decimal::from(1_000_000) || r.scale() > 6)
+    {
+        return Err(field_error("exchange_rate", FieldError::InvalidFormat));
+    }
     let business = business(&app).await?;
     let mut tx = app.db.begin_with("BEGIN IMMEDIATE").await?;
-    issue(&app, &mut tx, &business, auth.user.id, id).await?;
+    issue(
+        &app,
+        &mut tx,
+        &business,
+        auth.user.id,
+        id,
+        params.exchange_rate,
+    )
+    .await?;
     let document = find(&mut tx, &business, id).await?;
     tx.commit().await?;
     Ok(Json(document))
@@ -636,8 +661,10 @@ pub async fn issue(
     business: &Business,
     user_id: i64,
     id: i64,
+    exchange_rate: Option<Decimal>,
 ) -> Result<Data, ApiError> {
     let row = draft_row(tx, id).await?;
+    let rate = booking_rate(tx, business, &row, exchange_rate).await?;
     if let (Kind::Cancellation, Some(invoice)) = (row.kind, row.source_id) {
         let wanted: Vec<i64> = documents::lines(tx, id)
             .await?
@@ -762,7 +789,55 @@ pub async fn issue(
         Some(serde_json::json!({ "number": number, "issue_date": data.issue_date })),
     )
     .await?;
+    if let Some(rate) = rate {
+        rules::post_document(tx, business, user_id, id, &data, rate)
+            .await
+            .map_err(rule_error)?;
+    }
     Ok(data)
+}
+
+/// The EUR per unit an invoice or cancellation invoice is booked at; none for documents that are
+/// not booked, or while the books are not started.
+async fn booking_rate(
+    tx: &mut SqliteConnection,
+    business: &Business,
+    row: &Row,
+    given: Option<Decimal>,
+) -> Result<Option<Decimal>, ApiError> {
+    if !matches!(row.kind, Kind::Invoice | Kind::Cancellation) {
+        return Ok(None);
+    }
+    let Some(books) = books::books(tx).await? else {
+        return Ok(None);
+    };
+    if today(business)?.to_string() < books.start_date {
+        return Ok(None);
+    }
+    if row.currency == crate::money::DEFAULT_CURRENCY {
+        return Ok(Some(Decimal::ONE));
+    }
+    if let Some(rate) = given {
+        return Ok(Some(rate));
+    }
+    let booked = match (row.kind, row.source_id) {
+        (Kind::Cancellation, Some(invoice)) => {
+            rules::booked_rate(tx, invoice).await.map_err(rule_error)?
+        }
+        _ => None,
+    };
+    booked
+        .map(Some)
+        .ok_or_else(|| field_error("exchange_rate", FieldError::Required))
+}
+
+pub fn rule_error(error: rules::Error) -> ApiError {
+    match error {
+        rules::Error::NoAccount(role) => {
+            ApiError::new(ErrorCode::NoLedgerAccount).with_detail(role)
+        }
+        rules::Error::Db(error) => ApiError::internal(error),
+    }
 }
 
 pub fn today(business: &Business) -> Result<jiff::civil::Date, ApiError> {

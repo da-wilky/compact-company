@@ -97,7 +97,7 @@ pub fn routes() -> OpenApiRouter<Arc<App>> {
         .routes(routes!(documents::document_xml))
         .routes(routes!(sending::send_document))
         .routes(routes!(overview::add_payment))
-        .routes(routes!(overview::delete_payment))
+        .routes(routes!(overview::reverse_payment))
         .routes(routes!(overview::get_overview))
         .routes(routes!(documents::duplicate_document))
         .routes(routes!(documents::follow_up))

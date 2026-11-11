@@ -1,12 +1,13 @@
-use std::sync::Arc;
+use std::{collections::BTreeMap, sync::Arc};
 
 use axum::extract::State;
+use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use sqlx::SqliteConnection;
 use utoipa::{IntoParams, ToSchema};
 
 use super::{
-    documents::{business, today},
+    documents::{business, rule_error, today},
     error::{ApiError, ErrorCode, FieldError, Json, Path, Query},
     input::{Check, field_error},
 };
@@ -14,7 +15,10 @@ use crate::{
     App, audit,
     auth::{Auth, OwnerOnly, OwnerOrAccountant, now},
     books::{self, AccountType, Books, Chart, Line, NewPosting, Source},
-    settings::Taxation,
+    documents::{Data, Kind},
+    money::DEFAULT_CURRENCY,
+    rules,
+    settings::{Business, Taxation},
 };
 
 #[derive(Debug, Serialize, ToSchema)]
@@ -30,6 +34,11 @@ pub struct StartInput {
     chart: Chart,
     /// ISO date of the first day booked.
     start_date: String,
+    /// EUR per unit by document id, for invoices in another currency issued since the first
+    /// day booked (ADR 0020).
+    #[serde(default)]
+    #[schema(value_type = BTreeMap<String, String>)]
+    exchange_rates: BTreeMap<i64, Decimal>,
 }
 
 #[utoipa::path(get, path = "/books", tag = "books",
@@ -71,6 +80,14 @@ pub async fn start_books(
     .execute(&mut *tx)
     .await?;
     books::seed_accounts(&mut tx, input.chart).await?;
+    book_earlier(
+        &mut tx,
+        &business,
+        auth.user.id,
+        &input.start_date,
+        &input.exchange_rates,
+    )
+    .await?;
     audit::record(
         &mut tx,
         auth.user.id,
@@ -268,6 +285,7 @@ pub struct Posting {
     description: String,
     reverses_id: Option<i64>,
     reversed_by: Option<i64>,
+    /// The document it books, or the invoice of the payment it books.
     document_id: Option<i64>,
     document_number: Option<String>,
     payment_id: Option<i64>,
@@ -290,8 +308,10 @@ pub struct PostingFilter {
 
 const POSTING: &str = "SELECT p.id, p.date, p.description, p.reverses_id,
     (SELECT r.id FROM posting r WHERE r.reverses_id = p.id) AS reversed_by,
-    p.document_id, d.number AS document_number, p.payment_id, u.name AS user_name, p.created_at
-    FROM posting p JOIN user u ON u.id = p.user_id LEFT JOIN document d ON d.id = p.document_id";
+    d.id AS document_id, d.number AS document_number, p.payment_id, u.name AS user_name,
+    p.created_at FROM posting p JOIN user u ON u.id = p.user_id
+    LEFT JOIN payment y ON y.id = p.payment_id
+    LEFT JOIN document d ON d.id = coalesce(p.document_id, y.document_id)";
 
 /// The journal in order, oldest first.
 #[utoipa::path(get, path = "/postings", tag = "books", params(PostingFilter),
@@ -464,4 +484,83 @@ pub fn check_date(check: &mut Check, key: &str, date: &str, books: &Books) {
     if date.parse::<jiff::civil::Date>().is_err() || date < books.start_date.as_str() {
         check.fail(key, FieldError::InvalidFormat);
     }
+}
+
+/// Books the invoices, cancellation invoices and payments dated on or after the first day booked
+/// that were issued or recorded before the books started.
+async fn book_earlier(
+    tx: &mut SqliteConnection,
+    business: &Business,
+    user_id: i64,
+    start: &str,
+    rates: &BTreeMap<i64, Decimal>,
+) -> Result<(), ApiError> {
+    let documents: Vec<(i64, Kind, String, Option<i64>, String)> = sqlx::query_as(
+        "SELECT id, kind, currency, source_id, data FROM document
+         WHERE kind IN ('invoice', 'cancellation') AND status = 'issued' AND issue_date >= ?
+         ORDER BY issued_at, id",
+    )
+    .bind(start)
+    .fetch_all(&mut *tx)
+    .await?;
+    let mut check = Check::default();
+    for (id, kind, currency, source, data) in documents {
+        let rate = match (currency == DEFAULT_CURRENCY, rates.get(&id), kind, source) {
+            (true, _, _, _) => Some(Decimal::ONE),
+            (false, Some(rate), _, _) => Some(*rate),
+            (false, None, Kind::Cancellation, Some(invoice)) => {
+                rules::booked_rate(tx, invoice).await.map_err(rule_error)?
+            }
+            _ => None,
+        };
+        let Some(rate) = rate else {
+            check.fail(&format!("exchange_rates.{id}"), FieldError::Required);
+            continue;
+        };
+        let data: Data = serde_json::from_str(&data).map_err(ApiError::internal)?;
+        rules::post_document(tx, business, user_id, id, &data, rate)
+            .await
+            .map_err(rule_error)?;
+    }
+    let bank = books::account(tx, "bank")
+        .await?
+        .expect("the seeded chart has a bank account");
+    let payments: Vec<(i64, i64, String, i64)> = sqlx::query_as(
+        "SELECT y.id, y.document_id, d.currency, y.amount FROM payment y
+         JOIN document d ON d.id = y.document_id
+         WHERE y.reversed_at IS NULL AND y.date >= ? ORDER BY y.date, y.id",
+    )
+    .bind(start)
+    .fetch_all(&mut *tx)
+    .await?;
+    for (id, invoice, currency, amount) in payments {
+        let eur = if currency == DEFAULT_CURRENCY {
+            None
+        } else {
+            let rate = match rates.get(&invoice) {
+                Some(rate) => Some(*rate),
+                None => rules::booked_rate(tx, invoice).await.map_err(rule_error)?,
+            };
+            let Some(rate) = rate else {
+                check.fail(&format!("exchange_rates.{invoice}"), FieldError::Required);
+                continue;
+            };
+            Some(
+                (Decimal::from(amount) * rate)
+                    .round()
+                    .try_into()
+                    .map_err(ApiError::internal)?,
+            )
+        };
+        sqlx::query("UPDATE payment SET account_id = ?, eur_amount = ? WHERE id = ?")
+            .bind(bank)
+            .bind(eur.map(|e: i64| e.max(1)))
+            .bind(id)
+            .execute(&mut *tx)
+            .await?;
+        rules::post_payment(tx, business, user_id, id)
+            .await
+            .map_err(rule_error)?;
+    }
+    check.done()
 }

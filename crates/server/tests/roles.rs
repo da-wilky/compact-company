@@ -87,7 +87,7 @@ const SIGNED_IN: &[(&str, &str, &[&str])] = &[
     ("GET", "/api/documents/{id}/xml", OWNER_ACCOUNTANT),
     ("POST", "/api/documents/{id}/send", OWNER),
     ("POST", "/api/documents/{id}/payments", OWNER),
-    ("DELETE", "/api/payments/{id}", OWNER),
+    ("POST", "/api/payments/{id}/reverse", OWNER),
     ("GET", "/api/overview", ANY),
     ("POST", "/api/documents/{id}/duplicate", OWNER),
     ("POST", "/api/documents/{id}/follow-up", OWNER),
