@@ -16,6 +16,9 @@ pub const CURRENCIES: &[(&str, u32)] = &[
 
 pub const DEFAULT_CURRENCY: &str = "EUR";
 
+/// A billion in the major unit, so that products of two amounts stay within `Decimal`.
+pub const MAX_AMOUNT: i64 = 100_000_000_000;
+
 pub fn is_currency(code: &str) -> bool {
     CURRENCIES.iter().any(|(c, _)| *c == code)
 }
@@ -32,4 +35,11 @@ pub const MAX_RATE: i64 = 100_000_000;
 
 pub fn is_rate(minor: i64) -> bool {
     (0..=MAX_RATE).contains(&minor)
+}
+
+/// EUR per unit of a foreign currency, as the owner enters it.
+pub fn is_exchange_rate(rate: rust_decimal::Decimal) -> bool {
+    rate > rust_decimal::Decimal::ZERO
+        && rate <= rust_decimal::Decimal::from(1_000_000)
+        && rate.scale() <= 6
 }

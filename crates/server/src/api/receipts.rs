@@ -22,13 +22,12 @@ use crate::{
     auth::{Auth, OwnerOnly, OwnerOrAccountant, now},
     books,
     incoming::{self, Format, Incoming},
-    money::DEFAULT_CURRENCY,
+    money::{DEFAULT_CURRENCY, MAX_AMOUNT},
     rules::{self, Column},
 };
 
 const MAX_FILE: usize = 20 << 20;
 const MAX_LINES: usize = 200;
-const MAX_AMOUNT: i64 = 100_000_000_000;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema, sqlx::Type)]
 #[serde(rename_all = "snake_case")]

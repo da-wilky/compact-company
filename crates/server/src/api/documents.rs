@@ -20,12 +20,13 @@ use crate::{
     auth::{Auth, OwnerOnly, OwnerOrAccountant, now},
     books,
     documents::{self, Data, Kind, LineRow, Pricing, Row, Status, Unit},
-    einvoice, layouts, render, rules,
+    einvoice, layouts,
+    money::{MAX_AMOUNT, is_exchange_rate},
+    render, rules,
     settings::Business,
 };
 
 const MAX_LINES: usize = 500;
-const MAX_AMOUNT: i64 = 100_000_000_000;
 
 #[derive(Debug, Deserialize, ToSchema)]
 #[serde(deny_unknown_fields)]
@@ -619,10 +620,7 @@ pub async fn issue_document(
     Path(id): Path<i64>,
     Query(params): Query<IssueParams>,
 ) -> Result<Json<Document>, ApiError> {
-    if params
-        .exchange_rate
-        .is_some_and(|r| r <= Decimal::ZERO || r > Decimal::from(1_000_000) || r.scale() > 6)
-    {
+    if params.exchange_rate.is_some_and(|r| !is_exchange_rate(r)) {
         return Err(field_error("exchange_rate", FieldError::InvalidFormat));
     }
     let business = business(&app).await?;

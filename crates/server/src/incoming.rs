@@ -1,4 +1,7 @@
-use crate::xml::{Node, parse};
+use crate::{
+    money::MAX_AMOUNT,
+    xml::{Node, parse},
+};
 use rust_decimal::Decimal;
 
 /// What an incoming e-invoice says, as a receipt needs it; amounts in cents of its currency, a
@@ -60,6 +63,8 @@ pub struct Group {
     pub description: String,
 }
 
+const MAX_XML: usize = 10 << 20;
+
 /// The names e-invoices are attached to PDFs under (Factur-X, ZUGFeRD 1 and 2, XRechnung).
 const ATTACHMENTS: &[&str] = &[
     "factur-x.xml",
@@ -94,7 +99,7 @@ fn attachment(pdf: &[u8]) -> Option<Vec<u8>> {
         let files = spec.get_deref(b"EF", &document).ok()?.as_dict().ok()?;
         let stream = files.get_deref(b"F", &document).ok()?.as_stream().ok()?;
         stream
-            .decompressed_content()
+            .decompressed_content_with_limit(MAX_XML)
             .ok()
             .or_else(|| Some(stream.content.clone()))
     })
@@ -111,7 +116,12 @@ fn read_xml(xml: &[u8]) -> Option<Incoming> {
 
 fn amount(text: Option<String>) -> Option<i64> {
     let value: Decimal = text?.parse().ok()?;
-    (value * Decimal::ONE_HUNDRED).round().try_into().ok()
+    let cents: i64 = value
+        .checked_mul(Decimal::ONE_HUNDRED)?
+        .round()
+        .try_into()
+        .ok()?;
+    (cents.abs() <= MAX_AMOUNT).then_some(cents)
 }
 
 /// CII dates come as `YYYYMMDD` (format 102).

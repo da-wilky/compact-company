@@ -62,15 +62,18 @@ pub fn parse(xml: &[u8]) -> Option<Node> {
                 .text
                 .push_str(&t.xml_content(XmlVersion::Implicit1_0)),
             Event::GeneralRef(r) => {
-                let resolved = match r.into_inner().as_ref() {
-                    "amp" => "&",
-                    "lt" => "<",
-                    "gt" => ">",
-                    "quot" => "\"",
-                    "apos" => "'",
-                    _ => "",
-                };
-                stack.last_mut()?.text.push_str(resolved);
+                let text = &mut stack.last_mut()?.text;
+                match r.resolve_char_ref().ok()? {
+                    Some(c) => text.push(c),
+                    None => text.push_str(match r.as_ref() {
+                        "amp" => "&",
+                        "lt" => "<",
+                        "gt" => ">",
+                        "quot" => "\"",
+                        "apos" => "'",
+                        _ => "",
+                    }),
+                }
             }
             Event::CData(t) => stack.last_mut()?.text.push_str(&t.into_inner()),
             Event::Eof => break,
@@ -98,5 +101,14 @@ fn element(e: &quick_xml::events::BytesStart) -> Node {
             })
             .collect(),
         ..Node::default()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn character_references_resolve() {
+        let node = super::parse(b"<a>M&#252;ller &#x26; S&amp;hne</a>").unwrap();
+        assert_eq!(node.text, "Müller & S&hne");
     }
 }

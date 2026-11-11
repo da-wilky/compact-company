@@ -1,6 +1,9 @@
 use rust_decimal::Decimal;
 
-use crate::xml::{Node, parse};
+use crate::{
+    money::MAX_AMOUNT,
+    xml::{Node, parse},
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, utoipa::ToSchema, sqlx::Type)]
 #[serde(rename_all = "snake_case")]
@@ -49,6 +52,10 @@ pub fn read(bytes: &[u8]) -> Result<(Format, Statement), Error> {
     }
 }
 
+fn normal_iban(iban: String) -> String {
+    iban.replace(' ', "").to_ascii_uppercase()
+}
+
 fn clean(text: Option<String>) -> Option<String> {
     let text = text?.split_whitespace().collect::<Vec<_>>().join(" ");
     (!text.is_empty()).then_some(text)
@@ -56,7 +63,12 @@ fn clean(text: Option<String>) -> Option<String> {
 
 fn cents(text: &str) -> Option<i64> {
     let value: Decimal = text.trim().parse().ok()?;
-    (value * Decimal::ONE_HUNDRED).round().try_into().ok()
+    let cents: i64 = value
+        .checked_mul(Decimal::ONE_HUNDRED)?
+        .round()
+        .try_into()
+        .ok()?;
+    (cents.abs() <= MAX_AMOUNT).then_some(cents)
 }
 
 fn camt053(xml: &[u8]) -> Result<Statement, Error> {
@@ -78,11 +90,14 @@ fn camt053(xml: &[u8]) -> Result<Statement, Error> {
         let incoming = entry.text("CdtDbtInd").as_deref() == Some("CRDT");
         let sign = if incoming { 1 } else { -1 };
         let date = |path: &str| {
-            entry.text(&format!("{path}/Dt")).or_else(|| {
-                entry
-                    .text(&format!("{path}/DtTm"))
-                    .map(|t| t.chars().take(10).collect())
-            })
+            entry
+                .text(&format!("{path}/Dt"))
+                .or_else(|| {
+                    entry
+                        .text(&format!("{path}/DtTm"))
+                        .map(|t| t.chars().take(10).collect())
+                })
+                .filter(|d: &String| d.parse::<jiff::civil::Date>().is_ok())
         };
         let booking_date = date("BookgDt").ok_or(Error::Unknown)?;
         let value_date = date("ValDt");
@@ -127,7 +142,8 @@ fn camt053(xml: &[u8]) -> Result<Statement, Error> {
                     field(&format!("RltdPties/{party}/Nm"))
                         .or_else(|| field(&format!("RltdPties/{party}/Pty/Nm"))),
                 ),
-                counterparty_iban: field(&format!("RltdPties/{party}Acct/Id/IBAN")),
+                counterparty_iban: field(&format!("RltdPties/{party}Acct/Id/IBAN"))
+                    .map(normal_iban),
                 purpose: clean(purpose),
                 reference: field("Refs/EndToEndId")
                     .filter(|r| r != "NOTPROVIDED")
@@ -136,7 +152,7 @@ fn camt053(xml: &[u8]) -> Result<Statement, Error> {
         }
     }
     Ok(Statement {
-        iban: statement.text("Acct/Id/IBAN"),
+        iban: statement.text("Acct/Id/IBAN").map(normal_iban),
         entries,
     })
 }
@@ -299,7 +315,7 @@ fn csv(text: &str) -> Result<Statement, Error> {
             return Err(Error::Currency(code));
         }
         if statement.iban.is_none() {
-            statement.iban = get(own).map(|i| i.replace(' ', ""));
+            statement.iban = get(own).map(normal_iban);
         }
         let purpose = purposes
             .iter()
@@ -311,7 +327,7 @@ fn csv(text: &str) -> Result<Statement, Error> {
             value_date: get(value_date).and_then(|d| csv_date(&d)),
             amount: cents,
             counterparty: clean(get(counterparty)),
-            counterparty_iban: get(iban).map(|i| i.replace(' ', "")),
+            counterparty_iban: get(iban).map(normal_iban),
             purpose: clean(Some(purpose)),
             reference: None,
         });
@@ -366,6 +382,7 @@ mod tests {
         assert_eq!(csv_amount("12,5"), Some(1_250));
         assert_eq!(csv_amount("1.000"), Some(100_000));
         assert_eq!(csv_amount("+49"), Some(4_900));
+        assert_eq!(csv_amount("99999999999999999999999999"), None);
     }
 
     #[test]

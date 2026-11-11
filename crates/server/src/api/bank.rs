@@ -19,7 +19,7 @@ use crate::{
     App, audit,
     auth::{Auth, OwnerOnly, OwnerOrAccountant, now},
     books::{self, Line, NewPosting, Source},
-    money::DEFAULT_CURRENCY,
+    money::{DEFAULT_CURRENCY, MAX_AMOUNT},
     rules::{self, Column},
     statements::{self, Format},
 };
@@ -688,10 +688,14 @@ pub async fn match_transaction(
         &transaction.booking_date,
         &books,
     );
+    let bounded = |a: i64| a != 0 && a.abs() <= MAX_AMOUNT;
     if input.parts.is_empty()
         || input.parts.len() > 50
+        || input
+            .parts
+            .iter()
+            .any(|p| !bounded(p.amount) || p.document_amount.is_some_and(|d| !bounded(d)))
         || input.parts.iter().map(|p| p.amount).sum::<i64>() != transaction.amount
-        || input.parts.iter().any(|p| p.amount == 0)
     {
         check.fail("parts", FieldError::InvalidFormat);
     }

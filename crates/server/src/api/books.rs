@@ -16,7 +16,7 @@ use crate::{
     auth::{Auth, OwnerOnly, OwnerOrAccountant, now},
     books::{self, AccountType, Books, Chart, Line, NewPosting, Source},
     documents::{Data, Kind},
-    money::DEFAULT_CURRENCY,
+    money::{DEFAULT_CURRENCY, is_exchange_rate},
     rules,
     settings::{Business, Taxation},
 };
@@ -64,6 +64,16 @@ pub async fn start_books(
 ) -> Result<Json<BooksView>, ApiError> {
     if input.start_date.parse::<jiff::civil::Date>().is_err() {
         return Err(field_error("start_date", FieldError::InvalidFormat));
+    }
+    if let Some((id, _)) = input
+        .exchange_rates
+        .iter()
+        .find(|(_, rate)| !is_exchange_rate(**rate))
+    {
+        return Err(field_error(
+            &format!("exchange_rates.{id}"),
+            FieldError::InvalidFormat,
+        ));
     }
     let business = business(&app).await?;
     let mut tx = app.db.begin_with("BEGIN IMMEDIATE").await?;
