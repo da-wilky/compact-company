@@ -18,13 +18,15 @@ use super::{
 use crate::{
     App, audit,
     auth::{Auth, OwnerOnly, OwnerOrAccountant, now},
+    books,
     documents::{self, Data, Kind, LineRow, Pricing, Row, Status, Unit},
-    einvoice, layouts, render,
+    einvoice, layouts,
+    money::{MAX_AMOUNT, is_exchange_rate},
+    render, rules,
     settings::Business,
 };
 
 const MAX_LINES: usize = 500;
-const MAX_AMOUNT: i64 = 100_000_000_000;
 
 #[derive(Debug, Deserialize, ToSchema)]
 #[serde(deny_unknown_fields)]
@@ -240,7 +242,7 @@ pub async fn create_document(
 ) -> Result<Json<Document>, ApiError> {
     let business = business(&app).await?;
     let mut tx = app.db.begin_with("BEGIN IMMEDIATE").await?;
-    if input.kind == Kind::Cancellation {
+    if matches!(input.kind, Kind::Cancellation | Kind::Dunning) {
         return Err(ApiError::new(ErrorCode::FollowUpNotAllowed));
     }
     let draft = validate(&mut tx, input, None).await?;
@@ -262,6 +264,9 @@ pub async fn duplicate_document(
     let business = business(&app).await?;
     let mut tx = app.db.begin_with("BEGIN IMMEDIATE").await?;
     let source = row(&mut tx, id).await?;
+    if source.kind == Kind::Dunning {
+        return Err(ApiError::new(ErrorCode::FollowUpNotAllowed));
+    }
     let original = snapshot(&mut tx, &source).await?;
     let archived: bool = sqlx::query_scalar("SELECT archived FROM customer WHERE id = ?")
         .bind(original.customer_id)
@@ -317,6 +322,7 @@ pub async fn follow_up(
             Kind::Cancellation,
             Kind::DeliveryNote,
             Kind::AcceptanceReport,
+            Kind::Dunning,
         ],
         _ => &[],
     };
@@ -334,6 +340,29 @@ pub async fn follow_up(
         }
     }
     let original = snapshot(&mut tx, &source).await?;
+    if input.kind == Kind::Dunning {
+        let level = next_dunning_level(&mut tx, id).await?;
+        let draft = Draft {
+            kind: Kind::Dunning,
+            title: None,
+            intro: Some(dunning_intro(original.language, level).to_owned()),
+            outro: None,
+            valid_until: None,
+            pricing: None,
+            source_id: Some(id),
+            service_from: None,
+            service_to: None,
+            timesheet: false,
+            rounding: 0,
+            dunning_level: Some(level),
+            lines: Vec::new(),
+            ..original
+        };
+        let dunning = insert_draft(&mut tx, auth.user.id, &draft).await?;
+        let document = find(&mut tx, &business, dunning).await?;
+        tx.commit().await?;
+        return Ok(Json(document));
+    }
     let source_data = data(&mut tx, &business, &source).await?;
     let priced = input.kind.priced();
     // an invoice for a quote by effort charges the time spent, added to it afterwards
@@ -432,8 +461,8 @@ async fn insert_draft(
     let id: i64 = sqlx::query_scalar(
         "INSERT INTO document (kind, status, customer_id, project_id, language, currency, title,
          intro, outro, valid_until, pricing, source_id, service_from, service_to, timesheet,
-         rounding, created_at, updated_at)
-         VALUES (?, 'draft', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id",
+         rounding, dunning_level, created_at, updated_at)
+         VALUES (?, 'draft', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id",
     )
     .bind(draft.kind)
     .bind(draft.customer_id)
@@ -450,6 +479,7 @@ async fn insert_draft(
     .bind(&draft.service_to)
     .bind(draft.timesheet)
     .bind(draft.rounding)
+    .bind(draft.dunning_level)
     .bind(at)
     .bind(at)
     .fetch_one(&mut *tx)
@@ -488,6 +518,10 @@ pub async fn put_document(
     let before = snapshot(&mut tx, &before).await?;
     draft.source_id = before.source_id;
     draft.rounding = before.rounding;
+    draft.dunning_level = before.dunning_level;
+    if draft.kind == Kind::Dunning && !draft.lines.is_empty() {
+        return Err(field_error("lines", FieldError::InvalidFormat));
+    }
     if let (Kind::Cancellation, Some(invoice)) = (draft.kind, draft.source_id) {
         let wanted: Vec<i64> = draft
             .lines
@@ -567,18 +601,39 @@ pub async fn delete_document(
     Ok(StatusCode::NO_CONTENT)
 }
 
-/// Gives the draft its number and freezes it with its data as of now.
+#[derive(Deserialize, IntoParams)]
+#[into_params(parameter_in = Query)]
+pub struct IssueParams {
+    /// EUR per unit of the document's currency, for booking an invoice in another currency
+    /// (ADR 0020); a cancellation invoice takes its invoice's.
+    #[param(value_type = Option<String>)]
+    exchange_rate: Option<Decimal>,
+}
+
+/// Gives the draft its number and freezes it with its data as of now; an invoice is booked.
 #[utoipa::path(post, path = "/documents/{id}/issue", tag = "documents",
-    params(("id" = i64, Path)),
+    params(("id" = i64, Path), IssueParams),
     responses((status = OK, body = Document), (status = "default", body = ApiError)))]
 pub async fn issue_document(
     State(app): State<Arc<App>>,
     auth: Auth<OwnerOnly>,
     Path(id): Path<i64>,
+    Query(params): Query<IssueParams>,
 ) -> Result<Json<Document>, ApiError> {
+    if params.exchange_rate.is_some_and(|r| !is_exchange_rate(r)) {
+        return Err(field_error("exchange_rate", FieldError::InvalidFormat));
+    }
     let business = business(&app).await?;
     let mut tx = app.db.begin_with("BEGIN IMMEDIATE").await?;
-    issue(&app, &mut tx, &business, auth.user.id, id).await?;
+    issue(
+        &app,
+        &mut tx,
+        &business,
+        auth.user.id,
+        id,
+        params.exchange_rate,
+    )
+    .await?;
     let document = find(&mut tx, &business, id).await?;
     tx.commit().await?;
     Ok(Json(document))
@@ -636,8 +691,10 @@ pub async fn issue(
     business: &Business,
     user_id: i64,
     id: i64,
+    exchange_rate: Option<Decimal>,
 ) -> Result<Data, ApiError> {
     let row = draft_row(tx, id).await?;
+    let rate = booking_rate(tx, business, &row, exchange_rate).await?;
     if let (Kind::Cancellation, Some(invoice)) = (row.kind, row.source_id) {
         let wanted: Vec<i64> = documents::lines(tx, id)
             .await?
@@ -671,13 +728,25 @@ pub async fn issue(
     data.number = Some(number.clone());
     data.issue_date = Some(today.to_string());
     data.valid_until = valid_until.clone();
-    let due_date = (row.kind == Kind::Invoice).then(|| {
-        let days = i64::from(business.payment_days.unwrap_or(14));
+    // a dunning letter gives a week to pay
+    let days = match row.kind {
+        Kind::Invoice => Some(i64::from(business.payment_days.unwrap_or(14))),
+        Kind::Dunning => Some(7),
+        _ => None,
+    };
+    let due_date = days.map(|days| {
         today
             .saturating_add(jiff::Span::new().days(days))
             .to_string()
     });
-    data.due_date = due_date.clone();
+    if let Some(dunning) = &mut data.dunning {
+        if dunning.amount_due <= Decimal::ZERO {
+            return Err(ApiError::new(ErrorCode::FollowUpNotAllowed));
+        }
+        dunning.pay_until = due_date.clone();
+    } else {
+        data.due_date = due_date.clone();
+    }
     if matches!(row.kind, Kind::Invoice | Kind::Cancellation) && data.service_from.is_none() {
         data.service_from = Some(today.to_string());
         data.service_to = Some(today.to_string());
@@ -762,7 +831,55 @@ pub async fn issue(
         Some(serde_json::json!({ "number": number, "issue_date": data.issue_date })),
     )
     .await?;
+    if let Some(rate) = rate {
+        rules::post_document(tx, business, user_id, id, &data, rate)
+            .await
+            .map_err(rule_error)?;
+    }
     Ok(data)
+}
+
+/// The EUR per unit an invoice or cancellation invoice is booked at; none for documents that are
+/// not booked, or while the books are not started.
+async fn booking_rate(
+    tx: &mut SqliteConnection,
+    business: &Business,
+    row: &Row,
+    given: Option<Decimal>,
+) -> Result<Option<Decimal>, ApiError> {
+    if !matches!(row.kind, Kind::Invoice | Kind::Cancellation) {
+        return Ok(None);
+    }
+    let Some(books) = books::books(tx).await? else {
+        return Ok(None);
+    };
+    if today(business)?.to_string() < books.start_date {
+        return Ok(None);
+    }
+    if row.currency == crate::money::DEFAULT_CURRENCY {
+        return Ok(Some(Decimal::ONE));
+    }
+    if let Some(rate) = given {
+        return Ok(Some(rate));
+    }
+    let booked = match (row.kind, row.source_id) {
+        (Kind::Cancellation, Some(invoice)) => {
+            rules::booked_rate(tx, invoice).await.map_err(rule_error)?
+        }
+        _ => None,
+    };
+    booked
+        .map(Some)
+        .ok_or_else(|| field_error("exchange_rate", FieldError::Required))
+}
+
+pub fn rule_error(error: rules::Error) -> ApiError {
+    match error {
+        rules::Error::NoAccount(role) => {
+            ApiError::new(ErrorCode::NoLedgerAccount).with_detail(role)
+        }
+        rules::Error::Db(error) => ApiError::internal(error),
+    }
 }
 
 pub fn today(business: &Business) -> Result<jiff::civil::Date, ApiError> {
@@ -892,6 +1009,7 @@ pub struct Draft {
     service_to: Option<String>,
     timesheet: bool,
     rounding: i64,
+    dunning_level: Option<i64>,
     lines: Vec<Line>,
 }
 
@@ -925,6 +1043,7 @@ async fn snapshot(db: &mut SqliteConnection, row: &Row) -> Result<Draft, ApiErro
         service_to: row.service_to.clone(),
         timesheet: row.timesheet,
         rounding: row.rounding,
+        dunning_level: row.dunning_level,
         lines: documents::lines(db, row.id)
             .await?
             .into_iter()
@@ -1112,6 +1231,7 @@ async fn validate(
         service_to: input.service_to,
         timesheet: invoice && input.timesheet,
         rounding: 0,
+        dunning_level: None,
         lines,
     };
     check.done()?;
@@ -1253,4 +1373,46 @@ pub async fn document_xml(
         bytes,
     )
         .into_response())
+}
+
+/// The level of the next dunning letter for an invoice that is still owed: one above the
+/// highest issued, at most three.
+async fn next_dunning_level(db: &mut SqliteConnection, invoice: i64) -> Result<i64, ApiError> {
+    if documents::amount_due(db, invoice).await? <= 0 {
+        return Err(ApiError::new(ErrorCode::FollowUpNotAllowed));
+    }
+    let issued: i64 = sqlx::query_scalar(
+        "SELECT coalesce(max(dunning_level), 0) FROM document
+         WHERE source_id = ? AND kind = 'dunning' AND status = 'issued'",
+    )
+    .bind(invoice)
+    .fetch_one(db)
+    .await?;
+    if issued >= 3 {
+        return Err(ApiError::new(ErrorCode::FollowUpNotAllowed));
+    }
+    Ok(issued + 1)
+}
+
+fn dunning_intro(language: Language, level: i64) -> &'static str {
+    match (language, level) {
+        (Language::De, 1) => {
+            "Sehr geehrte Damen und Herren,\n\nsicher ist es Ihnen im Alltag entgangen: Für die folgende Rechnung ist bei uns noch keine vollständige Zahlung eingegangen. Bitte überweisen Sie den offenen Betrag bis zum genannten Datum. Sollten Sie inzwischen gezahlt haben, betrachten Sie dieses Schreiben bitte als gegenstandslos."
+        }
+        (Language::De, 2) => {
+            "Sehr geehrte Damen und Herren,\n\nleider ist der offene Betrag der folgenden Rechnung trotz unserer Zahlungserinnerung noch nicht bei uns eingegangen. Bitte überweisen Sie ihn bis zum genannten Datum."
+        }
+        (Language::De, _) => {
+            "Sehr geehrte Damen und Herren,\n\ntrotz Zahlungserinnerung und Mahnung ist der offene Betrag der folgenden Rechnung noch nicht bei uns eingegangen. Bitte überweisen Sie ihn bis zum genannten Datum. Andernfalls sehen wir uns gezwungen, weitere Schritte einzuleiten."
+        }
+        (Language::En, 1) => {
+            "Dear Sir or Madam,\n\nperhaps it has slipped your attention: we have not yet received full payment of the invoice below. Please transfer the amount due by the date given. If you have paid in the meantime, please disregard this letter."
+        }
+        (Language::En, 2) => {
+            "Dear Sir or Madam,\n\ndespite our reminder, the amount due on the invoice below has not reached us yet. Please transfer it by the date given."
+        }
+        (Language::En, _) => {
+            "Dear Sir or Madam,\n\ndespite our reminder and dunning letter, the amount due on the invoice below has not reached us yet. Please transfer it by the date given; otherwise we will have to take further steps."
+        }
+    }
 }

@@ -165,7 +165,18 @@
 		if (dirty && !(await save())) return;
 		if (!confirm(t('documents.issue_confirm'))) return;
 		busy = true;
-		const result = await call(api.POST('/api/documents/{id}/issue', { params: { path: { id } } }));
+		let result = await call(api.POST('/api/documents/{id}/issue', { params: { path: { id } } }));
+		// the books need the exchange rate of an invoice in another currency
+		if (result.error?.fields?.exchange_rate === 'required' && doc) {
+			const rate = prompt(t('documents.exchange_rate_prompt', { currency: doc.currency }))?.trim().replace(',', '.');
+			if (rate) {
+				result = await call(
+					api.POST('/api/documents/{id}/issue', {
+						params: { path: { id }, query: { exchange_rate: rate } }
+					})
+				);
+			}
+		}
 		busy = false;
 		issueError = result.error?.fields ? result.error : undefined;
 		error = result.error?.fields ? undefined : result.error;
@@ -230,29 +241,49 @@
 
 	let payDate = $state(new Date().toISOString().slice(0, 10));
 	let payAmount = $state('');
+	let payEur = $state('');
 	let payError = $state<ApiError>();
+	// the accounts money can arrive on, once the books are started
+	let payAccounts = $state<Schemas['Account'][]>([]);
+	let payAccount = $state<number>();
+
+	$effect(() => {
+		if (!owner) return;
+		call(api.GET('/api/accounts')).then(({ data }) => {
+			payAccounts = (data ?? []).filter((a) => a.type === 'asset' && ['bank', 'cash', 'money_transit'].includes(a.role ?? ''));
+			payAccount = payAccounts.find((a) => a.role === 'bank')?.id;
+		});
+	});
 
 	async function pay(event: SubmitEvent) {
 		event.preventDefault();
 		if (!doc) return;
 		const amount = parseMoney(payAmount, doc.currency);
-		if (amount == null || Number.isNaN(amount)) {
-			payError = { ...clientError('error.invalid_input'), fields: { amount: 'invalid_format' } };
+		const eur = payEur.trim() ? parseMoney(payEur, 'EUR') : null;
+		if (amount == null || Number.isNaN(amount) || Number.isNaN(eur)) {
+			payError = {
+				...clientError('error.invalid_input'),
+				fields: Number.isNaN(eur) ? { eur_amount: 'invalid_format' } : { amount: 'invalid_format' }
+			};
 			return;
 		}
 		const result = await call(
-			api.POST('/api/documents/{id}/payments', { params: { path: { id } }, body: { date: payDate, amount } })
+			api.POST('/api/documents/{id}/payments', {
+				params: { path: { id } },
+				body: { date: payDate, amount, eur_amount: eur, account_id: payAccount ?? null }
+			})
 		);
 		payError = result.error;
 		if (result.data) {
 			show(result.data);
 			payAmount = '';
+			payEur = '';
 		}
 	}
 
 	async function unpay(paymentId: number) {
-		if (!confirm(t('documents.payment_delete_confirm'))) return;
-		const result = await call(api.DELETE('/api/payments/{id}', { params: { path: { id: paymentId } } }));
+		if (!confirm(t('documents.payment_reverse_confirm'))) return;
+		const result = await call(api.POST('/api/payments/{id}/reverse', { params: { path: { id: paymentId } } }));
 		error = result.error;
 		const reload = await call(api.GET('/api/documents/{id}', { params: { path: { id } } }));
 		if (reload.data) show(reload.data);
@@ -343,13 +374,14 @@
 	const followUps: Record<Kind, Kind[]> = {
 		quote: ['order_confirmation', 'invoice', 'delivery_note', 'acceptance_report'],
 		order_confirmation: ['invoice', 'delivery_note', 'acceptance_report'],
-		invoice: ['cancellation', 'delivery_note', 'acceptance_report'],
+		invoice: ['cancellation', 'delivery_note', 'acceptance_report', 'dunning'],
 		cancellation: [],
 		delivery_note: [],
-		acceptance_report: []
+		acceptance_report: [],
+		dunning: []
 	};
 	const draft = $derived(doc?.status === 'draft' && owner);
-	const priced = $derived(doc?.data.totals != null || (doc ? !['delivery_note', 'acceptance_report'].includes(doc.kind) : false));
+	const priced = $derived(doc?.data.totals != null || (doc ? !['delivery_note', 'acceptance_report', 'dunning'].includes(doc.kind) : false));
 	const canFollow = $derived(
 		owner && doc?.status === 'issued' && (doc.kind !== 'quote' || doc.quote_state === 'accepted')
 	);
@@ -380,7 +412,7 @@
 			{#if doc.kind === 'invoice' || doc.kind === 'cancellation'}
 				<a class="button ghost" href={`/api/documents/${doc.id}/xml`}>{t('documents.xml')}</a>
 			{/if}
-			{#if owner}
+			{#if owner && doc.kind !== 'dunning'}
 				<button class="ghost" onclick={duplicate}>{t('documents.duplicate')}</button>
 			{/if}
 			{#if owner && doc.status === 'issued'}
@@ -514,6 +546,9 @@
 					{/if}
 				</div>
 
+				{#if doc.data.dunning}
+				<div class="wide">{@render dunningBox(doc.data.dunning)}</div>
+				{:else}
 				<div class="wide lines">
 					<h2>{t('documents.lines')}</h2>
 					{#if doc.kind === 'cancellation'}
@@ -585,6 +620,7 @@
 					</div>
 					{/if}
 				</div>
+				{/if}
 
 				<div class="wide">
 					<Field label={t('documents.outro')} error={fieldError('outro')}>
@@ -608,6 +644,9 @@
 			<section class="card">
 				{#if doc.data.title}<h2>{doc.data.title}</h2>{/if}
 				{#if doc.data.intro}<p class="pre">{doc.data.intro}</p>{/if}
+				{#if doc.data.dunning}
+				{@render dunningBox(doc.data.dunning)}
+				{:else}
 				<div class="table">
 					<table>
 						<thead>
@@ -631,6 +670,7 @@
 						</tbody>
 					</table>
 				</div>
+				{/if}
 				{#if doc.data.totals}
 					<dl class="totals">
 						<dt>{t('documents.net')}</dt><dd>{formatAmount(doc.data.totals.net, doc.currency)}</dd>
@@ -660,8 +700,9 @@
 							<li>
 								<span>{formatDay(payment.date, { dateStyle: 'medium' })}</span>
 								<span>{formatMoney(payment.amount, doc.currency)}</span>
+								{#if payment.eur_amount != null}<span class="muted">{formatMoney(payment.eur_amount, 'EUR')}</span>{/if}
 								<span class="muted">{payment.user_name}</span>
-								{#if owner}<button class="ghost icon" aria-label={t('app.remove')} onclick={() => unpay(payment.id)}><Icon name="close" size={18} /></button>{/if}
+								{#if owner && payment.bank_match_id == null}<button class="ghost" onclick={() => unpay(payment.id)}>{t('books.reverse')}</button>{:else if payment.bank_match_id != null}<a href="/bank">{t('bank.title')}</a>{/if}
 							</li>
 						{/each}
 					</ul>
@@ -674,6 +715,20 @@
 						<Field label={t('documents.payment_amount')} error={payError?.fields?.amount} note={doc.currency}>
 							<input inputmode="decimal" bind:value={payAmount} placeholder={moneyInput(doc.amount_due.minor, doc.currency)} />
 						</Field>
+						{#if payAccounts.length}
+							{#if doc.currency !== 'EUR'}
+								<Field label={t('documents.payment_eur')} error={payError?.fields?.eur_amount} note="EUR">
+									<input inputmode="decimal" bind:value={payEur} />
+								</Field>
+							{/if}
+							<Field label={t('documents.payment_account')} error={payError?.fields?.account_id}>
+								<select bind:value={payAccount}>
+									{#each payAccounts as account (account.id)}
+										<option value={account.id}>{account.number} {account.name}</option>
+									{/each}
+								</select>
+							</Field>
+						{/if}
 						<button class="primary">{t('documents.record_payment')}</button>
 					</form>
 				{/if}
@@ -772,6 +827,18 @@
 		<div><button class="primary" disabled={busy}>{t('documents.send')}</button></div>
 	</form>
 </Dialog>
+
+{#snippet dunningBox(d: Schemas['DunningData'])}
+	<dl class="dunning">
+		<dt>{t('documents.dunning_level')}</dt>
+		<dd>{t(`documents.dunning_${d.level}`)}</dd>
+		<dt>{t('term.invoice')}</dt>
+		<dd><a href={`/documents/${doc?.source_id}`}>{d.invoice_number}</a> · {formatDay(d.invoice_date, { dateStyle: 'medium' })}</dd>
+		<dt>{t('documents.amount_due')}</dt>
+		<dd><strong>{formatAmount(d.amount_due, doc?.currency ?? 'EUR')}</strong></dd>
+		{#if d.pay_until}<dt>{t('documents.pay_until')}</dt><dd>{formatDay(d.pay_until, { dateStyle: 'medium' })}</dd>{/if}
+	</dl>
+{/snippet}
 
 <style>
 	.eyebrow {
@@ -898,6 +965,15 @@
 		flex-wrap: wrap;
 		gap: 0.75rem;
 		align-items: end;
+	}
+	.dunning {
+		display: grid;
+		grid-template-columns: auto 1fr;
+		gap: 0.375rem 1rem;
+		margin: 1rem 0;
+	}
+	.dunning dd {
+		margin: 0;
 	}
 	.sent {
 		list-style: none;

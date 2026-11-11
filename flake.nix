@@ -28,6 +28,7 @@
               (craneLib.fileset.commonCargoSources ./.)
               ./crates/server/migrations
               ./crates/server/typst
+              ./crates/server/tests/fixtures
               ./web/openapi.json
               ./web/i18n
               ./GLOSSARY.md

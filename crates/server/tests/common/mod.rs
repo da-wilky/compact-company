@@ -318,7 +318,7 @@ impl TestApp {
             json!({
                 "name": "swilk UG (haftungsbeschränkt)", "street": "Hauptstraße 1",
                 "postcode": "01067", "city": "Dresden", "tax_number": "201/123/45678",
-                "small_business": true, "iban": "DE89370400440532013000"
+                "taxation": "small_business", "iban": "DE89370400440532013000"
             }),
         )
         .await;

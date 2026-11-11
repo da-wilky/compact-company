@@ -53,6 +53,25 @@
   )
 }
 
+#let _dunning(data) = {
+  let d = data.dunning
+  table(
+    columns: (1fr, auto, auto, auto),
+    align: (col, _) => if col == 0 { left } else { right },
+    stroke: (x, y) => if y == 0 { (bottom: 0.6pt) } else { (bottom: 0.3pt + luma(200)) },
+    inset: (x: 0.4em, y: 0.55em),
+    table.header(..(cc.t(data, "invoice"), cc.t(data, "invoice_date"), cc.t(data, "due_date"), cc.t(data, "amount_due")).map(h => text(weight: "bold", h))),
+    d.invoice_number,
+    cc.date(data, d.invoice_date),
+    if d.invoice_due_date != none { cc.date(data, d.invoice_due_date) } else { "–" },
+    text(weight: "bold", cc.money(data, d.amount_due)),
+  )
+  if d.pay_until != none {
+    v(0.6em)
+    par(cc.t(data, "pay_until") + " " + text(weight: "bold", cc.date(data, d.pay_until)) + ".")
+  }
+}
+
 #let _totals(data) = {
   let rows = ((cc.t(data, "net_total"), cc.money(data, data.totals.net)),)
   if not data.business.small_business {
@@ -135,7 +154,7 @@
   if data.reference != none { linebreak(); text(fill: muted, data.reference) }
   v(0.6em)
   if data.intro != none { par(data.intro); v(0.4em) }
-  _lines(data)
+  if data.kind == "dunning" { _dunning(data) } else { _lines(data) }
   if data.totals != none {
     v(0.4em)
     _totals(data)

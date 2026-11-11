@@ -36,7 +36,7 @@ async fn business_is_stored_and_read_back() {
             &mut owner,
             "PUT",
             "/api/business",
-            json!({ "name": " Wilk IT ", "vat_id": "de 123456789", "small_business": true }),
+            json!({ "name": " Wilk IT ", "vat_id": "de 123456789", "taxation": "small_business" }),
         )
         .await;
     assert_eq!(response.status(), StatusCode::OK);
@@ -47,7 +47,7 @@ async fn business_is_stored_and_read_back() {
     .await;
     assert_eq!(view["values"]["name"], "Wilk IT");
     assert_eq!(view["values"]["vat_id"], "DE123456789");
-    assert_eq!(view["values"]["small_business"], true);
+    assert_eq!(view["values"]["taxation"], "small_business");
     assert_eq!(view["pinned"], json!([]));
 }
 

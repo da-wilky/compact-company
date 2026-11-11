@@ -37,7 +37,7 @@ async fn an_issued_invoice_carries_zugferd_and_an_xrechnung_customer_gets_its_xm
         "/api/business",
         json!({ "name": "swilk UG (haftungsbeschränkt)", "street": "Hauptstraße 1",
                 "postcode": "01067", "city": "Dresden", "tax_number": "201/123/45678",
-                "small_business": true, "iban": "DE89370400440532013000",
+                "taxation": "small_business", "iban": "DE89370400440532013000",
                 "email": "post@swilk.example", "phone": "+49 351 123456" }),
     )
     .await;

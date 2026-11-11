@@ -116,6 +116,8 @@ pub fn default_text(
         (Kind::DeliveryNote, false) => "Delivery note",
         (Kind::AcceptanceReport, true) => "Abnahmeprotokoll",
         (Kind::AcceptanceReport, false) => "Acceptance report",
+        (Kind::Dunning, true) => "Mahnung",
+        (Kind::Dunning, false) => "Payment reminder",
     };
     let subject = format!("{name} {number}");
     let body = if de {

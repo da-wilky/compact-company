@@ -76,7 +76,7 @@ fn validate(business: Business) -> Result<Business, ApiError> {
         vat_id: check
             .text("vat_id", b.vat_id, 20)
             .map(|v| v.replace(' ', "").to_ascii_uppercase()),
-        small_business: b.small_business,
+        taxation: b.taxation,
         legal_form: check.text("legal_form", b.legal_form, 100),
         register_court: check.text("register_court", b.register_court, 100),
         register_number: check.text("register_number", b.register_number, 50),
@@ -110,6 +110,7 @@ fn validate(business: Business) -> Result<Business, ApiError> {
             b.acceptance_report_number_format,
             40,
         ),
+        dunning_number_format: check.text("dunning_number_format", b.dunning_number_format, 40),
     };
     if business
         .currency
@@ -169,6 +170,7 @@ fn validate(business: Business) -> Result<Business, ApiError> {
             "acceptance_report_number_format",
             &business.acceptance_report_number_format,
         ),
+        ("dunning_number_format", &business.dunning_number_format),
     ] {
         if format
             .as_deref()
@@ -182,7 +184,7 @@ fn validate(business: Business) -> Result<Business, ApiError> {
 }
 
 /// Country code, check digits and up to 30 letters or digits, with the ISO 7064 checksum.
-fn is_iban(value: &str) -> bool {
+pub fn is_iban(value: &str) -> bool {
     let valid_shape = (15..=34).contains(&value.len())
         && value.chars().all(|c| c.is_ascii_alphanumeric())
         && value[..2].chars().all(|c| c.is_ascii_uppercase())
@@ -203,7 +205,7 @@ fn is_iban(value: &str) -> bool {
 }
 
 /// Two-letter country prefix and 2 to 13 letters or digits, the shape every EU VAT ID shares.
-fn is_vat_id(value: &str) -> bool {
+pub fn is_vat_id(value: &str) -> bool {
     let (country, rest) = value.split_at_checked(2).unwrap_or((value, ""));
     country.chars().all(|c| c.is_ascii_uppercase())
         && (2..=13).contains(&rest.len())

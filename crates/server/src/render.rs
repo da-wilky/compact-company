@@ -346,6 +346,17 @@ pub fn mandatory(data: &Data) -> Vec<(String, Vec<String>)> {
         "issue_date",
         data.issue_date.iter().map(|d| date(d, lang)).collect(),
     );
+    if let Some(dunning) = &data.dunning {
+        need(
+            "dunning.invoice_number",
+            vec![dunning.invoice_number.clone()],
+        );
+        need("dunning.amount_due", vec![amount(dunning.amount_due, lang)]);
+        need(
+            "dunning.pay_until",
+            dunning.pay_until.iter().map(|d| date(d, lang)).collect(),
+        );
+    }
     if !matches!(data.kind, Kind::Invoice | Kind::Cancellation) {
         return needles;
     }

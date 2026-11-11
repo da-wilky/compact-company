@@ -9,7 +9,9 @@ use crate::App;
 
 pub mod activities;
 pub mod audit;
+pub mod bank;
 pub mod billing;
+pub mod books;
 pub mod business;
 pub mod customers;
 pub mod documents;
@@ -18,13 +20,16 @@ pub mod input;
 pub mod invitations;
 pub mod layouts;
 pub mod oidc;
+pub mod open_items;
 pub mod overview;
 pub mod passkeys;
 pub mod projects;
+pub mod receipts;
 pub mod sending;
 pub mod session;
 pub mod snippets;
 pub mod statuses;
+pub mod suppliers;
 pub mod time;
 pub mod todos;
 pub mod users;
@@ -96,13 +101,50 @@ pub fn routes() -> OpenApiRouter<Arc<App>> {
         .routes(routes!(documents::document_xml))
         .routes(routes!(sending::send_document))
         .routes(routes!(overview::add_payment))
-        .routes(routes!(overview::delete_payment))
+        .routes(routes!(overview::reverse_payment))
         .routes(routes!(overview::get_overview))
         .routes(routes!(documents::duplicate_document))
         .routes(routes!(documents::follow_up))
         .routes(routes!(documents::set_outcome))
         .routes(routes!(billing::add_time))
         .routes(routes!(billing::list_unbilled))
+        .routes(routes!(books::get_books, books::start_books))
+        .routes(routes!(books::list_accounts, books::create_account))
+        .routes(routes!(books::put_account))
+        .routes(routes!(books::list_postings, books::create_posting))
+        .routes(routes!(books::reverse_posting))
+        .routes(routes!(
+            suppliers::list_suppliers,
+            suppliers::create_supplier
+        ))
+        .routes(routes!(suppliers::put_supplier))
+        .merge(
+            OpenApiRouter::new()
+                .routes(routes!(receipts::list_receipts, receipts::create_receipt))
+                .layer(DefaultBodyLimit::max(25 << 20)),
+        )
+        .routes(routes!(
+            receipts::get_receipt,
+            receipts::put_receipt,
+            receipts::delete_receipt
+        ))
+        .routes(routes!(receipts::book_receipt))
+        .routes(routes!(receipts::reverse_receipt))
+        .routes(routes!(receipts::receipt_file))
+        .routes(routes!(receipts::add_receipt_payment))
+        .routes(routes!(receipts::reverse_receipt_payment))
+        .routes(routes!(bank::list_bank_accounts, bank::create_bank_account))
+        .routes(routes!(bank::put_bank_account))
+        .merge(
+            OpenApiRouter::new()
+                .routes(routes!(bank::import_statement))
+                .layer(DefaultBodyLimit::max(25 << 20)),
+        )
+        .routes(routes!(bank::list_transactions))
+        .routes(routes!(bank::get_transaction))
+        .routes(routes!(bank::match_transaction))
+        .routes(routes!(bank::unmatch_transaction))
+        .routes(routes!(open_items::get_open_items))
         .routes(routes!(snippets::list_snippets, snippets::create_snippet))
         .routes(routes!(snippets::put_snippet, snippets::delete_snippet))
         .merge(

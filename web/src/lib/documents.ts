@@ -9,7 +9,8 @@ export const kinds: Kind[] = [
 	'invoice',
 	'cancellation',
 	'delivery_note',
-	'acceptance_report'
+	'acceptance_report',
+	'dunning'
 ];
 
 const terms: Record<Kind, string> = {
@@ -18,7 +19,8 @@ const terms: Record<Kind, string> = {
 	invoice: 'term.invoice',
 	cancellation: 'term.cancellation_invoice',
 	delivery_note: 'term.delivery_note',
-	acceptance_report: 'term.acceptance_report'
+	acceptance_report: 'term.acceptance_report',
+	dunning: 'term.dunning_letter'
 };
 
 export const kindLabel = (kind: Kind) => t(terms[kind]);

@@ -11,13 +11,14 @@ use compact_company::{
 use http_body_util::BodyExt;
 use serde_json::json;
 
-const KINDS: [Kind; 6] = [
+const KINDS: [Kind; 7] = [
     Kind::Quote,
     Kind::OrderConfirmation,
     Kind::Invoice,
     Kind::Cancellation,
     Kind::DeliveryNote,
     Kind::AcceptanceReport,
+    Kind::Dunning,
 ];
 
 #[test]

@@ -19,7 +19,8 @@ pub struct Business {
     pub website: Option<String>,
     pub tax_number: Option<String>,
     pub vat_id: Option<String>,
-    pub small_business: Option<bool>,
+    /// How the business owes VAT; accrual when unset.
+    pub taxation: Option<Taxation>,
     /// The legal form of a UG or GmbH, such as `UG (haftungsbeschränkt)`; with it, documents
     /// must also carry the register and managing directors (§ 35a GmbHG).
     pub legal_form: Option<String>,
@@ -45,6 +46,28 @@ pub struct Business {
     pub invoice_number_format: Option<String>,
     pub delivery_note_number_format: Option<String>,
     pub acceptance_report_number_format: Option<String>,
+    pub dunning_number_format: Option<String>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum Taxation {
+    /// Exempt from charging VAT under § 19 UStG.
+    SmallBusiness,
+    /// VAT on an invoice is owed when its payment arrives (Istversteuerung).
+    Cash,
+    /// VAT on an invoice is owed for the period it is issued in (Sollversteuerung).
+    Accrual,
+}
+
+impl Business {
+    pub fn taxation(&self) -> Taxation {
+        self.taxation.unwrap_or(Taxation::Accrual)
+    }
+
+    pub fn small_business(&self) -> bool {
+        self.taxation() == Taxation::SmallBusiness
+    }
 }
 
 /// Business data and defaults: stored in the database unless the config pins them (ADR 0017).

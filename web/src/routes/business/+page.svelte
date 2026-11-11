@@ -18,7 +18,7 @@
 
 	function show(result: { data?: Schemas['BusinessView']; error?: ApiError }) {
 		if (result.data) {
-			values = result.data.values;
+			values = { ...result.data.values, taxation: result.data.values.taxation ?? 'accrual' };
 			pinned = result.data.pinned;
 		}
 		error = result.error;
@@ -63,7 +63,8 @@
 				'order_confirmation_number_format',
 				'invoice_number_format',
 				'delivery_note_number_format',
-				'acceptance_report_number_format'
+				'acceptance_report_number_format',
+				'dunning_number_format'
 			]
 		}
 	];
@@ -74,6 +75,7 @@
 		invoice_number_format: 'RE-{yyyy}-{nnn}',
 		delivery_note_number_format: 'LS-{yyyy}-{nnn}',
 		acceptance_report_number_format: 'AP-{yyyy}-{nnn}',
+		dunning_number_format: 'MA-{yyyy}-{nnn}',
 		legal_form: 'UG (haftungsbeschränkt)'
 	};
 </script>
@@ -100,15 +102,13 @@
 					</Field>
 				{/each}
 				{#if section.title === 'business.section_legal'}
-					<div class="wide">
-						<Field label={t('business.small_business')} note={note('small_business')} inline>
-							<input
-								type="checkbox"
-								bind:checked={values.small_business}
-								disabled={pinned.includes('small_business')}
-							/>
-						</Field>
-					</div>
+					<Field label={t('term.taxation')} note={note('taxation')}>
+						<select bind:value={values.taxation} disabled={pinned.includes('taxation')}>
+							{#each ['accrual', 'cash', 'small_business'] as const as taxation (taxation)}
+								<option value={taxation}>{t(`business.taxation.${taxation}`)}</option>
+							{/each}
+						</select>
+					</Field>
 				{/if}
 			</section>
 		{/each}

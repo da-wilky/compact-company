@@ -319,6 +319,107 @@ try {
 	await api('POST', `/api/documents/${issuedInvoice.id}/payments`, { date: '2026-11-01', amount: 20000 });
 	await api('POST', '/api/snippets', { name: 'Zahlungshinweis', language: 'de', body: 'Bitte überweisen Sie den Betrag ohne Abzug.' });
 
+	await screen('books-start', `${origin}/books`);
+	await api('POST', '/api/books', { chart: 'skr03', start_date: '2026-01-01' });
+	const accounts = await api('GET', '/api/accounts');
+	const account = (number) => accounts.find((a) => a.number === number).id;
+	await api('POST', '/api/postings', {
+		date: '2026-01-01',
+		description: 'Eröffnungsbilanz',
+		lines: [
+			{ account_id: account('1200'), amount: 1250000 },
+			{ account_id: account('1000'), amount: 35000 },
+			{ account_id: account('0800'), amount: -1285000 }
+		]
+	});
+	const deposit = await api('POST', '/api/postings', {
+		date: '2026-02-03',
+		description: 'Privateinlage',
+		lines: [
+			{ account_id: account('1200'), amount: 50000 },
+			{ account_id: account('1890'), amount: -50000 }
+		]
+	});
+	await api('POST', `/api/postings/${deposit.id}/reverse`, { date: '2026-02-04' });
+
+	// receipts: an XRechnung booked and paid, and a photo of a bill still a draft
+	const uploadReceipt = (name, type, content) =>
+		evaluate(`(async () => {
+			const { csrf_token } = await (await fetch('/api/session')).json();
+			const form = new FormData();
+			const content = ${JSON.stringify(content)};
+			const blob = content === null
+				? await new Promise((done) => {
+						const canvas = document.createElement('canvas');
+						canvas.width = 420;
+						canvas.height = 560;
+						const c = canvas.getContext('2d');
+						c.fillStyle = '#fbf8f1';
+						c.fillRect(0, 0, 420, 560);
+						c.fillStyle = '#222';
+						c.font = 'bold 26px serif';
+						c.fillText('Gasthaus Linde', 40, 70);
+						c.font = '18px monospace';
+						['Mittagstisch       2x 18,50', 'Apfelschorle       2x  3,40', '', 'Netto                  40,00', 'MwSt 19 %               7,60', 'Summe                  47,60 EUR']
+							.forEach((line, i) => c.fillText(line, 40, 140 + i * 32));
+						canvas.toBlob(done, 'image/png');
+					})
+				: new Blob([content], { type: ${JSON.stringify(type)} });
+			form.append('file', blob, ${JSON.stringify(name)});
+			const response = await fetch('/api/receipts', { method: 'POST', body: form, headers: { 'x-csrf-token': csrf_token } });
+			return response.json();
+		})()`);
+	const ubl = `<?xml version="1.0" encoding="UTF-8"?>
+<Invoice xmlns="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2" xmlns:cac="urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2" xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2">
+<cbc:ID>HA-2026-0815</cbc:ID><cbc:IssueDate>2026-03-02</cbc:IssueDate><cbc:DueDate>2026-03-16</cbc:DueDate><cbc:DocumentCurrencyCode>EUR</cbc:DocumentCurrencyCode>
+<cac:AccountingSupplierParty><cac:Party><cac:PartyName><cbc:Name>Hosting &amp; Mehr AG</cbc:Name></cac:PartyName>
+<cac:PostalAddress><cbc:StreetName>Serverweg 4</cbc:StreetName><cbc:CityName>Nürnberg</cbc:CityName><cbc:PostalZone>90402</cbc:PostalZone><cac:Country><cbc:IdentificationCode>DE</cbc:IdentificationCode></cac:Country></cac:PostalAddress>
+<cac:PartyTaxScheme><cbc:CompanyID>DE811907980</cbc:CompanyID><cac:TaxScheme><cbc:ID>VAT</cbc:ID></cac:TaxScheme></cac:PartyTaxScheme></cac:Party></cac:AccountingSupplierParty>
+<cac:TaxTotal><cbc:TaxAmount currencyID="EUR">19.00</cbc:TaxAmount><cac:TaxSubtotal><cbc:TaxableAmount currencyID="EUR">100.00</cbc:TaxableAmount><cbc:TaxAmount currencyID="EUR">19.00</cbc:TaxAmount><cac:TaxCategory><cbc:Percent>19</cbc:Percent></cac:TaxCategory></cac:TaxSubtotal></cac:TaxTotal>
+<cac:InvoiceLine><cbc:ID>1</cbc:ID><cac:Item><cbc:Name>Managed Server März</cbc:Name><cac:ClassifiedTaxCategory><cbc:Percent>19</cbc:Percent></cac:ClassifiedTaxCategory></cac:Item></cac:InvoiceLine>
+</Invoice>`;
+	const hosting = await uploadReceipt('xrechnung.xml', 'application/xml', ubl);
+	await api('POST', `/api/receipts/${hosting.id}/book`, { paid_from: null });
+	await api('POST', `/api/receipts/${hosting.id}/payments`, { date: '2026-03-10', amount: 11900 });
+	const photo = await uploadReceipt('bon.png', 'image/png', null);
+	const restaurant = await api('POST', '/api/suppliers', { name: 'Gasthaus Linde', city: 'Dresden' });
+	// a bank account with a statement: one transaction matched, three to match
+	const girokonto = await api('POST', '/api/bank-accounts', {
+		name: 'Girokonto',
+		iban: 'DE89370400440532013000',
+		ledger_account_id: account('1200')
+	});
+	const invoiceNumber = (await api('GET', `/api/documents/${issuedInvoice.id}`)).number;
+	const entry = (date, amount, direction, party, iban, purpose) => `<Ntry><Amt Ccy="EUR">${amount}</Amt>
+		<CdtDbtInd>${direction}</CdtDbtInd><Sts><Cd>BOOK</Cd></Sts><BookgDt><Dt>${date}</Dt></BookgDt><ValDt><Dt>${date}</Dt></ValDt>
+		<NtryDtls><TxDtls><RltdPties>${party ? `<${direction === 'CRDT' ? 'Dbtr' : 'Cdtr'}><Nm>${party}</Nm></${direction === 'CRDT' ? 'Dbtr' : 'Cdtr'}>` : ''}
+		${iban ? `<${direction === 'CRDT' ? 'DbtrAcct' : 'CdtrAcct'}><Id><IBAN>${iban}</IBAN></Id></${direction === 'CRDT' ? 'DbtrAcct' : 'CdtrAcct'}>` : ''}</RltdPties>
+		<RmtInf><Ustrd>${purpose}</Ustrd></RmtInf></TxDtls></NtryDtls></Ntry>`;
+	const camt = `<?xml version="1.0" encoding="UTF-8"?><Document xmlns="urn:iso:std:iso:20022:tech:xsd:camt.053.001.08"><BkToCstmrStmt><Stmt>
+		<Acct><Id><IBAN>DE89370400440532013000</IBAN></Id></Acct>
+		${entry('2026-11-02', '383.10', 'CRDT', 'Baeckerei Krume GmbH', 'DE44500105175407324931', `Rechnung ${invoiceNumber} Restbetrag`)}
+		${entry('2026-11-03', '4.90', 'DBIT', '', '', 'Kontofuehrungsentgelt Oktober')}
+		${entry('2026-11-05', '250.00', 'DBIT', 'Samuel Wilk', 'DE02120300000000202051', 'Privatentnahme')}
+		${entry('2026-03-11', '119.00', 'DBIT', 'Hosting und Mehr AG', 'DE02120300000000202051', 'HA-2026-0815 Kundennummer 4711')}
+		</Stmt></BkToCstmrStmt></Document>`;
+	await evaluate(`(async () => {
+		const { csrf_token } = await (await fetch('/api/session')).json();
+		const form = new FormData();
+		form.append('file', new Blob([${JSON.stringify(camt)}], { type: 'application/xml' }), 'camt053.xml');
+		await fetch('/api/bank-accounts/${girokonto.id}/import', { method: 'POST', body: form, headers: { 'x-csrf-token': csrf_token } });
+	})()`);
+	const fee = (await api('GET', `/api/bank-transactions?bank_account_id=${girokonto.id}`)).find((t) => t.amount === -490);
+	await api('POST', `/api/bank-transactions/${fee.id}/match`, { parts: [{ kind: 'account', id: account('4970'), amount: -490 }] });
+
+	const dunning = await api('POST', `/api/documents/${issuedInvoice.id}/follow-up`, { kind: 'dunning' });
+	await api('POST', `/api/documents/${dunning.id}/issue`);
+
+	await api('PUT', `/api/receipts/${photo.id}`, {
+		supplier_id: restaurant.id,
+		date: '2026-04-03',
+		lines: [{ description: 'Geschäftsessen mit Kundin', account_id: account('4650'), net: 4000, vat_rate: '19' }]
+	});
+
 	await screen('overview', `${origin}/`);
 	await screen('customers', `${origin}/customers`);
 	await screen('customer', `${origin}/customers/${krume.id}`);
@@ -330,6 +431,28 @@ try {
 	await screen('document-draft', `${origin}/documents/${invoice.id}`);
 	await screen('document-quote', `${origin}/documents/${quote.id}`);
 	await screen('document-invoice', `${origin}/documents/${issuedInvoice.id}`);
+	await screen('books', `${origin}/books`);
+	await screen('books-accounts', `${origin}/books`, async () => {
+		await click('[role=radiogroup] [role=radio]:nth-child(2)');
+		await settle();
+	});
+	await screen('books-posting', `${origin}/books`, () => click('.page-head button.primary'));
+	await screen('receipts', `${origin}/receipts`);
+	await screen('receipt-draft', `${origin}/receipts/${photo.id}`);
+	await screen('receipt-booked', `${origin}/receipts/${hosting.id}`);
+	await screen('suppliers', `${origin}/suppliers`);
+	await screen('open-items', `${origin}/open-items`);
+	await screen('document-dunning', `${origin}/documents/${dunning.id}`);
+	await screen('bank', `${origin}/bank`);
+	await screen('bank-match', `${origin}/bank`, async () => {
+		await until('the transactions', () => evaluate("!!document.querySelector('.transactions button')"));
+		await click('.transactions li:nth-child(2) button');
+		await until('the match dialog', () => evaluate("!!document.querySelector('dialog[open] .summary-box')"));
+	});
+	await screen('bank-all', `${origin}/bank`, async () => {
+		await click('[role=radiogroup] [role=radio]:nth-child(2)');
+		await settle();
+	});
 	await screen('todos-board', `${origin}/todos`, () => evaluate("localStorage.setItem('todos.view', 'board')"));
 	await screen('todos-list', `${origin}/todos`, async () => {
 		await click('[role=radiogroup] [role=radio]');

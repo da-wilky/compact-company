@@ -10,6 +10,134 @@
     "version": "0.1.0"
   },
   "paths": {
+    "/api/accounts": {
+      "get": {
+        "tags": [
+          "books"
+        ],
+        "operationId": "list_accounts",
+        "parameters": [
+          {
+            "name": "archived",
+            "in": "query",
+            "description": "Archived accounts instead of active ones.",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Account"
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "books"
+        ],
+        "operationId": "create_account",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AccountInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Account"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/accounts/{id}": {
+      "put": {
+        "tags": [
+          "books"
+        ],
+        "summary": "Renames or archives an account; its number and type stay as created.",
+        "operationId": "put_account",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AccountChange"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Account"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/activities": {
       "get": {
         "tags": [
@@ -253,6 +381,436 @@
                   "items": {
                     "$ref": "#/components/schemas/AuditEntry"
                   }
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bank-accounts": {
+      "get": {
+        "tags": [
+          "bank"
+        ],
+        "operationId": "list_bank_accounts",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BankAccount"
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "bank"
+        ],
+        "operationId": "create_bank_account",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BankAccountInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankAccount"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bank-accounts/{id}": {
+      "put": {
+        "tags": [
+          "bank"
+        ],
+        "summary": "Renames or archives a bank account; its IBAN and ledger account stay.",
+        "operationId": "put_bank_account",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BankAccountChange"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankAccount"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bank-accounts/{id}/import": {
+      "post": {
+        "tags": [
+          "bank"
+        ],
+        "summary": "Imports a statement; a transaction already imported from an overlapping one is kept once.",
+        "operationId": "import_statement",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/StatementUpload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportResult"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bank-transactions": {
+      "get": {
+        "tags": [
+          "bank"
+        ],
+        "summary": "Bank transactions, newest first.",
+        "operationId": "list_transactions",
+        "parameters": [
+          {
+            "name": "bank_account_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "open",
+            "in": "query",
+            "description": "Only transactions not matched yet.",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "description": "ISO dates, inclusive.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BankTransaction"
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bank-transactions/{id}": {
+      "get": {
+        "tags": [
+          "bank"
+        ],
+        "operationId": "get_transaction",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankTransactionDetail"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bank-transactions/{id}/match": {
+      "post": {
+        "tags": [
+          "bank"
+        ],
+        "summary": "Matches a transaction: payments of the invoices and receipts it pays, the rest booked on\nledger accounts such as bank fees or private withdrawals.",
+        "operationId": "match_transaction",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MatchInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankTransactionDetail"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bank-transactions/{id}/unmatch": {
+      "post": {
+        "tags": [
+          "bank"
+        ],
+        "summary": "Undoes a match: its payments and postings are reversed and the transaction is open again.",
+        "operationId": "unmatch_transaction",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankTransactionDetail"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/books": {
+      "get": {
+        "tags": [
+          "books"
+        ],
+        "operationId": "get_books",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BooksView"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "books"
+        ],
+        "summary": "Starts the books on a chart of accounts, which never changes afterwards.",
+        "operationId": "start_books",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BooksView"
                 }
               }
             }
@@ -834,7 +1392,7 @@
         "tags": [
           "documents"
         ],
-        "summary": "Gives the draft its number and freezes it with its data as of now.",
+        "summary": "Gives the draft its number and freezes it with its data as of now; an invoice is booked.",
         "operationId": "issue_document",
         "parameters": [
           {
@@ -844,6 +1402,15 @@
             "schema": {
               "type": "integer",
               "format": "int64"
+            }
+          },
+          {
+            "name": "exchange_rate",
+            "in": "query",
+            "description": "EUR per unit of the document's currency, for booking an invoice in another currency\n(ADR 0020); a cancellation invoice takes its invoice's.",
+            "required": false,
+            "schema": {
+              "type": "string"
             }
           }
         ],
@@ -1734,6 +2301,34 @@
         }
       }
     },
+    "/api/open-items": {
+      "get": {
+        "tags": [
+          "books"
+        ],
+        "operationId": "get_open_items",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenItems"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/overview": {
       "get": {
         "tags": [
@@ -1972,13 +2567,13 @@
         }
       }
     },
-    "/api/payments/{id}": {
-      "delete": {
+    "/api/payments/{id}/reverse": {
+      "post": {
         "tags": [
           "documents"
         ],
-        "summary": "Removes a payment recorded by mistake.",
-        "operationId": "delete_payment",
+        "summary": "Reverses a payment recorded by mistake, with its postings.",
+        "operationId": "reverse_payment",
         "parameters": [
           {
             "name": "id",
@@ -1992,6 +2587,155 @@
         ],
         "responses": {
           "204": {},
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/postings": {
+      "get": {
+        "tags": [
+          "books"
+        ],
+        "summary": "The journal in order, oldest first.",
+        "operationId": "list_postings",
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "description": "ISO date, inclusive.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "description": "ISO date, inclusive.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "account_id",
+            "in": "query",
+            "description": "Only postings with a line on this account.",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Posting"
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "books"
+        ],
+        "summary": "Books a posting by hand, such as an opening balance or a private deposit.",
+        "operationId": "create_posting",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PostingInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Posting"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/postings/{id}/reverse": {
+      "post": {
+        "tags": [
+          "books"
+        ],
+        "summary": "Reverses a posting booked by hand; postings of documents and payments are reversed by\ncancelling those.",
+        "operationId": "reverse_posting",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReverseInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Posting"
+                }
+              }
+            }
+          },
           "default": {
             "content": {
               "application/json": {
@@ -2161,6 +2905,425 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Project"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/receipt-payments/{id}/reverse": {
+      "post": {
+        "tags": [
+          "books"
+        ],
+        "summary": "Reverses a payment of a receipt recorded by mistake, with its postings.",
+        "operationId": "reverse_receipt_payment",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "204": {},
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/receipts": {
+      "get": {
+        "tags": [
+          "books"
+        ],
+        "operationId": "list_receipts",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/ReceiptStatus"
+            }
+          },
+          {
+            "name": "open",
+            "in": "query",
+            "description": "Only booked receipts with an amount due.",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ReceiptSummary"
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "books"
+        ],
+        "summary": "Creates a draft from an uploaded receipt; an e-invoice fills in its supplier, number, dates\nand one line per VAT rate.",
+        "operationId": "create_receipt",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/ReceiptUpload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Receipt"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/receipts/{id}": {
+      "get": {
+        "tags": [
+          "books"
+        ],
+        "operationId": "get_receipt",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Receipt"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "books"
+        ],
+        "operationId": "put_receipt",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReceiptInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Receipt"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "books"
+        ],
+        "operationId": "delete_receipt",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "204": {},
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/receipts/{id}/book": {
+      "post": {
+        "tags": [
+          "books"
+        ],
+        "summary": "Books a draft; it never changes afterwards.",
+        "operationId": "book_receipt",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BookInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Receipt"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/receipts/{id}/file": {
+      "get": {
+        "tags": [
+          "books"
+        ],
+        "summary": "The uploaded file; an e-invoice's XML as plain text, so that it never runs as a page.",
+        "operationId": "receipt_file",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "integer",
+                    "format": "int32",
+                    "minimum": 0
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/receipts/{id}/payments": {
+      "post": {
+        "tags": [
+          "books"
+        ],
+        "summary": "Records money paid for a booked receipt.",
+        "operationId": "add_receipt_payment",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReceiptPaymentInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Receipt"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/receipts/{id}/reverse": {
+      "post": {
+        "tags": [
+          "books"
+        ],
+        "summary": "Reverses a receipt booked by mistake; its payments must be reversed first.",
+        "operationId": "reverse_receipt",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Receipt"
                 }
               }
             }
@@ -2571,6 +3734,133 @@
                   "items": {
                     "$ref": "#/components/schemas/Status"
                   }
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/suppliers": {
+      "get": {
+        "tags": [
+          "books"
+        ],
+        "operationId": "list_suppliers",
+        "parameters": [
+          {
+            "name": "archived",
+            "in": "query",
+            "description": "Archived suppliers instead of active ones.",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Supplier"
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "books"
+        ],
+        "operationId": "create_supplier",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SupplierInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Supplier"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/suppliers/{id}": {
+      "put": {
+        "tags": [
+          "books"
+        ],
+        "operationId": "put_supplier",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SupplierInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Supplier"
                 }
               }
             }
@@ -3335,6 +4625,96 @@
   },
   "components": {
     "schemas": {
+      "Account": {
+        "type": "object",
+        "required": [
+          "id",
+          "number",
+          "name",
+          "type",
+          "archived",
+          "balance"
+        ],
+        "properties": {
+          "archived": {
+            "type": "boolean"
+          },
+          "balance": {
+            "type": "integer",
+            "format": "int64",
+            "description": "EUR cents, debit positive."
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string"
+          },
+          "number": {
+            "type": "string"
+          },
+          "role": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "What the posting rules book on it, such as `receivables` or `revenue:19`."
+          },
+          "type": {
+            "$ref": "#/components/schemas/AccountType"
+          }
+        }
+      },
+      "AccountChange": {
+        "type": "object",
+        "properties": {
+          "archived": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "AccountInput": {
+        "type": "object",
+        "required": [
+          "type"
+        ],
+        "properties": {
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "number": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "type": {
+            "$ref": "#/components/schemas/AccountType"
+          }
+        },
+        "additionalProperties": false
+      },
+      "AccountType": {
+        "type": "string",
+        "enum": [
+          "asset",
+          "liability",
+          "equity",
+          "income",
+          "expense"
+        ]
+      },
       "Activity": {
         "allOf": [
           {
@@ -3488,6 +4868,245 @@
           }
         }
       },
+      "BankAccount": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "ledger_account_id",
+          "ledger_account",
+          "archived",
+          "balance",
+          "open"
+        ],
+        "properties": {
+          "archived": {
+            "type": "boolean"
+          },
+          "balance": {
+            "type": "integer",
+            "format": "int64",
+            "description": "EUR cents on its ledger account."
+          },
+          "iban": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "ledger_account": {
+            "type": "string"
+          },
+          "ledger_account_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string"
+          },
+          "open": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Imported transactions not matched yet."
+          }
+        }
+      },
+      "BankAccountChange": {
+        "type": "object",
+        "properties": {
+          "archived": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "BankAccountInput": {
+        "type": "object",
+        "required": [
+          "ledger_account_id"
+        ],
+        "properties": {
+          "iban": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ledger_account_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "An asset account no other bank account uses, such as 1200 Bank."
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "BankTransaction": {
+        "type": "object",
+        "required": [
+          "id",
+          "bank_account_id",
+          "booking_date",
+          "amount",
+          "parts"
+        ],
+        "properties": {
+          "amount": {
+            "type": "integer",
+            "format": "int64",
+            "description": "EUR cents, money in positive."
+          },
+          "bank_account_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "booking_date": {
+            "type": "string",
+            "description": "ISO dates."
+          },
+          "counterparty": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "counterparty_iban": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "match_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "parts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MatchPart"
+            }
+          },
+          "purpose": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reference": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "value_date": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "BankTransactionDetail": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/BankTransaction"
+          },
+          {
+            "type": "object",
+            "required": [
+              "candidates"
+            ],
+            "properties": {
+              "candidates": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Candidate"
+                },
+                "description": "For a transaction not matched yet."
+              }
+            }
+          }
+        ]
+      },
+      "BookInput": {
+        "type": "object",
+        "properties": {
+          "paid_from": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "The account it was paid from on its date, such as the cash box for a ticket; open until\npaid when unset."
+          }
+        },
+        "additionalProperties": false
+      },
+      "Books": {
+        "type": "object",
+        "required": [
+          "chart",
+          "start_date",
+          "started_at"
+        ],
+        "properties": {
+          "chart": {
+            "$ref": "#/components/schemas/Chart"
+          },
+          "start_date": {
+            "type": "string",
+            "description": "ISO date of the first day booked."
+          },
+          "started_at": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "BooksView": {
+        "type": "object",
+        "required": [
+          "taxation"
+        ],
+        "properties": {
+          "books": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Books",
+                "description": "None until the owner starts the books."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "taxation": {
+            "$ref": "#/components/schemas/Taxation"
+          }
+        }
+      },
       "Business": {
         "type": "object",
         "properties": {
@@ -3530,6 +5149,12 @@
             "description": "ISO 4217 code new customers are billed in; EUR when unset."
           },
           "delivery_note_number_format": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "dunning_number_format": {
             "type": [
               "string",
               "null"
@@ -3627,12 +5252,6 @@
               "null"
             ]
           },
-          "small_business": {
-            "type": [
-              "boolean",
-              "null"
-            ]
-          },
           "street": {
             "type": [
               "string",
@@ -3643,6 +5262,17 @@
             "type": [
               "string",
               "null"
+            ]
+          },
+          "taxation": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Taxation",
+                "description": "How the business owes VAT; accrual when unset."
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "timezone": {
@@ -3804,6 +5434,55 @@
           }
         }
       },
+      "Candidate": {
+        "type": "object",
+        "description": "An open invoice or receipt the transaction may pay, best first.",
+        "required": [
+          "kind",
+          "id",
+          "label",
+          "date",
+          "due",
+          "currency",
+          "amount",
+          "score"
+        ],
+        "properties": {
+          "amount": {
+            "type": "integer",
+            "format": "int64",
+            "description": "EUR cents of the transaction proposed for it, signed as the transaction."
+          },
+          "currency": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string",
+            "description": "ISO date."
+          },
+          "due": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Still owed, in the minor unit of its currency."
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/PartKind"
+          },
+          "label": {
+            "type": "string"
+          },
+          "score": {
+            "type": "integer",
+            "format": "int32",
+            "description": "How well it fits: the number in the purpose, the amount, the name or IBAN.",
+            "minimum": 0
+          }
+        }
+      },
       "Challenge": {
         "type": "object",
         "description": "A started WebAuthn ceremony: pass `options` to the browser and send `ceremony` back with its\nresult.",
@@ -3823,6 +5502,13 @@
             }
           }
         }
+      },
+      "Chart": {
+        "type": "string",
+        "enum": [
+          "skr03",
+          "skr04"
+        ]
       },
       "Comment": {
         "type": "object",
@@ -4376,6 +6062,17 @@
             ],
             "description": "ISO date."
           },
+          "dunning": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/DunningData",
+                "description": "The overdue invoice a dunning letter is about."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "intro": {
             "type": [
               "string",
@@ -4605,7 +6302,8 @@
           "invoice",
           "cancellation",
           "delivery_note",
-          "acceptance_report"
+          "acceptance_report",
+          "dunning"
         ]
       },
       "DocumentLine": {
@@ -4812,6 +6510,47 @@
           }
         }
       },
+      "DunningData": {
+        "type": "object",
+        "required": [
+          "level",
+          "invoice_number",
+          "invoice_date",
+          "amount_due"
+        ],
+        "properties": {
+          "amount_due": {
+            "type": "string",
+            "description": "What is still owed on the invoice, in major units of its currency."
+          },
+          "invoice_date": {
+            "type": "string",
+            "description": "ISO dates."
+          },
+          "invoice_due_date": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "invoice_number": {
+            "type": "string"
+          },
+          "level": {
+            "type": "integer",
+            "format": "int32",
+            "description": "1 payment reminder, 2 dunning letter, 3 final dunning letter.",
+            "minimum": 0
+          },
+          "pay_until": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "ISO date by which the customer is asked to pay; a draft has none yet."
+          }
+        }
+      },
       "EntryFields": {
         "type": "object",
         "description": "What an edit may change; also the snapshot the audit log compares.",
@@ -4973,6 +6712,13 @@
           "billed",
           "no_unbilled_time",
           "already_cancelled",
+          "books_not_started",
+          "books_started",
+          "already_reversed",
+          "automatic_posting",
+          "no_ledger_account",
+          "has_payments",
+          "bank_matched",
           "mail_not_configured",
           "mail_failed",
           "rate_limited",
@@ -4987,7 +6733,8 @@
           "invalid_format",
           "pinned",
           "locked",
-          "not_shown"
+          "not_shown",
+          "taken"
         ]
       },
       "FollowUp": {
@@ -5028,6 +6775,14 @@
         },
         "additionalProperties": false
       },
+      "Format": {
+        "type": "string",
+        "enum": [
+          "zugferd",
+          "cii",
+          "ubl"
+        ]
+      },
       "Grouping": {
         "type": "string",
         "description": "How time entries become invoice lines; entries with different rates never share a line.",
@@ -5046,6 +6801,29 @@
         "properties": {
           "status": {
             "type": "string"
+          }
+        }
+      },
+      "ImportResult": {
+        "type": "object",
+        "required": [
+          "format",
+          "imported",
+          "skipped"
+        ],
+        "properties": {
+          "format": {
+            "$ref": "#/components/schemas/Format"
+          },
+          "imported": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Transactions new to the account."
+          },
+          "skipped": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Transactions already imported from an earlier statement."
           }
         }
       },
@@ -5328,6 +7106,95 @@
         },
         "additionalProperties": false
       },
+      "MatchInput": {
+        "type": "object",
+        "required": [
+          "parts"
+        ],
+        "properties": {
+          "parts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MatchPartInput"
+            },
+            "description": "Their amounts add up to the transaction's."
+          }
+        },
+        "additionalProperties": false
+      },
+      "MatchPart": {
+        "type": "object",
+        "description": "What part of a bank transaction pays, in EUR cents signed as the transaction.",
+        "required": [
+          "kind",
+          "id",
+          "label",
+          "amount"
+        ],
+        "properties": {
+          "amount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "currency": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "document_amount": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "In the minor unit of the invoice's or receipt's currency."
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "The invoice, receipt or ledger account."
+          },
+          "kind": {
+            "$ref": "#/components/schemas/PartKind"
+          },
+          "label": {
+            "type": "string"
+          }
+        }
+      },
+      "MatchPartInput": {
+        "type": "object",
+        "required": [
+          "kind",
+          "id",
+          "amount"
+        ],
+        "properties": {
+          "amount": {
+            "type": "integer",
+            "format": "int64",
+            "description": "EUR cents of the transaction, signed as the transaction."
+          },
+          "document_amount": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "For an invoice or receipt in another currency: what it settles in that currency."
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "The invoice, receipt or ledger account."
+          },
+          "kind": {
+            "$ref": "#/components/schemas/PartKind"
+          }
+        },
+        "additionalProperties": false
+      },
       "Money": {
         "type": "object",
         "description": "An amount in the minor unit of its currency (cents for EUR), never a float.",
@@ -5423,6 +7290,141 @@
           }
         }
       },
+      "OpenInvoiceItem": {
+        "type": "object",
+        "required": [
+          "id",
+          "number",
+          "customer_name",
+          "issue_date",
+          "overdue_days",
+          "due"
+        ],
+        "properties": {
+          "customer_name": {
+            "type": "string"
+          },
+          "due": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "due_date": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "dunned_on": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "ISO date of the last dunning letter."
+          },
+          "dunning_draft_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "A dunning letter still being prepared."
+          },
+          "dunning_level": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "The highest level of the dunning letters issued for it, if any."
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "issue_date": {
+            "type": "string",
+            "description": "ISO dates."
+          },
+          "number": {
+            "type": "string"
+          },
+          "overdue_days": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Days past the due date; 0 when not overdue."
+          }
+        }
+      },
+      "OpenItems": {
+        "type": "object",
+        "required": [
+          "invoices",
+          "receipts"
+        ],
+        "properties": {
+          "invoices": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OpenInvoiceItem"
+            },
+            "description": "Issued invoices still owed, longest overdue first."
+          },
+          "receipts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OpenReceiptItem"
+            },
+            "description": "Booked receipts still to pay, longest overdue first."
+          }
+        }
+      },
+      "OpenReceiptItem": {
+        "type": "object",
+        "required": [
+          "id",
+          "supplier_name",
+          "date",
+          "overdue_days",
+          "due",
+          "currency"
+        ],
+        "properties": {
+          "currency": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string",
+            "description": "ISO dates."
+          },
+          "due": {
+            "type": "integer",
+            "format": "int64",
+            "description": "In the minor unit of its currency."
+          },
+          "due_date": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "number": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "overdue_days": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "supplier_name": {
+            "type": "string"
+          }
+        }
+      },
       "OutcomeInput": {
         "type": "object",
         "required": [
@@ -5508,6 +7510,14 @@
         },
         "additionalProperties": false
       },
+      "PartKind": {
+        "type": "string",
+        "enum": [
+          "invoice",
+          "receipt",
+          "account"
+        ]
+      },
       "PasskeyView": {
         "type": "object",
         "required": [
@@ -5545,14 +7555,38 @@
           "user_name"
         ],
         "properties": {
+          "account_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "The ledger account it arrived on; none before the books started."
+          },
           "amount": {
             "type": "integer",
             "format": "int64",
             "description": "In the minor unit of the invoice's currency."
           },
+          "bank_match_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "The bank transaction it came from; undone by undoing that match."
+          },
           "date": {
             "type": "string",
             "description": "ISO date the money arrived."
+          },
+          "eur_amount": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "EUR cents that arrived, for an invoice in another currency."
           },
           "id": {
             "type": "integer",
@@ -5576,6 +7610,14 @@
           "amount"
         ],
         "properties": {
+          "account_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "The ledger account it arrived on, such as the bank or the cash box; the bank when unset."
+          },
           "amount": {
             "type": "integer",
             "format": "int64",
@@ -5584,11 +7626,177 @@
           "date": {
             "type": "string"
           },
+          "eur_amount": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "EUR cents that arrived; required for an invoice in another currency once the books are\nstarted."
+          },
           "note": {
             "type": [
               "string",
               "null"
             ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "Posting": {
+        "type": "object",
+        "required": [
+          "id",
+          "date",
+          "description",
+          "user_name",
+          "created_at",
+          "lines"
+        ],
+        "properties": {
+          "created_at": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "date": {
+            "type": "string",
+            "description": "ISO date."
+          },
+          "description": {
+            "type": "string"
+          },
+          "document_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "The document it books, or the invoice of the payment it books."
+          },
+          "document_number": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PostingLine"
+            }
+          },
+          "payment_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "receipt_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "The receipt it books, or the receipt of the payment it books."
+          },
+          "receipt_payment_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "reversed_by": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "reverses_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "user_name": {
+            "type": "string"
+          }
+        }
+      },
+      "PostingInput": {
+        "type": "object",
+        "required": [
+          "date",
+          "lines"
+        ],
+        "properties": {
+          "date": {
+            "type": "string",
+            "description": "ISO date."
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PostingLineInput"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "PostingLine": {
+        "type": "object",
+        "required": [
+          "account_id",
+          "number",
+          "name",
+          "amount"
+        ],
+        "properties": {
+          "account_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "amount": {
+            "type": "integer",
+            "format": "int64",
+            "description": "EUR cents, debit positive and credit negative."
+          },
+          "name": {
+            "type": "string"
+          },
+          "number": {
+            "type": "string"
+          }
+        }
+      },
+      "PostingLineInput": {
+        "type": "object",
+        "required": [
+          "account_id",
+          "amount"
+        ],
+        "properties": {
+          "account_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "amount": {
+            "type": "integer",
+            "format": "int64",
+            "description": "EUR cents, debit positive and credit negative."
           }
         },
         "additionalProperties": false
@@ -5743,6 +7951,494 @@
           "expired"
         ]
       },
+      "Receipt": {
+        "type": "object",
+        "required": [
+          "id",
+          "status",
+          "currency",
+          "lines",
+          "net",
+          "tax",
+          "gross",
+          "payments",
+          "reversed",
+          "missing",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "amount_due": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "For a booked receipt: what is still owed, in the minor unit of its currency."
+          },
+          "booked_at": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "created_at": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "date": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "ISO dates."
+          },
+          "due_date": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "duplicate_of": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Another receipt with the same file, or the same supplier and number."
+          },
+          "exchange_rate": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "EUR per unit of a receipt in another currency."
+          },
+          "file_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "file_type": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "format": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Format",
+                "description": "The e-invoice format it was read from."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "gross": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReceiptLine"
+            }
+          },
+          "missing": {
+            "type": "object",
+            "description": "For a draft: what is missing before it can be booked.",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/FieldError"
+            },
+            "propertyNames": {
+              "type": "string"
+            }
+          },
+          "net": {
+            "type": "integer",
+            "format": "int64",
+            "description": "In the minor unit of its currency."
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "number": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The supplier's own number for it."
+          },
+          "payments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReceiptPayment"
+            }
+          },
+          "reversed": {
+            "type": "boolean"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ReceiptStatus"
+          },
+          "supplier_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "supplier_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "tax": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "updated_at": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "ReceiptInput": {
+        "type": "object",
+        "properties": {
+          "currency": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "ISO 4217; EUR when unset."
+          },
+          "date": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "due_date": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "exchange_rate": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "EUR per unit of the currency."
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReceiptLineInput"
+            }
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "number": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "supplier_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ReceiptLine": {
+        "type": "object",
+        "required": [
+          "id",
+          "description",
+          "net",
+          "vat_rate",
+          "tax"
+        ],
+        "properties": {
+          "account_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "description": {
+            "type": "string"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "net": {
+            "type": "integer",
+            "format": "int64",
+            "description": "In the minor unit of the receipt's currency."
+          },
+          "tax": {
+            "type": "integer",
+            "format": "int64",
+            "description": "In the minor unit of the receipt's currency."
+          },
+          "vat_rate": {
+            "type": "string",
+            "description": "Percent."
+          }
+        }
+      },
+      "ReceiptLineInput": {
+        "type": "object",
+        "required": [
+          "net",
+          "vat_rate"
+        ],
+        "properties": {
+          "account_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "net": {
+            "type": "integer",
+            "format": "int64",
+            "description": "In the minor unit of the receipt's currency."
+          },
+          "tax": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "In the minor unit of the receipt's currency; the net amount at the VAT rate when unset."
+          },
+          "vat_rate": {
+            "type": "string",
+            "description": "Percent."
+          }
+        },
+        "additionalProperties": false
+      },
+      "ReceiptPayment": {
+        "type": "object",
+        "required": [
+          "id",
+          "date",
+          "amount",
+          "account_id",
+          "user_name"
+        ],
+        "properties": {
+          "account_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "amount": {
+            "type": "integer",
+            "format": "int64",
+            "description": "In the minor unit of the receipt's currency."
+          },
+          "bank_match_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "The bank transaction it came from; undone by undoing that match."
+          },
+          "date": {
+            "type": "string",
+            "description": "ISO date the money left."
+          },
+          "eur_amount": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "EUR cents that left, for a receipt in another currency."
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "user_name": {
+            "type": "string"
+          }
+        }
+      },
+      "ReceiptPaymentInput": {
+        "type": "object",
+        "required": [
+          "date",
+          "amount"
+        ],
+        "properties": {
+          "account_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "The account it left, such as the bank or the cash box; the bank when unset."
+          },
+          "amount": {
+            "type": "integer",
+            "format": "int64",
+            "description": "In the minor unit of the receipt's currency; negative for a refund."
+          },
+          "date": {
+            "type": "string"
+          },
+          "eur_amount": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "EUR cents that left; required for a receipt in another currency."
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "ReceiptStatus": {
+        "type": "string",
+        "enum": [
+          "draft",
+          "booked"
+        ]
+      },
+      "ReceiptSummary": {
+        "type": "object",
+        "required": [
+          "id",
+          "status",
+          "currency",
+          "gross",
+          "reversed"
+        ],
+        "properties": {
+          "amount_due": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "date": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "due_date": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "format": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Format"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "gross": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "number": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reversed": {
+            "type": "boolean"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ReceiptStatus"
+          },
+          "supplier_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "ReceiptUpload": {
+        "type": "object",
+        "properties": {
+          "file": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "binary",
+            "description": "A PDF, a photo (JPEG, PNG, WebP) or an e-invoice as XML; none for a receipt without one."
+          }
+        }
+      },
       "RegistrationFinish": {
         "type": "object",
         "required": [
@@ -5766,6 +8462,19 @@
             "description": "Shown in the user's list of passkeys."
           }
         }
+      },
+      "ReverseInput": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "ISO date; today when unset."
+          }
+        },
+        "additionalProperties": false
       },
       "Role": {
         "type": "string",
@@ -6012,6 +8721,46 @@
         },
         "additionalProperties": false
       },
+      "StartInput": {
+        "type": "object",
+        "required": [
+          "chart",
+          "start_date"
+        ],
+        "properties": {
+          "chart": {
+            "$ref": "#/components/schemas/Chart"
+          },
+          "exchange_rates": {
+            "type": "object",
+            "description": "EUR per unit by document id, for invoices in another currency issued since the first\nday booked (ADR 0020).",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "propertyNames": {
+              "type": "string"
+            }
+          },
+          "start_date": {
+            "type": "string",
+            "description": "ISO date of the first day booked."
+          }
+        },
+        "additionalProperties": false
+      },
+      "StatementUpload": {
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "properties": {
+          "file": {
+            "type": "string",
+            "format": "binary",
+            "description": "A CAMT.053 statement or a bank's CSV export."
+          }
+        }
+      },
       "Status": {
         "type": "object",
         "required": [
@@ -6055,6 +8804,167 @@
           }
         },
         "additionalProperties": false
+      },
+      "Supplier": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/SupplierFields"
+          },
+          {
+            "type": "object",
+            "required": [
+              "id",
+              "created_at"
+            ],
+            "properties": {
+              "created_at": {
+                "type": "integer",
+                "format": "int64"
+              },
+              "id": {
+                "type": "integer",
+                "format": "int64"
+              }
+            }
+          }
+        ]
+      },
+      "SupplierFields": {
+        "type": "object",
+        "description": "What an edit may change; also the snapshot the audit log compares.",
+        "required": [
+          "name",
+          "country",
+          "archived"
+        ],
+        "properties": {
+          "account_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "archived": {
+            "type": "boolean"
+          },
+          "city": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "country": {
+            "type": "string"
+          },
+          "email": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "iban": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "postcode": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "street": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "vat_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "SupplierInput": {
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "The ledger account its receipts' lines are booked on unless chosen otherwise."
+          },
+          "archived": {
+            "type": "boolean"
+          },
+          "city": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "country": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "ISO 3166-1 alpha-2; DE when empty."
+          },
+          "email": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "iban": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "postcode": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "street": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "vat_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "Taxation": {
+        "type": "string",
+        "enum": [
+          "small_business",
+          "cash",
+          "accrual"
+        ]
       },
       "TimeEntry": {
         "allOf": [
