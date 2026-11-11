@@ -543,6 +543,7 @@ pub async fn reverse_all(
         Column::Payment => "payment_id",
         Column::Receipt => "receipt_id",
         Column::ReceiptPayment => "receipt_payment_id",
+        Column::BankMatch => "bank_match_id",
     };
     let sql = format!(
         "SELECT id FROM posting p WHERE {column} = ? AND reverses_id IS NULL
@@ -563,4 +564,16 @@ pub enum Column {
     Payment,
     Receipt,
     ReceiptPayment,
+    BankMatch,
+}
+
+/// A payment of an invoice or receipt as a reversal checks it.
+#[derive(sqlx::FromRow)]
+pub struct Recorded {
+    /// The invoice or receipt it pays.
+    pub owner: i64,
+    pub date: String,
+    pub amount: i64,
+    pub reversed_at: Option<i64>,
+    pub bank_match_id: Option<i64>,
 }

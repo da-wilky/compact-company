@@ -30,6 +30,8 @@ pub struct Payment {
     amount: i64,
     /// EUR cents that arrived, for an invoice in another currency.
     eur_amount: Option<i64>,
+    /// The bank transaction it came from; undone by undoing that match.
+    bank_match_id: Option<i64>,
     /// The ledger account it arrived on; none before the books started.
     account_id: Option<i64>,
     note: Option<String>,
@@ -197,7 +199,8 @@ pub async fn amount_due(db: &mut SqliteConnection, id: i64) -> Result<Money, Api
 
 pub async fn payments(db: &mut SqliteConnection, id: i64) -> Result<Vec<Payment>, sqlx::Error> {
     sqlx::query_as(
-        "SELECT p.id, p.date, p.amount, p.eur_amount, p.account_id, p.note, u.name AS user_name
+        "SELECT p.id, p.date, p.amount, p.eur_amount, p.bank_match_id, p.account_id, p.note,
+         u.name AS user_name
          FROM payment p JOIN user u ON u.id = p.user_id
          WHERE p.document_id = ? AND p.reversed_at IS NULL ORDER BY p.date, p.id",
     )
@@ -314,15 +317,21 @@ pub async fn reverse_payment(
 ) -> Result<StatusCode, ApiError> {
     let today = today(&business(&app).await?)?.to_string();
     let mut tx = app.db.begin_with("BEGIN IMMEDIATE").await?;
-    let before: Option<(i64, String, i64, Option<i64>)> =
-        sqlx::query_as("SELECT document_id, date, amount, reversed_at FROM payment WHERE id = ?")
-            .bind(id)
-            .fetch_optional(&mut *tx)
-            .await?;
-    let (document, date, amount, reversed) = before.ok_or(ApiError::new(ErrorCode::NotFound))?;
-    if reversed.is_some() {
+    let payment: rules::Recorded = sqlx::query_as(
+        "SELECT document_id AS owner, date, amount, reversed_at, bank_match_id FROM payment
+         WHERE id = ?",
+    )
+    .bind(id)
+    .fetch_optional(&mut *tx)
+    .await?
+    .ok_or(ApiError::new(ErrorCode::NotFound))?;
+    if payment.reversed_at.is_some() {
         return Err(ApiError::new(ErrorCode::AlreadyReversed));
     }
+    if payment.bank_match_id.is_some() {
+        return Err(ApiError::new(ErrorCode::BankMatched));
+    }
+    let (document, date, amount) = (payment.owner, payment.date, payment.amount);
     sqlx::query("UPDATE payment SET reversed_at = ?, reversed_by = ? WHERE id = ?")
         .bind(now())
         .bind(auth.user.id)

@@ -402,7 +402,7 @@
 										<span>{formatMoney(payment.amount, receipt.currency)}</span>
 										{#if payment.eur_amount != null}<span class="muted">{formatMoney(payment.eur_amount, 'EUR')}</span>{/if}
 										<span class="muted">{accountName(payment.account_id)}</span>
-										{#if owner}<button class="ghost" onclick={() => unpay(payment.id)}>{t('books.reverse')}</button>{/if}
+										{#if owner && payment.bank_match_id == null}<button class="ghost" onclick={() => unpay(payment.id)}>{t('books.reverse')}</button>{:else if payment.bank_match_id != null}<a href="/bank">{t('bank.title')}</a>{/if}
 									</li>
 								{/each}
 							</ul>

@@ -383,6 +383,34 @@ try {
 	await api('POST', `/api/receipts/${hosting.id}/payments`, { date: '2026-03-10', amount: 11900 });
 	const photo = await uploadReceipt('bon.png', 'image/png', null);
 	const restaurant = await api('POST', '/api/suppliers', { name: 'Gasthaus Linde', city: 'Dresden' });
+	// a bank account with a statement: one transaction matched, three to match
+	const girokonto = await api('POST', '/api/bank-accounts', {
+		name: 'Girokonto',
+		iban: 'DE89370400440532013000',
+		ledger_account_id: account('1200')
+	});
+	const invoiceNumber = (await api('GET', `/api/documents/${issuedInvoice.id}`)).number;
+	const entry = (date, amount, direction, party, iban, purpose) => `<Ntry><Amt Ccy="EUR">${amount}</Amt>
+		<CdtDbtInd>${direction}</CdtDbtInd><Sts><Cd>BOOK</Cd></Sts><BookgDt><Dt>${date}</Dt></BookgDt><ValDt><Dt>${date}</Dt></ValDt>
+		<NtryDtls><TxDtls><RltdPties>${party ? `<${direction === 'CRDT' ? 'Dbtr' : 'Cdtr'}><Nm>${party}</Nm></${direction === 'CRDT' ? 'Dbtr' : 'Cdtr'}>` : ''}
+		${iban ? `<${direction === 'CRDT' ? 'DbtrAcct' : 'CdtrAcct'}><Id><IBAN>${iban}</IBAN></Id></${direction === 'CRDT' ? 'DbtrAcct' : 'CdtrAcct'}>` : ''}</RltdPties>
+		<RmtInf><Ustrd>${purpose}</Ustrd></RmtInf></TxDtls></NtryDtls></Ntry>`;
+	const camt = `<?xml version="1.0" encoding="UTF-8"?><Document xmlns="urn:iso:std:iso:20022:tech:xsd:camt.053.001.08"><BkToCstmrStmt><Stmt>
+		<Acct><Id><IBAN>DE89370400440532013000</IBAN></Id></Acct>
+		${entry('2026-11-02', '383.10', 'CRDT', 'Baeckerei Krume GmbH', 'DE44500105175407324931', `Rechnung ${invoiceNumber} Restbetrag`)}
+		${entry('2026-11-03', '4.90', 'DBIT', '', '', 'Kontofuehrungsentgelt Oktober')}
+		${entry('2026-11-05', '250.00', 'DBIT', 'Samuel Wilk', 'DE02120300000000202051', 'Privatentnahme')}
+		${entry('2026-03-11', '119.00', 'DBIT', 'Hosting und Mehr AG', 'DE02120300000000202051', 'HA-2026-0815 Kundennummer 4711')}
+		</Stmt></BkToCstmrStmt></Document>`;
+	await evaluate(`(async () => {
+		const { csrf_token } = await (await fetch('/api/session')).json();
+		const form = new FormData();
+		form.append('file', new Blob([${JSON.stringify(camt)}], { type: 'application/xml' }), 'camt053.xml');
+		await fetch('/api/bank-accounts/${girokonto.id}/import', { method: 'POST', body: form, headers: { 'x-csrf-token': csrf_token } });
+	})()`);
+	const fee = (await api('GET', `/api/bank-transactions?bank_account_id=${girokonto.id}`)).find((t) => t.amount === -490);
+	await api('POST', `/api/bank-transactions/${fee.id}/match`, { parts: [{ kind: 'account', id: account('4970'), amount: -490 }] });
+
 	await api('PUT', `/api/receipts/${photo.id}`, {
 		supplier_id: restaurant.id,
 		date: '2026-04-03',
@@ -410,6 +438,16 @@ try {
 	await screen('receipt-draft', `${origin}/receipts/${photo.id}`);
 	await screen('receipt-booked', `${origin}/receipts/${hosting.id}`);
 	await screen('suppliers', `${origin}/suppliers`);
+	await screen('bank', `${origin}/bank`);
+	await screen('bank-match', `${origin}/bank`, async () => {
+		await until('the transactions', () => evaluate("!!document.querySelector('.transactions button')"));
+		await click('.transactions li:nth-child(2) button');
+		await until('the match dialog', () => evaluate("!!document.querySelector('dialog[open] .summary-box')"));
+	});
+	await screen('bank-all', `${origin}/bank`, async () => {
+		await click('[role=radiogroup] [role=radio]:nth-child(2)');
+		await settle();
+	});
 	await screen('todos-board', `${origin}/todos`, () => evaluate("localStorage.setItem('todos.view', 'board')"));
 	await screen('todos-list', `${origin}/todos`, async () => {
 		await click('[role=radiogroup] [role=radio]');

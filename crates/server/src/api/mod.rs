@@ -9,6 +9,7 @@ use crate::App;
 
 pub mod activities;
 pub mod audit;
+pub mod bank;
 pub mod billing;
 pub mod books;
 pub mod business;
@@ -131,6 +132,17 @@ pub fn routes() -> OpenApiRouter<Arc<App>> {
         .routes(routes!(receipts::receipt_file))
         .routes(routes!(receipts::add_receipt_payment))
         .routes(routes!(receipts::reverse_receipt_payment))
+        .routes(routes!(bank::list_bank_accounts, bank::create_bank_account))
+        .routes(routes!(bank::put_bank_account))
+        .merge(
+            OpenApiRouter::new()
+                .routes(routes!(bank::import_statement))
+                .layer(DefaultBodyLimit::max(25 << 20)),
+        )
+        .routes(routes!(bank::list_transactions))
+        .routes(routes!(bank::get_transaction))
+        .routes(routes!(bank::match_transaction))
+        .routes(routes!(bank::unmatch_transaction))
         .routes(routes!(snippets::list_snippets, snippets::create_snippet))
         .routes(routes!(snippets::put_snippet, snippets::delete_snippet))
         .merge(

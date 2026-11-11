@@ -36,6 +36,8 @@ pub mod rates;
 pub mod render;
 pub mod rules;
 pub mod settings;
+pub mod statements;
+pub mod xml;
 
 pub struct App {
     pub db: SqlitePool,

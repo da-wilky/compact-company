@@ -61,6 +61,8 @@ pub struct ReceiptPayment {
     /// EUR cents that left, for a receipt in another currency.
     eur_amount: Option<i64>,
     account_id: i64,
+    /// The bank transaction it came from; undone by undoing that match.
+    bank_match_id: Option<i64>,
     note: Option<String>,
     user_name: String,
 }
@@ -438,7 +440,8 @@ pub async fn find(db: &mut SqliteConnection, id: i64) -> Result<Receipt, ApiErro
     .fetch_all(&mut *db)
     .await?;
     let payments = sqlx::query_as(
-        "SELECT p.id, p.date, p.amount, p.eur_amount, p.account_id, p.note, u.name AS user_name
+        "SELECT p.id, p.date, p.amount, p.eur_amount, p.account_id, p.bank_match_id, p.note,
+         u.name AS user_name
          FROM receipt_payment p JOIN user u ON u.id = p.user_id
          WHERE p.receipt_id = ? AND p.reversed_at IS NULL ORDER BY p.date, p.id",
     )
@@ -793,19 +796,16 @@ pub async fn book_receipt(
     )
     .await?;
     if let Some(account) = input.paid_from {
-        let eur = eur_of(&receipt, receipt.gross);
-        let date = receipt.date.clone().expect("a booked receipt has its date");
-        pay(
-            &mut tx,
-            auth.user.id,
-            id,
-            &date,
-            receipt.gross,
-            eur,
+        let payment = NewReceiptPayment {
+            receipt: id,
+            date: receipt.date.clone().expect("a booked receipt has its date"),
+            amount: receipt.gross,
+            eur_amount: eur_of(&receipt, receipt.gross),
             account,
-            None,
-        )
-        .await?;
+            note: None,
+            bank_match: None,
+        };
+        pay(&mut tx, auth.user.id, payment).await?;
     }
     let receipt = find(&mut tx, id).await?;
     tx.commit().await?;
@@ -831,41 +831,45 @@ async fn payment_account(db: &mut SqliteConnection, account: i64) -> Result<(), 
     }
 }
 
-#[expect(clippy::too_many_arguments, reason = "one row of receipt_payment")]
-async fn pay(
+#[derive(Debug, Serialize)]
+pub struct NewReceiptPayment {
+    pub receipt: i64,
+    pub date: String,
+    pub amount: i64,
+    pub eur_amount: Option<i64>,
+    pub account: i64,
+    pub note: Option<String>,
+    pub bank_match: Option<i64>,
+}
+
+/// Records and books a payment of a receipt.
+pub async fn pay(
     tx: &mut SqliteConnection,
     user_id: i64,
-    receipt: i64,
-    date: &str,
-    amount: i64,
-    eur_amount: Option<i64>,
-    account: i64,
-    note: Option<String>,
+    payment: NewReceiptPayment,
 ) -> Result<i64, ApiError> {
     let id: i64 = sqlx::query_scalar(
         "INSERT INTO receipt_payment (receipt_id, date, amount, eur_amount, account_id, note,
-         user_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING id",
+         user_id, created_at, bank_match_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id",
     )
-    .bind(receipt)
-    .bind(date)
-    .bind(amount)
-    .bind(eur_amount)
-    .bind(account)
-    .bind(&note)
+    .bind(payment.receipt)
+    .bind(&payment.date)
+    .bind(payment.amount)
+    .bind(payment.eur_amount)
+    .bind(payment.account)
+    .bind(&payment.note)
     .bind(user_id)
     .bind(now())
+    .bind(payment.bank_match)
     .fetch_one(&mut *tx)
     .await?;
     audit::record(
         tx,
         user_id,
         "receipt_payment.create",
-        &format!("receipt:{receipt}"),
+        &format!("receipt:{}", payment.receipt),
         None,
-        Some(serde_json::json!({
-            "payment": id, "date": date, "amount": amount, "eur_amount": eur_amount,
-            "account_id": account, "note": note
-        })),
+        Some(serde_json::to_value(&payment).map_err(ApiError::internal)?),
     )
     .await?;
     rules::post_receipt_payment(tx, user_id, id)
@@ -975,17 +979,16 @@ pub async fn add_receipt_payment(
             .await?
             .ok_or(ApiError::new(ErrorCode::NoLedgerAccount).with_detail("bank".to_owned()))?,
     };
-    pay(
-        &mut tx,
-        auth.user.id,
-        id,
-        &input.date,
-        input.amount,
+    let payment = NewReceiptPayment {
+        receipt: id,
+        date: input.date,
+        amount: input.amount,
         eur_amount,
         account,
         note,
-    )
-    .await?;
+        bank_match: None,
+    };
+    pay(&mut tx, auth.user.id, payment).await?;
     let receipt = find(&mut tx, id).await?;
     tx.commit().await?;
     Ok(Json(receipt))
@@ -1002,16 +1005,21 @@ pub async fn reverse_receipt_payment(
 ) -> Result<StatusCode, ApiError> {
     let today = today(&business(&app).await?)?.to_string();
     let mut tx = app.db.begin_with("BEGIN IMMEDIATE").await?;
-    let payment: Option<(i64, String, i64, Option<i64>)> = sqlx::query_as(
-        "SELECT receipt_id, date, amount, reversed_at FROM receipt_payment WHERE id = ?",
+    let payment: rules::Recorded = sqlx::query_as(
+        "SELECT receipt_id AS owner, date, amount, reversed_at, bank_match_id FROM receipt_payment
+         WHERE id = ?",
     )
     .bind(id)
     .fetch_optional(&mut *tx)
-    .await?;
-    let (receipt, date, amount, reversed) = payment.ok_or(ApiError::new(ErrorCode::NotFound))?;
-    if reversed.is_some() {
+    .await?
+    .ok_or(ApiError::new(ErrorCode::NotFound))?;
+    if payment.reversed_at.is_some() {
         return Err(ApiError::new(ErrorCode::AlreadyReversed));
     }
+    if payment.bank_match_id.is_some() {
+        return Err(ApiError::new(ErrorCode::BankMatched));
+    }
+    let (receipt, date, amount) = (payment.owner, payment.date, payment.amount);
     sqlx::query("UPDATE receipt_payment SET reversed_at = ?, reversed_by = ? WHERE id = ?")
         .bind(now())
         .bind(auth.user.id)

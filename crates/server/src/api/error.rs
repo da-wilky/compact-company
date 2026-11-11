@@ -63,6 +63,7 @@ pub enum ErrorCode {
     AutomaticPosting,
     NoLedgerAccount,
     HasPayments,
+    BankMatched,
     MailNotConfigured,
     MailFailed,
     RateLimited,
@@ -118,6 +119,7 @@ impl ErrorCode {
         Self::AutomaticPosting,
         Self::NoLedgerAccount,
         Self::HasPayments,
+        Self::BankMatched,
         Self::MailNotConfigured,
         Self::MailFailed,
         Self::RateLimited,
@@ -160,6 +162,7 @@ impl ErrorCode {
             | Self::AutomaticPosting
             | Self::NoLedgerAccount
             | Self::HasPayments
+            | Self::BankMatched
             | Self::MailNotConfigured => StatusCode::CONFLICT,
             Self::RateLimited => StatusCode::TOO_MANY_REQUESTS,
             Self::Internal => StatusCode::INTERNAL_SERVER_ERROR,

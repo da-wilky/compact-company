@@ -397,6 +397,371 @@
         }
       }
     },
+    "/api/bank-accounts": {
+      "get": {
+        "tags": [
+          "bank"
+        ],
+        "operationId": "list_bank_accounts",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BankAccount"
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "bank"
+        ],
+        "operationId": "create_bank_account",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BankAccountInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankAccount"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bank-accounts/{id}": {
+      "put": {
+        "tags": [
+          "bank"
+        ],
+        "summary": "Renames or archives a bank account; its IBAN and ledger account stay.",
+        "operationId": "put_bank_account",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BankAccountChange"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankAccount"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bank-accounts/{id}/import": {
+      "post": {
+        "tags": [
+          "bank"
+        ],
+        "summary": "Imports a statement; a transaction already imported from an overlapping one is kept once.",
+        "operationId": "import_statement",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/StatementUpload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportResult"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bank-transactions": {
+      "get": {
+        "tags": [
+          "bank"
+        ],
+        "summary": "Bank transactions, newest first.",
+        "operationId": "list_transactions",
+        "parameters": [
+          {
+            "name": "bank_account_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "open",
+            "in": "query",
+            "description": "Only transactions not matched yet.",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "description": "ISO dates, inclusive.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BankTransaction"
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bank-transactions/{id}": {
+      "get": {
+        "tags": [
+          "bank"
+        ],
+        "operationId": "get_transaction",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankTransactionDetail"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bank-transactions/{id}/match": {
+      "post": {
+        "tags": [
+          "bank"
+        ],
+        "summary": "Matches a transaction: payments of the invoices and receipts it pays, the rest booked on\nledger accounts such as bank fees or private withdrawals.",
+        "operationId": "match_transaction",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MatchInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankTransactionDetail"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bank-transactions/{id}/unmatch": {
+      "post": {
+        "tags": [
+          "bank"
+        ],
+        "summary": "Undoes a match: its payments and postings are reversed and the transaction is open again.",
+        "operationId": "unmatch_transaction",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankTransactionDetail"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/books": {
       "get": {
         "tags": [
@@ -4475,6 +4840,188 @@
           }
         }
       },
+      "BankAccount": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "ledger_account_id",
+          "ledger_account",
+          "archived",
+          "balance",
+          "open"
+        ],
+        "properties": {
+          "archived": {
+            "type": "boolean"
+          },
+          "balance": {
+            "type": "integer",
+            "format": "int64",
+            "description": "EUR cents on its ledger account."
+          },
+          "iban": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "ledger_account": {
+            "type": "string"
+          },
+          "ledger_account_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string"
+          },
+          "open": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Imported transactions not matched yet."
+          }
+        }
+      },
+      "BankAccountChange": {
+        "type": "object",
+        "properties": {
+          "archived": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "BankAccountInput": {
+        "type": "object",
+        "required": [
+          "ledger_account_id"
+        ],
+        "properties": {
+          "iban": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ledger_account_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "An asset account no other bank account uses, such as 1200 Bank."
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "BankTransaction": {
+        "type": "object",
+        "required": [
+          "id",
+          "bank_account_id",
+          "booking_date",
+          "amount",
+          "parts"
+        ],
+        "properties": {
+          "amount": {
+            "type": "integer",
+            "format": "int64",
+            "description": "EUR cents, money in positive."
+          },
+          "bank_account_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "booking_date": {
+            "type": "string",
+            "description": "ISO dates."
+          },
+          "counterparty": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "counterparty_iban": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "match_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "parts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MatchPart"
+            }
+          },
+          "purpose": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reference": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "value_date": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "BankTransactionDetail": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/BankTransaction"
+          },
+          {
+            "type": "object",
+            "required": [
+              "candidates"
+            ],
+            "properties": {
+              "candidates": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Candidate"
+                },
+                "description": "For a transaction not matched yet."
+              }
+            }
+          }
+        ]
+      },
       "BookInput": {
         "type": "object",
         "properties": {
@@ -4850,6 +5397,55 @@
           },
           "values": {
             "$ref": "#/components/schemas/Business"
+          }
+        }
+      },
+      "Candidate": {
+        "type": "object",
+        "description": "An open invoice or receipt the transaction may pay, best first.",
+        "required": [
+          "kind",
+          "id",
+          "label",
+          "date",
+          "due",
+          "currency",
+          "amount",
+          "score"
+        ],
+        "properties": {
+          "amount": {
+            "type": "integer",
+            "format": "int64",
+            "description": "EUR cents of the transaction proposed for it, signed as the transaction."
+          },
+          "currency": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string",
+            "description": "ISO date."
+          },
+          "due": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Still owed, in the minor unit of its currency."
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/PartKind"
+          },
+          "label": {
+            "type": "string"
+          },
+          "score": {
+            "type": "integer",
+            "format": "int32",
+            "description": "How well it fits: the number in the purpose, the amount, the name or IBAN.",
+            "minimum": 0
           }
         }
       },
@@ -6035,6 +6631,7 @@
           "automatic_posting",
           "no_ledger_account",
           "has_payments",
+          "bank_matched",
           "mail_not_configured",
           "mail_failed",
           "rate_limited",
@@ -6117,6 +6714,29 @@
         "properties": {
           "status": {
             "type": "string"
+          }
+        }
+      },
+      "ImportResult": {
+        "type": "object",
+        "required": [
+          "format",
+          "imported",
+          "skipped"
+        ],
+        "properties": {
+          "format": {
+            "$ref": "#/components/schemas/Format"
+          },
+          "imported": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Transactions new to the account."
+          },
+          "skipped": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Transactions already imported from an earlier statement."
           }
         }
       },
@@ -6399,6 +7019,95 @@
         },
         "additionalProperties": false
       },
+      "MatchInput": {
+        "type": "object",
+        "required": [
+          "parts"
+        ],
+        "properties": {
+          "parts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MatchPartInput"
+            },
+            "description": "Their amounts add up to the transaction's."
+          }
+        },
+        "additionalProperties": false
+      },
+      "MatchPart": {
+        "type": "object",
+        "description": "What part of a bank transaction pays, in EUR cents signed as the transaction.",
+        "required": [
+          "kind",
+          "id",
+          "label",
+          "amount"
+        ],
+        "properties": {
+          "amount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "currency": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "document_amount": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "In the minor unit of the invoice's or receipt's currency."
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "The invoice, receipt or ledger account."
+          },
+          "kind": {
+            "$ref": "#/components/schemas/PartKind"
+          },
+          "label": {
+            "type": "string"
+          }
+        }
+      },
+      "MatchPartInput": {
+        "type": "object",
+        "required": [
+          "kind",
+          "id",
+          "amount"
+        ],
+        "properties": {
+          "amount": {
+            "type": "integer",
+            "format": "int64",
+            "description": "EUR cents of the transaction, signed as the transaction."
+          },
+          "document_amount": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "For an invoice or receipt in another currency: what it settles in that currency."
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "The invoice, receipt or ledger account."
+          },
+          "kind": {
+            "$ref": "#/components/schemas/PartKind"
+          }
+        },
+        "additionalProperties": false
+      },
       "Money": {
         "type": "object",
         "description": "An amount in the minor unit of its currency (cents for EUR), never a float.",
@@ -6579,6 +7288,14 @@
         },
         "additionalProperties": false
       },
+      "PartKind": {
+        "type": "string",
+        "enum": [
+          "invoice",
+          "receipt",
+          "account"
+        ]
+      },
       "PasskeyView": {
         "type": "object",
         "required": [
@@ -6628,6 +7345,14 @@
             "type": "integer",
             "format": "int64",
             "description": "In the minor unit of the invoice's currency."
+          },
+          "bank_match_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "The bank transaction it came from; undone by undoing that match."
           },
           "date": {
             "type": "string",
@@ -7327,6 +8052,14 @@
             "format": "int64",
             "description": "In the minor unit of the receipt's currency."
           },
+          "bank_match_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "The bank transaction it came from; undone by undoing that match."
+          },
           "date": {
             "type": "string",
             "description": "ISO date the money left."
@@ -7792,6 +8525,19 @@
           }
         },
         "additionalProperties": false
+      },
+      "StatementUpload": {
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "properties": {
+          "file": {
+            "type": "string",
+            "format": "binary",
+            "description": "A CAMT.053 statement or a bank's CSV export."
+          }
+        }
       },
       "Status": {
         "type": "object",
