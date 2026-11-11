@@ -79,7 +79,7 @@ async fn an_issued_document_keeps_its_data_amounts_and_number() {
         "/api/business",
         json!({ "name": "swilk UG (haftungsbeschränkt)", "street": "Hauptstraße 1",
                 "postcode": "01067", "city": "Dresden", "tax_number": "201/123/45678",
-                "small_business": true, "invoice_number_format": "R{yy}-{nnnn}" }),
+                "taxation": "small_business", "invoice_number_format": "R{yy}-{nnnn}" }),
     )
     .await;
 

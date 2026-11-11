@@ -319,6 +319,29 @@ try {
 	await api('POST', `/api/documents/${issuedInvoice.id}/payments`, { date: '2026-11-01', amount: 20000 });
 	await api('POST', '/api/snippets', { name: 'Zahlungshinweis', language: 'de', body: 'Bitte überweisen Sie den Betrag ohne Abzug.' });
 
+	await screen('books-start', `${origin}/books`);
+	await api('POST', '/api/books', { chart: 'skr03', start_date: '2026-01-01' });
+	const accounts = await api('GET', '/api/accounts');
+	const account = (number) => accounts.find((a) => a.number === number).id;
+	await api('POST', '/api/postings', {
+		date: '2026-01-01',
+		description: 'Eröffnungsbilanz',
+		lines: [
+			{ account_id: account('1200'), amount: 1250000 },
+			{ account_id: account('1000'), amount: 35000 },
+			{ account_id: account('0800'), amount: -1285000 }
+		]
+	});
+	const deposit = await api('POST', '/api/postings', {
+		date: '2026-02-03',
+		description: 'Privateinlage',
+		lines: [
+			{ account_id: account('1200'), amount: 50000 },
+			{ account_id: account('1890'), amount: -50000 }
+		]
+	});
+	await api('POST', `/api/postings/${deposit.id}/reverse`, { date: '2026-02-04' });
+
 	await screen('overview', `${origin}/`);
 	await screen('customers', `${origin}/customers`);
 	await screen('customer', `${origin}/customers/${krume.id}`);
@@ -330,6 +353,12 @@ try {
 	await screen('document-draft', `${origin}/documents/${invoice.id}`);
 	await screen('document-quote', `${origin}/documents/${quote.id}`);
 	await screen('document-invoice', `${origin}/documents/${issuedInvoice.id}`);
+	await screen('books', `${origin}/books`);
+	await screen('books-accounts', `${origin}/books`, async () => {
+		await click('[role=radiogroup] [role=radio]:nth-child(2)');
+		await settle();
+	});
+	await screen('books-posting', `${origin}/books`, () => click('.page-head button.primary'));
 	await screen('todos-board', `${origin}/todos`, () => evaluate("localStorage.setItem('todos.view', 'board')"));
 	await screen('todos-list', `${origin}/todos`, async () => {
 		await click('[role=radiogroup] [role=radio]');

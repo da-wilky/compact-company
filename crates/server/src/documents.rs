@@ -337,7 +337,7 @@ impl BusinessData {
             website: b.website,
             tax_number: b.tax_number,
             vat_id: b.vat_id,
-            small_business: b.small_business.unwrap_or(false),
+            small_business: business.small_business(),
             legal_form: b.legal_form,
             register_court: b.register_court,
             register_number: b.register_number,
@@ -438,7 +438,7 @@ pub async fn lines(
 }
 
 pub fn default_vat_rate(business: &Business) -> Decimal {
-    if business.small_business.unwrap_or(false) {
+    if business.small_business() {
         Decimal::ZERO
     } else {
         business.vat_rate.unwrap_or(Decimal::from(19))
@@ -463,7 +463,7 @@ pub async fn effective(
     // a reversal charges the VAT the invoice charged, whatever the business is now
     let vat = if let (Some(_), Some(rate)) = (line.cancels_line_id, line.vat_rate) {
         rate.0
-    } else if business.small_business.unwrap_or(false) {
+    } else if business.small_business() {
         Decimal::ZERO
     } else {
         line.vat_rate

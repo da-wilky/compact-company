@@ -21,6 +21,7 @@ use crate::{config::Config, files::Files, settings::Settings};
 pub mod api;
 pub mod audit;
 pub mod auth;
+pub mod books;
 pub mod config;
 pub mod documents;
 pub mod einvoice;

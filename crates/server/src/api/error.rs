@@ -57,6 +57,11 @@ pub enum ErrorCode {
     Billed,
     NoUnbilledTime,
     AlreadyCancelled,
+    BooksNotStarted,
+    BooksStarted,
+    AlreadyReversed,
+    AutomaticPosting,
+    NoLedgerAccount,
     MailNotConfigured,
     MailFailed,
     RateLimited,
@@ -72,6 +77,7 @@ pub enum FieldError {
     Pinned,
     Locked,
     NotShown,
+    Taken,
 }
 
 impl ErrorCode {
@@ -105,6 +111,11 @@ impl ErrorCode {
         Self::Billed,
         Self::NoUnbilledTime,
         Self::AlreadyCancelled,
+        Self::BooksNotStarted,
+        Self::BooksStarted,
+        Self::AlreadyReversed,
+        Self::AutomaticPosting,
+        Self::NoLedgerAccount,
         Self::MailNotConfigured,
         Self::MailFailed,
         Self::RateLimited,
@@ -141,6 +152,11 @@ impl ErrorCode {
             | Self::Billed
             | Self::NoUnbilledTime
             | Self::AlreadyCancelled
+            | Self::BooksNotStarted
+            | Self::BooksStarted
+            | Self::AlreadyReversed
+            | Self::AutomaticPosting
+            | Self::NoLedgerAccount
             | Self::MailNotConfigured => StatusCode::CONFLICT,
             Self::RateLimited => StatusCode::TOO_MANY_REQUESTS,
             Self::Internal => StatusCode::INTERNAL_SERVER_ERROR,
@@ -160,6 +176,7 @@ impl FieldError {
         Self::Pinned,
         Self::Locked,
         Self::NotShown,
+        Self::Taken,
     ];
 
     pub fn key(self) -> String {

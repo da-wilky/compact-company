@@ -271,7 +271,7 @@ pub async fn layout_sample(
     } else {
         layouts::load(&app, &mut *app.db.acquire().await?, id).await?
     };
-    let small_business = business(&app).await?.small_business.unwrap_or(false);
+    let small_business = business(&app).await?.small_business();
     let data = documents::sample(query.kind, query.language, small_business);
     let (rendered, _) = render::render_blocking(Arc::new(layout), data, Vec::new())
         .await
@@ -599,7 +599,7 @@ async fn prepare(app: &App, upload: &Upload, source: &str) -> Result<BTreeSet<St
             .insert(spec, layouts::unpack(&archive).map_err(ApiError::internal)?);
     }
     let layout = Arc::new(layout);
-    let small_business = business(app).await?.small_business.unwrap_or(false);
+    let small_business = business(app).await?.small_business();
     let mut problems = Vec::new();
     for kind in &upload.kinds {
         for language in [Language::De, Language::En] {

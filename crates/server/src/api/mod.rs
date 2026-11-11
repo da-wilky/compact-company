@@ -10,6 +10,7 @@ use crate::App;
 pub mod activities;
 pub mod audit;
 pub mod billing;
+pub mod books;
 pub mod business;
 pub mod customers;
 pub mod documents;
@@ -103,6 +104,11 @@ pub fn routes() -> OpenApiRouter<Arc<App>> {
         .routes(routes!(documents::set_outcome))
         .routes(routes!(billing::add_time))
         .routes(routes!(billing::list_unbilled))
+        .routes(routes!(books::get_books, books::start_books))
+        .routes(routes!(books::list_accounts, books::create_account))
+        .routes(routes!(books::put_account))
+        .routes(routes!(books::list_postings, books::create_posting))
+        .routes(routes!(books::reverse_posting))
         .routes(routes!(snippets::list_snippets, snippets::create_snippet))
         .routes(routes!(snippets::put_snippet, snippets::delete_snippet))
         .merge(

@@ -10,6 +10,134 @@
     "version": "0.1.0"
   },
   "paths": {
+    "/api/accounts": {
+      "get": {
+        "tags": [
+          "books"
+        ],
+        "operationId": "list_accounts",
+        "parameters": [
+          {
+            "name": "archived",
+            "in": "query",
+            "description": "Archived accounts instead of active ones.",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Account"
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "books"
+        ],
+        "operationId": "create_account",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AccountInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Account"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/accounts/{id}": {
+      "put": {
+        "tags": [
+          "books"
+        ],
+        "summary": "Renames or archives an account; its number and type stay as created.",
+        "operationId": "put_account",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AccountChange"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Account"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/activities": {
       "get": {
         "tags": [
@@ -253,6 +381,71 @@
                   "items": {
                     "$ref": "#/components/schemas/AuditEntry"
                   }
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/books": {
+      "get": {
+        "tags": [
+          "books"
+        ],
+        "operationId": "get_books",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BooksView"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "books"
+        ],
+        "summary": "Starts the books on a chart of accounts, which never changes afterwards.",
+        "operationId": "start_books",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BooksView"
                 }
               }
             }
@@ -2004,6 +2197,155 @@
         }
       }
     },
+    "/api/postings": {
+      "get": {
+        "tags": [
+          "books"
+        ],
+        "summary": "The journal in order, oldest first.",
+        "operationId": "list_postings",
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "description": "ISO date, inclusive.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "description": "ISO date, inclusive.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "account_id",
+            "in": "query",
+            "description": "Only postings with a line on this account.",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Posting"
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "books"
+        ],
+        "summary": "Books a posting by hand, such as an opening balance or a private deposit.",
+        "operationId": "create_posting",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PostingInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Posting"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/postings/{id}/reverse": {
+      "post": {
+        "tags": [
+          "books"
+        ],
+        "summary": "Reverses a posting booked by hand; postings of documents and payments are reversed by\ncancelling those.",
+        "operationId": "reverse_posting",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReverseInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Posting"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/projects": {
       "get": {
         "tags": [
@@ -3335,6 +3677,96 @@
   },
   "components": {
     "schemas": {
+      "Account": {
+        "type": "object",
+        "required": [
+          "id",
+          "number",
+          "name",
+          "type",
+          "archived",
+          "balance"
+        ],
+        "properties": {
+          "archived": {
+            "type": "boolean"
+          },
+          "balance": {
+            "type": "integer",
+            "format": "int64",
+            "description": "EUR cents, debit positive."
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string"
+          },
+          "number": {
+            "type": "string"
+          },
+          "role": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "What the posting rules book on it, such as `receivables` or `revenue:19`."
+          },
+          "type": {
+            "$ref": "#/components/schemas/AccountType"
+          }
+        }
+      },
+      "AccountChange": {
+        "type": "object",
+        "properties": {
+          "archived": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "AccountInput": {
+        "type": "object",
+        "required": [
+          "type"
+        ],
+        "properties": {
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "number": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "type": {
+            "$ref": "#/components/schemas/AccountType"
+          }
+        },
+        "additionalProperties": false
+      },
+      "AccountType": {
+        "type": "string",
+        "enum": [
+          "asset",
+          "liability",
+          "equity",
+          "income",
+          "expense"
+        ]
+      },
       "Activity": {
         "allOf": [
           {
@@ -3488,6 +3920,49 @@
           }
         }
       },
+      "Books": {
+        "type": "object",
+        "required": [
+          "chart",
+          "start_date",
+          "started_at"
+        ],
+        "properties": {
+          "chart": {
+            "$ref": "#/components/schemas/Chart"
+          },
+          "start_date": {
+            "type": "string",
+            "description": "ISO date of the first day booked."
+          },
+          "started_at": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "BooksView": {
+        "type": "object",
+        "required": [
+          "taxation"
+        ],
+        "properties": {
+          "books": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Books",
+                "description": "None until the owner starts the books."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "taxation": {
+            "$ref": "#/components/schemas/Taxation"
+          }
+        }
+      },
       "Business": {
         "type": "object",
         "properties": {
@@ -3627,12 +4102,6 @@
               "null"
             ]
           },
-          "small_business": {
-            "type": [
-              "boolean",
-              "null"
-            ]
-          },
           "street": {
             "type": [
               "string",
@@ -3643,6 +4112,17 @@
             "type": [
               "string",
               "null"
+            ]
+          },
+          "taxation": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Taxation",
+                "description": "How the business owes VAT; accrual when unset."
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "timezone": {
@@ -3823,6 +4303,13 @@
             }
           }
         }
+      },
+      "Chart": {
+        "type": "string",
+        "enum": [
+          "skr03",
+          "skr04"
+        ]
       },
       "Comment": {
         "type": "object",
@@ -4973,6 +5460,11 @@
           "billed",
           "no_unbilled_time",
           "already_cancelled",
+          "books_not_started",
+          "books_started",
+          "already_reversed",
+          "automatic_posting",
+          "no_ledger_account",
           "mail_not_configured",
           "mail_failed",
           "rate_limited",
@@ -4987,7 +5479,8 @@
           "invalid_format",
           "pinned",
           "locked",
-          "not_shown"
+          "not_shown",
+          "taken"
         ]
       },
       "FollowUp": {
@@ -5593,6 +6086,148 @@
         },
         "additionalProperties": false
       },
+      "Posting": {
+        "type": "object",
+        "required": [
+          "id",
+          "date",
+          "description",
+          "user_name",
+          "created_at",
+          "lines"
+        ],
+        "properties": {
+          "created_at": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "date": {
+            "type": "string",
+            "description": "ISO date."
+          },
+          "description": {
+            "type": "string"
+          },
+          "document_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "document_number": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PostingLine"
+            }
+          },
+          "payment_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "reversed_by": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "reverses_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "user_name": {
+            "type": "string"
+          }
+        }
+      },
+      "PostingInput": {
+        "type": "object",
+        "required": [
+          "date",
+          "lines"
+        ],
+        "properties": {
+          "date": {
+            "type": "string",
+            "description": "ISO date."
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PostingLineInput"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "PostingLine": {
+        "type": "object",
+        "required": [
+          "account_id",
+          "number",
+          "name",
+          "amount"
+        ],
+        "properties": {
+          "account_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "amount": {
+            "type": "integer",
+            "format": "int64",
+            "description": "EUR cents, debit positive and credit negative."
+          },
+          "name": {
+            "type": "string"
+          },
+          "number": {
+            "type": "string"
+          }
+        }
+      },
+      "PostingLineInput": {
+        "type": "object",
+        "required": [
+          "account_id",
+          "amount"
+        ],
+        "properties": {
+          "account_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "amount": {
+            "type": "integer",
+            "format": "int64",
+            "description": "EUR cents, debit positive and credit negative."
+          }
+        },
+        "additionalProperties": false
+      },
       "Preceding": {
         "type": "object",
         "required": [
@@ -5766,6 +6401,19 @@
             "description": "Shown in the user's list of passkeys."
           }
         }
+      },
+      "ReverseInput": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "ISO date; today when unset."
+          }
+        },
+        "additionalProperties": false
       },
       "Role": {
         "type": "string",
@@ -6012,6 +6660,23 @@
         },
         "additionalProperties": false
       },
+      "StartInput": {
+        "type": "object",
+        "required": [
+          "chart",
+          "start_date"
+        ],
+        "properties": {
+          "chart": {
+            "$ref": "#/components/schemas/Chart"
+          },
+          "start_date": {
+            "type": "string",
+            "description": "ISO date of the first day booked."
+          }
+        },
+        "additionalProperties": false
+      },
       "Status": {
         "type": "object",
         "required": [
@@ -6055,6 +6720,14 @@
           }
         },
         "additionalProperties": false
+      },
+      "Taxation": {
+        "type": "string",
+        "enum": [
+          "small_business",
+          "cash",
+          "accrual"
+        ]
       },
       "TimeEntry": {
         "allOf": [
