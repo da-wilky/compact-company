@@ -47,6 +47,10 @@ pub struct Business {
     pub delivery_note_number_format: Option<String>,
     pub acceptance_report_number_format: Option<String>,
     pub dunning_number_format: Option<String>,
+    /// Beraternummer in the DATEV export, 1001 to 9999999; 1001 when unset.
+    pub datev_consultant_number: Option<u32>,
+    /// Mandantennummer in the DATEV export, 1 to 99999; 1 when unset.
+    pub datev_client_number: Option<u32>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema)]

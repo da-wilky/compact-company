@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::SqliteConnection;
 use utoipa::ToSchema;
 
-use crate::{audit, auth::now};
+use crate::{audit, auth::now, tax::EuerLine};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema, sqlx::Type)]
 #[serde(rename_all = "snake_case")]
@@ -268,13 +268,16 @@ pub async fn seed_accounts(tx: &mut SqliteConnection, chart: Chart) -> Result<()
             Chart::Skr03 => seed.skr03,
             Chart::Skr04 => seed.skr04,
         };
-        sqlx::query("INSERT INTO ledger_account (number, name, type, role) VALUES (?, ?, ?, ?)")
-            .bind(number)
-            .bind(seed.name)
-            .bind(seed.kind)
-            .bind(seed.role)
-            .execute(&mut *tx)
-            .await?;
+        sqlx::query(
+            "INSERT INTO ledger_account (number, name, type, role, euer_line) VALUES (?, ?, ?, ?, ?)",
+        )
+        .bind(number)
+        .bind(seed.name)
+        .bind(seed.kind)
+        .bind(seed.role)
+        .bind(EuerLine::seeded(seed.skr04, seed.kind))
+        .execute(&mut *tx)
+        .await?;
     }
     Ok(())
 }

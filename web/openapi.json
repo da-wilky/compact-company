@@ -1721,6 +1721,55 @@
         }
       }
     },
+    "/api/exports/datev": {
+      "get": {
+        "tags": [
+          "exports"
+        ],
+        "summary": "The journal of a range as a DATEV-Format Buchungsstapel.",
+        "operationId": "datev_export",
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "description": "ISO date, inclusive.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "description": "ISO date, inclusive, in the same year as `from`.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "text/csv": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/health": {
       "get": {
         "tags": [
@@ -3877,6 +3926,95 @@
         }
       }
     },
+    "/api/tax/euer": {
+      "get": {
+        "tags": [
+          "tax"
+        ],
+        "summary": "The Anlage EÜR of a year, each line with the postings behind it.",
+        "operationId": "get_euer",
+        "parameters": [
+          {
+            "name": "year",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EuerView"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tax/vat-return": {
+      "get": {
+        "tags": [
+          "tax"
+        ],
+        "summary": "The figures of a VAT advance return for a period, each with the postings behind it.",
+        "operationId": "get_vat_return",
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "description": "ISO date, inclusive.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "description": "ISO date, inclusive.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VatReturn"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/time": {
       "get": {
         "tags": [
@@ -4644,6 +4782,17 @@
             "format": "int64",
             "description": "EUR cents, debit positive."
           },
+          "euer_line": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/EuerLine",
+                "description": "The Zeile of the Anlage EÜR it counts on."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "id": {
             "type": "integer",
             "format": "int64"
@@ -4672,6 +4821,16 @@
           "archived": {
             "type": "boolean"
           },
+          "euer_line": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/EuerLine"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "name": {
             "type": [
               "string",
@@ -4687,6 +4846,17 @@
           "type"
         ],
         "properties": {
+          "euer_line": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/EuerLine",
+                "description": "Income on Zeile 15 and expenses on Zeile 60 when unset."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "name": {
             "type": [
               "string",
@@ -5050,6 +5220,13 @@
           }
         ]
       },
+      "Basis": {
+        "type": "string",
+        "enum": [
+          "accrual",
+          "cash"
+        ]
+      },
       "BookInput": {
         "type": "object",
         "properties": {
@@ -5147,6 +5324,24 @@
               "null"
             ],
             "description": "ISO 4217 code new customers are billed in; EUR when unset."
+          },
+          "datev_client_number": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Mandantennummer in the DATEV export, 1 to 99999; 1 when unset.",
+            "minimum": 0
+          },
+          "datev_consultant_number": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Beraternummer in the DATEV export, 1001 to 9999999; 1001 when unset.",
+            "minimum": 0
           },
           "delivery_note_number_format": {
             "type": [
@@ -6725,6 +6920,84 @@
           "internal"
         ]
       },
+      "Euer": {
+        "type": "object",
+        "required": [
+          "lines",
+          "income",
+          "expenses",
+          "profit"
+        ],
+        "properties": {
+          "expenses": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "income": {
+            "type": "integer",
+            "format": "int64",
+            "description": "EUR cents."
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Figure"
+            },
+            "description": "One entry per Zeile with an amount, in the order of the form."
+          },
+          "profit": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "EuerLine": {
+        "type": "string",
+        "description": "A line of the Anlage EÜR (form 2025), by its Zeile.",
+        "enum": [
+          "12",
+          "15",
+          "16",
+          "17",
+          "18",
+          "27",
+          "29",
+          "30",
+          "33",
+          "36",
+          "39",
+          "44",
+          "55",
+          "56",
+          "57",
+          "58",
+          "60",
+          "63"
+        ]
+      },
+      "EuerView": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Euer"
+          },
+          {
+            "type": "object",
+            "required": [
+              "year",
+              "small_business"
+            ],
+            "properties": {
+              "small_business": {
+                "type": "boolean"
+              },
+              "year": {
+                "type": "integer",
+                "format": "int32"
+              }
+            }
+          }
+        ]
+      },
       "FieldError": {
         "type": "string",
         "enum": [
@@ -6736,6 +7009,36 @@
           "not_shown",
           "taken"
         ]
+      },
+      "Figure": {
+        "type": "object",
+        "required": [
+          "key",
+          "amount",
+          "entered",
+          "sources"
+        ],
+        "properties": {
+          "amount": {
+            "type": "integer",
+            "format": "int64",
+            "description": "EUR cents."
+          },
+          "entered": {
+            "type": "string",
+            "description": "What is entered in ELSTER: whole euros, cents dropped, for a VAT base; the amount\notherwise."
+          },
+          "key": {
+            "type": "string",
+            "description": "The Kennzahl of the VAT return, or the Zeile of the Anlage EÜR."
+          },
+          "sources": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Source"
+            }
+          }
+        }
       },
       "FollowUp": {
         "type": "object",
@@ -8721,6 +9024,34 @@
         },
         "additionalProperties": false
       },
+      "Source": {
+        "type": "object",
+        "description": "A posting behind a figure and what it adds to it.",
+        "required": [
+          "posting_id",
+          "date",
+          "description",
+          "amount"
+        ],
+        "properties": {
+          "amount": {
+            "type": "integer",
+            "format": "int64",
+            "description": "EUR cents."
+          },
+          "date": {
+            "type": "string",
+            "description": "ISO date."
+          },
+          "description": {
+            "type": "string"
+          },
+          "posting_id": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
       "StartInput": {
         "type": "object",
         "required": [
@@ -9510,6 +9841,40 @@
             "type": "string"
           },
           "tax": {
+            "type": "string"
+          }
+        }
+      },
+      "VatReturn": {
+        "type": "object",
+        "required": [
+          "from",
+          "to",
+          "figures"
+        ],
+        "properties": {
+          "basis": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Basis",
+                "description": "None for a small business, which files no VAT return."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "figures": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Figure"
+            },
+            "description": "Kz 81 and 86 with their tax as `81_tax` and `86_tax`, Kz 66 and Kz 83."
+          },
+          "from": {
+            "type": "string"
+          },
+          "to": {
             "type": "string"
           }
         }

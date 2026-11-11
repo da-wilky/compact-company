@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { tick } from 'svelte';
+	import { page } from '$app/state';
 	import { api, call, clientError, type ApiError, type Schemas } from '#lib/api/index.ts';
 	import Dialog from '#lib/components/Dialog.svelte';
 	import Field from '#lib/components/Field.svelte';
@@ -18,7 +20,7 @@
 
 	let view = $state<Schemas['BooksView']>();
 	let tab = $state<'journal' | 'accounts'>('journal');
-	let year = $state(new Date().getFullYear());
+	let year = $state(Number(page.url.searchParams.get('year')) || new Date().getFullYear());
 	let accounts = $state<Schemas['Account'][]>([]);
 	let archivedAccounts = $state(false);
 	let postings = $state<Schemas['Posting'][]>([]);
@@ -43,6 +45,11 @@
 			api.GET('/api/postings', { params: { query: { from: `${year}-01-01`, to: `${year}-12-31` } } })
 		);
 		postings = result.data ?? [];
+		// a figure on the tax page links to the posting behind it
+		if (page.url.hash) {
+			await tick();
+			document.querySelector(page.url.hash)?.scrollIntoView({ block: 'center' });
+		}
 	}
 
 	loadBooks();
@@ -152,13 +159,20 @@
 	let number = $state('');
 	let name = $state('');
 	let kind = $state<Schemas['AccountType']>('expense');
+	let euerLine = $state<Schemas['EuerLine'] | null>(null);
 	let accountError = $state<ApiError>();
+	const euerLines: Schemas['EuerLine'][] = [
+		'12', '15', '16', '17', '18', '27', '29', '30', '33', '36', '39', '44', '55', '56', '57', '58', '60', '63'
+	];
+	const lineDefault = (type: Schemas['AccountType']): Schemas['EuerLine'] | null =>
+		type === 'income' ? '15' : type === 'expense' ? '60' : null;
 
 	function editAccount(account?: Schemas['Account']) {
 		editingAccount = account;
 		number = account?.number ?? '';
 		name = account?.name ?? '';
 		kind = account?.type ?? 'expense';
+		euerLine = account ? (account.euer_line ?? null) : lineDefault(kind);
 		accountError = undefined;
 		accountDialog = true;
 	}
@@ -169,10 +183,10 @@
 			? await call(
 					api.PUT('/api/accounts/{id}', {
 						params: { path: { id: editingAccount.id } },
-						body: { name, archived: editingAccount.archived }
+						body: { name, archived: editingAccount.archived, euer_line: euerLine }
 					})
 				)
-			: await call(api.POST('/api/accounts', { body: { number, name, type: kind } }));
+			: await call(api.POST('/api/accounts', { body: { number, name, type: kind, euer_line: euerLine } }));
 		accountError = result.error;
 		if (result.data) {
 			accountDialog = false;
@@ -185,7 +199,7 @@
 		const result = await call(
 			api.PUT('/api/accounts/{id}', {
 				params: { path: { id: account.id } },
-				body: { name: account.name, archived }
+				body: { name: account.name, archived, euer_line: account.euer_line }
 			})
 		);
 		error = result.error;
@@ -281,7 +295,7 @@
 			{#if postings.length}
 				<ul class="journal">
 					{#each postings as p (p.id)}
-						<li class="card" class:reversed={p.reversed_by != null}>
+						<li class="card" class:reversed={p.reversed_by != null} id="posting-{p.id}">
 							<div class="head">
 								<span class="date">{day(p.date)}</span>
 								{#if p.document_id}
@@ -320,6 +334,7 @@
 							<th>{t('books.number')}</th>
 							<th>{t('books.account_name')}</th>
 							<th>{t('books.type')}</th>
+							<th>{t('books.euer_line')}</th>
 							<th class="amount">{t('books.balance')}</th>
 							{#if owner}<th></th>{/if}
 						</tr>
@@ -330,6 +345,7 @@
 								<td data-label={t('books.number')}><span class="number">{account.number}</span></td>
 								<td data-label={t('books.account_name')}>{account.name}</td>
 								<td data-label={t('books.type')}>{t(`books.type.${account.type}`)}</td>
+								<td data-label={t('books.euer_line')}>{account.euer_line ?? '–'}</td>
 								<td data-label={t('books.balance')} class="amount">{balance(account.balance)}</td>
 								{#if owner}
 									<td class="actions">
@@ -401,9 +417,17 @@
 			<input bind:value={name} />
 		</Field>
 		<Field label={t('books.type')}>
-			<select bind:value={kind} disabled={!!editingAccount}>
+			<select bind:value={kind} disabled={!!editingAccount} onchange={() => (euerLine = lineDefault(kind))}>
 				{#each ['asset', 'liability', 'equity', 'income', 'expense'] as const as type (type)}
 					<option value={type}>{t(`books.type.${type}`)}</option>
+				{/each}
+			</select>
+		</Field>
+		<Field label={t('books.euer_line')} error={accountError?.fields?.euer_line}>
+			<select bind:value={euerLine}>
+				<option value={null}>{t('books.euer_none')}</option>
+				{#each euerLines as line (line)}
+					<option value={line}>{t('tax.zeile', { line })} · {t(`tax.euer.${line}`)}</option>
 				{/each}
 			</select>
 		</Field>

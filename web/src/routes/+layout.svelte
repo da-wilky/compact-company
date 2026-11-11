@@ -37,6 +37,7 @@
 		{ href: '/bank', label: t('bank.title'), icon: 'bank', roles: ['owner', 'accountant'], group: 'main' },
 		{ href: '/open-items', label: t('open_items.title'), icon: 'open_items', roles: ['owner', 'accountant'], group: 'main' },
 		{ href: '/books', label: t('books.title'), icon: 'books', roles: ['owner', 'accountant'], group: 'main' },
+		{ href: '/tax', label: t('tax.title'), icon: 'tax', roles: ['owner', 'accountant'], group: 'main' },
 		{ href: '/activities', label: t('activities.title'), icon: 'activities', roles: ['owner'], group: 'admin' },
 		{ href: '/statuses', label: t('statuses.title'), icon: 'statuses', roles: ['owner'], group: 'admin' },
 		{ href: '/layouts', label: t('layouts.title'), icon: 'layouts', roles: ['owner'], group: 'admin' },

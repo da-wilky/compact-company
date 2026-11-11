@@ -111,7 +111,21 @@ fn validate(business: Business) -> Result<Business, ApiError> {
             40,
         ),
         dunning_number_format: check.text("dunning_number_format", b.dunning_number_format, 40),
+        datev_consultant_number: b.datev_consultant_number,
+        datev_client_number: b.datev_client_number,
     };
+    if business
+        .datev_consultant_number
+        .is_some_and(|n| !(1001..=9_999_999).contains(&n))
+    {
+        check.fail("datev_consultant_number", FieldError::InvalidFormat);
+    }
+    if business
+        .datev_client_number
+        .is_some_and(|n| !(1..=99_999).contains(&n))
+    {
+        check.fail("datev_client_number", FieldError::InvalidFormat);
+    }
     if business
         .currency
         .as_deref()

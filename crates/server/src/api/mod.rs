@@ -16,6 +16,7 @@ pub mod business;
 pub mod customers;
 pub mod documents;
 pub mod error;
+pub mod exports;
 pub mod input;
 pub mod invitations;
 pub mod layouts;
@@ -30,6 +31,7 @@ pub mod session;
 pub mod snippets;
 pub mod statuses;
 pub mod suppliers;
+pub mod tax;
 pub mod time;
 pub mod todos;
 pub mod users;
@@ -145,6 +147,9 @@ pub fn routes() -> OpenApiRouter<Arc<App>> {
         .routes(routes!(bank::match_transaction))
         .routes(routes!(bank::unmatch_transaction))
         .routes(routes!(open_items::get_open_items))
+        .routes(routes!(tax::get_vat_return))
+        .routes(routes!(tax::get_euer))
+        .routes(routes!(exports::datev_export))
         .routes(routes!(snippets::list_snippets, snippets::create_snippet))
         .routes(routes!(snippets::put_snippet, snippets::delete_snippet))
         .merge(

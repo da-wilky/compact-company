@@ -163,6 +163,19 @@
 				/>
 			</Field>
 		</section>
+		<section class="card">
+			<h2>{t('business.section_tax')}</h2>
+			{#each ['datev_consultant_number', 'datev_client_number'] as const as key (key)}
+				<Field label={t(`business.${key}`)} error={error?.fields?.[key]} note={note(key)}>
+					<input
+						type="number"
+						bind:value={values[key]}
+						readonly={pinned.includes(key)}
+						placeholder={key === 'datev_consultant_number' ? '1001' : '1'}
+					/>
+				</Field>
+			{/each}
+		</section>
 
 		{#if error}<p class="alert" role="alert">{t(error.message)}</p>{/if}
 		{#if owner}<div><button class="primary">{t('app.save')}</button></div>{/if}

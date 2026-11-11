@@ -19,6 +19,7 @@ use crate::{
     money::{DEFAULT_CURRENCY, is_exchange_rate},
     rules,
     settings::{Business, Taxation},
+    tax::EuerLine,
 };
 
 #[derive(Debug, Serialize, ToSchema)]
@@ -125,6 +126,8 @@ pub struct Account {
     kind: AccountType,
     /// What the posting rules book on it, such as `receivables` or `revenue:19`.
     role: Option<String>,
+    /// The Zeile of the Anlage EÜR it counts on.
+    euer_line: Option<EuerLine>,
     archived: bool,
     /// EUR cents, debit positive.
     balance: i64,
@@ -147,7 +150,7 @@ pub async fn list_accounts(
 ) -> Result<Json<Vec<Account>>, ApiError> {
     Ok(Json(
         sqlx::query_as(
-            "SELECT a.id, a.number, a.name, a.type, a.role, a.archived,
+            "SELECT a.id, a.number, a.name, a.type, a.role, a.euer_line, a.archived,
              coalesce((SELECT sum(amount) FROM posting_line WHERE account_id = a.id), 0) AS balance
              FROM ledger_account a WHERE a.archived = ? ORDER BY a.number",
         )
@@ -164,6 +167,8 @@ pub struct AccountInput {
     name: Option<String>,
     #[serde(rename = "type")]
     kind: AccountType,
+    /// Income on Zeile 15 and expenses on Zeile 60 when unset.
+    euer_line: Option<EuerLine>,
 }
 
 #[derive(Debug, Deserialize, ToSchema)]
@@ -172,6 +177,7 @@ pub struct AccountChange {
     name: Option<String>,
     #[serde(default)]
     archived: bool,
+    euer_line: Option<EuerLine>,
 }
 
 #[utoipa::path(post, path = "/accounts", tag = "books", request_body = AccountInput,
@@ -199,11 +205,13 @@ pub async fn create_account(
         return Err(field_error("number", FieldError::Taken));
     }
     let id: i64 = sqlx::query_scalar(
-        "INSERT INTO ledger_account (number, name, type) VALUES (?, ?, ?) RETURNING id",
+        "INSERT INTO ledger_account (number, name, type, euer_line) VALUES (?, ?, ?, ?)
+         RETURNING id",
     )
     .bind(&number)
     .bind(&name)
     .bind(input.kind)
+    .bind(input.euer_line.or(EuerLine::default_for(input.kind)))
     .fetch_one(&mut *tx)
     .await?;
     let account = account(&mut tx, id).await?;
@@ -238,9 +246,10 @@ pub async fn put_account(
     if input.archived && before.role.is_some() {
         return Err(field_error("archived", FieldError::Locked));
     }
-    sqlx::query("UPDATE ledger_account SET name = ?, archived = ? WHERE id = ?")
+    sqlx::query("UPDATE ledger_account SET name = ?, archived = ?, euer_line = ? WHERE id = ?")
         .bind(&name)
         .bind(input.archived)
+        .bind(input.euer_line)
         .bind(id)
         .execute(&mut *tx)
         .await?;
@@ -262,7 +271,7 @@ pub async fn put_account(
 
 async fn account(db: &mut SqliteConnection, id: i64) -> Result<Account, ApiError> {
     sqlx::query_as(
-        "SELECT a.id, a.number, a.name, a.type, a.role, a.archived,
+        "SELECT a.id, a.number, a.name, a.type, a.role, a.euer_line, a.archived,
          coalesce((SELECT sum(amount) FROM posting_line WHERE account_id = a.id), 0) AS balance
          FROM ledger_account a WHERE a.id = ?",
     )

@@ -453,6 +453,28 @@ try {
 		await click('[role=radiogroup] [role=radio]:nth-child(2)');
 		await settle();
 	});
+	const choose = (selector, value) =>
+		evaluate(`(() => {
+			const el = document.querySelector(${JSON.stringify(selector)});
+			el.value = ${JSON.stringify(value)};
+			el.dispatchEvent(new Event('change', { bubbles: true }));
+		})()`);
+	await screen('tax-vat', `${origin}/tax`, async () => {
+		await until('the books', () => evaluate("!!document.querySelector('select.narrow')"));
+		await choose('select.narrow', 'y');
+		await until('the figures', () => evaluate("!!document.querySelector('details')"));
+		await click('details summary');
+	});
+	await screen('tax-euer', `${origin}/tax`, async () => {
+		await until('the books', () => evaluate("!!document.querySelector('[role=radiogroup]')"));
+		await click('[role=radiogroup] [role=radio]:nth-child(2)');
+		await until('the EÜR', () => evaluate("!!document.querySelector('.totals')"));
+	});
+	await screen('tax-exports', `${origin}/tax`, async () => {
+		await until('the books', () => evaluate("!!document.querySelector('[role=radiogroup]')"));
+		await click('[role=radiogroup] [role=radio]:nth-child(3)');
+		await until('the export', () => evaluate("!!document.querySelector('a[download]')"));
+	});
 	await screen('todos-board', `${origin}/todos`, () => evaluate("localStorage.setItem('todos.view', 'board')"));
 	await screen('todos-list', `${origin}/todos`, async () => {
 		await click('[role=radiogroup] [role=radio]');
