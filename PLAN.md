@@ -116,7 +116,7 @@ Crate names are candidates; verify each before the foundation phase settles them
 - VAT return and EÜR figures with drill-down to postings
 - DATEV export, deadlines (ICS, reminders), year-end archive
 - Accountant role in use; API tokens with scopes
-- Done when: a VAT return and an EÜR are entered in Mein ELSTER from its figures, and the tax advisor imports the DATEV export
+- Done when: a VAT return and an EÜR are entered in Mein ELSTER from its figures, and the DATEV export imports into a DATEV-compatible tool without errors
 
 ### Phase 6 – Fixed assets
 - Assets, straight-line depreciation, low-value assets; postings and EÜR lines
