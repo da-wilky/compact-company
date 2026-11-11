@@ -20,6 +20,7 @@ pub mod input;
 pub mod invitations;
 pub mod layouts;
 pub mod oidc;
+pub mod open_items;
 pub mod overview;
 pub mod passkeys;
 pub mod projects;
@@ -143,6 +144,7 @@ pub fn routes() -> OpenApiRouter<Arc<App>> {
         .routes(routes!(bank::get_transaction))
         .routes(routes!(bank::match_transaction))
         .routes(routes!(bank::unmatch_transaction))
+        .routes(routes!(open_items::get_open_items))
         .routes(routes!(snippets::list_snippets, snippets::create_snippet))
         .routes(routes!(snippets::put_snippet, snippets::delete_snippet))
         .merge(

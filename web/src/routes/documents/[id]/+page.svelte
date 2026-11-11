@@ -374,13 +374,14 @@
 	const followUps: Record<Kind, Kind[]> = {
 		quote: ['order_confirmation', 'invoice', 'delivery_note', 'acceptance_report'],
 		order_confirmation: ['invoice', 'delivery_note', 'acceptance_report'],
-		invoice: ['cancellation', 'delivery_note', 'acceptance_report'],
+		invoice: ['cancellation', 'delivery_note', 'acceptance_report', 'dunning'],
 		cancellation: [],
 		delivery_note: [],
-		acceptance_report: []
+		acceptance_report: [],
+		dunning: []
 	};
 	const draft = $derived(doc?.status === 'draft' && owner);
-	const priced = $derived(doc?.data.totals != null || (doc ? !['delivery_note', 'acceptance_report'].includes(doc.kind) : false));
+	const priced = $derived(doc?.data.totals != null || (doc ? !['delivery_note', 'acceptance_report', 'dunning'].includes(doc.kind) : false));
 	const canFollow = $derived(
 		owner && doc?.status === 'issued' && (doc.kind !== 'quote' || doc.quote_state === 'accepted')
 	);
@@ -411,7 +412,7 @@
 			{#if doc.kind === 'invoice' || doc.kind === 'cancellation'}
 				<a class="button ghost" href={`/api/documents/${doc.id}/xml`}>{t('documents.xml')}</a>
 			{/if}
-			{#if owner}
+			{#if owner && doc.kind !== 'dunning'}
 				<button class="ghost" onclick={duplicate}>{t('documents.duplicate')}</button>
 			{/if}
 			{#if owner && doc.status === 'issued'}
@@ -545,6 +546,9 @@
 					{/if}
 				</div>
 
+				{#if doc.data.dunning}
+				<div class="wide">{@render dunningBox(doc.data.dunning)}</div>
+				{:else}
 				<div class="wide lines">
 					<h2>{t('documents.lines')}</h2>
 					{#if doc.kind === 'cancellation'}
@@ -616,6 +620,7 @@
 					</div>
 					{/if}
 				</div>
+				{/if}
 
 				<div class="wide">
 					<Field label={t('documents.outro')} error={fieldError('outro')}>
@@ -639,6 +644,9 @@
 			<section class="card">
 				{#if doc.data.title}<h2>{doc.data.title}</h2>{/if}
 				{#if doc.data.intro}<p class="pre">{doc.data.intro}</p>{/if}
+				{#if doc.data.dunning}
+				{@render dunningBox(doc.data.dunning)}
+				{:else}
 				<div class="table">
 					<table>
 						<thead>
@@ -662,6 +670,7 @@
 						</tbody>
 					</table>
 				</div>
+				{/if}
 				{#if doc.data.totals}
 					<dl class="totals">
 						<dt>{t('documents.net')}</dt><dd>{formatAmount(doc.data.totals.net, doc.currency)}</dd>
@@ -819,6 +828,18 @@
 	</form>
 </Dialog>
 
+{#snippet dunningBox(d: Schemas['DunningData'])}
+	<dl class="dunning">
+		<dt>{t('documents.dunning_level')}</dt>
+		<dd>{t(`documents.dunning_${d.level}`)}</dd>
+		<dt>{t('term.invoice')}</dt>
+		<dd><a href={`/documents/${doc?.source_id}`}>{d.invoice_number}</a> · {formatDay(d.invoice_date, { dateStyle: 'medium' })}</dd>
+		<dt>{t('documents.amount_due')}</dt>
+		<dd><strong>{formatAmount(d.amount_due, doc?.currency ?? 'EUR')}</strong></dd>
+		{#if d.pay_until}<dt>{t('documents.pay_until')}</dt><dd>{formatDay(d.pay_until, { dateStyle: 'medium' })}</dd>{/if}
+	</dl>
+{/snippet}
+
 <style>
 	.eyebrow {
 		margin: 0;
@@ -944,6 +965,15 @@
 		flex-wrap: wrap;
 		gap: 0.75rem;
 		align-items: end;
+	}
+	.dunning {
+		display: grid;
+		grid-template-columns: auto 1fr;
+		gap: 0.375rem 1rem;
+		margin: 1rem 0;
+	}
+	.dunning dd {
+		margin: 0;
 	}
 	.sent {
 		list-style: none;

@@ -135,7 +135,7 @@
 	<form class="stack" onsubmit={create}>
 		<Field label={t('layouts.kind')}>
 			<select bind:value={newKind}>
-				{#each kinds as k (k)}<option value={k}>{kindLabel(k)}</option>{/each}
+				{#each kinds.filter((k) => k !== 'cancellation' && k !== 'dunning') as k (k)}<option value={k}>{kindLabel(k)}</option>{/each}
 			</select>
 		</Field>
 		<Field label={t('term.customer')} error={createError?.fields?.customer_id}>

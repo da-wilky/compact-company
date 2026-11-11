@@ -63,7 +63,8 @@
 				'order_confirmation_number_format',
 				'invoice_number_format',
 				'delivery_note_number_format',
-				'acceptance_report_number_format'
+				'acceptance_report_number_format',
+				'dunning_number_format'
 			]
 		}
 	];
@@ -74,6 +75,7 @@
 		invoice_number_format: 'RE-{yyyy}-{nnn}',
 		delivery_note_number_format: 'LS-{yyyy}-{nnn}',
 		acceptance_report_number_format: 'AP-{yyyy}-{nnn}',
+		dunning_number_format: 'MA-{yyyy}-{nnn}',
 		legal_form: 'UG (haftungsbeschränkt)'
 	};
 </script>

@@ -241,7 +241,7 @@ pub async fn create_document(
 ) -> Result<Json<Document>, ApiError> {
     let business = business(&app).await?;
     let mut tx = app.db.begin_with("BEGIN IMMEDIATE").await?;
-    if input.kind == Kind::Cancellation {
+    if matches!(input.kind, Kind::Cancellation | Kind::Dunning) {
         return Err(ApiError::new(ErrorCode::FollowUpNotAllowed));
     }
     let draft = validate(&mut tx, input, None).await?;
@@ -263,6 +263,9 @@ pub async fn duplicate_document(
     let business = business(&app).await?;
     let mut tx = app.db.begin_with("BEGIN IMMEDIATE").await?;
     let source = row(&mut tx, id).await?;
+    if source.kind == Kind::Dunning {
+        return Err(ApiError::new(ErrorCode::FollowUpNotAllowed));
+    }
     let original = snapshot(&mut tx, &source).await?;
     let archived: bool = sqlx::query_scalar("SELECT archived FROM customer WHERE id = ?")
         .bind(original.customer_id)
@@ -318,6 +321,7 @@ pub async fn follow_up(
             Kind::Cancellation,
             Kind::DeliveryNote,
             Kind::AcceptanceReport,
+            Kind::Dunning,
         ],
         _ => &[],
     };
@@ -335,6 +339,29 @@ pub async fn follow_up(
         }
     }
     let original = snapshot(&mut tx, &source).await?;
+    if input.kind == Kind::Dunning {
+        let level = next_dunning_level(&mut tx, id).await?;
+        let draft = Draft {
+            kind: Kind::Dunning,
+            title: None,
+            intro: Some(dunning_intro(original.language, level).to_owned()),
+            outro: None,
+            valid_until: None,
+            pricing: None,
+            source_id: Some(id),
+            service_from: None,
+            service_to: None,
+            timesheet: false,
+            rounding: 0,
+            dunning_level: Some(level),
+            lines: Vec::new(),
+            ..original
+        };
+        let dunning = insert_draft(&mut tx, auth.user.id, &draft).await?;
+        let document = find(&mut tx, &business, dunning).await?;
+        tx.commit().await?;
+        return Ok(Json(document));
+    }
     let source_data = data(&mut tx, &business, &source).await?;
     let priced = input.kind.priced();
     // an invoice for a quote by effort charges the time spent, added to it afterwards
@@ -433,8 +460,8 @@ async fn insert_draft(
     let id: i64 = sqlx::query_scalar(
         "INSERT INTO document (kind, status, customer_id, project_id, language, currency, title,
          intro, outro, valid_until, pricing, source_id, service_from, service_to, timesheet,
-         rounding, created_at, updated_at)
-         VALUES (?, 'draft', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id",
+         rounding, dunning_level, created_at, updated_at)
+         VALUES (?, 'draft', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id",
     )
     .bind(draft.kind)
     .bind(draft.customer_id)
@@ -451,6 +478,7 @@ async fn insert_draft(
     .bind(&draft.service_to)
     .bind(draft.timesheet)
     .bind(draft.rounding)
+    .bind(draft.dunning_level)
     .bind(at)
     .bind(at)
     .fetch_one(&mut *tx)
@@ -489,6 +517,10 @@ pub async fn put_document(
     let before = snapshot(&mut tx, &before).await?;
     draft.source_id = before.source_id;
     draft.rounding = before.rounding;
+    draft.dunning_level = before.dunning_level;
+    if draft.kind == Kind::Dunning && !draft.lines.is_empty() {
+        return Err(field_error("lines", FieldError::InvalidFormat));
+    }
     if let (Kind::Cancellation, Some(invoice)) = (draft.kind, draft.source_id) {
         let wanted: Vec<i64> = draft
             .lines
@@ -698,13 +730,25 @@ pub async fn issue(
     data.number = Some(number.clone());
     data.issue_date = Some(today.to_string());
     data.valid_until = valid_until.clone();
-    let due_date = (row.kind == Kind::Invoice).then(|| {
-        let days = i64::from(business.payment_days.unwrap_or(14));
+    // a dunning letter gives a week to pay
+    let days = match row.kind {
+        Kind::Invoice => Some(i64::from(business.payment_days.unwrap_or(14))),
+        Kind::Dunning => Some(7),
+        _ => None,
+    };
+    let due_date = days.map(|days| {
         today
             .saturating_add(jiff::Span::new().days(days))
             .to_string()
     });
-    data.due_date = due_date.clone();
+    if let Some(dunning) = &mut data.dunning {
+        if dunning.amount_due <= Decimal::ZERO {
+            return Err(ApiError::new(ErrorCode::FollowUpNotAllowed));
+        }
+        dunning.pay_until = due_date.clone();
+    } else {
+        data.due_date = due_date.clone();
+    }
     if matches!(row.kind, Kind::Invoice | Kind::Cancellation) && data.service_from.is_none() {
         data.service_from = Some(today.to_string());
         data.service_to = Some(today.to_string());
@@ -967,6 +1011,7 @@ pub struct Draft {
     service_to: Option<String>,
     timesheet: bool,
     rounding: i64,
+    dunning_level: Option<i64>,
     lines: Vec<Line>,
 }
 
@@ -1000,6 +1045,7 @@ async fn snapshot(db: &mut SqliteConnection, row: &Row) -> Result<Draft, ApiErro
         service_to: row.service_to.clone(),
         timesheet: row.timesheet,
         rounding: row.rounding,
+        dunning_level: row.dunning_level,
         lines: documents::lines(db, row.id)
             .await?
             .into_iter()
@@ -1187,6 +1233,7 @@ async fn validate(
         service_to: input.service_to,
         timesheet: invoice && input.timesheet,
         rounding: 0,
+        dunning_level: None,
         lines,
     };
     check.done()?;
@@ -1328,4 +1375,46 @@ pub async fn document_xml(
         bytes,
     )
         .into_response())
+}
+
+/// The level of the next dunning letter for an invoice that is still owed: one above the
+/// highest issued, at most three.
+async fn next_dunning_level(db: &mut SqliteConnection, invoice: i64) -> Result<i64, ApiError> {
+    if documents::amount_due(db, invoice).await? <= 0 {
+        return Err(ApiError::new(ErrorCode::FollowUpNotAllowed));
+    }
+    let issued: i64 = sqlx::query_scalar(
+        "SELECT coalesce(max(dunning_level), 0) FROM document
+         WHERE source_id = ? AND kind = 'dunning' AND status = 'issued'",
+    )
+    .bind(invoice)
+    .fetch_one(db)
+    .await?;
+    if issued >= 3 {
+        return Err(ApiError::new(ErrorCode::FollowUpNotAllowed));
+    }
+    Ok(issued + 1)
+}
+
+fn dunning_intro(language: Language, level: i64) -> &'static str {
+    match (language, level) {
+        (Language::De, 1) => {
+            "Sehr geehrte Damen und Herren,\n\nsicher ist es Ihnen im Alltag entgangen: Für die folgende Rechnung ist bei uns noch keine vollständige Zahlung eingegangen. Bitte überweisen Sie den offenen Betrag bis zum genannten Datum. Sollten Sie inzwischen gezahlt haben, betrachten Sie dieses Schreiben bitte als gegenstandslos."
+        }
+        (Language::De, 2) => {
+            "Sehr geehrte Damen und Herren,\n\nleider ist der offene Betrag der folgenden Rechnung trotz unserer Zahlungserinnerung noch nicht bei uns eingegangen. Bitte überweisen Sie ihn bis zum genannten Datum."
+        }
+        (Language::De, _) => {
+            "Sehr geehrte Damen und Herren,\n\ntrotz Zahlungserinnerung und Mahnung ist der offene Betrag der folgenden Rechnung noch nicht bei uns eingegangen. Bitte überweisen Sie ihn bis zum genannten Datum. Andernfalls sehen wir uns gezwungen, weitere Schritte einzuleiten."
+        }
+        (Language::En, 1) => {
+            "Dear Sir or Madam,\n\nperhaps it has slipped your attention: we have not yet received full payment of the invoice below. Please transfer the amount due by the date given. If you have paid in the meantime, please disregard this letter."
+        }
+        (Language::En, 2) => {
+            "Dear Sir or Madam,\n\ndespite our reminder, the amount due on the invoice below has not reached us yet. Please transfer it by the date given."
+        }
+        (Language::En, _) => {
+            "Dear Sir or Madam,\n\ndespite our reminder and dunning letter, the amount due on the invoice below has not reached us yet. Please transfer it by the date given; otherwise we will have to take further steps."
+        }
+    }
 }

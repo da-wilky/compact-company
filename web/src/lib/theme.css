@@ -242,6 +242,10 @@ code {
 	background: var(--accent-soft);
 	color: var(--accent-text);
 }
+.badge.danger {
+	background: var(--danger-soft);
+	color: var(--danger);
+}
 
 .muted {
 	color: var(--muted);

@@ -70,6 +70,7 @@ const SIGNED_IN: &[(&str, &str, &[&str])] = &[
     ("GET", "/api/bank-transactions/{id}", OWNER_ACCOUNTANT),
     ("POST", "/api/bank-transactions/{id}/match", OWNER),
     ("POST", "/api/bank-transactions/{id}/unmatch", OWNER),
+    ("GET", "/api/open-items", OWNER_ACCOUNTANT),
     ("GET", "/api/currencies", ANY),
     ("GET", "/api/customers", ANY),
     ("POST", "/api/customers", OWNER),

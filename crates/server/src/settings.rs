@@ -46,6 +46,7 @@ pub struct Business {
     pub invoice_number_format: Option<String>,
     pub delivery_note_number_format: Option<String>,
     pub acceptance_report_number_format: Option<String>,
+    pub dunning_number_format: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema)]

@@ -26,6 +26,7 @@ pub enum Kind {
     Cancellation,
     DeliveryNote,
     AcceptanceReport,
+    Dunning,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema, sqlx::Type)]
@@ -75,6 +76,7 @@ impl Kind {
             Self::Cancellation => "cancellation",
             Self::DeliveryNote => "delivery_note",
             Self::AcceptanceReport => "acceptance_report",
+            Self::Dunning => "dunning",
         }
     }
 
@@ -89,6 +91,7 @@ impl Kind {
             Self::AcceptanceReport => {
                 (&business.acceptance_report_number_format, "AP-{yyyy}-{nnn}")
             }
+            Self::Dunning => (&business.dunning_number_format, "MA-{yyyy}-{nnn}"),
             Self::Invoice | Self::Cancellation => {
                 (&business.invoice_number_format, "RE-{yyyy}-{nnn}")
             }
@@ -98,7 +101,10 @@ impl Kind {
 
     /// Whether the document carries prices.
     pub fn priced(self) -> bool {
-        !matches!(self, Self::DeliveryNote | Self::AcceptanceReport)
+        !matches!(
+            self,
+            Self::DeliveryNote | Self::AcceptanceReport | Self::Dunning
+        )
     }
 }
 
@@ -245,6 +251,8 @@ pub struct Data {
     pub timesheet: Option<Vec<TimesheetEntry>>,
     /// The invoice a cancellation invoice reverses.
     pub preceding: Option<Preceding>,
+    /// The overdue invoice a dunning letter is about.
+    pub dunning: Option<DunningData>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
@@ -375,6 +383,7 @@ pub struct Row {
     pub service_to: Option<String>,
     pub timesheet: bool,
     pub rounding: i64,
+    pub dunning_level: Option<i64>,
 }
 
 #[derive(Debug, Clone, Serialize, ToSchema, sqlx::FromRow)]
@@ -548,6 +557,7 @@ pub async fn draft_data(
         reference: reference(db, row).await?,
         timesheet,
         preceding: preceding(db, row).await?,
+        dunning: dunning(db, row).await?,
     })
 }
 
@@ -590,7 +600,7 @@ pub fn missing(data: &Data) -> BTreeMap<String, FieldError> {
             missing.insert(key.to_owned(), FieldError::Required);
         }
     }
-    if data.lines.is_empty() {
+    if data.lines.is_empty() && data.kind != Kind::Dunning {
         missing.insert("lines".to_owned(), FieldError::Required);
     }
     for (i, line) in data.lines.iter().enumerate() {
@@ -698,7 +708,9 @@ fn sample_amounts(kind: Kind, language: Language, small_business: bool) -> Data 
             leitweg_id: Some("991-12345-67".to_owned()),
             xrechnung: false,
         },
-        lines: if priced {
+        lines: if kind == Kind::Dunning {
+            Vec::new()
+        } else if priced {
             lines
         } else {
             lines
@@ -728,6 +740,14 @@ fn sample_amounts(kind: Kind, language: Language, small_business: bool) -> Data 
         preceding: (kind == Kind::Cancellation).then(|| Preceding {
             number: "RE-2026-041".to_owned(),
             issue_date: "2026-03-20".to_owned(),
+        }),
+        dunning: (kind == Kind::Dunning).then(|| DunningData {
+            level: 1,
+            invoice_number: "RE-2026-041".to_owned(),
+            invoice_date: "2026-03-02".to_owned(),
+            invoice_due_date: Some("2026-03-16".to_owned()),
+            amount_due: d("1468.49"),
+            pay_until: Some("2026-04-03".to_owned()),
         }),
         reference: (kind == Kind::Cancellation)
             .then(|| "Storniert Rechnung RE-2026-041".to_owned()),
@@ -895,4 +915,67 @@ pub fn sample(kind: Kind, language: Language, small_business: bool) -> Data {
         }
     }
     data
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct DunningData {
+    /// 1 payment reminder, 2 dunning letter, 3 final dunning letter.
+    pub level: u8,
+    pub invoice_number: String,
+    /// ISO dates.
+    pub invoice_date: String,
+    pub invoice_due_date: Option<String>,
+    /// What is still owed on the invoice, in major units of its currency.
+    #[schema(value_type = String)]
+    pub amount_due: Decimal,
+    /// ISO date by which the customer is asked to pay; a draft has none yet.
+    pub pay_until: Option<String>,
+}
+
+/// What is still owed on an issued invoice, in minor units: its total less its payments and its
+/// cancellation invoices.
+pub async fn amount_due(db: &mut SqliteConnection, invoice: i64) -> Result<i64, sqlx::Error> {
+    let gross = |data: &str| {
+        let data: Data = serde_json::from_str(data).expect("issued data parses");
+        data.totals
+            .map_or(0, |t| round_minor(t.gross * Decimal::ONE_HUNDRED))
+    };
+    let data: String = sqlx::query_scalar("SELECT data FROM document WHERE id = ?")
+        .bind(invoice)
+        .fetch_one(&mut *db)
+        .await?;
+    let paid: i64 = sqlx::query_scalar(
+        "SELECT coalesce(sum(amount), 0) FROM payment WHERE document_id = ? AND reversed_at IS NULL",
+    )
+    .bind(invoice)
+    .fetch_one(&mut *db)
+    .await?;
+    let cancellations: Vec<String> = sqlx::query_scalar(
+        "SELECT data FROM document WHERE source_id = ? AND kind = 'cancellation'
+         AND status = 'issued'",
+    )
+    .bind(invoice)
+    .fetch_all(&mut *db)
+    .await?;
+    Ok(gross(&data) - paid + cancellations.iter().map(|c| gross(c)).sum::<i64>())
+}
+
+async fn dunning(db: &mut SqliteConnection, row: &Row) -> Result<Option<DunningData>, sqlx::Error> {
+    let (Kind::Dunning, Some(invoice), Some(level)) = (row.kind, row.source_id, row.dunning_level)
+    else {
+        return Ok(None);
+    };
+    let data: String = sqlx::query_scalar("SELECT data FROM document WHERE id = ?")
+        .bind(invoice)
+        .fetch_one(&mut *db)
+        .await?;
+    let data: Data = serde_json::from_str(&data).expect("issued data parses");
+    Ok(Some(DunningData {
+        level: u8::try_from(level).expect("levels are 1 to 3"),
+        invoice_number: data.number.unwrap_or_default(),
+        invoice_date: data.issue_date.unwrap_or_default(),
+        invoice_due_date: data.due_date,
+        amount_due: major(amount_due(db, invoice).await?),
+        pay_until: row.due_date.clone(),
+    }))
 }

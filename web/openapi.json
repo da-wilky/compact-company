@@ -2301,6 +2301,34 @@
         }
       }
     },
+    "/api/open-items": {
+      "get": {
+        "tags": [
+          "books"
+        ],
+        "operationId": "get_open_items",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenItems"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/overview": {
       "get": {
         "tags": [
@@ -5126,6 +5154,12 @@
               "null"
             ]
           },
+          "dunning_number_format": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "email": {
             "type": [
               "string",
@@ -6028,6 +6062,17 @@
             ],
             "description": "ISO date."
           },
+          "dunning": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/DunningData",
+                "description": "The overdue invoice a dunning letter is about."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "intro": {
             "type": [
               "string",
@@ -6257,7 +6302,8 @@
           "invoice",
           "cancellation",
           "delivery_note",
-          "acceptance_report"
+          "acceptance_report",
+          "dunning"
         ]
       },
       "DocumentLine": {
@@ -6461,6 +6507,47 @@
               "string",
               "null"
             ]
+          }
+        }
+      },
+      "DunningData": {
+        "type": "object",
+        "required": [
+          "level",
+          "invoice_number",
+          "invoice_date",
+          "amount_due"
+        ],
+        "properties": {
+          "amount_due": {
+            "type": "string",
+            "description": "What is still owed on the invoice, in major units of its currency."
+          },
+          "invoice_date": {
+            "type": "string",
+            "description": "ISO dates."
+          },
+          "invoice_due_date": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "invoice_number": {
+            "type": "string"
+          },
+          "level": {
+            "type": "integer",
+            "format": "int32",
+            "description": "1 payment reminder, 2 dunning letter, 3 final dunning letter.",
+            "minimum": 0
+          },
+          "pay_until": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "ISO date by which the customer is asked to pay; a draft has none yet."
           }
         }
       },
@@ -7200,6 +7287,141 @@
           },
           "overdue": {
             "type": "boolean"
+          }
+        }
+      },
+      "OpenInvoiceItem": {
+        "type": "object",
+        "required": [
+          "id",
+          "number",
+          "customer_name",
+          "issue_date",
+          "overdue_days",
+          "due"
+        ],
+        "properties": {
+          "customer_name": {
+            "type": "string"
+          },
+          "due": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "due_date": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "dunned_on": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "ISO date of the last dunning letter."
+          },
+          "dunning_draft_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "A dunning letter still being prepared."
+          },
+          "dunning_level": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "The highest level of the dunning letters issued for it, if any."
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "issue_date": {
+            "type": "string",
+            "description": "ISO dates."
+          },
+          "number": {
+            "type": "string"
+          },
+          "overdue_days": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Days past the due date; 0 when not overdue."
+          }
+        }
+      },
+      "OpenItems": {
+        "type": "object",
+        "required": [
+          "invoices",
+          "receipts"
+        ],
+        "properties": {
+          "invoices": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OpenInvoiceItem"
+            },
+            "description": "Issued invoices still owed, longest overdue first."
+          },
+          "receipts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OpenReceiptItem"
+            },
+            "description": "Booked receipts still to pay, longest overdue first."
+          }
+        }
+      },
+      "OpenReceiptItem": {
+        "type": "object",
+        "required": [
+          "id",
+          "supplier_name",
+          "date",
+          "overdue_days",
+          "due",
+          "currency"
+        ],
+        "properties": {
+          "currency": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string",
+            "description": "ISO dates."
+          },
+          "due": {
+            "type": "integer",
+            "format": "int64",
+            "description": "In the minor unit of its currency."
+          },
+          "due_date": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "number": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "overdue_days": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "supplier_name": {
+            "type": "string"
           }
         }
       },

@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use axum::{extract::State, http::StatusCode};
-use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use sqlx::SqliteConnection;
 use utoipa::ToSchema;
@@ -156,43 +155,14 @@ async fn open_invoices(
     Ok(open)
 }
 
-fn gross_minor(data: &str) -> Result<i64, ApiError> {
-    let data: Data = serde_json::from_str(data).map_err(ApiError::internal)?;
-    let gross = data.totals.map_or(Decimal::ZERO, |t| t.gross);
-    (gross * Decimal::ONE_HUNDRED)
-        .round()
-        .try_into()
-        .map_err(ApiError::internal)
-}
-
-/// What is still owed on an issued invoice: its total less its payments and its cancellation
-/// invoices.
+/// What is still owed on an issued invoice, in its currency.
 pub async fn amount_due(db: &mut SqliteConnection, id: i64) -> Result<Money, ApiError> {
-    let (currency, data): (String, String) =
-        sqlx::query_as("SELECT currency, data FROM document WHERE id = ?")
-            .bind(id)
-            .fetch_one(&mut *db)
-            .await?;
-    let mut due = gross_minor(&data)?;
-    let paid: i64 = sqlx::query_scalar(
-        "SELECT coalesce(sum(amount), 0) FROM payment WHERE document_id = ? AND reversed_at IS NULL",
-    )
-    .bind(id)
-    .fetch_one(&mut *db)
-    .await?;
-    due -= paid;
-    let cancellations: Vec<String> = sqlx::query_scalar(
-        "SELECT data FROM document WHERE source_id = ? AND kind = 'cancellation'
-         AND status = 'issued'",
-    )
-    .bind(id)
-    .fetch_all(&mut *db)
-    .await?;
-    for cancellation in cancellations {
-        due += gross_minor(&cancellation)?;
-    }
+    let currency: String = sqlx::query_scalar("SELECT currency FROM document WHERE id = ?")
+        .bind(id)
+        .fetch_one(&mut *db)
+        .await?;
     Ok(Money {
-        minor: due,
+        minor: crate::documents::amount_due(db, id).await?,
         currency,
     })
 }

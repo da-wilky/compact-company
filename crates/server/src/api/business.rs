@@ -110,6 +110,7 @@ fn validate(business: Business) -> Result<Business, ApiError> {
             b.acceptance_report_number_format,
             40,
         ),
+        dunning_number_format: check.text("dunning_number_format", b.dunning_number_format, 40),
     };
     if business
         .currency
@@ -169,6 +170,7 @@ fn validate(business: Business) -> Result<Business, ApiError> {
             "acceptance_report_number_format",
             &business.acceptance_report_number_format,
         ),
+        ("dunning_number_format", &business.dunning_number_format),
     ] {
         if format
             .as_deref()

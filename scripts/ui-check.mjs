@@ -411,6 +411,9 @@ try {
 	const fee = (await api('GET', `/api/bank-transactions?bank_account_id=${girokonto.id}`)).find((t) => t.amount === -490);
 	await api('POST', `/api/bank-transactions/${fee.id}/match`, { parts: [{ kind: 'account', id: account('4970'), amount: -490 }] });
 
+	const dunning = await api('POST', `/api/documents/${issuedInvoice.id}/follow-up`, { kind: 'dunning' });
+	await api('POST', `/api/documents/${dunning.id}/issue`);
+
 	await api('PUT', `/api/receipts/${photo.id}`, {
 		supplier_id: restaurant.id,
 		date: '2026-04-03',
@@ -438,6 +441,8 @@ try {
 	await screen('receipt-draft', `${origin}/receipts/${photo.id}`);
 	await screen('receipt-booked', `${origin}/receipts/${hosting.id}`);
 	await screen('suppliers', `${origin}/suppliers`);
+	await screen('open-items', `${origin}/open-items`);
+	await screen('document-dunning', `${origin}/documents/${dunning.id}`);
 	await screen('bank', `${origin}/bank`);
 	await screen('bank-match', `${origin}/bank`, async () => {
 		await until('the transactions', () => evaluate("!!document.querySelector('.transactions button')"));
