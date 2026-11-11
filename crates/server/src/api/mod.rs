@@ -22,10 +22,12 @@ pub mod oidc;
 pub mod overview;
 pub mod passkeys;
 pub mod projects;
+pub mod receipts;
 pub mod sending;
 pub mod session;
 pub mod snippets;
 pub mod statuses;
+pub mod suppliers;
 pub mod time;
 pub mod todos;
 pub mod users;
@@ -109,6 +111,26 @@ pub fn routes() -> OpenApiRouter<Arc<App>> {
         .routes(routes!(books::put_account))
         .routes(routes!(books::list_postings, books::create_posting))
         .routes(routes!(books::reverse_posting))
+        .routes(routes!(
+            suppliers::list_suppliers,
+            suppliers::create_supplier
+        ))
+        .routes(routes!(suppliers::put_supplier))
+        .merge(
+            OpenApiRouter::new()
+                .routes(routes!(receipts::list_receipts, receipts::create_receipt))
+                .layer(DefaultBodyLimit::max(25 << 20)),
+        )
+        .routes(routes!(
+            receipts::get_receipt,
+            receipts::put_receipt,
+            receipts::delete_receipt
+        ))
+        .routes(routes!(receipts::book_receipt))
+        .routes(routes!(receipts::reverse_receipt))
+        .routes(routes!(receipts::receipt_file))
+        .routes(routes!(receipts::add_receipt_payment))
+        .routes(routes!(receipts::reverse_receipt_payment))
         .routes(routes!(snippets::list_snippets, snippets::create_snippet))
         .routes(routes!(snippets::put_snippet, snippets::delete_snippet))
         .merge(

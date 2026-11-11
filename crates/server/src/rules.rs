@@ -111,7 +111,7 @@ pub async fn post_document(
         lines,
         source: Source {
             document_id: Some(id),
-            payment_id: None,
+            ..Source::default()
         },
     };
     Ok(Some(books::book(tx, user_id, posting, None).await?))
@@ -334,6 +334,7 @@ pub async fn post_payment(
         source: Source {
             document_id: None,
             payment_id: Some(payment_id),
+            ..Source::default()
         },
     };
     Ok(Some(books::book(tx, user_id, posting, None).await?))
@@ -356,22 +357,210 @@ async fn vat_of(db: &mut SqliteConnection, ids: &[i64], rate: Decimal) -> Result
         .sum())
 }
 
-/// Reverses every posting of a payment on `date`.
-pub async fn reverse_payment(
+#[derive(sqlx::FromRow)]
+struct Receipt {
+    date: String,
+    number: Option<String>,
+    exchange_rate: Option<String>,
+    supplier_name: String,
+}
+
+/// Books a receipt: each line's expense and input VAT against payables, or the gross amount as
+/// expense for a small business, which may not deduct input VAT.
+pub async fn post_receipt(
+    tx: &mut SqliteConnection,
+    business: &Business,
+    user_id: i64,
+    id: i64,
+) -> Result<i64, Error> {
+    let receipt: Receipt = sqlx::query_as(
+        "SELECT r.date, r.number, r.exchange_rate, s.name AS supplier_name FROM receipt r
+         JOIN supplier s ON s.id = r.supplier_id WHERE r.id = ?",
+    )
+    .bind(id)
+    .fetch_one(&mut *tx)
+    .await?;
+    let rate: Decimal = receipt.exchange_rate.as_deref().map_or(Decimal::ONE, |r| {
+        r.parse().expect("rates are stored as decimals")
+    });
+    let lines: Vec<(i64, i64, String, i64)> = sqlx::query_as(
+        "SELECT account_id, net, vat_rate, tax FROM receipt_line WHERE receipt_id = ?
+         ORDER BY position",
+    )
+    .bind(id)
+    .fetch_all(&mut *tx)
+    .await?;
+    let mut posting = Vec::new();
+    let mut payable = 0;
+    for (account_id, net, vat_rate, tax) in lines {
+        let net = round(Decimal::from(net) * rate);
+        let tax = round(Decimal::from(tax) * rate);
+        if business.small_business() {
+            posting.push(Line {
+                account_id,
+                amount: net + tax,
+            });
+        } else {
+            posting.push(Line {
+                account_id,
+                amount: net,
+            });
+            if tax != 0 {
+                let vat_rate: Decimal = vat_rate.parse().expect("rates are stored as decimals");
+                posting.push(Line {
+                    account_id: role(tx, &format!("input_vat:{}", rate_key(vat_rate))).await?,
+                    amount: tax,
+                });
+            }
+        }
+        payable += net + tax;
+    }
+    posting.push(Line {
+        account_id: role(tx, "payables").await?,
+        amount: -payable,
+    });
+    let description = match &receipt.number {
+        Some(number) => format!("Beleg {} {number}", receipt.supplier_name),
+        None => format!("Beleg {}", receipt.supplier_name),
+    };
+    let posting = NewPosting {
+        date: receipt.date,
+        description,
+        lines: posting,
+        source: Source {
+            receipt_id: Some(id),
+            ..Source::default()
+        },
+    };
+    Ok(books::book(tx, user_id, posting, None).await?)
+}
+
+/// Gross cents of a receipt in its currency.
+pub async fn receipt_gross(db: &mut SqliteConnection, id: i64) -> Result<i64, sqlx::Error> {
+    sqlx::query_scalar("SELECT coalesce(sum(net + tax), 0) FROM receipt_line WHERE receipt_id = ?")
+        .bind(id)
+        .fetch_one(db)
+        .await
+}
+
+/// Books a payment of a receipt from the account it left, clearing the receipt's payable in
+/// proportion to what is paid of it; the difference to the EUR that left is an exchange gain or
+/// loss.
+pub async fn post_receipt_payment(
     tx: &mut SqliteConnection,
     user_id: i64,
     payment_id: i64,
-    date: &str,
-) -> Result<(), sqlx::Error> {
-    let postings: Vec<i64> = sqlx::query_scalar(
-        "SELECT id FROM posting p WHERE payment_id = ? AND reverses_id IS NULL
-         AND NOT EXISTS (SELECT 1 FROM posting r WHERE r.reverses_id = p.id)",
+) -> Result<i64, Error> {
+    let (receipt, date, eur, account, supplier, number): (
+        i64,
+        String,
+        i64,
+        i64,
+        String,
+        Option<String>,
+    ) = sqlx::query_as(
+        "SELECT y.receipt_id, y.date, coalesce(y.eur_amount, y.amount), y.account_id, s.name,
+         r.number FROM receipt_payment y JOIN receipt r ON r.id = y.receipt_id
+         JOIN supplier s ON s.id = r.supplier_id WHERE y.id = ?",
     )
     .bind(payment_id)
-    .fetch_all(&mut *tx)
+    .fetch_one(&mut *tx)
     .await?;
+    let payables = role(tx, "payables").await?;
+    let booked: i64 = sqlx::query_scalar(
+        "SELECT coalesce(sum(l.amount), 0) FROM posting_line l JOIN posting p ON p.id = l.posting_id
+         WHERE p.receipt_id = ? AND l.account_id = ?",
+    )
+    .bind(receipt)
+    .bind(payables)
+    .fetch_one(&mut *tx)
+    .await?;
+    let paid_before: i64 = sqlx::query_scalar(
+        "SELECT coalesce(sum(l.amount), 0) FROM posting_line l JOIN posting p ON p.id = l.posting_id
+         JOIN receipt_payment y ON y.id = p.receipt_payment_id
+         WHERE y.receipt_id = ? AND l.account_id = ?",
+    )
+    .bind(receipt)
+    .bind(payables)
+    .fetch_one(&mut *tx)
+    .await?;
+    let paid: i64 = sqlx::query_scalar(
+        "SELECT coalesce(sum(amount), 0) FROM receipt_payment
+         WHERE receipt_id = ? AND reversed_at IS NULL",
+    )
+    .bind(receipt)
+    .fetch_one(&mut *tx)
+    .await?;
+    let gross = receipt_gross(tx, receipt).await?;
+    let debit = share(-booked, paid, gross) - paid_before;
+    let mut lines = vec![
+        Line {
+            account_id: payables,
+            amount: debit,
+        },
+        Line {
+            account_id: account,
+            amount: -eur,
+        },
+    ];
+    let difference = debit - eur;
+    if difference > 0 {
+        lines.push(Line {
+            account_id: role(tx, "fx_gains").await?,
+            amount: -difference,
+        });
+    } else if difference < 0 {
+        lines.push(Line {
+            account_id: role(tx, "fx_losses").await?,
+            amount: -difference,
+        });
+    }
+    let description = match number {
+        Some(number) => format!("Zahlung {supplier} {number}"),
+        None => format!("Zahlung {supplier}"),
+    };
+    let posting = NewPosting {
+        date,
+        description,
+        lines,
+        source: Source {
+            receipt_payment_id: Some(payment_id),
+            ..Source::default()
+        },
+    };
+    Ok(books::book(tx, user_id, posting, None).await?)
+}
+
+/// Reverses every posting of `column` = `id` not reversed yet, on `date`.
+pub async fn reverse_all(
+    tx: &mut SqliteConnection,
+    user_id: i64,
+    column: Column,
+    id: i64,
+    date: &str,
+) -> Result<(), sqlx::Error> {
+    let column = match column {
+        Column::Payment => "payment_id",
+        Column::Receipt => "receipt_id",
+        Column::ReceiptPayment => "receipt_payment_id",
+    };
+    let sql = format!(
+        "SELECT id FROM posting p WHERE {column} = ? AND reverses_id IS NULL
+         AND NOT EXISTS (SELECT 1 FROM posting r WHERE r.reverses_id = p.id)"
+    );
+    let postings: Vec<i64> = sqlx::query_scalar(sqlx::AssertSqlSafe(sql))
+        .bind(id)
+        .fetch_all(&mut *tx)
+        .await?;
     for id in postings {
         books::reverse(tx, user_id, id, date).await?;
     }
     Ok(())
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum Column {
+    Payment,
+    Receipt,
+    ReceiptPayment,
 }

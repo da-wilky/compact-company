@@ -309,10 +309,12 @@ pub struct Line {
 }
 
 /// What a posting comes from, if not booked by hand.
-#[derive(Debug, Clone, Copy, Default, Serialize)]
+#[derive(Debug, Clone, Copy, Default, Serialize, sqlx::FromRow)]
 pub struct Source {
     pub document_id: Option<i64>,
     pub payment_id: Option<i64>,
+    pub receipt_id: Option<i64>,
+    pub receipt_payment_id: Option<i64>,
 }
 
 #[derive(Debug, Serialize)]
@@ -347,14 +349,17 @@ pub async fn book(
     );
     posting.lines = merged;
     let id: i64 = sqlx::query_scalar(
-        "INSERT INTO posting (date, description, reverses_id, document_id, payment_id, user_id,
-         created_at) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id",
+        "INSERT INTO posting (date, description, reverses_id, document_id, payment_id, receipt_id,
+         receipt_payment_id, user_id,
+         created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id",
     )
     .bind(&posting.date)
     .bind(&posting.description)
     .bind(reverses)
     .bind(posting.source.document_id)
     .bind(posting.source.payment_id)
+    .bind(posting.source.receipt_id)
+    .bind(posting.source.receipt_payment_id)
     .bind(user_id)
     .bind(now())
     .fetch_one(&mut *tx)
@@ -390,11 +395,16 @@ pub async fn reverse(
     id: i64,
     date: &str,
 ) -> Result<i64, sqlx::Error> {
-    let (description, document_id, payment_id): (String, Option<i64>, Option<i64>) =
-        sqlx::query_as("SELECT description, document_id, payment_id FROM posting WHERE id = ?")
-            .bind(id)
-            .fetch_one(&mut *tx)
-            .await?;
+    let description: String = sqlx::query_scalar("SELECT description FROM posting WHERE id = ?")
+        .bind(id)
+        .fetch_one(&mut *tx)
+        .await?;
+    let source: Source = sqlx::query_as(
+        "SELECT document_id, payment_id, receipt_id, receipt_payment_id FROM posting WHERE id = ?",
+    )
+    .bind(id)
+    .fetch_one(&mut *tx)
+    .await?;
     let lines: Vec<(i64, i64)> =
         sqlx::query_as("SELECT account_id, amount FROM posting_line WHERE posting_id = ?")
             .bind(id)
@@ -410,10 +420,7 @@ pub async fn reverse(
                 amount: -amount,
             })
             .collect(),
-        source: Source {
-            document_id,
-            payment_id,
-        },
+        source,
     };
     book(tx, user_id, posting, Some(id)).await
 }

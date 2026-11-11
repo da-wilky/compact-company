@@ -26,6 +26,7 @@ pub mod config;
 pub mod documents;
 pub mod einvoice;
 pub mod files;
+pub mod incoming;
 pub mod layouts;
 pub mod limit;
 pub mod mail;
@@ -137,11 +138,14 @@ pub fn router(app: Arc<App>) -> Router {
 
 /// The client's own CSP sits in a meta tag, which cannot forbid framing.
 async fn security_headers(request: Request, next: Next) -> Response {
-    let cache = match request.uri().path() {
+    let path = request.uri().path();
+    let cache = match path {
         path if path.starts_with("/api/") => "no-store",
         path if path.starts_with("/_app/immutable/") => "public, max-age=31536000, immutable",
         _ => "no-cache",
     };
+    // the receipt page shows the uploaded file next to its form
+    let framed = path.starts_with("/api/receipts/") && path.ends_with("/file");
     let mut response = next.run(request).await;
     let headers = response.headers_mut();
     headers.insert(header::CACHE_CONTROL, HeaderValue::from_static(cache));
@@ -149,10 +153,17 @@ async fn security_headers(request: Request, next: Next) -> Response {
         header::X_CONTENT_TYPE_OPTIONS,
         HeaderValue::from_static("nosniff"),
     );
-    headers.insert(header::X_FRAME_OPTIONS, HeaderValue::from_static("DENY"));
+    headers.insert(
+        header::X_FRAME_OPTIONS,
+        HeaderValue::from_static(if framed { "SAMEORIGIN" } else { "DENY" }),
+    );
     headers.insert(
         header::CONTENT_SECURITY_POLICY,
-        HeaderValue::from_static("frame-ancestors 'none'"),
+        HeaderValue::from_static(if framed {
+            "frame-ancestors 'self'"
+        } else {
+            "frame-ancestors 'none'"
+        }),
     );
     headers.insert(
         header::REFERRER_POLICY,

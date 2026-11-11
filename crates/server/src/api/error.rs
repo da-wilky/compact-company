@@ -62,6 +62,7 @@ pub enum ErrorCode {
     AlreadyReversed,
     AutomaticPosting,
     NoLedgerAccount,
+    HasPayments,
     MailNotConfigured,
     MailFailed,
     RateLimited,
@@ -116,6 +117,7 @@ impl ErrorCode {
         Self::AlreadyReversed,
         Self::AutomaticPosting,
         Self::NoLedgerAccount,
+        Self::HasPayments,
         Self::MailNotConfigured,
         Self::MailFailed,
         Self::RateLimited,
@@ -157,6 +159,7 @@ impl ErrorCode {
             | Self::AlreadyReversed
             | Self::AutomaticPosting
             | Self::NoLedgerAccount
+            | Self::HasPayments
             | Self::MailNotConfigured => StatusCode::CONFLICT,
             Self::RateLimited => StatusCode::TOO_MANY_REQUESTS,
             Self::Internal => StatusCode::INTERNAL_SERVER_ERROR,

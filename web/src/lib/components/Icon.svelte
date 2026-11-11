@@ -31,6 +31,8 @@
 		documents: 'M14 3H6.5A1.5 1.5 0 0 0 5 4.5v15A1.5 1.5 0 0 0 6.5 21h11a1.5 1.5 0 0 0 1.5-1.5V8zM14 3v5h5M8.5 13h7M8.5 17h4',
 		pdf: 'M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19h14',
 		send: 'M21 3 10 14M21 3l-6.5 18-4.5-7-7-4.5z',
+		receipts: 'M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6M9 16h3',
+		suppliers: 'M3 9l1.5-5h15L21 9M3 9v11h18V9M3 9h18M9 20v-6h6v6',
 		books: 'M4 19.5v-15A1.5 1.5 0 0 1 5.5 3H20v15H5.5A1.5 1.5 0 0 0 4 19.5zm0 0A1.5 1.5 0 0 0 5.5 21H20v-3M8 7.5h8M8 11.5h5'
 	};
 	export type IconName = keyof typeof paths;

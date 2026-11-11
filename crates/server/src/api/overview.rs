@@ -329,7 +329,14 @@ pub async fn reverse_payment(
         .bind(id)
         .execute(&mut *tx)
         .await?;
-    rules::reverse_payment(&mut tx, auth.user.id, id, today.max(date.clone()).as_str()).await?;
+    rules::reverse_all(
+        &mut tx,
+        auth.user.id,
+        rules::Column::Payment,
+        id,
+        today.max(date.clone()).as_str(),
+    )
+    .await?;
     audit::record(
         &mut tx,
         auth.user.id,
