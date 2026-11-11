@@ -111,6 +111,8 @@ fn validate(business: Business) -> Result<Business, ApiError> {
             40,
         ),
         dunning_number_format: check.text("dunning_number_format", b.dunning_number_format, 40),
+        vat_period: b.vat_period,
+        vat_extension: b.vat_extension,
         datev_consultant_number: b.datev_consultant_number,
         datev_client_number: b.datev_client_number,
     };

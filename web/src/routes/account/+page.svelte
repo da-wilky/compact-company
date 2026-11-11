@@ -6,6 +6,7 @@
 	import Preferences from '#lib/components/Preferences.svelte';
 	import { i18n, t } from '#lib/i18n.svelte.ts';
 	import { session } from '#lib/session.svelte.ts';
+	import { toast } from '#lib/toast.svelte.ts';
 	import { createPasskey } from '#lib/webauthn.ts';
 
 	let passkeys = $state<Schemas['PasskeyView'][]>([]);
@@ -62,6 +63,38 @@
 		secs ? new Date(secs * 1000).toLocaleString(i18n.locale) : t('app.never');
 
 	load();
+
+	const scopes: Schemas['Scope'][] = ['work:read', 'work:write', 'documents:read', 'documents:write', 'books:read'];
+	let tokens = $state<Schemas['Token'][]>([]);
+	let tokenName = $state('');
+	let chosen = $state<Schemas['Scope'][]>(['work:read']);
+	let secret = $state<string>();
+	let tokenError = $state<ApiError>();
+
+	call(api.GET('/api/tokens')).then(({ data }) => (tokens = data ?? []));
+
+	async function createToken(event: SubmitEvent) {
+		event.preventDefault();
+		const result = await call(api.POST('/api/tokens', { body: { name: tokenName, scopes: chosen } }));
+		tokenError = result.error;
+		if (result.data) {
+			secret = result.data.secret ?? undefined;
+			tokens.push(result.data);
+			tokenName = '';
+		}
+	}
+
+	async function revoke(token: Schemas['Token']) {
+		if (!confirm(t('tokens.revoke_confirm', { name: token.name }))) return;
+		const result = await call(api.DELETE('/api/tokens/{id}', { params: { path: { id: token.id } } }));
+		if (result.data) tokens = result.data;
+		tokenError = result.error;
+	}
+
+	async function copy(value: string) {
+		await navigator.clipboard.writeText(value);
+		toast(t('app.copied'));
+	}
 </script>
 
 <div class="page-head">
@@ -112,6 +145,53 @@
 	</section>
 
 	<section class="card stack">
+		<h2>{t('tokens.title')}</h2>
+		<p class="muted">{t('tokens.hint')}</p>
+		{#if tokens.length}
+			<ul class="list">
+				{#each tokens as token (token.id)}
+					<li>
+						<Icon name="key" />
+						<div>
+							<strong>{token.name}</strong>
+							<small class="muted">
+								{token.scopes.join(' · ')} · {t('passkeys.last_used')}
+								{date(token.last_used_at)}
+							</small>
+						</div>
+						<button class="ghost danger" onclick={() => revoke(token)}>{t('tokens.revoke')}</button>
+					</li>
+				{/each}
+			</ul>
+		{/if}
+		{#if secret}
+			<div class="secret">
+				<input readonly value={secret} aria-label={t('tokens.title')} />
+				<button type="button" class="ghost icon" aria-label={t('app.copy')} onclick={() => copy(secret!)}>
+					<Icon name="copy" size={18} />
+				</button>
+			</div>
+			<small class="muted">{t('tokens.once')}</small>
+		{/if}
+		<form class="stack" onsubmit={createToken}>
+			<Field label={t('tokens.name')} error={tokenError?.fields?.name}>
+				<input bind:value={tokenName} placeholder={t('tokens.name_hint')} />
+			</Field>
+			<fieldset class="scopes">
+				<legend>{t('tokens.scopes')}</legend>
+				{#each scopes as scope (scope)}
+					<label>
+						<input type="checkbox" bind:group={chosen} value={scope} />
+						<span><code>{scope}</code> {t(`tokens.scope.${scope}`)}</span>
+					</label>
+				{/each}
+				{#if tokenError?.fields?.scopes}<small class="error">{t('tokens.choose_scope')}</small>{/if}
+			</fieldset>
+			<div><button class="primary">{t('tokens.create')}</button></div>
+		</form>
+	</section>
+
+	<section class="card stack">
 		<h2>{t('appearance.title')}</h2>
 		<Preferences />
 	</section>
@@ -132,5 +212,38 @@
 	li > :global(svg) {
 		flex: none;
 		color: var(--muted);
+	}
+	.secret {
+		display: flex;
+		gap: 0.5rem;
+	}
+	.secret input {
+		flex: 1;
+		min-width: 0;
+		font-family: monospace;
+	}
+	.scopes {
+		display: grid;
+		gap: 0.5rem;
+		margin: 0;
+		padding: 0;
+		border: 0;
+	}
+	.scopes legend {
+		margin-bottom: 0.375rem;
+		font-weight: 500;
+	}
+	.scopes label {
+		display: flex;
+		gap: 0.5rem;
+		align-items: flex-start;
+	}
+	.scopes input {
+		width: auto;
+		margin-top: 0.2rem;
+	}
+	.error {
+		color: var(--danger);
+		font-size: 0.75rem;
 	}
 </style>

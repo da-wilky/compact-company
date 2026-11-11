@@ -2,9 +2,9 @@ use std::{io::Write, path::PathBuf, process::ExitCode, sync::Arc};
 
 use clap::{Parser, Subcommand};
 use compact_company::{
-    App,
+    App, api,
     config::Config,
-    documents, einvoice,
+    deadlines, documents, einvoice,
     render::{self, Layout},
 };
 
@@ -88,6 +88,7 @@ async fn serve(config: Option<PathBuf>) -> Result<(), Box<dyn std::error::Error>
             app.public_url, app.setup_token
         );
     }
+    tokio::spawn(remind(app.clone()));
     let listener = tokio::net::TcpListener::bind(config.listen).await?;
     eprintln!("listening on http://{}", listener.local_addr()?);
     axum::serve(
@@ -96,6 +97,27 @@ async fn serve(config: Option<PathBuf>) -> Result<(), Box<dyn std::error::Error>
     )
     .await?;
     Ok(())
+}
+
+/// Mails deadline reminders, checking every hour.
+async fn remind(app: Arc<App>) {
+    loop {
+        let today = app
+            .settings
+            .business()
+            .await
+            .map_err(|e| e.to_string())
+            .and_then(|b| api::documents::today(&b).map_err(|e| e.message));
+        match today {
+            Ok(today) => {
+                if let Err(e) = deadlines::remind(&app, today).await {
+                    eprintln!("deadline reminders failed: {e}");
+                }
+            }
+            Err(e) => eprintln!("deadline reminders failed: {e}"),
+        }
+        tokio::time::sleep(std::time::Duration::from_secs(3600)).await;
+    }
 }
 
 fn openapi() -> Result<(), Box<dyn std::error::Error>> {

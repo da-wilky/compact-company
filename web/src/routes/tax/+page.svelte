@@ -1,15 +1,22 @@
 <script lang="ts">
+	import { page } from '$app/state';
 	import { api, call, type ApiError, type Schemas } from '#lib/api/index.ts';
 	import Icon from '#lib/components/Icon.svelte';
 	import Segmented from '#lib/components/Segmented.svelte';
-	import { formatDay } from '#lib/dates.ts';
-	import { i18n, t } from '#lib/i18n.svelte.ts';
+	import { formatDay, isoDay } from '#lib/dates.ts';
+	import { daysUntil, deadlineTitle, monthName } from '#lib/deadlines.ts';
+	import { t } from '#lib/i18n.svelte.ts';
 	import { formatMoney } from '#lib/money.ts';
+	import { session } from '#lib/session.svelte.ts';
+	import { toast } from '#lib/toast.svelte.ts';
 
 	const eur = (minor: number) => formatMoney(minor, 'EUR');
 	const day = (iso: string) => formatDay(iso, { day: '2-digit', month: '2-digit', year: 'numeric' });
 
-	let tab = $state<'vat' | 'euer' | 'exports'>('vat');
+	type Tab = 'vat' | 'euer' | 'exports' | 'deadlines';
+	const tabs: Tab[] = ['vat', 'euer', 'exports', 'deadlines'];
+	const asked = page.url.searchParams.get('tab') as Tab;
+	let tab = $state<Tab>(tabs.includes(asked) ? asked : 'vat');
 	let error = $state<ApiError>();
 	let books = $state<Schemas['BooksView']>();
 
@@ -24,7 +31,6 @@
 		return Array.from({ length: Math.max(now.getFullYear() - first + 1, 1) }, (_, i) => now.getFullYear() - i);
 	});
 
-	const monthName = (m: number) => new Date(2000, m - 1, 1).toLocaleDateString(i18n.locale, { month: 'long' });
 	const periods = $derived([
 		...Array.from({ length: 12 }, (_, i) => ({ value: `m${i + 1}`, label: monthName(i + 1) })),
 		...[1, 2, 3, 4].map((q) => ({ value: `q${q}`, label: t('tax.quarter', { quarter: q }) })),
@@ -84,6 +90,49 @@
 			code: f.key.endsWith('_tax') ? '' : `Kz ${f.key}`
 		}))
 	);
+	const owner = $derived(session.view?.user?.role === 'owner');
+	let deadlines = $state<Schemas['Deadline'][]>([]);
+	let feed = $state<Schemas['Feed']>();
+
+	$effect(() => {
+		if (tab !== 'deadlines') return;
+		call(api.GET('/api/deadlines')).then((r) => (deadlines = r.data ?? []));
+		if (owner) call(api.GET('/api/calendar-feed')).then((r) => (feed = r.data));
+	});
+
+	let archives = $state<Schemas['Years']>();
+	$effect(() => {
+		if (tab === 'exports' && books?.books) call(api.GET('/api/years')).then((r) => (archives = r.data));
+	});
+
+	async function closeYear(year: number) {
+		if (!confirm(t('tax.close_confirm', { year }))) return;
+		const result = await call(api.POST('/api/years/{year}/close', { params: { path: { year } } }));
+		error = result.error;
+		if (result.data) {
+			toast(t('tax.year_closed', { year }));
+			archives = (await call(api.GET('/api/years'))).data;
+		}
+	}
+
+	async function renewFeed() {
+		if (feed?.created_at && !confirm(t('tax.calendar_renew_confirm'))) return;
+		const result = await call(api.POST('/api/calendar-feed'));
+		error = result.error;
+		if (result.data) feed = result.data;
+	}
+
+	async function deleteFeed() {
+		const result = await call(api.DELETE('/api/calendar-feed'));
+		error = result.error;
+		if (result.data) feed = result.data;
+	}
+
+	async function copy(link: string) {
+		await navigator.clipboard.writeText(link);
+		toast(t('app.copied'));
+	}
+
 	const income = $derived((euer?.lines ?? []).filter((l) => Number(l.key) <= 18));
 	const expenses = $derived((euer?.lines ?? []).filter((l) => Number(l.key) > 18));
 </script>
@@ -142,9 +191,7 @@
 
 {#if error}<p class="alert" role="alert">{t(error.message)}</p>{/if}
 
-{#if books && !books.books}
-	<p class="card empty">{t('tax.not_started')}</p>
-{:else if books}
+{#if books}
 	<div class="stack">
 		<div class="row">
 			<Segmented
@@ -152,26 +199,71 @@
 				options={[
 					{ value: 'vat', label: t('tax.vat_return') },
 					{ value: 'euer', label: t('tax.euer') },
-					{ value: 'exports', label: t('tax.exports') }
+					{ value: 'exports', label: t('tax.exports') },
+					{ value: 'deadlines', label: t('tax.deadlines') }
 				]}
 				value={tab}
 				onchange={(v) => (tab = v as typeof tab)}
 			/>
-			{#if tab === 'vat' || tab === 'exports'}
+			{#if books.books && (tab === 'vat' || tab === 'exports')}
 				<select class="narrow" aria-label={t('tax.period')} bind:value={period}>
 					{#each periods as p (p.value)}<option value={p.value}>{p.label}</option>{/each}
 				</select>
 				<select class="narrow" aria-label={t('books.year')} bind:value={vatYear}>
 					{#each years as y (y)}<option value={y}>{y}</option>{/each}
 				</select>
-			{:else}
+			{:else if books.books && tab === 'euer'}
 				<select class="narrow" aria-label={t('books.year')} bind:value={euerYear}>
 					{#each years as y (y)}<option value={y}>{y}</option>{/each}
 				</select>
 			{/if}
 		</div>
 
-		{#if tab === 'exports'}
+		{#if tab === 'deadlines'}
+			{#if deadlines.length}
+				<ul class="deadlines">
+					{#each deadlines as deadline (deadline.key)}
+						{@const left = daysUntil(deadline.due)}
+						<li class="card" class:past={left < 0}>
+							<div>
+								<strong>{deadlineTitle(deadline)}</strong>
+								<small class="muted">{day(deadline.from)} – {day(deadline.to)}</small>
+							</div>
+							<div class="due">
+								<strong>{day(deadline.due)}</strong>
+								<small class:soon={left >= 0 && left <= 7}>
+									{left < 0 ? t('tax.due_past') : left === 0 ? t('tax.due_today') : t('tax.due_in', { days: left })}
+								</small>
+							</div>
+						</li>
+					{/each}
+				</ul>
+			{:else}
+				<p class="card empty">{t('tax.no_deadlines')}</p>
+			{/if}
+			<p class="muted small">{t('tax.deadlines_hint')}</p>
+			{#if owner && feed}
+				<section class="card stack">
+					<h2>{t('tax.calendar')}</h2>
+					<p class="muted">{t(feed.created_at ? 'tax.calendar_active' : 'tax.calendar_hint')}</p>
+					{#if feed.link}
+						<div class="link">
+							<input readonly value={feed.link} aria-label={t('tax.calendar')} />
+							<button type="button" class="ghost icon" aria-label={t('app.copy')} onclick={() => copy(feed!.link!)}>
+								<Icon name="copy" size={18} />
+							</button>
+						</div>
+						<small class="muted">{t('tax.calendar_once')}</small>
+					{/if}
+					<div class="row">
+						<button class="primary" onclick={renewFeed}><Icon name="calendar" size={18} />{t(feed.created_at ? 'tax.calendar_renew' : 'tax.calendar_create')}</button>
+						{#if feed.created_at}<button class="ghost" onclick={deleteFeed}>{t('tax.calendar_delete')}</button>{/if}
+					</div>
+				</section>
+			{/if}
+		{:else if !books.books}
+			<p class="card empty">{t('tax.not_started')}</p>
+		{:else if tab === 'exports'}
 			{@const { from, to } = range(vatYear, period)}
 			<section class="card stack export">
 				<h2>{t('tax.datev')}</h2>
@@ -181,6 +273,33 @@
 						<Icon name="pdf" size={18} />{t('tax.download')}
 					</a>
 				</div>
+			</section>
+			<section class="card stack">
+				<h2>{t('tax.archive')}</h2>
+				<p class="muted">{t('tax.archive_hint')}</p>
+				{#if archives?.closed.length}
+					<ul class="archives">
+						{#each archives.closed as closed (closed.year)}
+							<li>
+								<div>
+									<strong>{closed.year}</strong>
+									<small class="muted">{t('tax.closed_by', { name: closed.closed_by, date: day(isoDay(new Date(closed.closed_at * 1000))) })}</small>
+									<code title={t('tax.checksum')}>SHA-256 {closed.archive}</code>
+								</div>
+								<a class="button ghost" href="/api/years/{closed.year}/archive" download>
+									<Icon name="archive" size={18} />{t('tax.download')}
+								</a>
+							</li>
+						{/each}
+					</ul>
+				{/if}
+				{#if owner && archives?.next != null}
+					<div>
+						<button class="primary" onclick={() => closeYear(archives!.next!)}>
+							<Icon name="archive" size={18} />{t('tax.close_year', { year: archives.next })}
+						</button>
+					</div>
+				{/if}
 			</section>
 		{:else if tab === 'vat' && vat}
 			{#if vat.basis}
@@ -277,5 +396,69 @@
 	}
 	.small {
 		font-size: 0.8125rem;
+	}
+	.deadlines {
+		display: grid;
+		gap: 0.5rem;
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+	.deadlines li {
+		display: flex;
+		justify-content: space-between;
+		gap: 1rem;
+		padding: 0.75rem 1rem;
+	}
+	.deadlines li > div {
+		display: flex;
+		flex-direction: column;
+		gap: 0.125rem;
+		min-width: 0;
+	}
+	.deadlines .past {
+		opacity: 0.6;
+	}
+	.due {
+		align-items: flex-end;
+		text-align: right;
+		font-variant-numeric: tabular-nums;
+		white-space: nowrap;
+	}
+	.soon {
+		color: var(--danger);
+		font-weight: 600;
+	}
+	.link {
+		display: flex;
+		gap: 0.5rem;
+	}
+	.archives {
+		display: grid;
+		gap: 0.75rem;
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+	.archives li {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 1rem;
+	}
+	.archives li > div {
+		display: flex;
+		flex-direction: column;
+		gap: 0.125rem;
+		min-width: 0;
+	}
+	.archives code {
+		color: var(--muted);
+		font-size: 0.75rem;
+		overflow-wrap: anywhere;
+	}
+	.link input {
+		min-width: 0;
+		flex: 1;
 	}
 </style>

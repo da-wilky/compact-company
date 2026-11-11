@@ -24,6 +24,8 @@ Time tracking, invoicing and bookkeeping usually live in two or three tools with
 | Settings | Owner edits business data and defaults; config may pin any key | 0017 |
 | Numbers | One range per document type, owner-set format, assigned when issued | 0018 |
 | Layout data | Schema-versioned; layouts declare the version they were written for | 0019 |
+| EÜR | Payments count their share of what they pay; accounts name their EÜR line | 0021 |
+| Closing | A closed year takes no postings; its archive carries checksums | 0022 |
 | Languages | UI and documents in German and English | – |
 | Platforms | x86_64 and arm64; NixOS module and OCI image | – |
 

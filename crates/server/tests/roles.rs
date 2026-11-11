@@ -19,6 +19,7 @@ const PUBLIC: &[(&str, &str)] = &[
     ("POST", "/api/invitation/passkey/finish"),
     ("POST", "/api/oidc/start"),
     ("GET", "/api/oidc/callback"),
+    ("GET", "/api/calendar/{file}"),
 ];
 
 const ANY: &[&str] = &["owner", "staff", "accountant"];
@@ -74,6 +75,16 @@ const SIGNED_IN: &[(&str, &str, &[&str])] = &[
     ("GET", "/api/tax/vat-return", OWNER_ACCOUNTANT),
     ("GET", "/api/tax/euer", OWNER_ACCOUNTANT),
     ("GET", "/api/exports/datev", OWNER_ACCOUNTANT),
+    ("GET", "/api/deadlines", OWNER_ACCOUNTANT),
+    ("GET", "/api/calendar-feed", OWNER),
+    ("POST", "/api/calendar-feed", OWNER),
+    ("DELETE", "/api/calendar-feed", OWNER),
+    ("GET", "/api/years", OWNER_ACCOUNTANT),
+    ("POST", "/api/years/{year}/close", OWNER),
+    ("GET", "/api/years/{year}/archive", OWNER_ACCOUNTANT),
+    ("GET", "/api/tokens", ANY),
+    ("POST", "/api/tokens", ANY),
+    ("DELETE", "/api/tokens/{id}", ANY),
     ("GET", "/api/currencies", ANY),
     ("GET", "/api/customers", ANY),
     ("POST", "/api/customers", OWNER),

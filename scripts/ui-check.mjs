@@ -475,6 +475,14 @@ try {
 		await click('[role=radiogroup] [role=radio]:nth-child(3)');
 		await until('the export', () => evaluate("!!document.querySelector('a[download]')"));
 	});
+	await screen('tax-deadlines', `${origin}/tax`, async () => {
+		await until('the books', () => evaluate("!!document.querySelector('[role=radiogroup]')"));
+		await click('[role=radiogroup] [role=radio]:nth-child(4)');
+		await until('the calendar', () => evaluate("!!document.querySelector('.deadlines') && !!document.querySelector('section .row button')"));
+		await evaluate('window.confirm = () => true');
+		await click('section .row button.primary');
+		await until('the link', () => evaluate("!!document.querySelector('.link input')"));
+	});
 	await screen('todos-board', `${origin}/todos`, () => evaluate("localStorage.setItem('todos.view', 'board')"));
 	await screen('todos-list', `${origin}/todos`, async () => {
 		await click('[role=radiogroup] [role=radio]');
@@ -530,6 +538,7 @@ try {
 	if ((await statusOf(todos[1])) !== 2) failures.push('phone board: holding a card at the right edge did not move it to "In Arbeit"');
 	await screen('business', `${origin}/business`);
 	await screen('audit', `${origin}/audit`);
+	await api('POST', '/api/tokens', { name: 'Zeitimport', scopes: ['work:read', 'work:write'] });
 	await screen('account', `${origin}/account`);
 	await screen('more', `${origin}/`, () => click('.bar button'), ['phone']);
 

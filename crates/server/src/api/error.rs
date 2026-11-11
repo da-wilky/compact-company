@@ -64,6 +64,7 @@ pub enum ErrorCode {
     NoLedgerAccount,
     HasPayments,
     BankMatched,
+    YearClosed,
     MailNotConfigured,
     MailFailed,
     RateLimited,
@@ -120,6 +121,7 @@ impl ErrorCode {
         Self::NoLedgerAccount,
         Self::HasPayments,
         Self::BankMatched,
+        Self::YearClosed,
         Self::MailNotConfigured,
         Self::MailFailed,
         Self::RateLimited,
@@ -163,6 +165,7 @@ impl ErrorCode {
             | Self::NoLedgerAccount
             | Self::HasPayments
             | Self::BankMatched
+            | Self::YearClosed
             | Self::MailNotConfigured => StatusCode::CONFLICT,
             Self::RateLimited => StatusCode::TOO_MANY_REQUESTS,
             Self::Internal => StatusCode::INTERNAL_SERVER_ERROR,
@@ -247,6 +250,13 @@ impl From<JsonRejection> for ApiError {
 
 impl From<sqlx::Error> for ApiError {
     fn from(error: sqlx::Error) -> Self {
+        // raised by the trigger that keeps postings out of closed years
+        if error
+            .as_database_error()
+            .is_some_and(|e| e.message().contains("the year is closed"))
+        {
+            return Self::new(ErrorCode::YearClosed);
+        }
         Self::internal(error)
     }
 }
