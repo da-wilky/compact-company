@@ -242,6 +242,30 @@ _Avoid_: UStVA, tax return
 The yearly profit statement of a business that is not required to keep a balance sheet: income less expenses as paid.
 _Avoid_: Profit and loss, P&L
 
+**EÜR line** (de: EÜR-Zeile):
+The line of the Anlage EÜR a ledger account counts on.
+
+**Deadline** (de: Frist):
+The day a VAT return, an annual VAT return or an EÜR is due at the tax office.
+_Avoid_: Due date (that is an invoice's)
+
+**DATEV export** (de: DATEV-Export):
+The journal of a period as a DATEV-Format Buchungsstapel, for a tax advisor or any tool that reads it.
+
+**Closed year** (de: abgeschlossenes Jahr):
+A finished year that takes no more postings, kept with its archive.
+_Avoid_: Locked year, Festschreibung
+
+**Year-end archive** (de: Jahresarchiv):
+Everything a closed year's books rest on, in one file with a checksum of each part.
+
+**API token** (de: API-Token):
+A secret that lets a script use the API as one user, within its scopes; it never issues, sends or books.
+_Avoid_: Key, password
+
+**Scope** (de: Bereich):
+What an API token may do, such as reading the books or changing time entries.
+
 **Fixed asset** (de: Anlagegut):
 Something the business bought to use for longer than a year, such as a laptop, written off over its useful life.
 _Avoid_: Asset (alone), equipment

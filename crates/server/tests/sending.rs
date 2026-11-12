@@ -1,68 +1,9 @@
 mod common;
 
-use std::sync::{Arc, Mutex};
-
 use axum::http::StatusCode;
-use common::{json, start};
+use common::{json, smtp, smtp_config as config, start};
 use compact_company::config::Config;
 use serde_json::json;
-use tokio::{
-    io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
-    net::TcpListener,
-};
-
-/// A mail server that accepts every message, or refuses every recipient.
-async fn smtp(refuse: bool) -> (u16, Arc<Mutex<Vec<String>>>) {
-    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
-    let port = listener.local_addr().unwrap().port();
-    let received = Arc::new(Mutex::new(Vec::new()));
-    let store = received.clone();
-    tokio::spawn(async move {
-        loop {
-            let (socket, _) = listener.accept().await.unwrap();
-            let store = store.clone();
-            tokio::spawn(async move {
-                let (read, mut write) = socket.into_split();
-                let mut lines = BufReader::new(read).lines();
-                write.write_all(b"220 test ESMTP\r\n").await.unwrap();
-                let mut message = String::new();
-                let mut in_data = false;
-                while let Ok(Some(line)) = lines.next_line().await {
-                    if in_data {
-                        if line == "." {
-                            in_data = false;
-                            store.lock().unwrap().push(std::mem::take(&mut message));
-                            write.write_all(b"250 queued\r\n").await.unwrap();
-                        } else {
-                            message.push_str(&line);
-                            message.push('\n');
-                        }
-                        continue;
-                    }
-                    let reply: &[u8] = match line.get(..4).unwrap_or_default() {
-                        "EHLO" => b"250-test\r\n250 8BITMIME\r\n",
-                        "RCPT" if refuse => b"550 no such mailbox\r\n",
-                        "DATA" => {
-                            in_data = true;
-                            b"354 go ahead\r\n"
-                        }
-                        "QUIT" => b"221 bye\r\n",
-                        _ => b"250 ok\r\n",
-                    };
-                    write.write_all(reply).await.unwrap();
-                }
-            });
-        }
-    });
-    (port, received)
-}
-
-fn config(port: u16) -> Config {
-    toml::from_str(&format!(
-        "[smtp]\nhost = \"127.0.0.1\"\nport = {port}\nsecurity = \"none\"\nfrom = \"swilk <rechnung@swilk.example>\""
-    ))
-    .unwrap()
-}
 
 #[tokio::test]
 async fn an_issued_invoice_is_sent_to_the_customer_and_logged() {

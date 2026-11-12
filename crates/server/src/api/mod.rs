@@ -14,8 +14,10 @@ pub mod billing;
 pub mod books;
 pub mod business;
 pub mod customers;
+pub mod deadlines;
 pub mod documents;
 pub mod error;
+pub mod exports;
 pub mod input;
 pub mod invitations;
 pub mod layouts;
@@ -30,15 +32,41 @@ pub mod session;
 pub mod snippets;
 pub mod statuses;
 pub mod suppliers;
+pub mod tax;
 pub mod time;
 pub mod todos;
+pub mod tokens;
 pub mod users;
+pub mod years;
 
 use error::{ApiError, ErrorCode, Json};
 
 #[derive(OpenApi)]
-#[openapi(info(title = "compact-company"))]
+#[openapi(
+    info(
+        title = "compact-company",
+        description = "Signed in by session cookie, or by an API token sent as `Authorization: \
+            Bearer`. A token acts as its user within its scopes: `work:read`, `work:write`, \
+            `documents:read`, `documents:write`, `books:read`; it never issues, sends or books."
+    ),
+    modifiers(&Tokens)
+)]
 struct Doc;
+
+struct Tokens;
+
+impl utoipa::Modify for Tokens {
+    fn modify(&self, openapi: &mut utoipa::openapi::OpenApi) {
+        use utoipa::openapi::security::{Http, HttpAuthScheme, SecurityScheme};
+        openapi
+            .components
+            .get_or_insert_with(Default::default)
+            .add_security_scheme(
+                "token",
+                SecurityScheme::Http(Http::new(HttpAuthScheme::Bearer)),
+            );
+    }
+}
 
 pub fn routes() -> OpenApiRouter<Arc<App>> {
     let api = OpenApiRouter::new()
@@ -145,6 +173,21 @@ pub fn routes() -> OpenApiRouter<Arc<App>> {
         .routes(routes!(bank::match_transaction))
         .routes(routes!(bank::unmatch_transaction))
         .routes(routes!(open_items::get_open_items))
+        .routes(routes!(tax::get_vat_return))
+        .routes(routes!(tax::get_euer))
+        .routes(routes!(exports::datev_export))
+        .routes(routes!(deadlines::list_deadlines))
+        .routes(routes!(
+            deadlines::get_feed,
+            deadlines::renew_feed,
+            deadlines::delete_feed
+        ))
+        .routes(routes!(deadlines::calendar))
+        .routes(routes!(years::list_years))
+        .routes(routes!(years::close_year))
+        .routes(routes!(years::year_archive))
+        .routes(routes!(tokens::list_tokens, tokens::create_token))
+        .routes(routes!(tokens::revoke_token))
         .routes(routes!(snippets::list_snippets, snippets::create_snippet))
         .routes(routes!(snippets::put_snippet, snippets::delete_snippet))
         .merge(

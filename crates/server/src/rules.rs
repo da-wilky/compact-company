@@ -15,13 +15,13 @@ pub enum Error {
     Db(#[from] sqlx::Error),
 }
 
-async fn role(db: &mut SqliteConnection, role: &str) -> Result<i64, Error> {
+pub(crate) async fn role(db: &mut SqliteConnection, role: &str) -> Result<i64, Error> {
     books::account(db, role)
         .await?
         .ok_or_else(|| Error::NoAccount(role.to_owned()))
 }
 
-fn round(value: Decimal) -> i64 {
+pub(crate) fn round(value: Decimal) -> i64 {
     value
         .round_dp_with_strategy(0, RoundingStrategy::MidpointAwayFromZero)
         .try_into()
@@ -29,7 +29,7 @@ fn round(value: Decimal) -> i64 {
 }
 
 /// Major units to cents; every supported currency has two decimals.
-fn minor(major: Decimal) -> i64 {
+pub(crate) fn minor(major: Decimal) -> i64 {
     round(major * Decimal::ONE_HUNDRED)
 }
 
@@ -42,7 +42,7 @@ fn share(amount: i64, part: i64, whole: i64) -> i64 {
     }
 }
 
-fn rate_key(rate: Decimal) -> String {
+pub(crate) fn rate_key(rate: Decimal) -> String {
     rate.normalize().to_string()
 }
 
@@ -138,7 +138,10 @@ pub async fn booked_rate(
 }
 
 /// The invoice and its issued cancellation invoices.
-async fn family(db: &mut SqliteConnection, invoice_id: i64) -> Result<Vec<i64>, sqlx::Error> {
+pub(crate) async fn family(
+    db: &mut SqliteConnection,
+    invoice_id: i64,
+) -> Result<Vec<i64>, sqlx::Error> {
     let mut ids = vec![invoice_id];
     ids.extend(
         sqlx::query_scalar::<_, i64>(
@@ -152,7 +155,7 @@ async fn family(db: &mut SqliteConnection, invoice_id: i64) -> Result<Vec<i64>, 
     Ok(ids)
 }
 
-fn ids_sql(ids: &[i64]) -> String {
+pub(crate) fn ids_sql(ids: &[i64]) -> String {
     ids.iter().map(i64::to_string).collect::<Vec<_>>().join(",")
 }
 

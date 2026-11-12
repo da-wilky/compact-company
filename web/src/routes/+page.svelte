@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { api, call, type Schemas } from '#lib/api/index.ts';
 	import { dueLabel, formatDay } from '#lib/dates.ts';
+	import { daysUntil, deadlineTitle } from '#lib/deadlines.ts';
 	import { formatMoney } from '#lib/money.ts';
 	import { t } from '#lib/i18n.svelte.ts';
 	import { session } from '#lib/session.svelte.ts';
@@ -33,6 +34,14 @@
 		if (!user) return;
 		timers.list.length;
 		call(api.GET('/api/overview')).then(({ data }) => (overview = data));
+	});
+
+	let deadlines = $state<Schemas['Deadline'][]>([]);
+	$effect(() => {
+		if (!money) return;
+		call(api.GET('/api/deadlines')).then(
+			({ data }) => (deadlines = (data ?? []).filter((d) => daysUntil(d.due) >= 0).slice(0, 3))
+		);
 	});
 
 	const hours = $derived(week.reduce((sum, e) => sum + (e.ended_at ?? timers.now) - e.started_at, 0));
@@ -79,6 +88,36 @@
 
 {#if overview && (money || overview.running.length)}
 	<div class="cards">
+		{#if money}
+			<section class="card stack">
+				<h2>{t('home.deadlines')}</h2>
+				{#if deadlines.length}
+					<ul class="list">
+						{#each deadlines as deadline (deadline.key)}
+							{@const left = daysUntil(deadline.due)}
+							<li>
+								<strong>{deadlineTitle(deadline)}</strong>
+								<small class:overdue={left <= 7}>{formatDay(deadline.due, { dateStyle: 'medium' })}</small>
+							</li>
+						{/each}
+					</ul>
+				{:else}
+					<p class="muted">{t('tax.no_deadlines')}</p>
+				{/if}
+				<a href="/tax?tab=deadlines">{t('tax.deadlines')}</a>
+			</section>
+		{/if}
+		{#if user?.role === 'accountant'}
+			<section class="card stack">
+				<h2>{t('home.books')}</h2>
+				<ul class="list links">
+					<li><a href="/books">{t('term.journal')}</a></li>
+					<li><a href="/tax">{t('home.tax_figures')}</a></li>
+					<li><a href="/tax?tab=exports">{t('home.exports')}</a></li>
+					<li><a href="/open-items">{t('open_items.title')}</a></li>
+				</ul>
+			</section>
+		{/if}
 		{#if overview.running.length && user?.role === 'owner'}
 			<section class="card stack">
 				<h2>{t('home.running')}</h2>

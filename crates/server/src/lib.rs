@@ -23,6 +23,8 @@ pub mod audit;
 pub mod auth;
 pub mod books;
 pub mod config;
+pub mod datev;
+pub mod deadlines;
 pub mod documents;
 pub mod einvoice;
 pub mod files;
@@ -37,6 +39,8 @@ pub mod render;
 pub mod rules;
 pub mod settings;
 pub mod statements;
+pub mod tax;
+pub mod tokens;
 pub mod xml;
 
 pub struct App {

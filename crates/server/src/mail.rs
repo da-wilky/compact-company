@@ -62,13 +62,30 @@ impl Mailer {
         })
     }
 
-    /// Sends a plain-text mail with files; the error is what the server answered.
+    /// Sends a plain-text mail with files, and a copy to the configured BCC; the error is what
+    /// the server answered.
     pub async fn send(
         &self,
         to: &str,
         subject: &str,
         body: &str,
         files: Vec<File>,
+    ) -> Result<(), String> {
+        self.deliver(to, subject, body, files, true).await
+    }
+
+    /// Sends a plain-text note to the business itself, without the BCC copy.
+    pub async fn notify(&self, to: &str, subject: &str, body: &str) -> Result<(), String> {
+        self.deliver(to, subject, body, Vec::new(), false).await
+    }
+
+    async fn deliver(
+        &self,
+        to: &str,
+        subject: &str,
+        body: &str,
+        files: Vec<File>,
+        copy: bool,
     ) -> Result<(), String> {
         let to: Mailbox = to
             .parse()
@@ -77,7 +94,7 @@ impl Mailer {
             .from(self.from.clone())
             .to(to)
             .subject(subject);
-        if let Some(bcc) = &self.bcc {
+        if let Some(bcc) = self.bcc.as_ref().filter(|_| copy) {
             builder = builder.bcc(bcc.clone());
         }
         let mut parts = MultiPart::mixed().singlepart(SinglePart::plain(body.to_owned()));

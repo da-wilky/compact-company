@@ -26,7 +26,7 @@ sha2 = "0.11"
 sqlx = { version = "0.9", default-features = false, features = ["runtime-tokio", "sqlite", "migrate", "macros", "derive"] }
 tar = "0.4"
 thiserror = "2.0.21"
-tokio = { version = "1.54.1", features = ["rt-multi-thread", "macros", "net"] }
+tokio = { version = "1.54.1", features = ["rt-multi-thread", "macros", "net", "time"] }
 toml = "1.2"
 typst = "0.15.1"
 typst-assets = { version = "0.15.1", features = ["fonts"] }

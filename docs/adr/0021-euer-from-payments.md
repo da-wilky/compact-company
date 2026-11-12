@@ -1,0 +1,3 @@
+# The EÜR counts payments' shares of what they pay
+
+The journal books invoices and receipts when issued or received, but the EÜR counts income and expenses when money moves (§ 11 EStG). Instead of a second, cash-only journal, each payment counts the share it pays of its invoice's or receipt's posting lines: half an invoice paid in March puts half its revenue and half its VAT into March. An invoice issued before the books started is split by its issued data the same way. Each ledger account names the Anlage EÜR line it counts on; the owner re-maps any. The VAT return reads the same journal: as booked under the accrual basis, as paid under the cash basis.

@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "compact-company",
-    "description": "",
+    "description": "Signed in by session cookie, or by an API token sent as `Authorization: Bearer`. A token acts as its user within its scopes: `work:read`, `work:write`, `documents:read`, `documents:write`, `books:read`; it never issues, sends or books.",
     "license": {
       "name": "AGPL-3.0-or-later",
       "identifier": "AGPL-3.0-or-later"
@@ -891,6 +891,126 @@
         }
       }
     },
+    "/api/calendar-feed": {
+      "get": {
+        "tags": [
+          "tax"
+        ],
+        "operationId": "get_feed",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Feed"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "tax"
+        ],
+        "summary": "Makes a new secret link for calendar apps; the old one stops working.",
+        "operationId": "renew_feed",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Feed"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "tax"
+        ],
+        "operationId": "delete_feed",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Feed"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/calendar/{file}": {
+      "get": {
+        "tags": [
+          "tax"
+        ],
+        "summary": "The deadlines as an iCalendar feed, for the secret link only.",
+        "operationId": "calendar",
+        "parameters": [
+          {
+            "name": "file",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "text/calendar": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/currencies": {
       "get": {
         "tags": [
@@ -1071,6 +1191,38 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Customer"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/deadlines": {
+      "get": {
+        "tags": [
+          "tax"
+        ],
+        "summary": "The deadlines due from a month ago to a year ahead.",
+        "operationId": "list_deadlines",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Deadline"
+                  }
                 }
               }
             }
@@ -1703,6 +1855,55 @@
           "200": {
             "content": {
               "application/xml": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/exports/datev": {
+      "get": {
+        "tags": [
+          "exports"
+        ],
+        "summary": "The journal of a range as a DATEV-Format Buchungsstapel.",
+        "operationId": "datev_export",
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "description": "ISO date, inclusive.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "description": "ISO date, inclusive, in the same year as `from`.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "text/csv": {
                 "schema": {
                   "type": "string"
                 }
@@ -3877,6 +4078,95 @@
         }
       }
     },
+    "/api/tax/euer": {
+      "get": {
+        "tags": [
+          "tax"
+        ],
+        "summary": "The Anlage EÜR of a year, each line with the postings behind it.",
+        "operationId": "get_euer",
+        "parameters": [
+          {
+            "name": "year",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EuerView"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tax/vat-return": {
+      "get": {
+        "tags": [
+          "tax"
+        ],
+        "summary": "The figures of a VAT advance return for a period, each with the postings behind it.",
+        "operationId": "get_vat_return",
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "description": "ISO date, inclusive.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "description": "ISO date, inclusive.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VatReturn"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/time": {
       "get": {
         "tags": [
@@ -4499,6 +4789,118 @@
         }
       }
     },
+    "/api/tokens": {
+      "get": {
+        "tags": [
+          "tokens"
+        ],
+        "summary": "Your API tokens that are not revoked.",
+        "operationId": "list_tokens",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Token"
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "tokens"
+        ],
+        "summary": "Creates an API token that acts as you within its scopes; send it as `Authorization: Bearer`.",
+        "operationId": "create_token",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TokenInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Token"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tokens/{id}": {
+      "delete": {
+        "tags": [
+          "tokens"
+        ],
+        "summary": "Revokes one of your API tokens for good.",
+        "operationId": "revoke_token",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Token"
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/unbilled": {
       "get": {
         "tags": [
@@ -4621,6 +5023,118 @@
           }
         }
       }
+    },
+    "/api/years": {
+      "get": {
+        "tags": [
+          "books"
+        ],
+        "operationId": "list_years",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Years"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/years/{year}/archive": {
+      "get": {
+        "tags": [
+          "books"
+        ],
+        "operationId": "year_archive",
+        "parameters": [
+          {
+            "name": "year",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/gzip": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "integer",
+                    "format": "int32",
+                    "minimum": 0
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/years/{year}/close": {
+      "post": {
+        "tags": [
+          "books"
+        ],
+        "summary": "Closes a finished year for good: no posting may be dated in it afterwards, and its archive is\nkept with a checksum of every file.",
+        "operationId": "close_year",
+        "parameters": [
+          {
+            "name": "year",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClosedYear"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -4643,6 +5157,17 @@
             "type": "integer",
             "format": "int64",
             "description": "EUR cents, debit positive."
+          },
+          "euer_line": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/EuerLine",
+                "description": "The Zeile of the Anlage EÜR it counts on."
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "id": {
             "type": "integer",
@@ -4672,6 +5197,16 @@
           "archived": {
             "type": "boolean"
           },
+          "euer_line": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/EuerLine"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "name": {
             "type": [
               "string",
@@ -4687,6 +5222,17 @@
           "type"
         ],
         "properties": {
+          "euer_line": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/EuerLine",
+                "description": "Income on Zeile 15 and expenses on Zeile 60 when unset."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "name": {
             "type": [
               "string",
@@ -5050,6 +5596,13 @@
           }
         ]
       },
+      "Basis": {
+        "type": "string",
+        "enum": [
+          "accrual",
+          "cash"
+        ]
+      },
       "BookInput": {
         "type": "object",
         "properties": {
@@ -5147,6 +5700,24 @@
               "null"
             ],
             "description": "ISO 4217 code new customers are billed in; EUR when unset."
+          },
+          "datev_client_number": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Mandantennummer in the DATEV export, 1 to 99999; 1 when unset.",
+            "minimum": 0
+          },
+          "datev_consultant_number": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Beraternummer in the DATEV export, 1001 to 9999999; 1001 when unset.",
+            "minimum": 0
           },
           "delivery_note_number_format": {
             "type": [
@@ -5282,10 +5853,28 @@
             ],
             "description": "IANA name such as `Europe/Berlin`, which is the default; dates on documents are in it."
           },
+          "vat_extension": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "Permanent extension (Dauerfristverlängerung): advance returns are due a month later."
+          },
           "vat_id": {
             "type": [
               "string",
               "null"
+            ]
+          },
+          "vat_period": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/VatPeriod",
+                "description": "How often VAT advance returns are due; quarterly when unset."
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "vat_rate": {
@@ -5509,6 +6098,38 @@
           "skr03",
           "skr04"
         ]
+      },
+      "ClosedYear": {
+        "type": "object",
+        "required": [
+          "year",
+          "archive",
+          "size",
+          "closed_at",
+          "closed_by"
+        ],
+        "properties": {
+          "archive": {
+            "type": "string",
+            "description": "SHA-256 of the archive."
+          },
+          "closed_at": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "closed_by": {
+            "type": "string"
+          },
+          "size": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Bytes."
+          },
+          "year": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
       },
       "Comment": {
         "type": "object",
@@ -5813,6 +6434,41 @@
           }
         },
         "additionalProperties": false
+      },
+      "Deadline": {
+        "type": "object",
+        "required": [
+          "key",
+          "kind",
+          "from",
+          "to",
+          "due",
+          "title"
+        ],
+        "properties": {
+          "due": {
+            "type": "string",
+            "description": "ISO date, moved past weekends and nationwide holidays (§ 108 Abs. 3 AO)."
+          },
+          "from": {
+            "type": "string",
+            "description": "ISO dates of the period it is for."
+          },
+          "key": {
+            "type": "string",
+            "description": "Stable across recomputation, such as `vat_advance:2026-10`."
+          },
+          "kind": {
+            "$ref": "#/components/schemas/Kind"
+          },
+          "title": {
+            "type": "string",
+            "description": "German, as the tax office names it."
+          },
+          "to": {
+            "type": "string"
+          }
+        }
       },
       "Document": {
         "type": "object",
@@ -6719,11 +7375,110 @@
           "no_ledger_account",
           "has_payments",
           "bank_matched",
+          "year_closed",
           "mail_not_configured",
           "mail_failed",
           "rate_limited",
           "internal"
         ]
+      },
+      "Euer": {
+        "type": "object",
+        "required": [
+          "lines",
+          "income",
+          "expenses",
+          "profit"
+        ],
+        "properties": {
+          "expenses": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "income": {
+            "type": "integer",
+            "format": "int64",
+            "description": "EUR cents."
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Figure"
+            },
+            "description": "One entry per Zeile with an amount, in the order of the form."
+          },
+          "profit": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "EuerLine": {
+        "type": "string",
+        "description": "A line of the Anlage EÜR (form 2025), by its Zeile.",
+        "enum": [
+          "12",
+          "15",
+          "16",
+          "17",
+          "18",
+          "27",
+          "29",
+          "30",
+          "33",
+          "36",
+          "39",
+          "44",
+          "55",
+          "56",
+          "57",
+          "58",
+          "60",
+          "63"
+        ]
+      },
+      "EuerView": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Euer"
+          },
+          {
+            "type": "object",
+            "required": [
+              "year",
+              "small_business"
+            ],
+            "properties": {
+              "small_business": {
+                "type": "boolean"
+              },
+              "year": {
+                "type": "integer",
+                "format": "int32"
+              }
+            }
+          }
+        ]
+      },
+      "Feed": {
+        "type": "object",
+        "properties": {
+          "created_at": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "When the current link was made; none while there is no link."
+          },
+          "link": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Only right after renewing: the secret link, shown once."
+          }
+        }
       },
       "FieldError": {
         "type": "string",
@@ -6736,6 +7491,36 @@
           "not_shown",
           "taken"
         ]
+      },
+      "Figure": {
+        "type": "object",
+        "required": [
+          "key",
+          "amount",
+          "entered",
+          "sources"
+        ],
+        "properties": {
+          "amount": {
+            "type": "integer",
+            "format": "int64",
+            "description": "EUR cents."
+          },
+          "entered": {
+            "type": "string",
+            "description": "What is entered in ELSTER: whole euros, cents dropped, for a VAT base; the amount\notherwise."
+          },
+          "key": {
+            "type": "string",
+            "description": "The Kennzahl of the VAT return, or the Zeile of the Anlage EÜR."
+          },
+          "sources": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Source"
+            }
+          }
+        }
       },
       "FollowUp": {
         "type": "object",
@@ -6897,6 +7682,15 @@
             "$ref": "#/components/schemas/Role"
           }
         }
+      },
+      "Kind": {
+        "type": "string",
+        "enum": [
+          "vat_advance",
+          "extension_payment",
+          "vat_annual",
+          "euer"
+        ]
       },
       "Language": {
         "type": "string",
@@ -8525,6 +9319,17 @@
           }
         }
       },
+      "Scope": {
+        "type": "string",
+        "description": "What an API token may do; tokens never issue, send or book.",
+        "enum": [
+          "work:read",
+          "work:write",
+          "documents:read",
+          "documents:write",
+          "books:read"
+        ]
+      },
       "SendInput": {
         "type": "object",
         "properties": {
@@ -8720,6 +9525,34 @@
           }
         },
         "additionalProperties": false
+      },
+      "Source": {
+        "type": "object",
+        "description": "A posting behind a figure and what it adds to it.",
+        "required": [
+          "posting_id",
+          "date",
+          "description",
+          "amount"
+        ],
+        "properties": {
+          "amount": {
+            "type": "integer",
+            "format": "int64",
+            "description": "EUR cents."
+          },
+          "date": {
+            "type": "string",
+            "description": "ISO date."
+          },
+          "description": {
+            "type": "string"
+          },
+          "posting_id": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
       },
       "StartInput": {
         "type": "object",
@@ -9339,6 +10172,69 @@
         },
         "additionalProperties": false
       },
+      "Token": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "scopes",
+          "created_at"
+        ],
+        "properties": {
+          "created_at": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "last_used_at": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "name": {
+            "type": "string"
+          },
+          "scopes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Scope"
+            }
+          },
+          "secret": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Only when just created: the token itself, shown once."
+          }
+        }
+      },
+      "TokenInput": {
+        "type": "object",
+        "required": [
+          "scopes"
+        ],
+        "properties": {
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "scopes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Scope"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
       "Totals": {
         "type": "object",
         "required": [
@@ -9513,6 +10409,77 @@
             "type": "string"
           }
         }
+      },
+      "VatPeriod": {
+        "type": "string",
+        "enum": [
+          "monthly",
+          "quarterly",
+          "annual"
+        ]
+      },
+      "VatReturn": {
+        "type": "object",
+        "required": [
+          "from",
+          "to",
+          "figures"
+        ],
+        "properties": {
+          "basis": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Basis",
+                "description": "None for a small business, which files no VAT return."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "figures": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Figure"
+            },
+            "description": "Kz 81 and 86 with their tax as `81_tax` and `86_tax`, Kz 66 and Kz 83."
+          },
+          "from": {
+            "type": "string"
+          },
+          "to": {
+            "type": "string"
+          }
+        }
+      },
+      "Years": {
+        "type": "object",
+        "required": [
+          "closed"
+        ],
+        "properties": {
+          "closed": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ClosedYear"
+            },
+            "description": "Newest first."
+          },
+          "next": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "The year that may be closed next: finished, booked, and every year before it closed."
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "token": {
+        "type": "http",
+        "scheme": "bearer"
       }
     }
   }

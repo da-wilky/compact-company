@@ -16,6 +16,7 @@ use utoipa::ToSchema;
 use crate::{
     App,
     api::error::{ApiError, ErrorCode},
+    tokens,
 };
 
 const SESSION_COOKIE: &str = "session";
@@ -83,6 +84,29 @@ impl<R: Allowed> FromRequestParts<Arc<App>> for Auth<R> {
     type Rejection = ApiError;
 
     async fn from_request_parts(parts: &mut Parts, app: &Arc<App>) -> Result<Self, ApiError> {
+        if let Some(token) = bearer(&parts.headers) {
+            let path = parts
+                .extensions
+                .get::<axum::extract::OriginalUri>()
+                .map_or(parts.uri.path(), |uri| uri.path());
+            let (user, scopes) = token_user(app, token)
+                .await?
+                .ok_or(ApiError::new(ErrorCode::Unauthenticated))?;
+            let allowed = tokens::required(&parts.method, path).is_some_and(|needed| {
+                scopes
+                    .split(' ')
+                    .filter_map(tokens::Scope::parse)
+                    .any(|s| s == needed)
+            });
+            if !allowed || !R::ROLES.contains(&user.role) {
+                return Err(ApiError::new(ErrorCode::Forbidden));
+            }
+            return Ok(Self {
+                user,
+                token_hash: digest(token.as_bytes()),
+                roles: PhantomData,
+            });
+        }
         let current = current(app, &parts.headers)
             .await?
             .ok_or(ApiError::new(ErrorCode::Unauthenticated))?;
@@ -101,6 +125,39 @@ impl<R: Allowed> FromRequestParts<Arc<App>> for Auth<R> {
             roles: PhantomData,
         })
     }
+}
+
+fn bearer(headers: &HeaderMap) -> Option<&str> {
+    headers
+        .get(header::AUTHORIZATION)?
+        .to_str()
+        .ok()?
+        .strip_prefix("Bearer ")
+}
+
+/// The user an API token acts as, with its scopes, unless it is revoked.
+async fn token_user(app: &App, token: &str) -> Result<Option<(User, String)>, ApiError> {
+    let hash = digest(token.as_bytes());
+    let row: Option<(i64, String, Role, String, Option<i64>)> = sqlx::query_as(
+        "SELECT user.id, user.name, user.role, t.scopes, t.last_used_at
+         FROM api_token t JOIN user ON user.id = t.user_id
+         WHERE t.token_hash = ? AND t.revoked_at IS NULL AND user.active = 1",
+    )
+    .bind(&hash)
+    .fetch_optional(&app.db)
+    .await?;
+    let Some((id, name, role, scopes, last_used_at)) = row else {
+        return Ok(None);
+    };
+    let now = now();
+    if last_used_at.is_none_or(|at| now - at > 60) {
+        sqlx::query("UPDATE api_token SET last_used_at = ? WHERE token_hash = ?")
+            .bind(now)
+            .bind(&hash)
+            .execute(&app.db)
+            .await?;
+    }
+    Ok(Some((User { id, name, role }, scopes)))
 }
 
 /// The session the request's cookie belongs to, if it is still valid.

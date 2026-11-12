@@ -878,7 +878,7 @@ pub fn rule_error(error: rules::Error) -> ApiError {
         rules::Error::NoAccount(role) => {
             ApiError::new(ErrorCode::NoLedgerAccount).with_detail(role)
         }
-        rules::Error::Db(error) => ApiError::internal(error),
+        rules::Error::Db(error) => error.into(),
     }
 }
 

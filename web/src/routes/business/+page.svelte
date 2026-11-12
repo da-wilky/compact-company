@@ -163,6 +163,31 @@
 				/>
 			</Field>
 		</section>
+		<section class="card">
+			<h2>{t('business.section_tax')}</h2>
+			<Field label={t('business.vat_period')} note={note('vat_period')}>
+				<select bind:value={values.vat_period} disabled={pinned.includes('vat_period')}>
+					<option value={null}>{t('business.vat_period.quarterly')}</option>
+					{#each ['monthly', 'annual'] as const as period (period)}
+						<option value={period}>{t(`business.vat_period.${period}`)}</option>
+					{/each}
+				</select>
+			</Field>
+			<label class="check">
+				<input type="checkbox" bind:checked={values.vat_extension} disabled={pinned.includes('vat_extension')} />
+				{t('business.vat_extension')}
+			</label>
+			{#each ['datev_consultant_number', 'datev_client_number'] as const as key (key)}
+				<Field label={t(`business.${key}`)} error={error?.fields?.[key]} note={note(key)}>
+					<input
+						type="number"
+						bind:value={values[key]}
+						readonly={pinned.includes(key)}
+						placeholder={key === 'datev_consultant_number' ? '1001' : '1'}
+					/>
+				</Field>
+			{/each}
+		</section>
 
 		{#if error}<p class="alert" role="alert">{t(error.message)}</p>{/if}
 		{#if owner}<div><button class="primary">{t('app.save')}</button></div>{/if}
@@ -189,5 +214,15 @@
 	.wide {
 		grid-column: 1 / -1;
 		margin: 0;
+	}
+	.check {
+		display: flex;
+		gap: 0.5rem;
+		align-items: center;
+		align-self: end;
+		min-height: var(--control);
+	}
+	.check input {
+		width: auto;
 	}
 </style>
