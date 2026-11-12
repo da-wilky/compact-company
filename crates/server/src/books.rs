@@ -217,18 +217,32 @@ const SEED: &[Seed] = &[
         "Reisekosten Unternehmer Fahrtkosten",
     ),
     seed(
-        None,
+        Some("depreciation_intangible"),
+        Expense,
+        "4822",
+        "6200",
+        "Abschreibungen auf immaterielle Vermögensgegenstände",
+    ),
+    seed(
+        Some("depreciation"),
         Expense,
         "4830",
         "6220",
         "Abschreibungen auf Sachanlagen",
     ),
     seed(
-        None,
+        Some("low_value_write_off"),
         Expense,
         "4855",
         "6260",
         "Sofortabschreibung geringwertiger Wirtschaftsgüter",
+    ),
+    seed(
+        Some("asset_disposal"),
+        Expense,
+        "2310",
+        "6895",
+        "Anlagenabgänge Sachanlagen (Restbuchwert bei Buchverlust)",
     ),
     seed(
         Some("expenses"),
@@ -319,6 +333,7 @@ pub struct Source {
     pub receipt_id: Option<i64>,
     pub receipt_payment_id: Option<i64>,
     pub bank_match_id: Option<i64>,
+    pub asset_id: Option<i64>,
 }
 
 #[derive(Debug, Serialize)]
@@ -354,8 +369,8 @@ pub async fn book(
     posting.lines = merged;
     let id: i64 = sqlx::query_scalar(
         "INSERT INTO posting (date, description, reverses_id, document_id, payment_id, receipt_id,
-         receipt_payment_id, bank_match_id, user_id,
-         created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id",
+         receipt_payment_id, bank_match_id, asset_id, user_id,
+         created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id",
     )
     .bind(&posting.date)
     .bind(&posting.description)
@@ -365,6 +380,7 @@ pub async fn book(
     .bind(posting.source.receipt_id)
     .bind(posting.source.receipt_payment_id)
     .bind(posting.source.bank_match_id)
+    .bind(posting.source.asset_id)
     .bind(user_id)
     .bind(now())
     .fetch_one(&mut *tx)
@@ -405,8 +421,8 @@ pub async fn reverse(
         .fetch_one(&mut *tx)
         .await?;
     let source: Source = sqlx::query_as(
-        "SELECT document_id, payment_id, receipt_id, receipt_payment_id, bank_match_id FROM posting
-         WHERE id = ?",
+        "SELECT document_id, payment_id, receipt_id, receipt_payment_id, bank_match_id, asset_id
+         FROM posting WHERE id = ?",
     )
     .bind(id)
     .fetch_one(&mut *tx)

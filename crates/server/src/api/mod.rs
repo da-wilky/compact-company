@@ -8,6 +8,7 @@ use utoipa_axum::{router::OpenApiRouter, routes};
 use crate::App;
 
 pub mod activities;
+pub mod assets;
 pub mod audit;
 pub mod bank;
 pub mod billing;
@@ -141,6 +142,11 @@ pub fn routes() -> OpenApiRouter<Arc<App>> {
         .routes(routes!(books::put_account))
         .routes(routes!(books::list_postings, books::create_posting))
         .routes(routes!(books::reverse_posting))
+        .routes(routes!(assets::list_assets, assets::create_asset))
+        .routes(routes!(assets::put_asset, assets::delete_asset))
+        .routes(routes!(assets::book_depreciation))
+        .routes(routes!(assets::dispose_asset))
+        .routes(routes!(assets::get_register))
         .routes(routes!(
             suppliers::list_suppliers,
             suppliers::create_supplier

@@ -277,3 +277,18 @@ _Avoid_: AfA, write-off
 **Low-value asset** (de: geringwertiges Wirtschaftsgut):
 A fixed asset cheap enough to be written off in full in the year it is bought.
 _Avoid_: GWG
+
+**Useful life** (de: Nutzungsdauer):
+The whole years over which a fixed asset's cost is depreciated in equal parts.
+
+**Book value** (de: Buchwert):
+What remains of a fixed asset's cost after the depreciation booked so far.
+_Avoid_: Residual value
+
+**Disposal** (de: Abgang):
+A fixed asset leaving the business, by sale or scrapping; its remaining book value is written off on that day.
+_Avoid_: Retirement, removal
+
+**Asset register** (de: Anlagenverzeichnis):
+The list of fixed assets with their cost, depreciation and book values per year, as the Anlage AVEÜR asks for it.
+_Avoid_: Inventory

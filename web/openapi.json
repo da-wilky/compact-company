@@ -265,6 +265,281 @@
         }
       }
     },
+    "/api/assets": {
+      "get": {
+        "tags": [
+          "books"
+        ],
+        "summary": "The fixed assets with their depreciation schedules.",
+        "operationId": "list_assets",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Assets"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "books"
+        ],
+        "summary": "Registers a fixed asset, from a receipt line or by hand.",
+        "operationId": "create_asset",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssetInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssetView"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/assets/depreciation": {
+      "post": {
+        "tags": [
+          "books"
+        ],
+        "summary": "Books the depreciation of every asset through a finished year, each year on 31.12.",
+        "operationId": "book_depreciation",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DepreciationInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Assets"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/assets/register": {
+      "get": {
+        "tags": [
+          "books"
+        ],
+        "summary": "The Anlage AVEÜR of a year.",
+        "operationId": "get_register",
+        "parameters": [
+          {
+            "name": "year",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Register"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/assets/{id}": {
+      "put": {
+        "tags": [
+          "books"
+        ],
+        "summary": "Changes an asset; once anything of it is booked, only its name.",
+        "operationId": "put_asset",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssetInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssetView"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "books"
+        ],
+        "summary": "Deletes an asset registered by mistake, while nothing of it is booked.",
+        "operationId": "delete_asset",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "204": {},
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/assets/{id}/dispose": {
+      "post": {
+        "tags": [
+          "books"
+        ],
+        "summary": "Records that an asset left the business: its depreciation through that month and the rest of\nits book value are booked on that day, replacing anything booked for that year or later.",
+        "operationId": "dispose_asset",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DisposalInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssetView"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/assignees": {
       "get": {
         "tags": [
@@ -5362,6 +5637,266 @@
           }
         }
       },
+      "Asset": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "kind",
+          "account_id",
+          "acquired",
+          "cost",
+          "net",
+          "method",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "account_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "The fixed-asset account it is carried on."
+          },
+          "acquired": {
+            "type": "string",
+            "description": "ISO date."
+          },
+          "cost": {
+            "type": "integer",
+            "format": "int64",
+            "description": "EUR cents it cost, VAT included where it can't be deducted."
+          },
+          "created_at": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "disposed": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "ISO date it left the business."
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/AssetKind"
+          },
+          "life_years": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Whole years, for straight-line depreciation."
+          },
+          "method": {
+            "$ref": "#/components/schemas/Method"
+          },
+          "name": {
+            "type": "string"
+          },
+          "net": {
+            "type": "integer",
+            "format": "int64",
+            "description": "EUR cents without VAT, which the low-value limit is tested on."
+          },
+          "receipt_line_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "updated_at": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "AssetCandidate": {
+        "type": "object",
+        "description": "A booked receipt's line on a fixed-asset account that no asset comes from yet.",
+        "required": [
+          "receipt_line_id",
+          "receipt_id",
+          "supplier_name",
+          "date",
+          "description",
+          "account_id",
+          "cost",
+          "net"
+        ],
+        "properties": {
+          "account_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "cost": {
+            "type": "integer",
+            "format": "int64",
+            "description": "EUR cents, as an asset's cost and net."
+          },
+          "date": {
+            "type": "string",
+            "description": "ISO date."
+          },
+          "description": {
+            "type": "string"
+          },
+          "net": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "receipt_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "receipt_line_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "supplier_name": {
+            "type": "string"
+          }
+        }
+      },
+      "AssetInput": {
+        "type": "object",
+        "required": [
+          "kind",
+          "method"
+        ],
+        "properties": {
+          "account_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "The fixed-asset account, without a receipt line."
+          },
+          "acquired": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "ISO date; the receipt's date when unset."
+          },
+          "cost": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "EUR cents, without a receipt line; the low-value limit is tested on it too."
+          },
+          "kind": {
+            "$ref": "#/components/schemas/AssetKind"
+          },
+          "life_years": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Whole years, for straight-line depreciation."
+          },
+          "method": {
+            "$ref": "#/components/schemas/Method"
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "receipt_line_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "A booked receipt's line on a fixed-asset account; its account and amount are taken."
+          }
+        },
+        "additionalProperties": false
+      },
+      "AssetKind": {
+        "type": "string",
+        "description": "The group of the Anlage AVEÜR an asset is listed in.",
+        "enum": [
+          "intangible",
+          "vehicle",
+          "office",
+          "other"
+        ]
+      },
+      "AssetView": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Asset"
+          },
+          {
+            "type": "object",
+            "required": [
+              "schedule",
+              "booked"
+            ],
+            "properties": {
+              "booked": {
+                "type": "boolean",
+                "description": "Once anything is booked only the name changes."
+              },
+              "receipt_id": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "int64"
+              },
+              "schedule": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ScheduleYear"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "Assets": {
+        "type": "object",
+        "required": [
+          "assets",
+          "candidates",
+          "due"
+        ],
+        "properties": {
+          "assets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AssetView"
+            }
+          },
+          "candidates": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AssetCandidate"
+            }
+          },
+          "due": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "description": "Finished years with depreciation still to book."
+          }
+        }
+      },
       "Assignee": {
         "type": "object",
         "required": [
@@ -6470,6 +7005,32 @@
           }
         }
       },
+      "DepreciationInput": {
+        "type": "object",
+        "required": [
+          "year"
+        ],
+        "properties": {
+          "year": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "DisposalInput": {
+        "type": "object",
+        "required": [
+          "date"
+        ],
+        "properties": {
+          "date": {
+            "type": "string",
+            "description": "ISO date it left the business."
+          }
+        },
+        "additionalProperties": false
+      },
       "Document": {
         "type": "object",
         "required": [
@@ -7376,6 +7937,9 @@
           "has_payments",
           "bank_matched",
           "year_closed",
+          "has_asset",
+          "asset_booked",
+          "depreciation_due",
           "mail_not_configured",
           "mail_failed",
           "rate_limited",
@@ -7425,8 +7989,10 @@
           "27",
           "29",
           "30",
+          "32",
           "33",
           "36",
+          "38",
           "39",
           "44",
           "55",
@@ -7989,6 +8555,13 @@
         },
         "additionalProperties": false
       },
+      "Method": {
+        "type": "string",
+        "enum": [
+          "straight_line",
+          "low_value"
+        ]
+      },
       "Money": {
         "type": "object",
         "description": "An amount in the minor unit of its currency (cents for EUR), never a float.",
@@ -8448,6 +9021,14 @@
           "lines"
         ],
         "properties": {
+          "asset_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "The fixed asset whose depreciation or disposal it books."
+          },
           "created_at": {
             "type": "integer",
             "format": "int64"
@@ -9233,6 +9814,81 @@
           }
         }
       },
+      "Register": {
+        "type": "object",
+        "required": [
+          "year",
+          "groups",
+          "low_value",
+          "low_value_total"
+        ],
+        "properties": {
+          "groups": {
+            "type": "object",
+            "description": "The groups with assets in the year; low-value assets are in none of them.",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/RegisterGroup"
+            },
+            "propertyNames": {
+              "type": "string"
+            }
+          },
+          "low_value": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Asset"
+            },
+            "description": "Low-value assets acquired in the year."
+          },
+          "low_value_total": {
+            "type": "integer",
+            "format": "int64",
+            "description": "EUR cents."
+          },
+          "year": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "RegisterGroup": {
+        "type": "object",
+        "description": "A group of the Anlage AVEÜR for a year, in EUR cents.",
+        "required": [
+          "cost",
+          "start",
+          "additions",
+          "depreciation",
+          "disposals",
+          "end"
+        ],
+        "properties": {
+          "additions": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "cost": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "depreciation": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "disposals": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "end": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "start": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
       "RegistrationFinish": {
         "type": "object",
         "required": [
@@ -9316,6 +9972,40 @@
           },
           "user_name": {
             "type": "string"
+          }
+        }
+      },
+      "ScheduleYear": {
+        "type": "object",
+        "required": [
+          "year",
+          "depreciation",
+          "disposal",
+          "book_value",
+          "booked"
+        ],
+        "properties": {
+          "book_value": {
+            "type": "integer",
+            "format": "int64",
+            "description": "EUR cents at the end of the year."
+          },
+          "booked": {
+            "type": "boolean"
+          },
+          "depreciation": {
+            "type": "integer",
+            "format": "int64",
+            "description": "EUR cents."
+          },
+          "disposal": {
+            "type": "integer",
+            "format": "int64",
+            "description": "EUR cents written off as the asset left the business."
+          },
+          "year": {
+            "type": "integer",
+            "format": "int32"
           }
         }
       },

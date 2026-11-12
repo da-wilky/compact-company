@@ -420,6 +420,34 @@ try {
 		lines: [{ description: 'Geschäftsessen mit Kundin', account_id: account('4650'), net: 4000, vat_rate: '19' }]
 	});
 
+
+	// fixed assets: a laptop depreciated over three years and a low-value monitor
+	await api('POST', '/api/postings', {
+		date: '2026-04-15',
+		description: 'Laptop und Monitor',
+		lines: [
+			{ account_id: account('0420'), amount: 180000 },
+			{ account_id: account('0480'), amount: 30000 },
+			{ account_id: account('1200'), amount: -210000 }
+		]
+	});
+	await api('POST', '/api/assets', {
+		name: 'Laptop ThinkPad X1',
+		kind: 'office',
+		method: 'straight_line',
+		life_years: 3,
+		account_id: account('0420'),
+		acquired: '2026-04-15',
+		cost: 180000
+	});
+	await api('POST', '/api/assets', {
+		name: 'Monitor 27"',
+		kind: 'office',
+		method: 'low_value',
+		account_id: account('0480'),
+		acquired: '2026-04-15',
+		cost: 30000
+	});
 	await screen('overview', `${origin}/`);
 	await screen('customers', `${origin}/customers`);
 	await screen('customer', `${origin}/customers/${krume.id}`);
@@ -483,6 +511,14 @@ try {
 		await click('section .row button.primary');
 		await until('the link', () => evaluate("!!document.querySelector('.link input')"));
 	});
+	await screen('assets', `${origin}/assets`);
+	await screen('assets-register', `${origin}/assets`, async () => {
+		await until('the assets', () => evaluate("!!document.querySelector('[role=radiogroup]')"));
+		await click('[role=radiogroup] [role=radio]:nth-child(2)');
+		await choose('select.year', '2026');
+		await until('the register', () => evaluate("!!document.querySelector('.table-wrap')"));
+	});
+	await screen('assets-new', `${origin}/assets`, () => click('.page-head button.primary'));
 	await screen('todos-board', `${origin}/todos`, () => evaluate("localStorage.setItem('todos.view', 'board')"));
 	await screen('todos-list', `${origin}/todos`, async () => {
 		await click('[role=radiogroup] [role=radio]');
