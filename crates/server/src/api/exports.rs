@@ -68,9 +68,7 @@ pub async fn datev_export(
             ),
             (
                 header::CONTENT_DISPOSITION,
-                format!(
-                    "attachment; filename=\"EXTF_Buchungsstapel_{from}_{to}.csv\""
-                ),
+                format!("attachment; filename=\"EXTF_Buchungsstapel_{from}_{to}.csv\""),
             ),
         ],
         bytes,
