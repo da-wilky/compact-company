@@ -70,7 +70,7 @@ async fn a_years_journal_exports_as_a_datev_batch_whose_rows_balance_with_it() {
     .await;
 
     let year = &date[..4];
-    let path = format!("/api/exports/datev?from={year}-01-01&to={year}-12-31");
+    let path = format!("/api/exports/datev?from={year}0101&to={year}-12-31");
     let mut accountant = app.with_role(&mut owner, "accountant").await;
     let response = app
         .as_browser(&mut accountant, "GET", &path, json!({}))

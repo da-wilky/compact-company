@@ -36,16 +36,18 @@ pub struct VatReturn {
     figures: Vec<Figure>,
 }
 
-fn check_period(from: &str, to: &str) -> Result<(), ApiError> {
+/// The period as plain ISO dates; parsing alone accepts forms such as `20260101` that SQL compares wrongly.
+fn check_period(from: &str, to: &str) -> Result<(String, String), ApiError> {
     let parse = |key: &str, value: &str| {
         value
             .parse::<jiff::civil::Date>()
             .map_err(|_| field_error(key, FieldError::InvalidFormat))
     };
-    if parse("from", from)? > parse("to", to)? {
+    let (from, to) = (parse("from", from)?, parse("to", to)?);
+    if from > to {
         return Err(field_error("to", FieldError::InvalidFormat));
     }
-    Ok(())
+    Ok((from.to_string(), to.to_string()))
 }
 
 /// The figures of a VAT advance return for a period, each with the postings behind it.
@@ -56,7 +58,7 @@ pub async fn get_vat_return(
     _: Auth<OwnerOrAccountant>,
     Query(period): Query<Period>,
 ) -> Result<Json<VatReturn>, ApiError> {
-    check_period(&period.from, &period.to)?;
+    let (from, to) = check_period(&period.from, &period.to)?;
     let basis = match business(&app).await?.taxation() {
         Taxation::Accrual => Some(Basis::Accrual),
         Taxation::Cash => Some(Basis::Cash),
@@ -65,15 +67,15 @@ pub async fn get_vat_return(
     let mut db = app.db.acquire().await?;
     started(&mut db).await?;
     let figures = match basis {
-        Some(basis) => tax::vat_return(&mut db, basis, &period.from, &period.to)
+        Some(basis) => tax::vat_return(&mut db, basis, &from, &to)
             .await
             .map_err(rule_error)?,
         None => Vec::new(),
     };
     Ok(Json(VatReturn {
         basis,
-        from: period.from,
-        to: period.to,
+        from,
+        to,
         figures,
     }))
 }

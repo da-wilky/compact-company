@@ -58,7 +58,8 @@ pub async fn datev_export(
     let business = business(&app).await?;
     let mut db = app.db.acquire().await?;
     let chart = started(&mut db).await?.chart;
-    let bytes = buchungsstapel(&mut db, &business, chart, &range.from, &range.to).await?;
+    let (from, to) = (from.to_string(), to.to_string());
+    let bytes = buchungsstapel(&mut db, &business, chart, &from, &to).await?;
     Ok((
         [
             (
@@ -68,8 +69,7 @@ pub async fn datev_export(
             (
                 header::CONTENT_DISPOSITION,
                 format!(
-                    "attachment; filename=\"EXTF_Buchungsstapel_{}_{}.csv\"",
-                    range.from, range.to
+                    "attachment; filename=\"EXTF_Buchungsstapel_{from}_{to}.csv\""
                 ),
             ),
         ],
