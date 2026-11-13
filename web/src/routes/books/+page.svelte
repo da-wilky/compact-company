@@ -162,7 +162,7 @@
 	let euerLine = $state<Schemas['EuerLine'] | null>(null);
 	let accountError = $state<ApiError>();
 	const euerLines: Schemas['EuerLine'][] = [
-		'12', '15', '16', '17', '18', '27', '29', '30', '33', '36', '39', '44', '55', '56', '57', '58', '60', '63'
+		'12', '15', '16', '17', '18', '27', '29', '30', '32', '33', '36', '38', '39', '44', '55', '56', '57', '58', '60', '63'
 	];
 	const lineDefault = (type: Schemas['AccountType']): Schemas['EuerLine'] | null =>
 		type === 'income' ? '15' : type === 'expense' ? '60' : null;
@@ -300,12 +300,14 @@
 								<span class="date">{day(p.date)}</span>
 								{#if p.document_id}
 									<a href="/documents/{p.document_id}"><strong>{p.description}</strong></a>
+								{:else if p.asset_id}
+									<a href="/assets"><strong>{p.description}</strong></a>
 								{:else}
 									<strong>{p.description}</strong>
 								{/if}
 								{#if p.reversed_by != null}<span class="badge">{t('books.is_reversed')}</span>{/if}
 								{#if p.reverses_id != null}<span class="badge">{t('term.reversal')}</span>{/if}
-								{#if owner && p.reversed_by == null && p.reverses_id == null && p.document_id == null && p.payment_id == null}
+								{#if owner && p.reversed_by == null && p.reverses_id == null && p.document_id == null && p.payment_id == null && p.asset_id == null}
 									<button class="ghost push" onclick={() => reverse(p)}>{t('books.reverse')}</button>
 								{/if}
 							</div>

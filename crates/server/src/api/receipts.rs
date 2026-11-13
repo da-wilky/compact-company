@@ -891,6 +891,16 @@ pub async fn reverse_receipt(
     if receipt.status != ReceiptStatus::Booked || receipt.reversed {
         return Err(ApiError::new(ErrorCode::AlreadyReversed));
     }
+    let registered: bool = sqlx::query_scalar(
+        "SELECT count(*) > 0 FROM asset a JOIN receipt_line l ON l.id = a.receipt_line_id
+         WHERE l.receipt_id = ?",
+    )
+    .bind(id)
+    .fetch_one(&mut *tx)
+    .await?;
+    if registered {
+        return Err(ApiError::new(ErrorCode::HasAsset));
+    }
     if !receipt.payments.is_empty() {
         return Err(ApiError::new(ErrorCode::HasPayments));
     }

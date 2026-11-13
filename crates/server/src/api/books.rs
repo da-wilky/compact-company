@@ -311,6 +311,8 @@ pub struct Posting {
     /// The receipt it books, or the receipt of the payment it books.
     receipt_id: Option<i64>,
     receipt_payment_id: Option<i64>,
+    /// The fixed asset whose depreciation or disposal it books.
+    asset_id: Option<i64>,
     user_name: String,
     created_at: i64,
     #[sqlx(skip)]
@@ -331,7 +333,8 @@ pub struct PostingFilter {
 const POSTING: &str = "SELECT p.id, p.date, p.description, p.reverses_id,
     (SELECT r.id FROM posting r WHERE r.reverses_id = p.id) AS reversed_by,
     d.id AS document_id, d.number AS document_number, p.payment_id,
-    coalesce(p.receipt_id, ry.receipt_id) AS receipt_id, p.receipt_payment_id, u.name AS user_name,
+    coalesce(p.receipt_id, ry.receipt_id) AS receipt_id, p.receipt_payment_id, p.asset_id,
+    u.name AS user_name,
     p.created_at FROM posting p JOIN user u ON u.id = p.user_id
     LEFT JOIN payment y ON y.id = p.payment_id
     LEFT JOIN receipt_payment ry ON ry.id = p.receipt_payment_id
@@ -491,7 +494,7 @@ pub async fn reverse_posting(
     if posting.reversed_by.is_some() || posting.reverses_id.is_some() {
         return Err(ApiError::new(ErrorCode::AlreadyReversed));
     }
-    if posting.document_id.is_some() || posting.receipt_id.is_some() {
+    if posting.document_id.is_some() || posting.receipt_id.is_some() || posting.asset_id.is_some() {
         return Err(ApiError::new(ErrorCode::AutomaticPosting));
     }
     if date < posting.date {

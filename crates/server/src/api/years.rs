@@ -18,7 +18,7 @@ use super::{
     input::field_error,
 };
 use crate::{
-    App, audit,
+    App, assets, audit,
     auth::{Auth, OwnerOnly, OwnerOrAccountant, now},
     files::ContentHash,
     settings::{Business, Taxation},
@@ -100,6 +100,11 @@ pub async fn close_year(
     }
     if next(&mut tx, &business).await? != Some(year) {
         return Err(field_error("year", FieldError::InvalidFormat));
+    }
+    for asset in assets::all(&mut tx).await? {
+        if !assets::due(&mut tx, &asset, year, year).await?.is_empty() {
+            return Err(ApiError::new(ErrorCode::DepreciationDue));
+        }
     }
     let closed_at = now();
     let files = archive_files(&app, &mut tx, &business, books.chart, year, closed_at).await?;
@@ -285,6 +290,11 @@ async fn archive_files(
     files.push((
         "tax/euer.json".to_owned(),
         serde_json::to_vec_pretty(&euer).map_err(ApiError::internal)?,
+    ));
+    let register = assets::register(&assets::all(db).await?, year);
+    files.push((
+        "tax/assets.json".to_owned(),
+        serde_json::to_vec_pretty(&register).map_err(ApiError::internal)?,
     ));
 
     let documents: Vec<(String, String, Option<String>)> = sqlx::query_as(

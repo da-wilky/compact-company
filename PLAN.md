@@ -26,6 +26,7 @@ Time tracking, invoicing and bookkeeping usually live in two or three tools with
 | Layout data | Schema-versioned; layouts declare the version they were written for | 0019 |
 | EÜR | Payments count their share of what they pay; accounts name their EÜR line | 0021 |
 | Closing | A closed year takes no postings; its archive carries checksums | 0022 |
+| Depreciation | Computed from the asset, booked per finished year; disposals rebook their year | 0023 |
 | Languages | UI and documents in German and English | – |
 | Platforms | x86_64 and arm64; NixOS module and OCI image | – |
 
@@ -122,6 +123,7 @@ Crate names are candidates; verify each before the foundation phase settles them
 
 ### Phase 6 – Fixed assets
 - Assets, straight-line depreciation, low-value assets; postings and EÜR lines
+- Done when: swilk's fixed assets are in the register, their depreciation is booked, and the EÜR and Anlage AVEÜR figures for a year come from it
 
 ### Later
 - FinTS bank fetch (free; needs a product registration with the Deutsche Kreditwirtschaft)

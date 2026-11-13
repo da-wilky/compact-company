@@ -48,6 +48,10 @@ pub enum EuerLine {
     #[serde(rename = "30")]
     #[sqlx(rename = "30")]
     Personnel,
+    /// AfA auf immaterielle Wirtschaftsgüter
+    #[serde(rename = "32")]
+    #[sqlx(rename = "32")]
+    IntangibleDepreciation,
     /// AfA auf bewegliche Wirtschaftsgüter
     #[serde(rename = "33")]
     #[sqlx(rename = "33")]
@@ -56,6 +60,10 @@ pub enum EuerLine {
     #[serde(rename = "36")]
     #[sqlx(rename = "36")]
     LowValueAssets,
+    /// Restbuchwerte der ausgeschiedenen Anlagegüter
+    #[serde(rename = "38")]
+    #[sqlx(rename = "38")]
+    DisposedBookValue,
     /// Raumkosten
     #[serde(rename = "39")]
     #[sqlx(rename = "39")]
@@ -116,8 +124,10 @@ impl EuerLine {
             "5300" | "5400" => Self::Goods,
             "5900" => Self::Subcontracting,
             "6310" => Self::Rooms,
+            "6200" => Self::IntangibleDepreciation,
             "6220" => Self::Depreciation,
             "6260" => Self::LowValueAssets,
+            "6895" => Self::DisposedBookValue,
             "7300" => Self::Interest,
             "6640" => Self::Entertainment,
             _ => return Self::default_for(kind).filter(|_| kind == AccountType::Expense),

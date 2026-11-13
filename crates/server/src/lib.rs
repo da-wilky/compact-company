@@ -19,6 +19,7 @@ use webauthn_rs::prelude::{Webauthn, WebauthnBuilder, WebauthnError};
 use crate::{config::Config, files::Files, settings::Settings};
 
 pub mod api;
+pub mod assets;
 pub mod audit;
 pub mod auth;
 pub mod books;

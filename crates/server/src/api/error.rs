@@ -65,6 +65,9 @@ pub enum ErrorCode {
     HasPayments,
     BankMatched,
     YearClosed,
+    HasAsset,
+    AssetBooked,
+    DepreciationDue,
     MailNotConfigured,
     MailFailed,
     RateLimited,
@@ -122,6 +125,9 @@ impl ErrorCode {
         Self::HasPayments,
         Self::BankMatched,
         Self::YearClosed,
+        Self::HasAsset,
+        Self::AssetBooked,
+        Self::DepreciationDue,
         Self::MailNotConfigured,
         Self::MailFailed,
         Self::RateLimited,
@@ -166,6 +172,9 @@ impl ErrorCode {
             | Self::HasPayments
             | Self::BankMatched
             | Self::YearClosed
+            | Self::HasAsset
+            | Self::AssetBooked
+            | Self::DepreciationDue
             | Self::MailNotConfigured => StatusCode::CONFLICT,
             Self::RateLimited => StatusCode::TOO_MANY_REQUESTS,
             Self::Internal => StatusCode::INTERNAL_SERVER_ERROR,

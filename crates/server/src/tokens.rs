@@ -53,8 +53,9 @@ pub fn required(method: &Method, path: &str) -> Option<Scope> {
         }
         "documents" | "snippets" | "unbilled" => pick(Scope::DocumentsRead, Scope::DocumentsWrite),
         "layouts" | "layout-choices" | "packages" if read => Some(Scope::DocumentsRead),
-        "books" | "accounts" | "postings" | "receipts" | "suppliers" | "bank-accounts"
-        | "bank-transactions" | "open-items" | "tax" | "exports" | "deadlines" | "years"
+        "books" | "accounts" | "postings" | "assets" | "receipts" | "suppliers"
+        | "bank-accounts" | "bank-transactions" | "open-items" | "tax" | "exports"
+        | "deadlines" | "years"
             if read =>
         {
             Some(Scope::BooksRead)
@@ -80,6 +81,8 @@ mod tests {
         assert_eq!(need(Method::POST, "/api/documents/3/send"), None);
         assert_eq!(need(Method::POST, "/api/documents/3/payments"), None);
         assert_eq!(need(Method::GET, "/api/postings"), Some(Scope::BooksRead));
+        assert_eq!(need(Method::GET, "/api/assets"), Some(Scope::BooksRead));
+        assert_eq!(need(Method::POST, "/api/assets/depreciation"), None);
         assert_eq!(need(Method::POST, "/api/postings"), None);
         assert_eq!(need(Method::POST, "/api/receipts/1/book"), None);
         assert_eq!(need(Method::POST, "/api/layouts"), None);
