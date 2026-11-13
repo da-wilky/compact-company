@@ -21,6 +21,11 @@ const LAYOUT: &str = r#"
   for line in data.lines [#line.description #cc.number(data, line.quantity) \ ]
   if data.totals != none [#cc.amount(data, data.totals.net) #cc.amount(data, data.totals.gross) \ ]
   for group in data.vat [#cc.percent(data, group.rate) #cc.amount(data, group.tax) \ ]
+  for d in data.deductions {
+    [#d.number \ ]
+    for group in d.vat [#cc.amount(data, group.net) #cc.amount(data, group.tax) \ ]
+  }
+  if data.totals != none and data.totals.due != none [#cc.amount(data, data.totals.due) \ ]
   cc.vat-note(data)
 }
 "#;

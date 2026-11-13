@@ -129,5 +129,5 @@ Read 2026-11-13 at https://www.gesetze-im-internet.de/ustg_1980/__13.html.
 
 ## Not yet checked against the primary text
 
-- EN 16931 / XRechnung type codes for partial and final invoices (a standard, not law): phase 7, #152
+- EN 16931 / XRechnung type codes for partial and final invoices (a standard, not law): built on 326 for a partial invoice and 380 with the paid amount (BT-113) for a final invoice, one note per deduction and its latest deduction as preceding invoice reference (BG-3; the CII schema takes only one), as secondary sources describe BR-DE-17 (allowed: 326, 380, 384, 389, 381, 875, 876, 877; 875–877 for construction). The KoSIT validator (configuration XRechnung 3.0.2, 2026-08-31) accepts them in CI; the KoSIT specification itself was not read.
 - § 170 AO, when the Festsetzungsfrist starts

@@ -448,7 +448,27 @@ try {
 		acquired: '2026-04-15',
 		cost: 30000
 	});
+	await api('POST', `/api/documents/${quote.id}/outcome`, { outcome: 'accepted' });
+	const partial = await api('POST', `/api/documents/${quote.id}/follow-up`, { kind: 'invoice', invoice_type: 'partial', percent: '30' });
+	const issuedPartial = await api('POST', `/api/documents/${partial.id}/issue`);
+	await api('POST', `/api/documents/${partial.id}/payments`, { date: issuedPartial.issue_date, amount: issuedPartial.amount_due.minor });
+	const unpaid = await api('POST', `/api/documents/${quote.id}/follow-up`, { kind: 'invoice', invoice_type: 'partial', percent: '20' });
+	await api('POST', `/api/documents/${unpaid.id}/issue`);
+	const finalDraft = await api('POST', `/api/documents/${quote.id}/follow-up`, { kind: 'invoice', invoice_type: 'final' });
+	await api('POST', '/api/recurring-invoices', {
+		customer_id: krume.id,
+		title: 'Wartung und Hosting',
+		interval: 'monthly',
+		period: 'arrears',
+		next_date: '2026-09-30',
+		lines: [{ description: 'Wartungspauschale', quantity: '1', unit: 'month', unit_price: 12000 }]
+	});
+	await screen('document-final-draft', `${origin}/documents/${finalDraft.id}`);
+	await api('POST', `/api/documents/${finalDraft.id}/issue`);
 	await screen('overview', `${origin}/`);
+	await screen('recurring', `${origin}/recurring`);
+	await screen('recurring-edit', `${origin}/recurring`, () => click('.card-list .row'));
+	await screen('document-final', `${origin}/documents/${finalDraft.id}`);
 	await screen('customers', `${origin}/customers`);
 	await screen('customer', `${origin}/customers/${krume.id}`);
 	await screen('activities', `${origin}/activities`);

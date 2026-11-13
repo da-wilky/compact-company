@@ -28,6 +28,7 @@ pub mod overview;
 pub mod passkeys;
 pub mod projects;
 pub mod receipts;
+pub mod recurring;
 pub mod sending;
 pub mod session;
 pub mod snippets;
@@ -135,6 +136,15 @@ pub fn routes() -> OpenApiRouter<Arc<App>> {
         .routes(routes!(documents::duplicate_document))
         .routes(routes!(documents::follow_up))
         .routes(routes!(documents::set_outcome))
+        .routes(routes!(
+            recurring::list_recurring,
+            recurring::create_recurring
+        ))
+        .routes(routes!(
+            recurring::get_recurring,
+            recurring::put_recurring,
+            recurring::delete_recurring
+        ))
         .routes(routes!(billing::add_time))
         .routes(routes!(billing::list_unbilled))
         .routes(routes!(books::get_books, books::start_books))

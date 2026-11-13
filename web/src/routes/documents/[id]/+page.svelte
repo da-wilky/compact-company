@@ -8,6 +8,7 @@
 	import Segmented from '#lib/components/Segmented.svelte';
 	import {
 		decimalInput,
+		docLabel,
 		formatAmount,
 		kindLabel,
 		missingLabel,
@@ -146,6 +147,7 @@
 			service_from: doc.kind === 'invoice' ? serviceFrom || null : null,
 			service_to: doc.kind === 'invoice' ? serviceTo || null : null,
 			timesheet: doc.kind === 'invoice' && timesheet,
+			invoice_type: doc.invoice_type ?? null,
 			lines: parsed as Schemas['LineInput'][]
 		};
 	}
@@ -199,9 +201,19 @@
 		if (result.data) goto(`/documents/${result.data.id}`);
 	}
 
-	async function followUp(kind: Kind) {
+	async function followUp(kind: Kind, invoice_type?: Schemas['InvoiceType']) {
+		let percent: string | null = null;
+		if (invoice_type === 'partial') {
+			const typed = prompt(t('documents.partial_percent_prompt'));
+			if (typed == null) return;
+			const parsed = parseDecimal(typed);
+			percent = typeof parsed === 'string' ? parsed : null;
+		}
 		const result = await call(
-			api.POST('/api/documents/{id}/follow-up', { params: { path: { id } }, body: { kind } })
+			api.POST('/api/documents/{id}/follow-up', {
+				params: { path: { id } },
+				body: { kind, invoice_type: invoice_type ?? null, percent }
+			})
 		);
 		error = result.error;
 		if (result.data) goto(`/documents/${result.data.id}`);
@@ -394,7 +406,7 @@
 	<div class="page-head">
 		<div>
 			<p class="muted eyebrow">
-				<a href="/documents">{t('documents.title')}</a> · {kindLabel(doc.kind)}
+				<a href="/documents">{t('documents.title')}</a> · {docLabel(doc.kind, doc.invoice_type)}
 			</p>
 			<h1>
 				{doc.number ?? t('term.draft')}
@@ -443,8 +455,9 @@
 			</div>
 		{/if}
 
-		{#if doc.source_id || doc.follow_ups.length}
+		{#if doc.source_id || doc.follow_ups.length || doc.recurring_id}
 			<div class="card links">
+				{#if doc.recurring_id}<a href="/recurring">{t('recurring.from')}</a>{/if}
 				{#if doc.source_id}
 					<a href={`/documents/${doc.source_id}`}>{doc.data.reference ?? t('documents.source')}</a>
 				{/if}
@@ -467,6 +480,22 @@
 				{#each followUps[doc.kind] as kind (kind)}
 					<button class="ghost" onclick={() => followUp(kind)}><Icon name="plus" size={18} />{kindLabel(kind)}</button>
 				{/each}
+				{#if doc.kind === 'quote' || doc.kind === 'order_confirmation'}
+					<button class="ghost" onclick={() => followUp('invoice', 'partial')}><Icon name="plus" size={18} />{t('term.partial_invoice')}</button>
+					<button class="ghost" onclick={() => followUp('invoice', 'final')}><Icon name="plus" size={18} />{t('term.final_invoice')}</button>
+				{/if}
+			</div>
+		{/if}
+		{#if doc.invoice_type === 'final' && doc.partials.length}
+			<div class="card notice">
+				<strong>{t(doc.status === 'draft' ? 'documents.partials_before' : 'documents.partials_taken')}</strong>
+				<ul>
+					{#each doc.partials as partial (partial.id)}
+						<li>
+							<a href={`/documents/${partial.id}`}>{partial.number}</a>&nbsp;– {t(`documents.partial_state.${partial.state}`)}
+						</li>
+					{/each}
+				</ul>
 			</div>
 		{/if}
 
@@ -614,7 +643,7 @@
 					{#if doc.kind !== 'cancellation'}
 					<div class="add">
 						<button type="button" class="ghost" onclick={addLine}><Icon name="plus" size={18} />{t('documents.add_line')}</button>
-						{#if doc.kind === 'invoice'}
+						{#if doc.kind === 'invoice' && doc.invoice_type !== 'partial'}
 							<button type="button" class="ghost" onclick={openTime}><Icon name="time" size={18} />{t('documents.add_time')}</button>
 						{/if}
 					</div>
@@ -635,7 +664,7 @@
 				</div>
 				<div class="wide save">
 					{#if doc.data.totals}
-						<span class="muted">{t('documents.total')}: <strong>{formatAmount(doc.data.totals.gross, doc.currency)}</strong>{#if dirty}&nbsp;({t('documents.unsaved')}){/if}</span>
+						<span class="muted">{t('documents.total')}: <strong>{formatAmount(doc.data.totals.gross, doc.currency)}</strong>{#if doc.data.totals.due != null}&nbsp;· {t('documents.amount_to_pay')}: <strong>{formatAmount(doc.data.totals.due, doc.currency)}</strong>{/if}{#if dirty}&nbsp;({t('documents.unsaved')}){/if}</span>
 					{/if}
 					<button class="primary" disabled={busy || !dirty}>{t('app.save')}</button>
 				</div>
@@ -678,6 +707,17 @@
 							<dt>{t('documents.vat_at', { rate: decimalInput(group.rate) })}</dt><dd>{formatAmount(group.tax, doc.currency)}</dd>
 						{/each}
 						<dt><strong>{t('documents.total')}</strong></dt><dd><strong>{formatAmount(doc.data.totals.gross, doc.currency)}</strong></dd>
+						{#each doc.data.deductions as deduction (deduction.number)}
+							<dt>{t('documents.less_partial', { number: deduction.number, date: formatDay(deduction.issue_date, { dateStyle: 'medium' }) })}</dt>
+							<dd>-{formatAmount(deduction.gross, doc.currency)}</dd>
+							{#each deduction.vat as group (group.rate)}
+								<dt class="muted sub">{t('documents.net')} {formatAmount(group.net, doc.currency)}{#if Number(group.rate) > 0}, {t('documents.vat_at', { rate: decimalInput(group.rate) })}{/if}</dt>
+								<dd class="muted sub">{Number(group.rate) > 0 ? formatAmount(group.tax, doc.currency) : ''}</dd>
+							{/each}
+						{/each}
+						{#if doc.data.totals.due != null}
+							<dt><strong>{t('documents.amount_to_pay')}</strong></dt><dd><strong>{formatAmount(doc.data.totals.due, doc.currency)}</strong></dd>
+						{/if}
 					</dl>
 				{/if}
 				{#if doc.data.outro}<p class="pre">{doc.data.outro}</p>{/if}
@@ -941,6 +981,9 @@
 		justify-content: end;
 		gap: 0.375rem 1.5rem;
 		margin: 1rem 0;
+	}
+	.totals .sub {
+		font-size: 0.875rem;
 	}
 	.totals dd {
 		margin: 0;

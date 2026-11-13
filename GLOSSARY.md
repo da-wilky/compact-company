@@ -148,6 +148,18 @@ An invoice whose content is also carried in a structured, machine-readable form 
 When the invoiced work was done; from its time entries if it has any, otherwise set by hand or the issue date.
 _Avoid_: Billing period
 
+**Recurring invoice** (de: wiederkehrende Rechnung):
+An invoice set up once with its lines and an interval, from which a draft is created on each date; the owner issues each draft.
+_Avoid_: Subscription, Abo
+
+**Partial invoice** (de: Abschlagsrechnung):
+An invoice for an advance on work not yet done, against a quote or a project; it takes no time entries.
+_Avoid_: Advance invoice, down payment, Anzahlungsrechnung
+
+**Final invoice** (de: Schlussrechnung):
+The invoice for the whole work of a quote or project, less the paid partial invoices it deducts; issuing it cancels the unpaid ones.
+_Avoid_: Closing invoice, Endrechnung
+
 **Cancellation invoice** (de: Stornorechnung):
 An issued invoice that reverses some or all lines of an earlier issued invoice.
 _Avoid_: Storno, credit note

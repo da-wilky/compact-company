@@ -1,5 +1,5 @@
 # Validates the app's e-invoices (ZUGFeRD's EN 16931 XML and XRechnung, for a regular and a small
-# business, invoice and cancellation invoice) with the KoSIT validator.
+# business; invoice, cancellation, partial and final invoice) with the KoSIT validator.
 { pkgs, server }:
 let
   validator = pkgs.fetchurl {
@@ -21,7 +21,7 @@ pkgs.runCommand "kosit"
   ''
     mkdir config xml
     unzip -q ${configuration} -d config
-    for kind in invoice cancellation; do
+    for kind in invoice cancellation partial final; do
       for business in "" --small-business; do
         for flavour in "" --xrechnung; do
           ${pkgs.lib.getExe server} einvoice --kind $kind $business $flavour > xml/$kind$business$flavour.xml

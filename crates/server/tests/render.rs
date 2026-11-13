@@ -5,7 +5,7 @@ use common::start;
 use compact_company::{
     api::customers::Language,
     config::Config,
-    documents::{Kind, sample},
+    documents::{InvoiceType, Kind, sample, sample_invoice},
     render::{self, Layout},
 };
 use http_body_util::BodyExt;
@@ -20,6 +20,30 @@ const KINDS: [Kind; 7] = [
     Kind::AcceptanceReport,
     Kind::Dunning,
 ];
+
+#[test]
+fn the_built_in_layout_shows_a_final_invoices_deductions() {
+    for language in [Language::De, Language::En] {
+        for small_business in [false, true] {
+            for invoice_type in [InvoiceType::Partial, InvoiceType::Final] {
+                let data = sample_invoice(invoice_type, language, small_business);
+                let rendered = render::render(&Layout::built_in(), &data, &[]).unwrap();
+                assert_eq!(
+                    render::missing(&data, &rendered),
+                    Vec::<String>::new(),
+                    "{invoice_type:?} {language:?} small business: {small_business}"
+                );
+            }
+        }
+    }
+    let data = sample_invoice(InvoiceType::Final, Language::De, false);
+    let text = render::render(&Layout::built_in(), &data, &[])
+        .unwrap()
+        .text();
+    assert!(text.contains("SchlussrechnungSAMPLE-2026-042"), "{text}");
+    assert!(text.contains("SAMPLE-2026-029"), "{text}");
+    assert!(text.contains("Zahlbetrag"), "{text}");
+}
 
 #[test]
 fn the_built_in_layout_shows_every_mandatory_detail_in_both_languages() {

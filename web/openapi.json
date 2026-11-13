@@ -3816,6 +3816,191 @@
         }
       }
     },
+    "/api/recurring-invoices": {
+      "get": {
+        "tags": [
+          "documents"
+        ],
+        "operationId": "list_recurring",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Recurring"
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "documents"
+        ],
+        "summary": "Sets up a recurring invoice; dates already past are drafted at once.",
+        "operationId": "create_recurring",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecurringInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Recurring"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/recurring-invoices/{id}": {
+      "get": {
+        "tags": [
+          "documents"
+        ],
+        "operationId": "get_recurring",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Recurring"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "documents"
+        ],
+        "summary": "Changes a recurring invoice; drafts already created stay as they are. A new next date\nrestarts the dates from it.",
+        "operationId": "put_recurring",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecurringInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Recurring"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "documents"
+        ],
+        "summary": "Only a recurring invoice that has produced nothing can be deleted; otherwise end it.",
+        "operationId": "delete_recurring",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "204": {},
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/session": {
       "get": {
         "tags": [
@@ -7005,6 +7190,34 @@
           }
         }
       },
+      "Deduction": {
+        "type": "object",
+        "required": [
+          "number",
+          "issue_date",
+          "vat",
+          "gross"
+        ],
+        "properties": {
+          "gross": {
+            "type": "string"
+          },
+          "issue_date": {
+            "type": "string",
+            "description": "ISO date."
+          },
+          "number": {
+            "type": "string"
+          },
+          "vat": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VatData"
+            },
+            "description": "One entry per VAT rate."
+          }
+        }
+      },
       "DepreciationInput": {
         "type": "object",
         "required": [
@@ -7049,6 +7262,7 @@
           "follow_ups",
           "sent",
           "payments",
+          "partials",
           "created_at",
           "updated_at"
         ],
@@ -7105,6 +7319,16 @@
               "null"
             ]
           },
+          "invoice_type": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/InvoiceType"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "issue_date": {
             "type": [
               "string",
@@ -7159,6 +7383,13 @@
               "null"
             ]
           },
+          "partials": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PartialInvoice"
+            },
+            "description": "A final invoice's partial invoices: deducted when paid, cancelled when issuing it if\nunpaid; for a draft, as issuing it now would take them."
+          },
           "payments": {
             "type": "array",
             "items": {
@@ -7192,6 +7423,14 @@
                 "type": "null"
               }
             ]
+          },
+          "recurring_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "The recurring invoice it was drafted from."
           },
           "rounding": {
             "type": "integer",
@@ -7272,6 +7511,13 @@
           "customer": {
             "$ref": "#/components/schemas/CustomerData"
           },
+          "deductions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Deduction"
+            },
+            "description": "A final invoice's paid partial invoices, deducted with their VAT (§ 14 Abs. 5 UStG)."
+          },
           "due_date": {
             "type": [
               "string",
@@ -7294,6 +7540,17 @@
             "type": [
               "string",
               "null"
+            ]
+          },
+          "invoice_type": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/InvoiceType",
+                "description": "Invoices only: a partial or final invoice; none for an ordinary one."
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "issue_date": {
@@ -7431,6 +7688,17 @@
             "type": [
               "string",
               "null"
+            ]
+          },
+          "invoice_type": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/InvoiceType",
+                "description": "Invoices only: a partial invoice, which takes no time, or the final invoice that deducts\nthe paid partial invoices of its quote, or else of its project."
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "kind": {
@@ -7940,6 +8208,9 @@
           "has_asset",
           "asset_booked",
           "depreciation_due",
+          "has_invoices",
+          "final_invoice_settled",
+          "partial_invoice_partly_paid",
           "mail_not_configured",
           "mail_failed",
           "rate_limited",
@@ -8120,8 +8391,26 @@
           "kind"
         ],
         "properties": {
+          "invoice_type": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/InvoiceType",
+                "description": "Invoices for a quote only: a partial or the final invoice."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "kind": {
             "$ref": "#/components/schemas/DocumentKind"
+          },
+          "percent": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Partial invoices only: the percentage of the quote's net amounts it charges; without it,\nits lines wait for an amount."
           }
         },
         "additionalProperties": false
@@ -8177,6 +8466,14 @@
             "description": "Transactions already imported from an earlier statement."
           }
         }
+      },
+      "Interval": {
+        "type": "string",
+        "enum": [
+          "monthly",
+          "quarterly",
+          "yearly"
+        ]
       },
       "InvitationInfo": {
         "type": "object",
@@ -8248,6 +8545,14 @@
             "$ref": "#/components/schemas/Role"
           }
         }
+      },
+      "InvoiceType": {
+        "type": "string",
+        "description": "What part of the work an invoice bills.",
+        "enum": [
+          "partial",
+          "final"
+        ]
       },
       "Kind": {
         "type": "string",
@@ -8810,7 +9115,8 @@
         "required": [
           "running",
           "unbilled",
-          "open_invoices"
+          "open_invoices",
+          "recurring_drafts"
         ],
         "properties": {
           "open_invoices": {
@@ -8819,6 +9125,13 @@
               "$ref": "#/components/schemas/OpenInvoice"
             },
             "description": "For the owner and accountant only, oldest due first."
+          },
+          "recurring_drafts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WaitingDraft"
+            },
+            "description": "Drafts from recurring invoices waiting to be issued; for the owner and accountant only."
           },
           "running": {
             "type": "array",
@@ -8883,6 +9196,35 @@
           "invoice",
           "receipt",
           "account"
+        ]
+      },
+      "PartialInvoice": {
+        "type": "object",
+        "required": [
+          "id",
+          "number",
+          "state"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "number": {
+            "type": "string"
+          },
+          "state": {
+            "$ref": "#/components/schemas/PartialState"
+          }
+        }
+      },
+      "PartialState": {
+        "type": "string",
+        "description": "Where a partial invoice stands for its final invoice.",
+        "enum": [
+          "deducted",
+          "cancelled",
+          "partly_paid"
         ]
       },
       "PasskeyView": {
@@ -9009,6 +9351,14 @@
           }
         },
         "additionalProperties": false
+      },
+      "Period": {
+        "type": "string",
+        "description": "Which interval a draft's service period is.",
+        "enum": [
+          "advance",
+          "arrears"
+        ]
       },
       "Posting": {
         "type": "object",
@@ -9206,6 +9556,33 @@
           "normal",
           "high"
         ]
+      },
+      "Produced": {
+        "type": "object",
+        "required": [
+          "id",
+          "status",
+          "recurring_date"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "number": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "recurring_date": {
+            "type": "string",
+            "description": "ISO date it was drafted for."
+          },
+          "status": {
+            "$ref": "#/components/schemas/DocumentStatus"
+          }
+        }
       },
       "Project": {
         "allOf": [
@@ -9811,6 +10188,207 @@
             ],
             "format": "binary",
             "description": "A PDF, a photo (JPEG, PNG, WebP) or an e-invoice as XML; none for a receipt without one."
+          }
+        }
+      },
+      "Recurring": {
+        "type": "object",
+        "required": [
+          "id",
+          "customer_id",
+          "customer_name",
+          "interval",
+          "period",
+          "paused",
+          "lines",
+          "invoices"
+        ],
+        "properties": {
+          "customer_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "customer_name": {
+            "type": "string"
+          },
+          "ends_on": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "interval": {
+            "$ref": "#/components/schemas/Interval"
+          },
+          "intro": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "invoices": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Produced"
+            },
+            "description": "The invoices it produced, newest first."
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RecurringLine"
+            }
+          },
+          "next_date": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "ISO date the next draft is created on; none once past the end."
+          },
+          "outro": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "paused": {
+            "type": "boolean"
+          },
+          "period": {
+            "$ref": "#/components/schemas/Period"
+          },
+          "project_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "title": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "RecurringInput": {
+        "type": "object",
+        "required": [
+          "customer_id",
+          "interval",
+          "period",
+          "next_date",
+          "lines"
+        ],
+        "properties": {
+          "customer_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "ends_on": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "ISO date of the last date drafted, if any."
+          },
+          "interval": {
+            "$ref": "#/components/schemas/Interval"
+          },
+          "intro": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LineInput"
+            },
+            "description": "Without time entries."
+          },
+          "next_date": {
+            "type": "string",
+            "description": "ISO date of the next draft; the dates after it follow at the interval."
+          },
+          "outro": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "paused": {
+            "type": "boolean"
+          },
+          "period": {
+            "$ref": "#/components/schemas/Period"
+          },
+          "project_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "title": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "RecurringLine": {
+        "type": "object",
+        "required": [
+          "description",
+          "quantity",
+          "unit"
+        ],
+        "properties": {
+          "activity_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "description": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "quantity": {
+            "type": "string"
+          },
+          "unit": {
+            "$ref": "#/components/schemas/Unit"
+          },
+          "unit_price": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "vat_rate": {
+            "type": [
+              "string",
+              "null"
+            ]
           }
         }
       },
@@ -10933,11 +11511,25 @@
           "gross"
         ],
         "properties": {
+          "due": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "What a final invoice leaves to pay: the total less the deductions."
+          },
           "gross": {
             "type": "string"
           },
           "net": {
             "type": "string"
+          },
+          "prepaid": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "A final invoice's deductions, gross."
           },
           "tax": {
             "type": "string"
@@ -11139,6 +11731,34 @@
           },
           "to": {
             "type": "string"
+          }
+        }
+      },
+      "WaitingDraft": {
+        "type": "object",
+        "description": "A draft from a recurring invoice, waiting to be issued.",
+        "required": [
+          "id",
+          "customer_name",
+          "recurring_date"
+        ],
+        "properties": {
+          "customer_name": {
+            "type": "string"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "recurring_date": {
+            "type": "string",
+            "description": "ISO date it was drafted for."
+          },
+          "title": {
+            "type": [
+              "string",
+              "null"
+            ]
           }
         }
       },

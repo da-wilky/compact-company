@@ -40,6 +40,7 @@
 	let newKind = $state<Kind>('quote');
 	let customerId = $state<number>();
 	let projectId = $state<number>();
+	let invoiceType = $state<Schemas['InvoiceType']>();
 	let customers = $state<Schemas['Customer'][]>([]);
 	let projects = $state<Schemas['Project'][]>([]);
 	let createError = $state<ApiError>();
@@ -66,7 +67,13 @@
 		if (!customerId) return;
 		const result = await call(
 			api.POST('/api/documents', {
-				body: { kind: newKind, customer_id: customerId, project_id: projectId ?? null, lines: [] }
+				body: {
+					kind: newKind,
+					customer_id: customerId,
+					project_id: projectId ?? null,
+					invoice_type: newKind === 'invoice' ? (invoiceType ?? null) : null,
+					lines: []
+				}
 			})
 		);
 		createError = result.error;
@@ -80,6 +87,7 @@
 	<h1>{t('documents.title')}</h1>
 	{#if owner}
 		<div class="actions">
+			<a class="button ghost" href="/recurring"><Icon name="time" size={18} />{t('recurring.title')}</a>
 			<button class="ghost" onclick={() => start('quote')}><Icon name="plus" size={18} />{t('term.quote')}</button>
 			<button class="primary" onclick={() => start('invoice')}><Icon name="plus" size={18} />{t('term.invoice')}</button>
 		</div>
@@ -153,6 +161,15 @@
 				{/each}
 			</select>
 		</Field>
+		{#if newKind === 'invoice'}
+			<Field label={t('documents.invoice_type')} note={t('documents.invoice_type_hint')}>
+				<select bind:value={invoiceType}>
+					<option value={undefined}>{t('term.invoice')}</option>
+					<option value="partial">{t('term.partial_invoice')}</option>
+					<option value="final">{t('term.final_invoice')}</option>
+				</select>
+			</Field>
+		{/if}
 		{#if createError}<p class="alert" role="alert">{t(createError.message)}</p>{/if}
 		<div><button class="primary" disabled={!customerId}>{t('documents.create')}</button></div>
 	</form>

@@ -51,7 +51,9 @@ pub fn required(method: &Method, path: &str) -> Option<Scope> {
         {
             None
         }
-        "documents" | "snippets" | "unbilled" => pick(Scope::DocumentsRead, Scope::DocumentsWrite),
+        "documents" | "snippets" | "unbilled" | "recurring-invoices" => {
+            pick(Scope::DocumentsRead, Scope::DocumentsWrite)
+        }
         "layouts" | "layout-choices" | "packages" if read => Some(Scope::DocumentsRead),
         "books" | "accounts" | "postings" | "assets" | "receipts" | "suppliers"
         | "bank-accounts" | "bank-transactions" | "open-items" | "tax" | "exports"

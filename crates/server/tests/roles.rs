@@ -151,6 +151,11 @@ const SIGNED_IN: &[(&str, &str, &[&str])] = &[
     ("GET", "/api/packages", OWNER),
     ("POST", "/api/packages", OWNER),
     ("POST", "/api/timers", OWNER_STAFF),
+    ("GET", "/api/recurring-invoices", OWNER_ACCOUNTANT),
+    ("POST", "/api/recurring-invoices", OWNER),
+    ("GET", "/api/recurring-invoices/{id}", OWNER_ACCOUNTANT),
+    ("PUT", "/api/recurring-invoices/{id}", OWNER),
+    ("DELETE", "/api/recurring-invoices/{id}", OWNER),
 ];
 
 #[test]

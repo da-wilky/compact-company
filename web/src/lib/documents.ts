@@ -25,6 +25,10 @@ const terms: Record<Kind, string> = {
 
 export const kindLabel = (kind: Kind) => t(terms[kind]);
 
+/** A document's kind, naming a partial or final invoice as such. */
+export const docLabel = (kind: Kind, invoiceType?: Schemas['InvoiceType'] | null) =>
+	invoiceType ? t(`term.${invoiceType}_invoice`) : kindLabel(kind);
+
 /** An amount in major units as the API sends it (`"1234.50"`), formatted for the current language. */
 export function formatAmount(major: string | null | undefined, currency: string): string {
 	if (major == null) return '–';
@@ -51,6 +55,8 @@ export const units: Schemas['Unit'][] = ['hour', 'day', 'month', 'piece', 'lump_
 export function missingLabel(key: string): string {
 	const line = key.match(/^lines\.(\d+)\.(\w+)$/);
 	if (line) return t(`documents.missing.line_${line[2]}`, { n: Number(line[1]) + 1 });
+	const deduction = key.match(/^deductions\.(\d+)\.\w+$/);
+	if (deduction) return t('documents.missing.deduction', { n: Number(deduction[1]) + 1 });
 	const group = key.split('.')[0];
 	if (group === 'business' || group === 'customer') {
 		return t(`documents.missing.${group}`, { field: t(`${group === 'business' ? 'business' : 'customers'}.${key.split('.')[1]}`) });

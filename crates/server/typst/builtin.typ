@@ -72,6 +72,42 @@
   }
 }
 
+// § 14 Abs. 5 UStG: each paid partial invoice with its net amount and VAT, then what is left
+#let _deductions(data) = {
+  let sb = data.business.small_business
+  let rows = ((
+    "",
+    text(fill: muted, cc.t(data, "net")),
+    if sb { "" } else { text(fill: muted, cc.t(data, "vat")) },
+    "",
+  ),)
+  for d in data.deductions {
+    rows.push((
+      cc.t(data, "less_partial") + " " + d.number + " " + cc.t(data, "of_date") + " " + cc.date(data, d.issue_date),
+      "", "", "-" + cc.money(data, d.gross),
+    ))
+    for group in d.vat {
+      rows.push((
+        if sb { "" } else { text(fill: muted, cc.percent(data, group.rate)) },
+        text(fill: muted, cc.money(data, group.net)),
+        if sb { "" } else { text(fill: muted, cc.money(data, group.tax)) },
+        "",
+      ))
+    }
+  }
+  v(0.6em)
+  align(right, grid(
+    columns: 4,
+    column-gutter: 1.5em,
+    row-gutter: 0.55em,
+    align: (left, right, right, right),
+    ..rows.flatten(),
+    grid.hline(stroke: 0.6pt),
+    text(weight: "bold", cc.t(data, "amount_to_pay")), "", "",
+    text(weight: "bold", cc.money(data, data.totals.due)),
+  ))
+}
+
 #let _totals(data) = {
   let rows = ((cc.t(data, "net_total"), cc.money(data, data.totals.net)),)
   if not data.business.small_business {
@@ -89,6 +125,7 @@
     text(weight: "bold", cc.t(data, "total")),
     text(weight: "bold", cc.money(data, data.totals.gross)),
   ))
+  if data.totals.due != none { _deductions(data) }
 }
 
 #let _timesheet(data) = {

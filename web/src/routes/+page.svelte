@@ -172,6 +172,22 @@
 				{/if}
 				<a href="/documents">{t('documents.title')}</a>
 			</section>
+			{#if overview.recurring_drafts.length}
+				<section class="card stack">
+					<h2>{t('home.recurring_drafts')}</h2>
+					<ul class="list">
+						{#each overview.recurring_drafts as draft (draft.id)}
+							<li>
+								<div>
+									<a href={`/documents/${draft.id}`}>{draft.title ?? t('term.draft')}</a>
+									<small class="muted">{draft.customer_name} · {formatDay(draft.recurring_date, { dateStyle: 'medium' })}</small>
+								</div>
+							</li>
+						{/each}
+					</ul>
+					<a href="/recurring">{t('recurring.title')}</a>
+				</section>
+			{/if}
 		{/if}
 	</div>
 {/if}

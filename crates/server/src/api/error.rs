@@ -68,6 +68,9 @@ pub enum ErrorCode {
     HasAsset,
     AssetBooked,
     DepreciationDue,
+    HasInvoices,
+    FinalInvoiceSettled,
+    PartialInvoicePartlyPaid,
     MailNotConfigured,
     MailFailed,
     RateLimited,
@@ -128,6 +131,9 @@ impl ErrorCode {
         Self::HasAsset,
         Self::AssetBooked,
         Self::DepreciationDue,
+        Self::HasInvoices,
+        Self::FinalInvoiceSettled,
+        Self::PartialInvoicePartlyPaid,
         Self::MailNotConfigured,
         Self::MailFailed,
         Self::RateLimited,
@@ -175,6 +181,9 @@ impl ErrorCode {
             | Self::HasAsset
             | Self::AssetBooked
             | Self::DepreciationDue
+            | Self::HasInvoices
+            | Self::FinalInvoiceSettled
+            | Self::PartialInvoicePartlyPaid
             | Self::MailNotConfigured => StatusCode::CONFLICT,
             Self::RateLimited => StatusCode::TOO_MANY_REQUESTS,
             Self::Internal => StatusCode::INTERNAL_SERVER_ERROR,

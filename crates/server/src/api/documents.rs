@@ -19,7 +19,10 @@ use crate::{
     App, audit,
     auth::{Auth, OwnerOnly, OwnerOrAccountant, now},
     books,
-    documents::{self, Data, Kind, LineRow, Pricing, Row, Status, Unit},
+    documents::{
+        self, Data, InvoiceType, Kind, LineRow, PartialInvoice, PartialState, Pricing, Row, Status,
+        Unit,
+    },
     einvoice, layouts,
     money::{MAX_AMOUNT, is_exchange_rate},
     render, rules,
@@ -32,49 +35,52 @@ const MAX_LINES: usize = 500;
 #[serde(deny_unknown_fields)]
 pub struct DocumentInput {
     /// Fixed once the draft exists.
-    kind: Kind,
-    customer_id: i64,
-    project_id: Option<i64>,
+    pub(super) kind: Kind,
+    pub(super) customer_id: i64,
+    pub(super) project_id: Option<i64>,
     /// The customer's language when left out.
-    language: Option<Language>,
-    title: Option<String>,
-    intro: Option<String>,
-    outro: Option<String>,
+    pub(super) language: Option<Language>,
+    pub(super) title: Option<String>,
+    pub(super) intro: Option<String>,
+    pub(super) outro: Option<String>,
     /// Quotes only: ISO date until which the quote stands; 30 days after issuing when left out.
-    valid_until: Option<String>,
+    pub(super) valid_until: Option<String>,
     /// Quotes only; fixed when left out.
-    pricing: Option<Pricing>,
+    pub(super) pricing: Option<Pricing>,
     /// Invoices only: ISO dates of the service period when it has no time entries.
-    service_from: Option<String>,
-    service_to: Option<String>,
+    pub(super) service_from: Option<String>,
+    pub(super) service_to: Option<String>,
     /// Invoices only: whether a timesheet of its time entries is attached.
     #[serde(default)]
-    timesheet: bool,
+    pub(super) timesheet: bool,
+    /// Invoices only: a partial invoice, which takes no time, or the final invoice that deducts
+    /// the paid partial invoices of its quote, or else of its project.
+    pub(super) invoice_type: Option<InvoiceType>,
     #[serde(default)]
-    lines: Vec<LineInput>,
+    pub(super) lines: Vec<LineInput>,
 }
 
 #[derive(Debug, Deserialize, ToSchema)]
 #[serde(deny_unknown_fields)]
 pub struct LineInput {
-    description: Option<String>,
+    pub(super) description: Option<String>,
     #[schema(value_type = String)]
-    quantity: Decimal,
-    unit: Unit,
+    pub(super) quantity: Decimal,
+    pub(super) unit: Unit,
     /// In the minor unit of the document's currency; without one, a line with a project is
     /// priced at the hourly rate when issued.
-    unit_price: Option<i64>,
+    pub(super) unit_price: Option<i64>,
     /// Percent; the business default when left out.
     #[schema(value_type = Option<String>)]
-    vat_rate: Option<Decimal>,
-    project_id: Option<i64>,
-    activity_id: Option<i64>,
+    pub(super) vat_rate: Option<Decimal>,
+    pub(super) project_id: Option<i64>,
+    pub(super) activity_id: Option<i64>,
     /// Invoices only: the billable time entries this line charges.
     #[serde(default)]
-    time_entry_ids: Vec<i64>,
+    pub(super) time_entry_ids: Vec<i64>,
     /// Cancellation invoices only: the invoice line it reverses; its text and amounts are
     /// taken from that line.
-    cancels_line_id: Option<i64>,
+    pub(super) cancels_line_id: Option<i64>,
 }
 
 #[derive(Debug, Serialize, ToSchema)]
@@ -118,6 +124,12 @@ pub struct Document {
     amount_due: Option<crate::money::Money>,
     /// The uploaded layout it was issued with; none for the built-in one.
     layout: Option<String>,
+    /// The recurring invoice it was drafted from.
+    recurring_id: Option<i64>,
+    invoice_type: Option<InvoiceType>,
+    /// A final invoice's partial invoices: deducted when paid, cancelled when issuing it if
+    /// unpaid; for a draft, as issuing it now would take them.
+    partials: Vec<PartialInvoice>,
     issued_at: Option<i64>,
     created_at: i64,
     updated_at: i64,
@@ -173,6 +185,12 @@ pub struct OutcomeInput {
 #[serde(deny_unknown_fields)]
 pub struct FollowUpInput {
     kind: Kind,
+    /// Invoices for a quote only: a partial or the final invoice.
+    invoice_type: Option<InvoiceType>,
+    /// Partial invoices only: the percentage of the quote's net amounts it charges; without it,
+    /// its lines wait for an amount.
+    #[schema(value_type = Option<String>)]
+    percent: Option<Decimal>,
 }
 
 /// SQL for an issued quote's state, given the document as `d` and today as `?`.
@@ -329,6 +347,21 @@ pub async fn follow_up(
     if source.status != Status::Issued || !allowed.contains(&input.kind) {
         return Err(ApiError::new(ErrorCode::FollowUpNotAllowed));
     }
+    let partial = input.invoice_type == Some(InvoiceType::Partial);
+    if input.invoice_type.is_some()
+        && (input.kind != Kind::Invoice
+            || !matches!(source.kind, Kind::Quote | Kind::OrderConfirmation))
+    {
+        return Err(field_error("invoice_type", FieldError::InvalidFormat));
+    }
+    if input.percent.is_some_and(|p| {
+        !partial || p <= Decimal::ZERO || p > Decimal::ONE_HUNDRED || p.scale() > 2
+    }) {
+        return Err(field_error("percent", FieldError::InvalidFormat));
+    }
+    if input.kind == Kind::Cancellation && settled(&mut tx, id).await? {
+        return Err(ApiError::new(ErrorCode::FinalInvoiceSettled));
+    }
     if source.kind == Kind::Quote {
         let outcome: Option<QuoteState> =
             sqlx::query_scalar("SELECT outcome FROM quote_outcome WHERE document_id = ?")
@@ -355,6 +388,7 @@ pub async fn follow_up(
             timesheet: false,
             rounding: 0,
             dunning_level: Some(level),
+            invoice_type: None,
             lines: Vec::new(),
             ..original
         };
@@ -374,6 +408,8 @@ pub async fn follow_up(
             return Err(ApiError::new(ErrorCode::AlreadyCancelled));
         }
         reversal_lines(&mut tx, id, &wanted).await?
+    } else if partial {
+        advance_lines(&source_data, input.percent)
     } else {
         original
             .lines
@@ -397,6 +433,7 @@ pub async fn follow_up(
         service_from: source_data.service_from.filter(|_| cancels),
         service_to: source_data.service_to.filter(|_| cancels),
         timesheet: false,
+        invoice_type: input.invoice_type,
         lines,
         ..original
     };
@@ -404,6 +441,51 @@ pub async fn follow_up(
     let document = find(&mut tx, &business, follow_up_id).await?;
     tx.commit().await?;
     Ok(Json(document))
+}
+
+/// The lines of a partial invoice for a quote: a lump sum per VAT rate of `percent` of its net
+/// amounts, or without a price to fill in.
+fn advance_lines(quote: &Data, percent: Option<Decimal>) -> Vec<Line> {
+    let number = quote.number.as_deref().unwrap_or_default();
+    let de = quote.language == Language::De;
+    let several = quote.vat.len() > 1;
+    quote
+        .vat
+        .iter()
+        .map(|group| {
+            let mut description = match (percent, de) {
+                (Some(p), true) => format!("Abschlag {} % zu Angebot {number}", p.normalize()),
+                (Some(p), false) => format!("Advance of {} % on quote {number}", p.normalize()),
+                (None, true) => format!("Abschlag zu Angebot {number}"),
+                (None, false) => format!("Advance on quote {number}"),
+            };
+            if several {
+                description.push_str(&format!(" ({} % USt)", group.rate.normalize()));
+            }
+            Line {
+                description,
+                quantity: Decimal::ONE,
+                unit: Unit::LumpSum,
+                unit_price: percent.map(|p| rules::minor(group.net * p / Decimal::ONE_HUNDRED)),
+                vat_rate: Some(group.rate),
+                project_id: None,
+                activity_id: None,
+                time_entry_ids: Vec::new(),
+                cancels_line_id: None,
+            }
+        })
+        .collect()
+}
+
+/// Whether a final invoice and its partial invoices are settled together: the document is a
+/// partial invoice an issued final invoice took in, or a final invoice that took in any.
+async fn settled(db: &mut SqliteConnection, id: i64) -> Result<bool, sqlx::Error> {
+    sqlx::query_scalar(
+        "SELECT EXISTS (SELECT 1 FROM final_partial WHERE partial_id = ?1 OR final_id = ?1)",
+    )
+    .bind(id)
+    .fetch_one(db)
+    .await
 }
 
 /// Records that the customer accepted or declined an issued quote.
@@ -452,7 +534,7 @@ pub async fn set_outcome(
     Ok(Json(document))
 }
 
-async fn insert_draft(
+pub(super) async fn insert_draft(
     tx: &mut SqliteConnection,
     user_id: i64,
     draft: &Draft,
@@ -461,8 +543,8 @@ async fn insert_draft(
     let id: i64 = sqlx::query_scalar(
         "INSERT INTO document (kind, status, customer_id, project_id, language, currency, title,
          intro, outro, valid_until, pricing, source_id, service_from, service_to, timesheet,
-         rounding, dunning_level, created_at, updated_at)
-         VALUES (?, 'draft', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id",
+         rounding, dunning_level, invoice_type, created_at, updated_at)
+         VALUES (?, 'draft', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id",
     )
     .bind(draft.kind)
     .bind(draft.customer_id)
@@ -480,6 +562,7 @@ async fn insert_draft(
     .bind(draft.timesheet)
     .bind(draft.rounding)
     .bind(draft.dunning_level)
+    .bind(draft.invoice_type)
     .bind(at)
     .bind(at)
     .fetch_one(&mut *tx)
@@ -533,7 +616,7 @@ pub async fn put_document(
     sqlx::query(
         "UPDATE document SET customer_id = ?, project_id = ?, language = ?, currency = ?,
          title = ?, intro = ?, outro = ?, valid_until = ?, pricing = ?, service_from = ?,
-         service_to = ?, timesheet = ?, updated_at = ?
+         service_to = ?, timesheet = ?, invoice_type = ?, updated_at = ?
          WHERE id = ?",
     )
     .bind(draft.customer_id)
@@ -548,6 +631,7 @@ pub async fn put_document(
     .bind(&draft.service_from)
     .bind(&draft.service_to)
     .bind(draft.timesheet)
+    .bind(draft.invoice_type)
     .bind(now())
     .bind(id)
     .execute(&mut *tx)
@@ -696,6 +780,9 @@ pub async fn issue(
     let row = draft_row(tx, id).await?;
     let rate = booking_rate(tx, business, &row, exchange_rate).await?;
     if let (Kind::Cancellation, Some(invoice)) = (row.kind, row.source_id) {
+        if settled(tx, invoice).await? {
+            return Err(ApiError::new(ErrorCode::FinalInvoiceSettled));
+        }
         let wanted: Vec<i64> = documents::lines(tx, id)
             .await?
             .iter()
@@ -707,6 +794,13 @@ pub async fn issue(
     let missing = documents::missing(&data);
     if !missing.is_empty() {
         return Err(ApiError::fields(missing));
+    }
+    let partials = documents::partials(tx, &row).await?;
+    if partials
+        .iter()
+        .any(|(p, _)| p.state == PartialState::PartlyPaid)
+    {
+        return Err(ApiError::new(ErrorCode::PartialInvoicePartlyPaid));
     }
     let today = today(business)?;
     let valid_until = match (row.kind, row.valid_until.as_deref()) {
@@ -832,11 +926,51 @@ pub async fn issue(
     )
     .await?;
     if let Some(rate) = rate {
-        rules::post_document(tx, business, user_id, id, &data, rate)
+        let advance = rules::is_advance(tx, id).await?;
+        rules::post_document(tx, business, user_id, id, &data, rate, advance)
             .await
             .map_err(rule_error)?;
     }
+    for (partial, _) in partials {
+        if partial.state == PartialState::Cancelled {
+            cancel_in_full(app, tx, business, user_id, partial.id).await?;
+        }
+        sqlx::query("INSERT INTO final_partial (final_id, partial_id, state) VALUES (?, ?, ?)")
+            .bind(id)
+            .bind(partial.id)
+            .bind(partial.state)
+            .execute(&mut *tx)
+            .await?;
+    }
     Ok(data)
+}
+
+/// Issues a cancellation invoice for every line of `invoice` not yet reversed.
+async fn cancel_in_full(
+    app: &App,
+    tx: &mut SqliteConnection,
+    business: &Business,
+    user_id: i64,
+    invoice: i64,
+) -> Result<(), ApiError> {
+    let source = row(tx, invoice).await?;
+    let source_data = data(tx, business, &source).await?;
+    let wanted = unreversed(tx, invoice).await?;
+    let draft = Draft {
+        kind: Kind::Cancellation,
+        intro: None,
+        outro: None,
+        source_id: Some(invoice),
+        service_from: source_data.service_from,
+        service_to: source_data.service_to,
+        timesheet: false,
+        invoice_type: None,
+        lines: reversal_lines(tx, invoice, &wanted).await?,
+        ..snapshot(tx, &source).await?
+    };
+    let id = insert_draft(tx, user_id, &draft).await?;
+    Box::pin(issue(app, tx, business, user_id, id, None)).await?;
+    Ok(())
 }
 
 /// The EUR per unit an invoice or cancellation invoice is booked at; none for documents that are
@@ -945,6 +1079,11 @@ pub async fn find(
         .bind(id)
         .fetch_one(&mut *db)
         .await?;
+    let partials = documents::partials(db, &row)
+        .await?
+        .into_iter()
+        .map(|(partial, _)| partial)
+        .collect();
     let follow_ups = sqlx::query_as(
         "SELECT id, kind, status, number FROM document WHERE source_id = ? ORDER BY id",
     )
@@ -985,6 +1124,9 @@ pub async fn find(
             _ => None,
         },
         layout: row.layout,
+        recurring_id: row.recurring_id,
+        invoice_type: row.invoice_type,
+        partials,
         issued_at,
         created_at,
         updated_at,
@@ -994,36 +1136,37 @@ pub async fn find(
 /// A validated draft; also the snapshot the audit log compares.
 #[derive(Debug, Serialize)]
 pub struct Draft {
-    kind: Kind,
-    customer_id: i64,
-    project_id: Option<i64>,
-    language: Language,
-    currency: String,
-    title: Option<String>,
-    intro: Option<String>,
-    outro: Option<String>,
-    valid_until: Option<String>,
-    pricing: Option<Pricing>,
-    source_id: Option<i64>,
-    service_from: Option<String>,
-    service_to: Option<String>,
-    timesheet: bool,
-    rounding: i64,
-    dunning_level: Option<i64>,
-    lines: Vec<Line>,
+    pub(super) kind: Kind,
+    pub(super) customer_id: i64,
+    pub(super) project_id: Option<i64>,
+    pub(super) language: Language,
+    pub(super) currency: String,
+    pub(super) title: Option<String>,
+    pub(super) intro: Option<String>,
+    pub(super) outro: Option<String>,
+    pub(super) valid_until: Option<String>,
+    pub(super) pricing: Option<Pricing>,
+    pub(super) source_id: Option<i64>,
+    pub(super) service_from: Option<String>,
+    pub(super) service_to: Option<String>,
+    pub(super) timesheet: bool,
+    pub(super) rounding: i64,
+    pub(super) dunning_level: Option<i64>,
+    pub(super) invoice_type: Option<InvoiceType>,
+    pub(super) lines: Vec<Line>,
 }
 
 #[derive(Debug, Serialize)]
 pub struct Line {
-    description: String,
-    quantity: Decimal,
-    unit: Unit,
-    unit_price: Option<i64>,
-    vat_rate: Option<Decimal>,
-    project_id: Option<i64>,
-    activity_id: Option<i64>,
-    time_entry_ids: Vec<i64>,
-    cancels_line_id: Option<i64>,
+    pub(super) description: String,
+    pub(super) quantity: Decimal,
+    pub(super) unit: Unit,
+    pub(super) unit_price: Option<i64>,
+    pub(super) vat_rate: Option<Decimal>,
+    pub(super) project_id: Option<i64>,
+    pub(super) activity_id: Option<i64>,
+    pub(super) time_entry_ids: Vec<i64>,
+    pub(super) cancels_line_id: Option<i64>,
 }
 
 async fn snapshot(db: &mut SqliteConnection, row: &Row) -> Result<Draft, ApiError> {
@@ -1044,6 +1187,7 @@ async fn snapshot(db: &mut SqliteConnection, row: &Row) -> Result<Draft, ApiErro
         timesheet: row.timesheet,
         rounding: row.rounding,
         dunning_level: row.dunning_level,
+        invoice_type: row.invoice_type,
         lines: documents::lines(db, row.id)
             .await?
             .into_iter()
@@ -1092,7 +1236,7 @@ async fn write_lines(tx: &mut SqliteConnection, id: i64, lines: &[Line]) -> Resu
     Ok(())
 }
 
-async fn validate(
+pub(super) async fn validate(
     db: &mut SqliteConnection,
     input: DocumentInput,
     document_id: Option<i64>,
@@ -1168,7 +1312,8 @@ async fn validate(
             .bind(document_id)
             .fetch_one(&mut *db)
             .await?;
-            if !invoice || !usable || !seen.insert(*entry) {
+            let partial = input.invoice_type == Some(InvoiceType::Partial);
+            if !invoice || partial || !usable || !seen.insert(*entry) {
                 check.fail(&key("time_entry_ids"), FieldError::InvalidFormat);
             }
         }
@@ -1194,6 +1339,9 @@ async fn validate(
     }
     if input.pricing.is_some() && !quote {
         check.fail("pricing", FieldError::InvalidFormat);
+    }
+    if input.invoice_type.is_some() && !invoice {
+        check.fail("invoice_type", FieldError::InvalidFormat);
     }
     for (key, date) in [
         ("service_from", &input.service_from),
@@ -1232,6 +1380,7 @@ async fn validate(
         timesheet: invoice && input.timesheet,
         rounding: 0,
         dunning_level: None,
+        invoice_type: input.invoice_type,
         lines,
     };
     check.done()?;
