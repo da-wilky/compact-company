@@ -45,6 +45,7 @@ Time tracking, invoicing and bookkeeping usually live in two or three tools with
 - Outgoing e-invoices (ZUGFeRD and XRechnung, EN 16931) from the first release, embedded in PDF/A-3
 - Mandatory details of § 14 Abs. 4 UStG checked before issuing; legal details of a UG/GmbH (§ 35a GmbHG) on every document
 - Sending by email (SMTP) with a sent log per document
+- Recurring invoices; partial and final invoices
 
 **Books**
 - Journal on SKR03/SKR04; every issued invoice, payment, receipt, bank transaction and depreciation posts to it; corrections only by reversal
@@ -55,6 +56,10 @@ Time tracking, invoicing and bookkeeping usually live in two or three tools with
 - Fixed assets and depreciation (straight-line, low-value assets)
 - VAT return and EÜR figures traceable to postings; DATEV export; deadlines as ICS feed and email reminders; year-end archive with checksums
 - Audit log of every change that affects the books
+
+**Retention and backup**
+- Deletion after the statutory retention periods; Nextcloud mirror over WebDAV; backup to S3
+- Process documentation (GoBD Verfahrensdokumentation), generated where the instance knows the answer
 
 **Access and integration**
 - Passkeys, optional OIDC; roles owner, staff, accountant
@@ -125,15 +130,22 @@ Crate names are candidates; verify each before the foundation phase settles them
 - Assets, straight-line depreciation, low-value assets; postings and EÜR lines
 - Done when: swilk's fixed assets are in the register, their depreciation is booked, and the EÜR and Anlage AVEÜR figures for a year come from it
 
+### Phase 7 – Recurring and partial invoices
+- Recurring invoice: a customer, lines, interval (monthly, quarterly, yearly) and next date; on that date a draft invoice is created with its service period filled in, for the owner to issue and send
+- Partial invoices (Abschlagsrechnung) against an accepted quote or project; the final invoice (Schlussrechnung) lists the whole work and deducts each partial invoice's net, VAT and payment (§ 14 Abs. 5 Satz 2 UStG)
+- E-invoices carry the deductions as the prepaid amount (BT-113); type codes checked against EN 16931 and XRechnung before building
+- Done when: a monthly recurring invoice drafts itself on its date, and a project billed in two partial invoices closes with a final invoice that KoSIT accepts and whose open item is only the remainder
+
+### Phase 8 – Retention, backup and process documentation
+- Nextcloud mirror over WebDAV: every stored document copied in real time into a readable folder tree; the app stays the main storage
+- Backup to S3: scheduled SQLite snapshot and files, rotation, a restore command
+- Retention: receipts and issued invoices deletable 8 years after their year, business letters after 6, a whole year after 10 (§ 147 AO, § 14b UStG as amended by BEG IV); deletions reach the mirror and age out of backups
+- Process documentation (GoBD Verfahrensdokumentation): technical and operations parts generated from the instance, organisational parts from a guided questionnaire, versioned and carried in each year archive
+- Done when: a receipt uploaded shows up in Nextcloud within a minute, a backup restores onto a fresh instance with identical archive checksums, a year past its period is deleted with the owner's confirmation, and the process documentation for a year renders as one PDF
+
 ### Later
 - FinTS bank fetch (free; needs a product registration with the Deutsche Kreditwirtschaft)
 - AI extraction of receipts (optional endpoint), IMAP receipt inbox, MCP server
-- Recurring invoices, partial and final invoices
-
-## Open questions
-
-1. Retention: how long receipts and issued documents are kept, and whether deletion after the period is supported.
-2. Process documentation (GoBD Verfahrensdokumentation): generated from settings, or written by hand?
 
 ## Context (swilk)
 
