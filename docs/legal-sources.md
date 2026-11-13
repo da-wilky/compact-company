@@ -92,8 +92,42 @@ Rz. 131, new text (excerpt):
 Rz. 185:
 > Die GoBD in der Fassung vom 14. Juli 2025 sind mit Wirkung vom 14. Juli 2025 anzuwenden.
 
+## Transitional rules for the shortened periods
+
+Read 2026-11-13 at https://www.gesetze-im-internet.de/aoeg_1977/art_97__19a.html and https://www.gesetze-im-internet.de/ustg_1980/__27.html.
+
+Art. 97 § 19a Abs. 2 EGAO:
+> § 147 Absatz 3 Satz 1 der Abgabenordnung in der ab dem 1. Januar 2025 geltenden Fassung gilt vorbehaltlich des Absatzes 3 erstmals für alle Unterlagen, deren Aufbewahrungsfrist nach § 147 Absatz 3 der Abgabenordnung in der bis einschließlich 31. Dezember 2024 geltenden Fassung noch nicht abgelaufen ist.
+
+§ 27 Abs. 40 Satz 1 UStG:
+> § 14b Absatz 1 Satz 1 in der ab dem 1. Januar 2025 geltenden Fassung ist auf alle Rechnungen anzuwenden, deren Aufbewahrungsfrist am 31. Dezember 2024 noch nicht abgelaufen ist.
+
+Both make exceptions only for banks, insurers and securities institutions. For the app: the 8-year period applies to every booking document it holds.
+
+## § 169 Abs. 2 AO – Festsetzungsfrist
+
+Read 2026-11-13 at https://www.gesetze-im-internet.de/ao_1977/__169.html.
+
+> Die Festsetzungsfrist beträgt: […] 2. vier Jahre für Steuern und Steuervergütungen, die keine Steuern oder Steuervergütungen im Sinne der Nummer 1 oder Einfuhr- und Ausfuhrabgaben nach Artikel 5 Nummer 20 und 21 des Zollkodex der Union sind.
+> Die Festsetzungsfrist beträgt zehn Jahre, soweit eine Steuer hinterzogen, und fünf Jahre, soweit sie leichtfertig verkürzt worden ist. […]
+
+§ 147 Abs. 3 Satz 5 AO excludes this Satz 2, so evasion doesn't extend retention. When the four years start (§ 170 AO) is not read; the owner's confirmation before deleting stays.
+
+## § 14 Abs. 5 UStG – Advance payments and final invoices
+
+Read 2026-11-13 at https://www.gesetze-im-internet.de/ustg_1980/__14.html.
+
+> Vereinnahmt der Unternehmer das Entgelt oder einen Teil des Entgelts für eine noch nicht ausgeführte Lieferung oder sonstige Leistung, gelten die Absätze 1 bis 4 sinngemäß. Wird eine Endrechnung erteilt, sind in ihr die vor Ausführung der Lieferung oder sonstigen Leistung vereinnahmten Teilentgelte und die auf sie entfallenden Steuerbeträge abzusetzen, wenn über die Teilentgelte Rechnungen im Sinne der Absätze 1 bis 4 ausgestellt worden sind.
+
+For the app: the final invoice deducts amounts received (not merely invoiced) before the work was done, with their VAT.
+
+## § 13 Abs. 1 Nr. 1 a UStG – When VAT arises under Soll
+
+Read 2026-11-13 at https://www.gesetze-im-internet.de/ustg_1980/__13.html.
+
+> […] Wird das Entgelt oder ein Teil des Entgelts vereinnahmt, bevor die Leistung oder die Teilleistung ausgeführt worden ist, so entsteht insoweit die Steuer mit Ablauf des Voranmeldungszeitraums, in dem das Entgelt oder das Teilentgelt vereinnahmt worden ist,
+
 ## Not yet checked against the primary text
 
-- Transitional rules for the shortened periods: Art. 97 § 19a EGAO, § 27 UStG
-- § 14 Abs. 5 UStG (final invoices) and § 13 Abs. 1 Nr. 1 a Satz 4 UStG (VAT on advance payments): phase 7, #152
-- EN 16931 / XRechnung type codes for partial and final invoices: phase 7, #152
+- EN 16931 / XRechnung type codes for partial and final invoices (a standard, not law): phase 7, #152
+- § 170 AO, when the Festsetzungsfrist starts
