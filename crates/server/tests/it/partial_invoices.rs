@@ -371,9 +371,39 @@ async fn a_partly_paid_partial_invoice_holds_up_its_final_invoice() {
     )
     .await;
     let refused = app
-        .as_browser(&mut owner, "POST", &format!("{final_path}/issue"), json!({}))
+        .as_browser(
+            &mut owner,
+            "POST",
+            &format!("{final_path}/issue"),
+            json!({}),
+        )
         .await;
     assert_eq!(body(refused).await["code"], "deductions_exceed_invoice");
+
+    app.ok(
+        &mut owner,
+        "PUT",
+        &final_path,
+        json!({ "kind": "invoice", "customer_id": customer, "invoice_type": "final",
+                "lines": [{ "description": "Leistung", "quantity": "1", "unit": "lump_sum",
+                            "unit_price": 1_000_000 }] }),
+    )
+    .await;
+    issue(&app, &mut owner, &draft["id"]).await;
+    let paid = app.ok(&mut owner, "GET", &path, json!({})).await;
+    let refused = app
+        .as_browser(
+            &mut owner,
+            "POST",
+            &format!("/api/payments/{}/reverse", paid["payments"][0]["id"]),
+            json!({}),
+        )
+        .await;
+    assert_eq!(
+        body(refused).await["code"],
+        "final_invoice_settled",
+        "its VAT counted as due when the final invoice deducted it"
+    );
 
     let percent = app
         .as_browser(
@@ -384,4 +414,36 @@ async fn a_partly_paid_partial_invoice_holds_up_its_final_invoice() {
         )
         .await;
     assert_eq!(body(percent).await["fields"]["percent"], "invalid_format");
+}
+
+#[tokio::test]
+async fn a_final_invoice_from_the_order_confirmation_deducts_the_quotes_partial_invoices() {
+    let app = start(Config::default()).await;
+    let mut owner = app.setup_owner().await;
+    let customer = app.ready_to_issue(&mut owner).await;
+    let quote = accepted_quote(&app, &mut owner, customer).await;
+    let partial = follow_up(
+        &app,
+        &mut owner,
+        quote,
+        json!({ "kind": "invoice", "invoice_type": "partial", "percent": "30" }),
+    )
+    .await;
+    issue(&app, &mut owner, &partial["id"]).await;
+    let confirmation = follow_up(
+        &app,
+        &mut owner,
+        quote,
+        json!({ "kind": "order_confirmation" }),
+    )
+    .await;
+    issue(&app, &mut owner, &confirmation["id"]).await;
+    let draft = follow_up(
+        &app,
+        &mut owner,
+        confirmation["id"].as_i64().unwrap(),
+        json!({ "kind": "invoice", "invoice_type": "final" }),
+    )
+    .await;
+    assert_eq!(draft["partials"][0]["id"], partial["id"]);
 }

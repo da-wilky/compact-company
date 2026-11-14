@@ -372,7 +372,7 @@
   "error.ceremony_expired": "Das hat zu lange gedauert; bitte erneut versuchen.",
   "error.csrf_token": "Die Sitzung ist veraltet; bitte die Seite neu laden.",
   "error.depreciation_due": "Zuerst die Abschreibung dieses Jahres buchen.",
-  "error.final_invoice_settled": "Eine Schlussrechnung und die von ihr erfassten Abschlagsrechnungen gehören zusammen und können nicht storniert werden.",
+  "error.final_invoice_settled": "Eine Schlussrechnung und die von ihr erfassten Abschlagsrechnungen gehören zusammen: Sie können nicht storniert und die Zahlung einer abgezogenen Abschlagsrechnung nicht rückgängig gemacht werden.",
   "error.follow_up_not_allowed": "Dieses Dokument lässt sich daraus nicht erstellen.",
   "error.forbidden": "Dazu fehlt die Berechtigung.",
   "error.has_asset": "Aus diesem Beleg stammt ein Anlagegut; zuerst dieses löschen.",

@@ -9,7 +9,7 @@ use utoipa::{IntoParams, ToSchema};
 use super::{
     books::{check_date, started},
     business::is_iban,
-    documents::{business, rule_error, today},
+    documents::{business, on_deducted, rule_error, today},
     error::{ApiError, ErrorCode, FieldError, Json, Path, Query},
     input::{Check, field_error},
     overview::amount_due,
@@ -877,6 +877,9 @@ pub async fn unmatch_transaction(
     .fetch_all(&mut *tx)
     .await?;
     for payment in payments {
+        if on_deducted(&mut tx, payment).await? {
+            return Err(ApiError::new(ErrorCode::FinalInvoiceSettled));
+        }
         sqlx::query("UPDATE payment SET reversed_at = ?, reversed_by = ? WHERE id = ?")
             .bind(at)
             .bind(auth.user.id)
