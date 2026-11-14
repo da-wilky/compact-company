@@ -442,10 +442,11 @@ pub async fn restore(
     for hash in files.hashes().await? {
         files.get(hash).await?;
     }
-    let archives: Vec<(i64, String)> =
-        sqlx::query_as("SELECT year, archive FROM closed_year ORDER BY year")
-            .fetch_all(&app.db)
-            .await?;
+    let archives: Vec<(i64, String)> = sqlx::query_as(
+        "SELECT year, archive FROM year_archive WHERE archive IS NOT NULL ORDER BY year",
+    )
+    .fetch_all(&app.db)
+    .await?;
     for (year, archive) in &archives {
         let hash: ContentHash = archive
             .parse()

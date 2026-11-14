@@ -1,4 +1,8 @@
-use std::{collections::BTreeMap, sync::Arc, time::Duration};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    sync::Arc,
+    time::Duration,
+};
 
 use base64::{Engine, engine::general_purpose::STANDARD as BASE64};
 use object_store::{
@@ -191,7 +195,7 @@ async fn copy(app: &App, mirror: &Mirror, subject: &str, force: bool) -> Result<
             continue;
         }
         let bytes = app.files.get(*hash).await?;
-        mirror.store.put(&store_path(path), bytes.into()).await?;
+        mirror.store.put(&store_path(path)?, bytes.into()).await?;
         sqlx::query(
             "INSERT INTO mirror_file (path, subject, hash, copied_at) VALUES (?, ?, ?, ?)
              ON CONFLICT (path) DO UPDATE SET subject = excluded.subject, hash = excluded.hash,
@@ -205,7 +209,7 @@ async fn copy(app: &App, mirror: &Mirror, subject: &str, force: bool) -> Result<
         .await?;
     }
     for path in held.keys().filter(|path| !wanted.contains_key(*path)) {
-        match mirror.store.delete(&store_path(path)).await {
+        match mirror.store.delete(&store_path(path)?).await {
             Ok(()) | Err(object_store::Error::NotFound { .. }) => {}
             Err(e) => return Err(e.into()),
         }
@@ -217,8 +221,9 @@ async fn copy(app: &App, mirror: &Mirror, subject: &str, force: bool) -> Result<
     Ok(())
 }
 
-fn store_path(path: &str) -> StorePath {
-    StorePath::from_iter(path.split('/'))
+/// Taken as is: `Path::from` would percent-encode umlauts, which WebDAV then encodes again.
+fn store_path(path: &str) -> Result<StorePath, object_store::Error> {
+    Ok(StorePath::parse(path)?)
 }
 
 /// The files a record should have in the mirror, by path.
@@ -231,9 +236,19 @@ async fn wanted(app: &App, subject: &str) -> Result<BTreeMap<String, ContentHash
         return Ok(files);
     };
     let mut db = app.db.acquire().await?;
+    // a file deleted after its retention period leaves the mirror too
+    let stored: BTreeSet<String> =
+        sqlx::query_scalar("SELECT hash FROM stored_file WHERE subject = ?")
+            .bind(subject)
+            .fetch_all(&mut *db)
+            .await?
+            .into_iter()
+            .collect();
     let mut add = |path: String, hash: &str| {
-        if let Ok(hash) = hash.parse() {
-            files.insert(path, hash);
+        if let Ok(parsed) = hash.parse()
+            && stored.contains(hash)
+        {
+            files.insert(path, parsed);
         }
     };
     match kind {
@@ -303,11 +318,12 @@ async fn wanted(app: &App, subject: &str) -> Result<BTreeMap<String, ContentHash
             }
         }
         "year" => {
-            let archive: Option<String> =
-                sqlx::query_scalar("SELECT archive FROM closed_year WHERE year = ?")
-                    .bind(id)
-                    .fetch_optional(&mut *db)
-                    .await?;
+            let archive: Option<String> = sqlx::query_scalar(
+                "SELECT archive FROM year_archive WHERE year = ? AND archive IS NOT NULL",
+            )
+            .bind(id)
+            .fetch_optional(&mut *db)
+            .await?;
             if let Some(archive) = archive {
                 add(format!("{id}/Jahresarchiv-{id}.tar.gz"), &archive);
             }

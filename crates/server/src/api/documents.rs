@@ -749,6 +749,7 @@ pub async fn document_pdf(
     let row = row(&mut db, id).await?;
     let (bytes, name) = match &row.pdf {
         Some(hash) => {
+            super::retention::kept(&mut db, &format!("document:{id}")).await?;
             let hash = hash.parse().map_err(ApiError::internal)?;
             let bytes = app.files.get(hash).await.map_err(ApiError::internal)?;
             (bytes.to_vec(), row.number.clone().unwrap_or_default())

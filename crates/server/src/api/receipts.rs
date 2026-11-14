@@ -1068,6 +1068,7 @@ pub async fn receipt_file(
             .bind(id)
             .fetch_optional(&app.db)
             .await?;
+    super::retention::kept(&mut *app.db.acquire().await?, &format!("receipt:{id}")).await?;
     let (Some(hash), kind) = file.ok_or(ApiError::new(ErrorCode::NotFound))? else {
         return Err(ApiError::new(ErrorCode::NotFound));
     };

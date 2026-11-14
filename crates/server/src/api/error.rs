@@ -76,6 +76,10 @@ pub enum ErrorCode {
     MailNotConfigured,
     MirrorNotConfigured,
     BackupNotConfigured,
+    NothingToDelete,
+    YearAnonymised,
+    AnonymisationNotDue,
+    FileDeleted,
     MailFailed,
     RateLimited,
     Internal,
@@ -143,6 +147,10 @@ impl ErrorCode {
         Self::MailNotConfigured,
         Self::MirrorNotConfigured,
         Self::BackupNotConfigured,
+        Self::NothingToDelete,
+        Self::YearAnonymised,
+        Self::AnonymisationNotDue,
+        Self::FileDeleted,
         Self::MailFailed,
         Self::RateLimited,
         Self::Internal,
@@ -196,7 +204,11 @@ impl ErrorCode {
             | Self::FinalInvoiceInFull
             | Self::MailNotConfigured
             | Self::MirrorNotConfigured
-            | Self::BackupNotConfigured => StatusCode::CONFLICT,
+            | Self::BackupNotConfigured
+            | Self::NothingToDelete
+            | Self::YearAnonymised
+            | Self::AnonymisationNotDue => StatusCode::CONFLICT,
+            Self::FileDeleted => StatusCode::GONE,
             Self::RateLimited => StatusCode::TOO_MANY_REQUESTS,
             Self::Internal => StatusCode::INTERNAL_SERVER_ERROR,
         }

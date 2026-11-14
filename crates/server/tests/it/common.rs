@@ -535,3 +535,67 @@ pub async fn close_years(app: &TestApp, owner: &mut Browser, first: i16, last: i
         .await;
     }
 }
+
+pub async fn account(app: &TestApp, owner: &mut Browser, number: &str) -> Value {
+    app.ok(owner, "GET", "/api/accounts", json!({}))
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|a| a["number"] == number)
+        .unwrap()["id"]
+        .clone()
+}
+
+pub async fn receipt(
+    app: &TestApp,
+    owner: &mut Browser,
+    file: &[u8],
+    content: Value,
+    paid_from: &Value,
+) -> i64 {
+    let response = app
+        .multipart(
+            owner,
+            "POST",
+            "/api/receipts",
+            &[("file", Some("scan.pdf"), file)],
+        )
+        .await;
+    let id = json(response).await["id"].as_i64().unwrap();
+    let path = format!("/api/receipts/{id}");
+    app.ok(owner, "PUT", &path, content).await;
+    app.ok(
+        owner,
+        "POST",
+        &format!("{path}/book"),
+        json!({ "paid_from": paid_from }),
+    )
+    .await;
+    id
+}
+
+/// Moves an issued document into an earlier year, which issuing never does.
+pub async fn backdate(app: &TestApp, id: i64, date: &str) {
+    let db = &mut *app.app.db.acquire().await.unwrap();
+    let trigger: String =
+        sqlx::query_scalar("SELECT sql FROM sqlite_master WHERE name = 'document_issued_fixed'")
+            .fetch_one(&mut *db)
+            .await
+            .unwrap();
+    sqlx::query("DROP TRIGGER document_issued_fixed")
+        .execute(&mut *db)
+        .await
+        .unwrap();
+    sqlx::query("UPDATE document SET issue_date = ?1, created_at = unixepoch(?1) WHERE id = ?2")
+        .bind(date)
+        .bind(id)
+        .execute(&mut *db)
+        .await
+        .unwrap();
+    // the trigger as the migration wrote it
+    sqlx::query(sqlx::AssertSqlSafe(trigger))
+        .execute(&mut *db)
+        .await
+        .unwrap();
+}

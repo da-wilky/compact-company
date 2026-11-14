@@ -8,6 +8,7 @@ use utoipa_axum::{router::OpenApiRouter, routes};
 use crate::App;
 
 pub mod activities;
+pub mod anonymise;
 pub mod assets;
 pub mod audit;
 pub mod bank;
@@ -29,6 +30,7 @@ pub mod passkeys;
 pub mod projects;
 pub mod receipts;
 pub mod recurring;
+pub mod retention;
 pub mod sending;
 pub mod session;
 pub mod snippets;
@@ -204,6 +206,9 @@ pub fn routes() -> OpenApiRouter<Arc<App>> {
         .routes(routes!(storage::resync_mirror))
         .routes(routes!(storage::get_backup))
         .routes(routes!(storage::run_backup))
+        .routes(routes!(retention::list_retention))
+        .routes(routes!(retention::delete_expired))
+        .routes(routes!(anonymise::anonymise_year))
         .routes(routes!(years::list_years))
         .routes(routes!(years::close_year))
         .routes(routes!(years::year_archive))

@@ -98,6 +98,8 @@ impl App {
                 .create_if_missing(true)
                 .journal_mode(SqliteJournalMode::Wal)
                 .foreign_keys(true)
+                // deleted rows are overwritten, so an anonymised year leaves no trace in the file
+                .pragma("secure_delete", "on")
                 .busy_timeout(Duration::from_secs(5)),
         )
         .await?;

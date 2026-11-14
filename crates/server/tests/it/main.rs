@@ -1,5 +1,6 @@
 // one test binary: each would otherwise link the whole app with Typst
 
+mod anonymise;
 mod assets;
 mod audit;
 mod auth;
@@ -31,6 +32,7 @@ mod quotes;
 mod receipts;
 mod recurring;
 mod render;
+mod retention;
 mod roles;
 mod router;
 mod sending;
