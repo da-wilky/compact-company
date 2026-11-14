@@ -652,16 +652,24 @@ pub async fn partials(
         .fetch_all(&mut *db)
         .await?
     } else {
+        // a quote's order confirmation counts as the quote, so partial and final invoices may
+        // come from either
         sqlx::query_as(
-            "SELECT d.id, NULL FROM document d WHERE d.kind = 'invoice'
+            "WITH root (id, quote) AS (SELECT id, CASE WHEN kind = 'order_confirmation'
+                 THEN coalesce(source_id, id) ELSE id END FROM document)
+             SELECT d.id, NULL FROM document d WHERE d.kind = 'invoice'
              AND d.invoice_type = 'partial' AND d.status = 'issued' AND d.customer_id = ?1
-             AND CASE WHEN ?2 IS NOT NULL THEN d.source_id = ?2 ELSE d.project_id IS ?3 END
+             AND d.currency = ?4 AND CASE WHEN ?2 IS NOT NULL
+                 THEN (SELECT quote FROM root WHERE id = d.source_id)
+                     = (SELECT quote FROM root WHERE id = ?2)
+                 ELSE d.project_id IS ?3 END
              AND NOT EXISTS (SELECT 1 FROM final_partial f WHERE f.partial_id = d.id)
              ORDER BY d.issue_date, d.id",
         )
         .bind(row.customer_id)
         .bind(row.source_id)
         .bind(row.project_id)
+        .bind(&row.currency)
         .fetch_all(&mut *db)
         .await?
     };

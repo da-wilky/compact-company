@@ -488,6 +488,21 @@ async fn settled(db: &mut SqliteConnection, id: i64) -> Result<bool, sqlx::Error
     .await
 }
 
+/// Whether a payment is on a partial invoice a final invoice deducted, which already counted its
+/// VAT as due.
+pub(super) async fn on_deducted(
+    db: &mut SqliteConnection,
+    payment: i64,
+) -> Result<bool, sqlx::Error> {
+    sqlx::query_scalar(
+        "SELECT EXISTS (SELECT 1 FROM payment p JOIN final_partial f ON f.partial_id = p.document_id
+         WHERE p.id = ? AND f.state = 'deducted')",
+    )
+    .bind(payment)
+    .fetch_one(db)
+    .await
+}
+
 /// Records that the customer accepted or declined an issued quote.
 #[utoipa::path(post, path = "/documents/{id}/outcome", tag = "documents",
     params(("id" = i64, Path)), request_body = OutcomeInput,
@@ -801,6 +816,24 @@ pub async fn issue(
         .any(|(p, _)| p.state == PartialState::PartlyPaid)
     {
         return Err(ApiError::new(ErrorCode::PartialInvoicePartlyPaid));
+    }
+    let deducted = |rate| -> Decimal {
+        data.deductions
+            .iter()
+            .flat_map(|d| &d.vat)
+            .filter(|g| g.rate == rate)
+            .map(|g| g.net)
+            .sum()
+    };
+    if data.deductions.iter().flat_map(|d| &d.vat).any(|g| {
+        deducted(g.rate)
+            > data
+                .vat
+                .iter()
+                .find(|v| v.rate == g.rate)
+                .map_or(Decimal::ZERO, |v| v.net)
+    }) {
+        return Err(ApiError::new(ErrorCode::DeductionsExceedInvoice));
     }
     let today = today(business)?;
     let valid_until = match (row.kind, row.valid_until.as_deref()) {

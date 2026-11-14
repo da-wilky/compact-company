@@ -335,7 +335,18 @@ async fn write(
     input: RecurringInput,
 ) -> Result<serde_json::Value, ApiError> {
     let mut check = Check::default();
-    let next: Option<Date> = input.next_date.parse().ok();
+    let last: Option<String> =
+        sqlx::query_scalar("SELECT max(recurring_date) FROM document WHERE recurring_id = ?")
+            .bind(id)
+            .fetch_one(&mut *tx)
+            .await?;
+    // dates count from it, so it bounds how far back drafts go; a date already drafted would
+    // be billed twice
+    let next = input
+        .next_date
+        .parse::<Date>()
+        .ok()
+        .filter(|d| d.year() >= 2000 && last.as_ref().is_none_or(|l| *d > parse(l)));
     if next.is_none() {
         check.fail("next_date", FieldError::InvalidFormat);
     }

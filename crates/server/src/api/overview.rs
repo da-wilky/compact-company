@@ -7,7 +7,7 @@ use utoipa::ToSchema;
 
 use super::{
     billing::{UnbilledProject, unbilled},
-    documents::{Document, business, find, row, rule_error, today},
+    documents::{Document, business, find, on_deducted, row, rule_error, today},
     error::{ApiError, ErrorCode, FieldError, Json, Path},
     input::Check,
 };
@@ -304,6 +304,9 @@ pub async fn reverse_payment(
     }
     if payment.bank_match_id.is_some() {
         return Err(ApiError::new(ErrorCode::BankMatched));
+    }
+    if on_deducted(&mut tx, id).await? {
+        return Err(ApiError::new(ErrorCode::FinalInvoiceSettled));
     }
     let (document, date, amount) = (payment.owner, payment.date, payment.amount);
     sqlx::query("UPDATE payment SET reversed_at = ?, reversed_by = ? WHERE id = ?")
