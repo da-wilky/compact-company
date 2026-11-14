@@ -9,16 +9,22 @@ use object_store::{
     ClientOptions, HeaderMap, HeaderValue, ObjectStore, ObjectStoreExt, RetryConfig,
     http::HttpBuilder, path::Path as StorePath,
 };
+use percent_encoding::percent_decode_str;
 use serde::Serialize;
 use sqlx::{SqliteConnection, SqlitePool};
 use utoipa::ToSchema;
 
-use crate::{App, auth::now, config::Webdav, documents::Kind, files::ContentHash};
+use crate::{
+    App, api::customers::Language, auth::now, config::Webdav, documents::Kind, files::ContentHash,
+};
 
 /// A one-way copy of every stored document into a readable folder tree; the file store stays
 /// the main storage, and whatever changes in the mirror is overwritten by the next copy.
 pub struct Mirror {
     store: Arc<dyn ObjectStore>,
+    /// The path of the mirror's URL, as object_store reports listed folders.
+    base: String,
+    language: Option<Language>,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -29,12 +35,14 @@ pub enum Error {
     Store(#[from] object_store::Error),
     #[error(transparent)]
     Files(#[from] crate::files::Error),
+    #[error(transparent)]
+    Settings(#[from] crate::settings::Error),
     #[error("invalid mirror credentials: {0}")]
     Credentials(#[from] axum::http::header::InvalidHeaderValue),
 }
 
 impl Mirror {
-    pub fn webdav(config: &Webdav) -> Result<Self, Error> {
+    pub fn webdav(config: &Webdav, language: Option<Language>) -> Result<Self, Error> {
         let credentials = BASE64.encode(format!("{}:{}", config.username, config.password));
         let mut auth = HeaderValue::from_str(&format!("Basic {credentials}"))?;
         auth.set_sensitive(true);
@@ -56,6 +64,10 @@ impl Mirror {
             .build()?;
         Ok(Self {
             store: Arc::new(store),
+            base: percent_decode_str(config.url.path().trim_matches('/'))
+                .decode_utf8_lossy()
+                .into_owned(),
+            language,
         })
     }
 }
@@ -146,6 +158,16 @@ pub async fn copy_due(app: &App) -> Result<usize, Error> {
     let Some(mirror) = &app.mirror else {
         return Ok(0);
     };
+    let language = match mirror.language {
+        Some(language) => language,
+        None => app
+            .settings
+            .business()
+            .await?
+            .language
+            .unwrap_or(Language::En),
+    };
+    follow_language(&app.db, language).await?;
     let due: Vec<(String, i64, i64, bool)> = sqlx::query_as(
         "SELECT subject, attempts, seq, force FROM mirror_pending WHERE due_at <= ?
          ORDER BY due_at",
@@ -155,7 +177,7 @@ pub async fn copy_due(app: &App) -> Result<usize, Error> {
     .await?;
     let mut done = 0;
     for (subject, attempts, seq, force) in due {
-        match copy(app, mirror, &subject, force).await {
+        match copy(app, mirror, language, &subject, force).await {
             Ok(()) => {
                 sqlx::query("DELETE FROM mirror_pending WHERE subject = ? AND seq = ?")
                     .bind(&subject)
@@ -182,8 +204,38 @@ pub async fn copy_due(app: &App) -> Result<usize, Error> {
     Ok(done)
 }
 
-async fn copy(app: &App, mirror: &Mirror, subject: &str, force: bool) -> Result<(), Error> {
-    let wanted = wanted(app, subject).await?;
+/// Copies everything again under its new names once the language changes.
+async fn follow_language(db: &SqlitePool, language: Language) -> Result<(), sqlx::Error> {
+    let built: Option<Language> = sqlx::query_scalar("SELECT language FROM mirror_language")
+        .fetch_optional(db)
+        .await?;
+    if built == Some(language) {
+        return Ok(());
+    }
+    let held: bool = sqlx::query_scalar("SELECT EXISTS (SELECT 1 FROM mirror_file)")
+        .fetch_one(db)
+        .await?;
+    if built.is_some() || held {
+        resync(db).await?;
+    }
+    sqlx::query(
+        "INSERT INTO mirror_language (id, language) VALUES (1, ?)
+         ON CONFLICT (id) DO UPDATE SET language = excluded.language",
+    )
+    .bind(language)
+    .execute(db)
+    .await?;
+    Ok(())
+}
+
+async fn copy(
+    app: &App,
+    mirror: &Mirror,
+    language: Language,
+    subject: &str,
+    force: bool,
+) -> Result<(), Error> {
+    let wanted = wanted(app, language, subject).await?;
     let held: BTreeMap<String, String> =
         sqlx::query_as("SELECT path, hash FROM mirror_file WHERE subject = ?")
             .bind(subject)
@@ -214,10 +266,37 @@ async fn copy(app: &App, mirror: &Mirror, subject: &str, force: bool) -> Result<
             Ok(()) | Err(object_store::Error::NotFound { .. }) => {}
             Err(e) => return Err(e.into()),
         }
+        remove_empty_folders(mirror, path).await?;
         sqlx::query("DELETE FROM mirror_file WHERE path = ?")
             .bind(path)
             .execute(&app.db)
             .await?;
+    }
+    Ok(())
+}
+
+/// Deletes the folders above a deleted file, from the innermost, as long as they are empty;
+/// a folder holding anything else, such as a file added in Nextcloud, stays with its parents.
+async fn remove_empty_folders(mirror: &Mirror, path: &str) -> Result<(), Error> {
+    let mut folder = path;
+    while let Some((parent, _)) = folder.rsplit_once('/') {
+        folder = parent;
+        let location = store_path(folder)?;
+        let listing = mirror.store.list_with_delimiter(Some(&location)).await?;
+        // object_store lists the folder itself among its subfolders when the URL has a path
+        let empty = listing.objects.is_empty()
+            && match listing.common_prefixes.as_slice() {
+                [] => true,
+                [only] => only.as_ref() == format!("{}/{folder}", mirror.base),
+                _ => false,
+            };
+        if !empty {
+            break;
+        }
+        match mirror.store.delete(&location).await {
+            Ok(()) | Err(object_store::Error::NotFound { .. }) => {}
+            Err(e) => return Err(e.into()),
+        }
     }
     Ok(())
 }
@@ -228,7 +307,11 @@ fn store_path(path: &str) -> Result<StorePath, object_store::Error> {
 }
 
 /// The files a record should have in the mirror, by path.
-async fn wanted(app: &App, subject: &str) -> Result<BTreeMap<String, ContentHash>, Error> {
+async fn wanted(
+    app: &App,
+    language: Language,
+    subject: &str,
+) -> Result<BTreeMap<String, ContentHash>, Error> {
     let mut files = BTreeMap::new();
     let Some((kind, id)) = subject.split_once(':') else {
         return Ok(files);
@@ -262,7 +345,12 @@ async fn wanted(app: &App, subject: &str) -> Result<BTreeMap<String, ContentHash
             .fetch_optional(&mut *db)
             .await?;
             if let Some((kind, number, date, pdf, xml)) = row {
-                let base = format!("{}/{}/{}", &date[..4], folder(kind), name(&number));
+                let base = format!(
+                    "{}/{}/{}",
+                    &date[..4],
+                    folder(kind, language),
+                    name(&number)
+                );
                 add(format!("{base}.pdf"), &pdf);
                 if let Some(xml) = xml {
                     add(format!("{base}.xml"), &xml);
@@ -285,11 +373,16 @@ async fn wanted(app: &App, subject: &str) -> Result<BTreeMap<String, ContentHash
                 parts.extend(r.supplier);
                 parts.extend(r.number);
                 if parts.len() == 1 {
-                    parts.push(format!("Beleg {id}"));
+                    parts.push(format!("{} {id}", tr(language, "Beleg", "Receipt")));
                 }
                 let ext = extension(r.file_name.as_deref(), r.file_type.as_deref());
                 add(
-                    format!("{}/Belege/{}{ext}", &date[..4], name(&parts.join(" "))),
+                    format!(
+                        "{}/{}/{}{ext}",
+                        &date[..4],
+                        tr(language, "Belege", "Receipts"),
+                        name(&parts.join(" "))
+                    ),
                     &r.file,
                 );
             }
@@ -310,9 +403,13 @@ async fn wanted(app: &App, subject: &str) -> Result<BTreeMap<String, ContentHash
                 let ext = extension(file_name.as_deref(), None);
                 add(
                     format!(
-                        "{}/Kontoauszüge/{}{ext}",
+                        "{}/{}/{}{ext}",
                         &to[..4],
-                        name(&format!("{from} bis {to} {account}"))
+                        tr(language, "Kontoauszüge", "Bank statements"),
+                        name(&format!(
+                            "{from} {} {to} {account}",
+                            tr(language, "bis", "to")
+                        ))
                     ),
                     &file,
                 );
@@ -326,7 +423,8 @@ async fn wanted(app: &App, subject: &str) -> Result<BTreeMap<String, ContentHash
             .fetch_optional(&mut *db)
             .await?;
             if let Some(archive) = archive {
-                add(format!("{id}/Jahresarchiv-{id}.tar.gz"), &archive);
+                let archive_name = tr(language, "Jahresarchiv-", "Year-end-archive-");
+                add(format!("{id}/{archive_name}{id}.tar.gz"), &archive);
             }
         }
         "process" => {
@@ -337,7 +435,7 @@ async fn wanted(app: &App, subject: &str) -> Result<BTreeMap<String, ContentHash
             .fetch_optional(&mut *db)
             .await?;
             if let Some((from, de, en)) = row {
-                let dir = "Verfahrensdokumentation";
+                let dir = tr(language, "Verfahrensdokumentation", "Process documentation");
                 add(
                     format!("{dir}/Verfahrensdokumentation v{id} {from}.pdf"),
                     &de,
@@ -361,15 +459,23 @@ struct Receipt {
     created: String,
 }
 
-fn folder(kind: Kind) -> &'static str {
-    match kind {
-        Kind::Quote => "Angebote",
-        Kind::OrderConfirmation => "Auftragsbestätigungen",
-        Kind::Invoice | Kind::Cancellation => "Rechnungen",
-        Kind::DeliveryNote => "Lieferscheine",
-        Kind::AcceptanceReport => "Abnahmeprotokolle",
-        Kind::Dunning => "Mahnungen",
+fn tr(language: Language, de: &'static str, en: &'static str) -> &'static str {
+    match language {
+        Language::De => de,
+        Language::En => en,
     }
+}
+
+fn folder(kind: Kind, language: Language) -> &'static str {
+    let (de, en) = match kind {
+        Kind::Quote => ("Angebote", "Quotes"),
+        Kind::OrderConfirmation => ("Auftragsbestätigungen", "Order confirmations"),
+        Kind::Invoice | Kind::Cancellation => ("Rechnungen", "Invoices"),
+        Kind::DeliveryNote => ("Lieferscheine", "Delivery notes"),
+        Kind::AcceptanceReport => ("Abnahmeprotokolle", "Acceptance reports"),
+        Kind::Dunning => ("Mahnungen", "Dunning letters"),
+    };
+    tr(language, de, en)
 }
 
 /// A file or folder name that WebDAV servers and every desktop file system accept.

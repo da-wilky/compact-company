@@ -7108,6 +7108,17 @@
             ],
             "description": "Also numbers cancellation invoices, which are invoices."
           },
+          "language": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Language",
+                "description": "Names the folders and files of the mirror unless the mirror sets its own; English when\nunset."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "legal_form": {
             "type": [
               "string",

@@ -30,6 +30,9 @@ pub struct Business {
     pub bank_name: Option<String>,
     pub iban: Option<String>,
     pub bic: Option<String>,
+    /// Names the folders and files of the mirror unless the mirror sets its own; English when
+    /// unset.
+    pub language: Option<crate::api::customers::Language>,
     /// ISO 4217 code new customers are billed in; EUR when unset.
     pub currency: Option<String>,
     /// IANA name such as `Europe/Berlin`, which is the default; dates on documents are in it.

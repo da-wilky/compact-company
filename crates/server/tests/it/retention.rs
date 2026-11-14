@@ -100,7 +100,7 @@ async fn files_past_their_period_are_deleted_and_pruned_from_archive_and_mirror(
     }
     mirror::resync(&app.app.db).await.unwrap();
     mirror::copy_due(&app.app).await.unwrap();
-    let paper_path = format!("{year}/Belege/{year}-03-04 Bürohaus Meyer R-17.pdf");
+    let paper_path = format!("{year}/Receipts/{year}-03-04 Bürohaus Meyer R-17.pdf");
     assert!(dav.files.lock().unwrap().contains_key(&paper_path));
 
     let retention = app.ok(&mut owner, "GET", "/api/retention", json!({})).await;
@@ -246,10 +246,10 @@ async fn files_past_their_period_are_deleted_and_pruned_from_archive_and_mirror(
     let mirrored = dav.files.lock().unwrap().clone();
     assert!(!mirrored.contains_key(&paper_path));
     assert!(mirrored.contains_key(&format!(
-        "{year}/Belege/{year}-04-15 Bürohaus Meyer R-18.pdf"
+        "{year}/Receipts/{year}-04-15 Bürohaus Meyer R-18.pdf"
     )));
     assert_eq!(
-        mirrored[&format!("{year}/Jahresarchiv-{year}.tar.gz")],
+        mirrored[&format!("{year}/Year-end-archive-{year}.tar.gz")],
         pruned.to_vec()
     );
 

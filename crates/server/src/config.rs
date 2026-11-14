@@ -63,6 +63,8 @@ pub struct Backup {
 pub struct Mirror {
     /// A readable copy of every stored document, such as a Nextcloud folder.
     pub webdav: Option<Webdav>,
+    /// The language of folder and file names; the business language when unset.
+    pub language: Option<crate::api::customers::Language>,
 }
 
 #[derive(Debug, Deserialize)]

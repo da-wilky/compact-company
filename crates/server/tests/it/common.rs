@@ -405,26 +405,28 @@ pub fn smtp_config(port: u16) -> Config {
     .unwrap()
 }
 
-/// A WebDAV server's files by decoded path, as a mirror sees them.
-#[derive(Default)]
+/// A WebDAV server's files and folders by decoded path, as a mirror sees them.
 pub struct Dav {
     pub files: Mutex<BTreeMap<String, Vec<u8>>>,
+    pub folders: Mutex<std::collections::BTreeSet<String>>,
     pub down: std::sync::atomic::AtomicBool,
 }
 
-/// Serves WebDAV's PUT, MKCOL and DELETE like Nextcloud: a file's folder must exist first.
+/// Serves WebDAV's PUT, MKCOL, DELETE and PROPFIND like Nextcloud: a file's folder must exist
+/// first, deleting a folder deletes what is in it, and a listing names the folder itself too.
 pub async fn webdav() -> (String, Arc<Dav>) {
     use axum::{extract::Request, response::IntoResponse};
     use std::sync::atomic::Ordering;
 
     const ROOT: &str = "/remote.php/dav/files/samuel/Firma";
-    let dav = Arc::new(Dav::default());
-    let dirs = Arc::new(Mutex::new(std::collections::BTreeSet::from(
-        [String::new()],
-    )));
+    let dav = Arc::new(Dav {
+        files: Mutex::default(),
+        folders: Mutex::new([String::new()].into()),
+        down: Default::default(),
+    });
     let state = dav.clone();
     let handler = move |request: Request| {
-        let (dav, dirs) = (state.clone(), dirs.clone());
+        let dav = state.clone();
         async move {
             if dav.down.load(Ordering::SeqCst) {
                 return StatusCode::SERVICE_UNAVAILABLE.into_response();
@@ -437,7 +439,7 @@ pub async fn webdav() -> (String, Arc<Dav>) {
             let parent = path.rsplit_once('/').map_or("", |(p, _)| p).to_owned();
             let method = request.method().as_str().to_owned();
             let body = request.into_body().collect().await.unwrap().to_bytes();
-            let mut dirs = dirs.lock().unwrap();
+            let mut dirs = dav.folders.lock().unwrap();
             let mut files = dav.files.lock().unwrap();
             match method.as_str() {
                 "PUT" if !dirs.contains(&parent) => StatusCode::CONFLICT.into_response(),
@@ -451,10 +453,58 @@ pub async fn webdav() -> (String, Arc<Dav>) {
                     dirs.insert(path);
                     StatusCode::CREATED.into_response()
                 }
+                "DELETE" if dirs.remove(&path) => {
+                    let inside = |p: &String| p.starts_with(&format!("{path}/"));
+                    dirs.retain(|d| !inside(d));
+                    files.retain(|f, _| !inside(f));
+                    StatusCode::NO_CONTENT.into_response()
+                }
                 "DELETE" => match files.remove(&path) {
                     Some(_) => StatusCode::NO_CONTENT.into_response(),
                     None => StatusCode::NOT_FOUND.into_response(),
                 },
+                "PROPFIND" if !dirs.contains(&path) => StatusCode::NOT_FOUND.into_response(),
+                "PROPFIND" => {
+                    let child = |p: &String| {
+                        let parent = p.rsplit_once('/').map_or("", |(parent, _)| parent);
+                        !p.is_empty() && parent == path
+                    };
+                    let entry = |p: &str, size: Option<usize>| {
+                        let href = format!("{ROOT}/{p}");
+                        let (href, kind, size) = match size {
+                            Some(size) => (
+                                href,
+                                String::new(),
+                                format!("<d:getcontentlength>{size}</d:getcontentlength>"),
+                            ),
+                            None if p.is_empty() => {
+                                (href, "<d:collection/>".to_owned(), String::new())
+                            }
+                            None => (
+                                format!("{href}/"),
+                                "<d:collection/>".to_owned(),
+                                String::new(),
+                            ),
+                        };
+                        format!(
+                            "<d:response><d:href>{href}</d:href><d:propstat><d:prop>\
+                             <d:getlastmodified>Sat, 14 Nov 2026 12:00:00 GMT</d:getlastmodified>\
+                             {size}<d:resourcetype>{kind}</d:resourcetype></d:prop>\
+                             <d:status>HTTP/1.1 200 OK</d:status></d:propstat></d:response>"
+                        )
+                    };
+                    let mut xml =
+                        String::from(r#"<?xml version="1.0"?><d:multistatus xmlns:d="DAV:">"#);
+                    xml.push_str(&entry(&path, None));
+                    for dir in dirs.iter().filter(|d| child(d)) {
+                        xml.push_str(&entry(dir, None));
+                    }
+                    for (file, bytes) in files.iter().filter(|(f, _)| child(f)) {
+                        xml.push_str(&entry(file, Some(bytes.len())));
+                    }
+                    xml.push_str("</d:multistatus>");
+                    (StatusCode::MULTI_STATUS, xml).into_response()
+                }
                 _ => StatusCode::METHOD_NOT_ALLOWED.into_response(),
             }
         }

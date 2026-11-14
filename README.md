@@ -45,6 +45,9 @@ password_file = "/run/secrets/smtp"
 from = "Example GmbH <rechnung@example.com>"
 bcc = "archiv@example.com"     # optional copy of everything sent
 
+[mirror]
+language = "de"                # optional; folder and file names, else the business language, else English
+
 [mirror.webdav]                # a readable copy of every document, such as a Nextcloud folder
 url = "https://cloud.example.com/remote.php/dav/files/samuel/Firma"
 username = "samuel"

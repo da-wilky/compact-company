@@ -140,7 +140,7 @@ impl App {
                 .mirror
                 .webdav
                 .as_ref()
-                .map(mirror::Mirror::webdav)
+                .map(|webdav| mirror::Mirror::webdav(webdav, config.mirror.language))
                 .transpose()?,
             backup: config
                 .backup

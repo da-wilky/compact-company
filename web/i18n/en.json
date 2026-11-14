@@ -177,6 +177,7 @@
   "business.city": "City",
   "business.country": "Country (ISO code)",
   "business.currency": "Currency for new customers",
+  "business.language": "Business language (names in the mirror)",
   "business.datev_client_number": "DATEV client number",
   "business.datev_consultant_number": "DATEV consultant number",
   "business.delivery_note_number_format": "Delivery notes",
