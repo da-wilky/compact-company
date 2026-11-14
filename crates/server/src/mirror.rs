@@ -98,7 +98,7 @@ pub async fn resync(db: &SqlitePool) -> Result<u64, sqlx::Error> {
 }
 
 #[derive(Debug, Serialize, ToSchema)]
-pub struct Status {
+pub struct MirrorStatus {
     /// Whether the config sets up a mirror.
     configured: bool,
     /// Records whose files are still to be copied or deleted.
@@ -109,7 +109,7 @@ pub struct Status {
     failed_at: Option<i64>,
 }
 
-pub async fn status(app: &App) -> Result<Status, sqlx::Error> {
+pub async fn status(app: &App) -> Result<MirrorStatus, sqlx::Error> {
     let (pending, last_copy_at): (i64, Option<i64>) = sqlx::query_as(
         "SELECT (SELECT count(*) FROM mirror_pending), (SELECT max(copied_at) FROM mirror_file)",
     )
@@ -122,7 +122,7 @@ pub async fn status(app: &App) -> Result<Status, sqlx::Error> {
     .fetch_optional(&app.db)
     .await?;
     let (error, failed_at) = failed.unzip();
-    Ok(Status {
+    Ok(MirrorStatus {
         configured: app.mirror.is_some(),
         pending,
         last_copy_at,

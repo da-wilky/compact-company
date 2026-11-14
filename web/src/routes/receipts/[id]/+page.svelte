@@ -5,10 +5,11 @@
 	import Dialog from '#lib/components/Dialog.svelte';
 	import Field from '#lib/components/Field.svelte';
 	import Icon from '#lib/components/Icon.svelte';
-	import { formatDay, today } from '#lib/dates.ts';
+	import { formatDay, isoDay, today } from '#lib/dates.ts';
 	import { t } from '#lib/i18n.svelte.ts';
 	import { formatMoney, moneyInput, parseMoney } from '#lib/money.ts';
 	import { session } from '#lib/session.svelte.ts';
+	import { namePage } from '#lib/title.svelte.ts';
 	import { toast } from '#lib/toast.svelte.ts';
 
 	type Line = { description: string; account_id: number | null; net: string; vat_rate: string; tax: string };
@@ -17,6 +18,7 @@
 	const owner = $derived(session.view?.user?.role === 'owner');
 
 	let receipt = $state<Schemas['Receipt']>();
+	namePage(() => receipt && ([receipt.supplier_name, receipt.number].filter(Boolean).join(' ') || t('term.receipt')));
 	let suppliers = $state<Schemas['Supplier'][]>([]);
 	let accounts = $state<Schemas['Account'][]>([]);
 	let currencies = $state<string[]>(['EUR']);
@@ -218,7 +220,7 @@
 		await load();
 	}
 
-	const file = $derived(receipt?.file_type ? `/api/receipts/${id}/file` : undefined);
+	const file = $derived(receipt?.file_type && !receipt.file_deleted_at ? `/api/receipts/${id}/file` : undefined);
 	const draft = $derived(receipt?.status === 'draft' && owner);
 	const day = (iso: string | null | undefined) => (iso ? formatDay(iso, { dateStyle: 'medium' }) : '–');
 	const missing = (key: string) => (receipt?.missing?.[key] ? t(`field.${receipt.missing[key]}`) : undefined);
@@ -252,6 +254,9 @@
 	{/if}
 	{#if error}<p class="alert" role="alert">{t(error.message)}</p>{/if}
 
+	{#if receipt.file_deleted_at}
+		<p class="muted" role="status">{t('retention.file_deleted', { date: formatDay(isoDay(new Date(receipt.file_deleted_at * 1000)), { dateStyle: 'medium' }) })}</p>
+	{/if}
 	<div class="split" class:with-file={file && receipt.file_type !== 'application/xml'}>
 		{#if file && receipt.file_type !== 'application/xml'}
 			<div class="preview card">

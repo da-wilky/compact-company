@@ -683,7 +683,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Status"
+                  "$ref": "#/components/schemas/BackupStatus"
                 }
               }
             }
@@ -2769,7 +2769,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Status"
+                  "$ref": "#/components/schemas/MirrorStatus"
                 }
               }
             }
@@ -3331,18 +3331,11 @@
         "parameters": [
           {
             "name": "language",
-            "in": "path",
+            "in": "query",
             "description": "German when unset.",
-            "required": true,
+            "required": false,
             "schema": {
-              "oneOf": [
-                {
-                  "$ref": "#/components/schemas/Language"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "$ref": "#/components/schemas/Language"
             }
           }
         ],
@@ -3378,18 +3371,11 @@
         "parameters": [
           {
             "name": "language",
-            "in": "path",
+            "in": "query",
             "description": "German when unset.",
-            "required": true,
+            "required": false,
             "schema": {
-              "oneOf": [
-                {
-                  "$ref": "#/components/schemas/Language"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "$ref": "#/components/schemas/Language"
             }
           }
         ],
@@ -3443,18 +3429,11 @@
           },
           {
             "name": "language",
-            "in": "path",
+            "in": "query",
             "description": "German when unset.",
-            "required": true,
+            "required": false,
             "schema": {
-              "oneOf": [
-                {
-                  "$ref": "#/components/schemas/Language"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "$ref": "#/components/schemas/Language"
             }
           }
         ],
@@ -6204,13 +6183,13 @@
           "blockers": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/Blocker"
+              "$ref": "#/components/schemas/AnonymisationBlocker"
             }
           },
           "customers": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/Named"
+              "$ref": "#/components/schemas/AnonymisedName"
             },
             "description": "Customers, suppliers and users with nothing kept after the year, whose names go."
           },
@@ -6221,14 +6200,117 @@
           "suppliers": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/Named"
+              "$ref": "#/components/schemas/AnonymisedName"
             }
           },
           "users": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/Named"
+              "$ref": "#/components/schemas/AnonymisedName"
             }
+          }
+        }
+      },
+      "AnonymisationBlocker": {
+        "oneOf": [
+          {
+            "type": "object",
+            "description": "An earlier closed year that isn't anonymised; years go oldest first.",
+            "required": [
+              "by",
+              "reason"
+            ],
+            "properties": {
+              "by": {
+                "type": "integer",
+                "format": "int32",
+                "description": "An earlier closed year that isn't anonymised; years go oldest first."
+              },
+              "reason": {
+                "type": "string",
+                "enum": [
+                  "earlier_year"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "description": "An asset acquired by then that is still in the register.",
+            "required": [
+              "by",
+              "reason"
+            ],
+            "properties": {
+              "by": {
+                "type": "string",
+                "description": "An asset acquired by then that is still in the register."
+              },
+              "reason": {
+                "type": "string",
+                "enum": [
+                  "asset"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "description": "An invoice of the year or before that isn't paid in full.",
+            "required": [
+              "by",
+              "reason"
+            ],
+            "properties": {
+              "by": {
+                "type": "string",
+                "description": "An invoice of the year or before that isn't paid in full."
+              },
+              "reason": {
+                "type": "string",
+                "enum": [
+                  "open_invoice"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "description": "A receipt of the year or before that isn't paid in full.",
+            "required": [
+              "by",
+              "reason"
+            ],
+            "properties": {
+              "by": {
+                "type": "integer",
+                "format": "int64",
+                "description": "A receipt of the year or before that isn't paid in full."
+              },
+              "reason": {
+                "type": "string",
+                "enum": [
+                  "open_receipt"
+                ]
+              }
+            }
+          }
+        ],
+        "description": "Why a year can't be anonymised yet."
+      },
+      "AnonymisedName": {
+        "type": "object",
+        "required": [
+          "id",
+          "name"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string"
           }
         }
       },
@@ -6594,6 +6676,102 @@
           }
         }
       },
+      "BackupRun": {
+        "type": "object",
+        "required": [
+          "started_at"
+        ],
+        "properties": {
+          "error": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "finished_at": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "snapshot": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "started_at": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "uploaded": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          }
+        }
+      },
+      "BackupStatus": {
+        "type": "object",
+        "required": [
+          "configured",
+          "running"
+        ],
+        "properties": {
+          "configured": {
+            "type": "boolean",
+            "description": "Whether the config sets up backups."
+          },
+          "failure": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/BackupRun",
+                "description": "The latest run, when it failed after the last success."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "keep_daily": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "keep_monthly": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "last_success": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/BackupRun"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "running": {
+            "type": "boolean"
+          },
+          "time": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Daily, as HH:MM in the business's timezone."
+          }
+        }
+      },
       "BankAccount": {
         "type": "object",
         "required": [
@@ -6782,93 +6960,6 @@
           "accrual",
           "cash"
         ]
-      },
-      "Blocker": {
-        "oneOf": [
-          {
-            "type": "object",
-            "description": "An earlier closed year that isn't anonymised; years go oldest first.",
-            "required": [
-              "by",
-              "reason"
-            ],
-            "properties": {
-              "by": {
-                "type": "integer",
-                "format": "int32",
-                "description": "An earlier closed year that isn't anonymised; years go oldest first."
-              },
-              "reason": {
-                "type": "string",
-                "enum": [
-                  "earlier_year"
-                ]
-              }
-            }
-          },
-          {
-            "type": "object",
-            "description": "An asset acquired by then that is still in the register.",
-            "required": [
-              "by",
-              "reason"
-            ],
-            "properties": {
-              "by": {
-                "type": "string",
-                "description": "An asset acquired by then that is still in the register."
-              },
-              "reason": {
-                "type": "string",
-                "enum": [
-                  "asset"
-                ]
-              }
-            }
-          },
-          {
-            "type": "object",
-            "description": "An invoice of the year or before that isn't paid in full.",
-            "required": [
-              "by",
-              "reason"
-            ],
-            "properties": {
-              "by": {
-                "type": "string",
-                "description": "An invoice of the year or before that isn't paid in full."
-              },
-              "reason": {
-                "type": "string",
-                "enum": [
-                  "open_invoice"
-                ]
-              }
-            }
-          },
-          {
-            "type": "object",
-            "description": "A receipt of the year or before that isn't paid in full.",
-            "required": [
-              "by",
-              "reason"
-            ],
-            "properties": {
-              "by": {
-                "type": "integer",
-                "format": "int64",
-                "description": "A receipt of the year or before that isn't paid in full."
-              },
-              "reason": {
-                "type": "string",
-                "enum": [
-                  "open_receipt"
-                ]
-              }
-            }
-          }
-        ],
-        "description": "Why a year can't be anonymised yet."
       },
       "BookInput": {
         "type": "object",
@@ -7366,15 +7457,6 @@
           "skr04"
         ]
       },
-      "Class": {
-        "type": "string",
-        "description": "How long a record must be kept (§ 147 Abs. 3 AO, § 14b Abs. 1 UStG; ADR 0025).",
-        "enum": [
-          "booking_document",
-          "business_letter",
-          "delivery_note"
-        ]
-      },
       "ClosedYear": {
         "type": "object",
         "required": [
@@ -7795,31 +7877,6 @@
           }
         }
       },
-      "Deletion": {
-        "type": "object",
-        "required": [
-          "at",
-          "user",
-          "confirmation",
-          "files"
-        ],
-        "properties": {
-          "at": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "confirmation": {
-            "type": "string"
-          },
-          "files": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "user": {
-            "type": "string"
-          }
-        }
-      },
       "DepreciationInput": {
         "type": "object",
         "required": [
@@ -7903,6 +7960,14 @@
               "string",
               "null"
             ]
+          },
+          "file_deleted_at": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "When its PDF was deleted after the retention period; the record stays."
           },
           "follow_ups": {
             "type": "array",
@@ -9054,71 +9119,6 @@
           }
         }
       },
-      "Hold": {
-        "oneOf": [
-          {
-            "type": "object",
-            "description": "It documents an asset still in the register, or disposed of fewer than 8 years ago.",
-            "required": [
-              "by",
-              "reason"
-            ],
-            "properties": {
-              "by": {
-                "type": "string",
-                "description": "It documents an asset still in the register, or disposed of fewer than 8 years ago."
-              },
-              "reason": {
-                "type": "string",
-                "enum": [
-                  "asset"
-                ]
-              }
-            }
-          },
-          {
-            "type": "object",
-            "description": "A partial invoice whose final invoice is still kept.",
-            "required": [
-              "by",
-              "reason"
-            ],
-            "properties": {
-              "by": {
-                "type": "string",
-                "description": "A partial invoice whose final invoice is still kept."
-              },
-              "reason": {
-                "type": "string",
-                "enum": [
-                  "final_invoice"
-                ]
-              }
-            }
-          },
-          {
-            "type": "object",
-            "description": "A document of a later year that is still kept refers to it.",
-            "required": [
-              "by",
-              "reason"
-            ],
-            "properties": {
-              "by": {
-                "type": "string",
-                "description": "A document of a later year that is still kept refers to it."
-              },
-              "reason": {
-                "type": "string",
-                "enum": [
-                  "later_document"
-                ]
-              }
-            }
-          }
-        ],
-        "description": "Why a record past its date is kept."
-      },
       "ImportResult": {
         "type": "object",
         "required": [
@@ -9227,70 +9227,6 @@
         "enum": [
           "partial",
           "final"
-        ]
-      },
-      "Item": {
-        "type": "object",
-        "required": [
-          "subject",
-          "kind",
-          "label",
-          "date",
-          "class",
-          "deletable_from"
-        ],
-        "properties": {
-          "class": {
-            "$ref": "#/components/schemas/Class"
-          },
-          "date": {
-            "type": "string"
-          },
-          "deletable_from": {
-            "type": "string"
-          },
-          "deleted_at": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "int64"
-          },
-          "held": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/Hold"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "kind": {
-            "$ref": "#/components/schemas/ItemKind"
-          },
-          "label": {
-            "type": "string",
-            "description": "The document number, the receipt's supplier and number, or the bank account."
-          },
-          "subject": {
-            "type": "string",
-            "description": "Such as `document:12`, `receipt:3` or `bank_import:2`."
-          }
-        }
-      },
-      "ItemKind": {
-        "type": "string",
-        "enum": [
-          "quote",
-          "order_confirmation",
-          "invoice",
-          "cancellation",
-          "delivery_note",
-          "acceptance_report",
-          "dunning",
-          "receipt",
-          "bank_statement"
         ]
       },
       "Kind": {
@@ -9606,6 +9542,45 @@
           "low_value"
         ]
       },
+      "MirrorStatus": {
+        "type": "object",
+        "required": [
+          "configured",
+          "pending"
+        ],
+        "properties": {
+          "configured": {
+            "type": "boolean",
+            "description": "Whether the config sets up a mirror."
+          },
+          "error": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The latest error of a copy still pending."
+          },
+          "failed_at": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "last_copy_at": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "pending": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Records whose files are still to be copied or deleted."
+          }
+        }
+      },
       "Money": {
         "type": "object",
         "description": "An amount in the minor unit of its currency (cents for EUR), never a float.",
@@ -9620,22 +9595,6 @@
           "minor": {
             "type": "integer",
             "format": "int64"
-          }
-        }
-      },
-      "Named": {
-        "type": "object",
-        "required": [
-          "id",
-          "name"
-        ],
-        "properties": {
-          "id": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "name": {
-            "type": "string"
           }
         }
       },
@@ -9877,7 +9836,7 @@
           "backup_failure": {
             "oneOf": [
               {
-                "$ref": "#/components/schemas/Run",
+                "$ref": "#/components/schemas/BackupRun",
                 "description": "The latest backup, when it failed; for the owner only."
               },
               {
@@ -9955,16 +9914,6 @@
           }
         },
         "additionalProperties": false
-      },
-      "Part": {
-        "type": "string",
-        "description": "The four parts of GoBD Rz. 151.",
-        "enum": [
-          "general",
-          "user",
-          "technical",
-          "operations"
-        ]
       },
       "PartKind": {
         "type": "string",
@@ -10355,6 +10304,16 @@
           }
         }
       },
+      "ProcessPart": {
+        "type": "string",
+        "description": "The four parts of GoBD Rz. 151.",
+        "enum": [
+          "general",
+          "user",
+          "technical",
+          "operations"
+        ]
+      },
       "ProcessQuestion": {
         "type": "object",
         "required": [
@@ -10378,7 +10337,7 @@
             "type": "string"
           },
           "part": {
-            "$ref": "#/components/schemas/Part"
+            "$ref": "#/components/schemas/ProcessPart"
           },
           "question": {
             "type": "string"
@@ -10643,6 +10602,14 @@
               "null"
             ],
             "description": "EUR per unit of a receipt in another currency."
+          },
+          "file_deleted_at": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "When its file was deleted after the retention period; the record stays."
           },
           "file_name": {
             "type": [
@@ -11365,6 +11332,169 @@
           }
         }
       },
+      "RetentionClass": {
+        "type": "string",
+        "description": "How long a record must be kept (§ 147 Abs. 3 AO, § 14b Abs. 1 UStG; ADR 0025).",
+        "enum": [
+          "booking_document",
+          "business_letter",
+          "delivery_note"
+        ]
+      },
+      "RetentionDeletion": {
+        "type": "object",
+        "required": [
+          "at",
+          "user",
+          "confirmation",
+          "files"
+        ],
+        "properties": {
+          "at": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "confirmation": {
+            "type": "string"
+          },
+          "files": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "user": {
+            "type": "string"
+          }
+        }
+      },
+      "RetentionHold": {
+        "oneOf": [
+          {
+            "type": "object",
+            "description": "It documents an asset still in the register, or disposed of fewer than 8 years ago.",
+            "required": [
+              "by",
+              "reason"
+            ],
+            "properties": {
+              "by": {
+                "type": "string",
+                "description": "It documents an asset still in the register, or disposed of fewer than 8 years ago."
+              },
+              "reason": {
+                "type": "string",
+                "enum": [
+                  "asset"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "description": "A partial invoice whose final invoice is still kept.",
+            "required": [
+              "by",
+              "reason"
+            ],
+            "properties": {
+              "by": {
+                "type": "string",
+                "description": "A partial invoice whose final invoice is still kept."
+              },
+              "reason": {
+                "type": "string",
+                "enum": [
+                  "final_invoice"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "description": "A document of a later year that is still kept refers to it.",
+            "required": [
+              "by",
+              "reason"
+            ],
+            "properties": {
+              "by": {
+                "type": "string",
+                "description": "A document of a later year that is still kept refers to it."
+              },
+              "reason": {
+                "type": "string",
+                "enum": [
+                  "later_document"
+                ]
+              }
+            }
+          }
+        ],
+        "description": "Why a record past its date is kept."
+      },
+      "RetentionItem": {
+        "type": "object",
+        "required": [
+          "subject",
+          "kind",
+          "label",
+          "date",
+          "class",
+          "deletable_from"
+        ],
+        "properties": {
+          "class": {
+            "$ref": "#/components/schemas/RetentionClass"
+          },
+          "date": {
+            "type": "string"
+          },
+          "deletable_from": {
+            "type": "string"
+          },
+          "deleted_at": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "held": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/RetentionHold"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "kind": {
+            "$ref": "#/components/schemas/RetentionKind"
+          },
+          "label": {
+            "type": "string",
+            "description": "The document number, the receipt's supplier and number, or the bank account."
+          },
+          "subject": {
+            "type": "string",
+            "description": "Such as `document:12`, `receipt:3` or `bank_import:2`."
+          }
+        }
+      },
+      "RetentionKind": {
+        "type": "string",
+        "enum": [
+          "quote",
+          "order_confirmation",
+          "invoice",
+          "cancellation",
+          "delivery_note",
+          "acceptance_report",
+          "dunning",
+          "receipt",
+          "bank_statement"
+        ]
+      },
       "RetentionYear": {
         "type": "object",
         "required": [
@@ -11387,13 +11517,13 @@
           "deletions": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/Deletion"
+              "$ref": "#/components/schemas/RetentionDeletion"
             }
           },
           "items": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/Item"
+              "$ref": "#/components/schemas/RetentionItem"
             },
             "description": "Records with a file, oldest first."
           },
@@ -11427,44 +11557,6 @@
           "staff",
           "accountant"
         ]
-      },
-      "Run": {
-        "type": "object",
-        "required": [
-          "started_at"
-        ],
-        "properties": {
-          "error": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "finished_at": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "int64"
-          },
-          "snapshot": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "started_at": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "uploaded": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "int64"
-          }
-        }
       },
       "RunningTimer": {
         "type": "object",
@@ -11819,58 +11911,21 @@
       "Status": {
         "type": "object",
         "required": [
-          "configured",
-          "running"
+          "id",
+          "name",
+          "done"
         ],
         "properties": {
-          "configured": {
+          "done": {
             "type": "boolean",
-            "description": "Whether the config sets up backups."
+            "description": "Todos in this status count as done."
           },
-          "failure": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/Run",
-                "description": "The latest run, when it failed after the last success."
-              },
-              {
-                "type": "null"
-              }
-            ]
+          "id": {
+            "type": "integer",
+            "format": "int64"
           },
-          "keep_daily": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "minimum": 0
-          },
-          "keep_monthly": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "minimum": 0
-          },
-          "last_success": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/Run"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "running": {
-            "type": "boolean"
-          },
-          "time": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "description": "Daily, as HH:MM in the business's timezone."
+          "name": {
+            "type": "string"
           }
         }
       },

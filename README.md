@@ -45,6 +45,25 @@ password_file = "/run/secrets/smtp"
 from = "Example GmbH <rechnung@example.com>"
 bcc = "archiv@example.com"     # optional copy of everything sent
 
+[mirror.webdav]                # a readable copy of every document, such as a Nextcloud folder
+url = "https://cloud.example.com/remote.php/dav/files/samuel/Firma"
+username = "samuel"
+password_file = "/run/secrets/nextcloud"   # a Nextcloud app password
+
+[backup]                       # daily encrypted snapshots of the database and every file
+recipient = "age1…"            # age public key; its identity is only needed to restore, keep it elsewhere
+time = "03:00"                 # in the business's timezone
+keep_daily = 7                 # the newest snapshot of each of this many days is kept
+keep_monthly = 12              # and of each of this many months
+prefix = "compact-company"     # key prefix in the bucket
+
+[backup.s3]                    # a bucket of its own, not the storage one
+bucket = "backups"
+region = "eu-central-1"
+endpoint = "https://s3.example.com"
+access_key_id = "…"
+secret_access_key_file = "/run/secrets/backup-s3"
+
 [business]                     # each key set here is fixed; the app shows it read-only
 name = "…"
 street = "…"
@@ -56,6 +75,15 @@ small_business = true
 currency = "EUR"               # currency new customers start with
 invoice_number_format = "RE-{yyyy}-{nnn}"  # also quote_, order_confirmation_, delivery_note_, acceptance_report_
 ```
+
+To restore, create an identity once with `age-keygen -o backup.key`, put its public key in `recipient`, and keep the file off the server. On a fresh instance with the same `[backup]` section and an empty data directory:
+
+```sh
+compact-company restore --config config.toml --identity backup.key             # lists the snapshots
+compact-company restore --config config.toml --identity backup.key --snapshot 20261114T020000.000Z
+```
+
+It checks every file and every year archive against its checksum afterwards.
 
 ## NixOS
 

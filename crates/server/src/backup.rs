@@ -89,7 +89,7 @@ fn file(hash: &str) -> StorePath {
 }
 
 #[derive(Debug, Serialize, ToSchema, sqlx::FromRow)]
-pub struct Run {
+pub struct BackupRun {
     pub started_at: i64,
     pub finished_at: Option<i64>,
     pub snapshot: Option<String>,
@@ -98,7 +98,7 @@ pub struct Run {
 }
 
 /// Takes a snapshot now, then drops what rotation no longer keeps.
-pub async fn run(app: &App) -> Result<Run, Error> {
+pub async fn run(app: &App) -> Result<BackupRun, Error> {
     let Some(backup) = &app.backup else {
         return Err(Error::Restore("no backup configured".into()));
     };
@@ -113,7 +113,7 @@ pub async fn run(app: &App) -> Result<Run, Error> {
         Ok((snapshot, uploaded)) => (Some(snapshot.clone()), Some(*uploaded), None),
         Err(e) => (None, None, Some(e.to_string())),
     };
-    let run: Run = sqlx::query_as(
+    let run: BackupRun = sqlx::query_as(
         "UPDATE backup_run SET finished_at = ?, snapshot = ?, uploaded = ?, error = ? WHERE id = ?
          RETURNING started_at, finished_at, snapshot, uploaded, error",
     )
@@ -138,7 +138,7 @@ async fn notify_failure(app: &App, error: &str) {
         return;
     };
     let body = format!(
-        "Guten Tag,\n\ndie Sicherung ist fehlgeschlagen:\n\n{error}\n\n{}storage\n\ncompact-company\n",
+        "Guten Tag,\n\ndie Sicherung ist fehlgeschlagen:\n\n{error}\n\n{}backup\n\nCompact Company\n",
         app.public_url
     );
     if let Err(e) = mailer.notify(to, "Sicherung fehlgeschlagen", &body).await {
@@ -272,7 +272,7 @@ fn keep(snapshots: &[String], daily: usize, monthly: usize) -> BTreeSet<String> 
 }
 
 #[derive(Debug, Serialize, ToSchema)]
-pub struct Status {
+pub struct BackupStatus {
     /// Whether the config sets up backups.
     configured: bool,
     /// Daily, as HH:MM in the business's timezone.
@@ -280,19 +280,19 @@ pub struct Status {
     keep_daily: Option<usize>,
     keep_monthly: Option<usize>,
     running: bool,
-    last_success: Option<Run>,
+    last_success: Option<BackupRun>,
     /// The latest run, when it failed after the last success.
-    failure: Option<Run>,
+    failure: Option<BackupRun>,
 }
 
-pub async fn status(app: &App) -> Result<Status, sqlx::Error> {
-    let last_success: Option<Run> = sqlx::query_as(
+pub async fn status(app: &App) -> Result<BackupStatus, sqlx::Error> {
+    let last_success: Option<BackupRun> = sqlx::query_as(
         "SELECT started_at, finished_at, snapshot, uploaded, error FROM backup_run
          WHERE error IS NULL AND finished_at IS NOT NULL ORDER BY id DESC LIMIT 1",
     )
     .fetch_optional(&app.db)
     .await?;
-    Ok(Status {
+    Ok(BackupStatus {
         configured: app.backup.is_some(),
         time: app
             .backup
@@ -310,7 +310,7 @@ pub async fn status(app: &App) -> Result<Status, sqlx::Error> {
 }
 
 /// The latest run, when it failed after the last success; shown on the overview.
-pub async fn failure(app: &App) -> Result<Option<Run>, sqlx::Error> {
+pub async fn failure(app: &App) -> Result<Option<BackupRun>, sqlx::Error> {
     sqlx::query_as(
         "SELECT started_at, finished_at, snapshot, uploaded, error FROM backup_run
          WHERE error IS NOT NULL AND id > coalesce((SELECT max(id) FROM backup_run

@@ -98,6 +98,8 @@ pub struct Receipt {
     duplicate_of: Option<i64>,
     /// For a draft: what is missing before it can be booked.
     missing: BTreeMap<String, FieldError>,
+    /// When its file was deleted after the retention period; the record stays.
+    file_deleted_at: Option<i64>,
     booked_at: Option<i64>,
     created_at: i64,
     updated_at: i64,
@@ -488,6 +490,7 @@ pub async fn find(db: &mut SqliteConnection, id: i64) -> Result<Receipt, ApiErro
         reversed: row.reversed,
         duplicate_of,
         missing,
+        file_deleted_at: super::retention::deleted_at(db, &format!("receipt:{id}")).await?,
         booked_at: row.booked_at,
         created_at: row.created_at,
         updated_at: row.updated_at,

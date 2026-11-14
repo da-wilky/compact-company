@@ -50,6 +50,7 @@ pub struct ProcessDocumentation {
 }
 
 #[derive(Debug, Deserialize, IntoParams)]
+#[into_params(parameter_in = Query)]
 pub struct LanguageQuery {
     /// German when unset.
     language: Option<Language>,

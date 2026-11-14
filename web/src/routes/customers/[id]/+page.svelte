@@ -8,11 +8,13 @@
 	import { t } from '#lib/i18n.svelte.ts';
 	import { formatMoney } from '#lib/money.ts';
 	import { session } from '#lib/session.svelte.ts';
+	import { namePage } from '#lib/title.svelte.ts';
 	import { toast } from '#lib/toast.svelte.ts';
 
 	const id = $derived(Number(page.params.id));
 	const owner = $derived(session.view?.user?.role === 'owner');
 	let customer = $state<Schemas['Customer']>();
+	namePage(() => customer?.name);
 	let editing = $state(false);
 	let error = $state<ApiError>();
 

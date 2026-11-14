@@ -130,6 +130,8 @@ pub struct Document {
     /// A final invoice's partial invoices: deducted when paid, cancelled when issuing it if
     /// unpaid; for a draft, as issuing it now would take them.
     partials: Vec<PartialInvoice>,
+    /// When its PDF was deleted after the retention period; the record stays.
+    file_deleted_at: Option<i64>,
     issued_at: Option<i64>,
     created_at: i64,
     updated_at: i64,
@@ -1180,6 +1182,7 @@ pub async fn find(
         recurring_id: row.recurring_id,
         invoice_type: row.invoice_type,
         partials,
+        file_deleted_at: super::retention::deleted_at(db, &format!("document:{id}")).await?,
         issued_at,
         created_at,
         updated_at,

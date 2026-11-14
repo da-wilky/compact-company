@@ -116,7 +116,7 @@ impl App {
         let rp_id = url.host_str().unwrap_or_default();
         let webauthn = WebauthnBuilder::new(rp_id, url)
             .map(|b| {
-                b.rp_name("compact-company")
+                b.rp_name("Compact Company")
                     .allow_any_port(rp_id == "localhost")
             })
             .and_then(WebauthnBuilder::build)

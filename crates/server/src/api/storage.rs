@@ -10,11 +10,11 @@ use crate::{
 };
 
 #[utoipa::path(get, path = "/mirror", tag = "storage",
-    responses((status = OK, body = mirror::Status), (status = "default", body = ApiError)))]
+    responses((status = OK, body = mirror::MirrorStatus), (status = "default", body = ApiError)))]
 pub async fn get_mirror(
     State(app): State<Arc<App>>,
     _: Auth<OwnerOnly>,
-) -> Result<Json<mirror::Status>, ApiError> {
+) -> Result<Json<mirror::MirrorStatus>, ApiError> {
     Ok(Json(mirror::status(&app).await?))
 }
 
@@ -43,11 +43,11 @@ pub async fn resync_mirror(
 }
 
 #[utoipa::path(get, path = "/backup", tag = "storage",
-    responses((status = OK, body = backup::Status), (status = "default", body = ApiError)))]
+    responses((status = OK, body = backup::BackupStatus), (status = "default", body = ApiError)))]
 pub async fn get_backup(
     State(app): State<Arc<App>>,
     _: Auth<OwnerOnly>,
-) -> Result<Json<backup::Status>, ApiError> {
+) -> Result<Json<backup::BackupStatus>, ApiError> {
     Ok(Json(backup::status(&app).await?))
 }
 

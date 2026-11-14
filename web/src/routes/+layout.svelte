@@ -15,6 +15,7 @@
 	import { load, session } from '#lib/session.svelte.ts';
 	import { clock, entryTitle, loadTimers, timers } from '#lib/timers.svelte.ts';
 	import { toast } from '#lib/toast.svelte.ts';
+	import { tabTitle, title } from '#lib/title.svelte.ts';
 	import type { Schemas } from '#lib/api/index.ts';
 
 	let { children } = $props();
@@ -47,8 +48,20 @@
 		{ href: '/business', label: t('term.business'), icon: 'business', roles: ['owner', 'accountant'], group: 'admin' },
 		{ href: '/users', label: t('users.title'), icon: 'users', roles: ['owner'], group: 'admin' },
 		{ href: '/audit', label: t('audit.title'), icon: 'audit', roles: ['owner', 'accountant'], group: 'admin' },
+		{ href: '/process-documentation', label: t('term.process_documentation'), icon: 'process', roles: ['owner', 'accountant'], group: 'admin' },
+		{ href: '/retention', label: t('retention.title'), icon: 'retention', roles: ['owner'], group: 'admin' },
+		{ href: '/backup', label: t('backup.title'), icon: 'backup', roles: ['owner'], group: 'admin' },
 		{ href: '/account', label: t('account.title'), icon: 'account', roles: all, group: 'me' }
 	]);
+
+	const routeNames = $derived<Record<string, string>>({
+		...Object.fromEntries(items.map((item) => [item.href, item.label])),
+		'/recurring': t('recurring.title'),
+		'/setup': t('setup.tab'),
+		'/sign-in': t('sign_in.title'),
+		'/invitation': t('invitation.title')
+	});
+	const section = $derived(`/${page.url.pathname.split('/')[1]}`);
 
 	const open = ['/setup', '/sign-in', '/invitation'];
 	const user = $derived(session.view?.user);
@@ -114,7 +127,7 @@
 </script>
 
 <svelte:head>
-	<title>compact-company</title>
+	<title>{tabTitle(title.page ?? routeNames[section])}</title>
 </svelte:head>
 
 {#if user}

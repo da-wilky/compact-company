@@ -284,16 +284,29 @@
 								<div>
 									<strong>{closed.year}</strong>
 									<small class="muted">{t('tax.closed_by', { name: closed.closed_by, date: day(isoDay(new Date(closed.closed_at * 1000))) })}</small>
-									<code title={t('tax.checksum')}>SHA-256 {closed.archive}</code>
+									{#if closed.archive}
+										<code title={t('tax.checksum')}>SHA-256 {closed.archive}</code>
+										{#if closed.pruned}<small class="muted">{t('retention.pruned')}</small>{/if}
+									{:else}
+										<small class="muted">{t('retention.anonymised')}</small>
+									{/if}
 								</div>
-								<a class="button ghost" href="/api/years/{closed.year}/archive" download>
-									<Icon name="archive" size={18} />{t('tax.download')}
-								</a>
+								{#if closed.archive}
+									<a class="button ghost" href="/api/years/{closed.year}/archive" download>
+										<Icon name="archive" size={18} />{t('tax.download')}
+									</a>
+								{/if}
 							</li>
 						{/each}
 					</ul>
 				{/if}
 				{#if owner && archives?.next != null}
+					{#if archives.review_answers.length}
+						<p class="muted">
+							{t('tax.review_answers', { count: archives.review_answers.length })}
+							<a href="/process-documentation">{t('tax.review')}</a>
+						</p>
+					{/if}
 					<div>
 						<button class="primary" onclick={() => closeYear(archives!.next!)}>
 							<Icon name="archive" size={18} />{t('tax.close_year', { year: archives.next })}

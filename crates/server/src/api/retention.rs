@@ -23,6 +23,7 @@ use crate::{
 /// How long a record must be kept (§ 147 Abs. 3 AO, § 14b Abs. 1 UStG; ADR 0025).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, ToSchema)]
 #[serde(rename_all = "snake_case")]
+#[schema(as = RetentionClass)]
 pub enum Class {
     /// Invoices issued and received, bank statements: 8 years.
     BookingDocument,
@@ -56,6 +57,7 @@ impl Class {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, ToSchema)]
 #[serde(rename_all = "snake_case")]
+#[schema(as = RetentionKind)]
 pub enum ItemKind {
     Quote,
     OrderConfirmation,
@@ -85,6 +87,7 @@ impl From<Kind> for ItemKind {
 /// Why a record past its date is kept.
 #[derive(Debug, Clone, Serialize, ToSchema)]
 #[serde(rename_all = "snake_case", tag = "reason", content = "by")]
+#[schema(as = RetentionHold)]
 pub enum Hold {
     /// It documents an asset still in the register, or disposed of fewer than 8 years ago.
     Asset(String),
@@ -95,6 +98,7 @@ pub enum Hold {
 }
 
 #[derive(Debug, Serialize, ToSchema)]
+#[schema(as = RetentionItem)]
 pub struct Item {
     /// Such as `document:12`, `receipt:3` or `bank_import:2`.
     pub(super) subject: String,
@@ -122,6 +126,7 @@ impl Item {
 }
 
 #[derive(Debug, Serialize, ToSchema, sqlx::FromRow)]
+#[schema(as = RetentionDeletion)]
 pub struct Deletion {
     at: i64,
     user: String,
@@ -162,7 +167,10 @@ struct ReceiptRow {
     number: Option<String>,
 }
 
-async fn deleted_at(db: &mut SqliteConnection, subject: &str) -> Result<Option<i64>, sqlx::Error> {
+pub(super) async fn deleted_at(
+    db: &mut SqliteConnection,
+    subject: &str,
+) -> Result<Option<i64>, sqlx::Error> {
     sqlx::query_scalar(
         "SELECT max(r.at) FROM deleted_file d JOIN retention_deletion r ON r.id = d.deletion_id
          WHERE d.subject = ?",

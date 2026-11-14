@@ -24,6 +24,7 @@ use crate::{
 const LABEL: &str = "anonymisiert";
 
 #[derive(Debug, Serialize, ToSchema, sqlx::FromRow)]
+#[schema(as = AnonymisedName)]
 pub struct Named {
     id: i64,
     name: String,
@@ -32,6 +33,7 @@ pub struct Named {
 /// Why a year can't be anonymised yet.
 #[derive(Debug, Serialize, ToSchema)]
 #[serde(rename_all = "snake_case", tag = "reason", content = "by")]
+#[schema(as = AnonymisationBlocker)]
 pub enum Blocker {
     /// An earlier closed year that isn't anonymised; years go oldest first.
     EarlierYear(i16),

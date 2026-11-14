@@ -84,7 +84,7 @@ pub struct Overview {
     /// Drafts from recurring invoices waiting to be issued; for the owner and accountant only.
     recurring_drafts: Vec<super::recurring::WaitingDraft>,
     /// The latest backup, when it failed; for the owner only.
-    backup_failure: Option<crate::backup::Run>,
+    backup_failure: Option<crate::backup::BackupRun>,
 }
 
 #[utoipa::path(get, path = "/overview", tag = "overview",

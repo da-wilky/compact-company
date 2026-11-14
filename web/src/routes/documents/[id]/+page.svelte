@@ -16,10 +16,11 @@
 		units,
 		type Kind
 	} from '#lib/documents.ts';
-	import { formatDay } from '#lib/dates.ts';
+	import { formatDay, isoDay } from '#lib/dates.ts';
 	import { t } from '#lib/i18n.svelte.ts';
 	import { formatMoney, moneyInput, parseMoney } from '#lib/money.ts';
 	import { session } from '#lib/session.svelte.ts';
+	import { namePage } from '#lib/title.svelte.ts';
 	import { toast } from '#lib/toast.svelte.ts';
 
 	type Doc = Schemas['Document'];
@@ -38,6 +39,7 @@
 	const id = $derived(Number(page.params.id));
 	const owner = $derived(session.view?.user?.role === 'owner');
 	let doc = $state<Doc>();
+	namePage(() => doc && (doc.number ?? t('term.draft')));
 	let error = $state<ApiError>();
 	let busy = $state(false);
 	let issueError = $state<ApiError>();
@@ -416,13 +418,18 @@
 				{doc.customer_name}{#if doc.issue_date}&nbsp;· {formatDay(doc.issue_date, { dateStyle: 'medium' })}{/if}
 				{#if doc.layout}&nbsp;· {t('term.layout')}: {doc.layout}{/if}
 			</p>
+			{#if doc.file_deleted_at}
+				<p class="muted" role="status">{t('retention.file_deleted', { date: formatDay(isoDay(new Date(doc.file_deleted_at * 1000)), { dateStyle: 'medium' }) })}</p>
+			{/if}
 		</div>
 		<div class="actions">
-			<a class="button ghost" href={`/api/documents/${doc.id}/pdf`} target="_blank" rel="noopener">
-				<Icon name="pdf" size={18} />{t(doc.status === 'draft' ? 'documents.preview' : 'documents.pdf')}
-			</a>
-			{#if doc.kind === 'invoice' || doc.kind === 'cancellation'}
-				<a class="button ghost" href={`/api/documents/${doc.id}/xml`}>{t('documents.xml')}</a>
+			{#if !doc.file_deleted_at}
+				<a class="button ghost" href={`/api/documents/${doc.id}/pdf`} target="_blank" rel="noopener">
+					<Icon name="pdf" size={18} />{t(doc.status === 'draft' ? 'documents.preview' : 'documents.pdf')}
+				</a>
+				{#if doc.kind === 'invoice' || doc.kind === 'cancellation'}
+					<a class="button ghost" href={`/api/documents/${doc.id}/xml`}>{t('documents.xml')}</a>
+				{/if}
 			{/if}
 			{#if owner && doc.kind !== 'dunning'}
 				<button class="ghost" onclick={duplicate}>{t('documents.duplicate')}</button>

@@ -23,6 +23,7 @@ const LAYOUT: &str = include_str!("../typst/process.typ");
 /// The four parts of GoBD Rz. 151.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, ToSchema)]
 #[serde(rename_all = "snake_case")]
+#[schema(as = ProcessPart)]
 pub enum Part {
     General,
     User,
@@ -507,7 +508,7 @@ async fn facts(app: &App, db: &mut SqliteConnection) -> Result<BTreeMap<String, 
     facts.insert(
         "software".into(),
         format!(
-            "compact-company {} ({})",
+            "Compact Company {} ({})",
             env!("CARGO_PKG_VERSION"),
             option_env!("COMPACT_COMPANY_REVISION").unwrap_or("unknown revision")
         ),
@@ -649,8 +650,8 @@ fn document(
         "valid_from": render::date(valid_from, language),
         "software": content.facts.get("software").cloned().unwrap_or_default(),
         "preface": tr(t(
-            "Diese Verfahrensdokumentation beschreibt nach den GoBD (Rz. 151 ff.), wie Belege in das Unternehmen kommen, gebucht, aufbewahrt und geschützt werden. Was compact-company aus der Instanz kennt, ist erzeugt; das Übrige beruht auf den Antworten des Inhabers. Jede Änderung ergibt eine neue Version, die ab ihrem Datum gilt, bis die nächste sie ablöst.",
-            "This process documentation describes, following the GoBD (Rz. 151 ff.), how documents reach the business and are booked, kept and protected. What compact-company knows from the instance is generated; the rest rests on the owner's answers. Every change makes a new version, valid from its date until the next one replaces it.",
+            "Diese Verfahrensdokumentation beschreibt nach den GoBD (Rz. 151 ff.), wie Belege in das Unternehmen kommen, gebucht, aufbewahrt und geschützt werden. Was Compact Company aus der Instanz kennt, ist erzeugt; das Übrige beruht auf den Antworten des Inhabers. Jede Änderung ergibt eine neue Version, die ab ihrem Datum gilt, bis die nächste sie ablöst.",
+            "This process documentation describes, following the GoBD (Rz. 151 ff.), how documents reach the business and are booked, kept and protected. What Compact Company knows from the instance is generated; the rest rests on the owner's answers. Every change makes a new version, valid from its date until the next one replaces it.",
         )),
         "changes": changes.iter().map(|k| label(k, language)).collect::<Vec<_>>(),
         "labels": {
@@ -775,8 +776,8 @@ fn fixed(part: Part, taxation: Taxation) -> Vec<(Text, Text)> {
             (
                 t("Wiederherstellung", "Restore"),
                 t(
-                    "Eine Sicherung wird mit `compact-company restore` in ein leeres Datenverzeichnis zurückgespielt; danach prüft das Programm jede Datei und jedes Jahresarchiv gegen seine Prüfsumme. Der Schlüssel zum Entschlüsseln liegt nicht auf dem Server.",
-                    "A backup is restored with `compact-company restore` into an empty data directory; the program then checks every file and year archive against its checksum. The key to decrypt is not kept on the server.",
+                    "Eine Sicherung wird mit dem Befehl compact-company restore in ein leeres Datenverzeichnis zurückgespielt; danach prüft das Programm jede Datei und jedes Jahresarchiv gegen seine Prüfsumme. Der Schlüssel zum Entschlüsseln liegt nicht auf dem Server.",
+                    "A backup is restored with the command compact-company restore into an empty data directory; the program then checks every file and year archive against its checksum. The key to decrypt is not kept on the server.",
                 ),
             ),
         ],

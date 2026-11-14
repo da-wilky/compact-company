@@ -28,6 +28,9 @@ Time tracking, invoicing and bookkeeping usually live in two or three tools with
 | Closing | A closed year takes no postings; its archive carries checksums | 0022 |
 | Depreciation | Computed from the asset, booked per finished year; disposals rebook their year | 0023 |
 | Partial invoices | Booked as advances, VAT due when paid; the final invoice deducts paid ones, cancels unpaid | 0024 |
+| Retention | Owner deletes files after their period with a confirmation; archives pruned, years anonymised after ten | 0025 |
+| Mirror and backup | One-way WebDAV mirror to read; age-encrypted S3 snapshots with rotation to restore | 0026 |
+| Process documentation | Generated where the instance knows, questionnaire for the rest, versioned | 0027 |
 | Languages | UI and documents in German and English | – |
 | Platforms | x86_64 and arm64; NixOS module and OCI image | – |
 
