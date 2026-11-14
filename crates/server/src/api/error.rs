@@ -72,6 +72,7 @@ pub enum ErrorCode {
     FinalInvoiceSettled,
     PartialInvoicePartlyPaid,
     DeductionsExceedInvoice,
+    FinalInvoiceInFull,
     MailNotConfigured,
     MailFailed,
     RateLimited,
@@ -136,6 +137,7 @@ impl ErrorCode {
         Self::FinalInvoiceSettled,
         Self::PartialInvoicePartlyPaid,
         Self::DeductionsExceedInvoice,
+        Self::FinalInvoiceInFull,
         Self::MailNotConfigured,
         Self::MailFailed,
         Self::RateLimited,
@@ -187,6 +189,7 @@ impl ErrorCode {
             | Self::FinalInvoiceSettled
             | Self::PartialInvoicePartlyPaid
             | Self::DeductionsExceedInvoice
+            | Self::FinalInvoiceInFull
             | Self::MailNotConfigured => StatusCode::CONFLICT,
             Self::RateLimited => StatusCode::TOO_MANY_REQUESTS,
             Self::Internal => StatusCode::INTERNAL_SERVER_ERROR,

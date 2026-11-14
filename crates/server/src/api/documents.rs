@@ -477,15 +477,13 @@ fn advance_lines(quote: &Data, percent: Option<Decimal>) -> Vec<Line> {
         .collect()
 }
 
-/// Whether a final invoice and its partial invoices are settled together: the document is a
-/// partial invoice an issued final invoice took in, or a final invoice that took in any.
+/// Whether the document is a partial invoice an issued final invoice took in: it stays as it is
+/// until that final invoice is cancelled.
 async fn settled(db: &mut SqliteConnection, id: i64) -> Result<bool, sqlx::Error> {
-    sqlx::query_scalar(
-        "SELECT EXISTS (SELECT 1 FROM final_partial WHERE partial_id = ?1 OR final_id = ?1)",
-    )
-    .bind(id)
-    .fetch_one(db)
-    .await
+    sqlx::query_scalar("SELECT EXISTS (SELECT 1 FROM final_partial WHERE partial_id = ?)")
+        .bind(id)
+        .fetch_one(db)
+        .await
 }
 
 /// Whether a payment is on a partial invoice a final invoice deducted, which already counted its
@@ -804,6 +802,17 @@ pub async fn issue(
             .filter_map(|l| l.cancels_line_id)
             .collect();
         reversal_lines(tx, invoice, &wanted).await?;
+        // its deductions can only be reversed with the whole of it
+        let source: Option<InvoiceType> =
+            sqlx::query_scalar("SELECT invoice_type FROM document WHERE id = ?")
+                .bind(invoice)
+                .fetch_one(&mut *tx)
+                .await?;
+        if source == Some(InvoiceType::Final)
+            && wanted.len() != documents::lines(tx, invoice).await?.len()
+        {
+            return Err(ApiError::new(ErrorCode::FinalInvoiceInFull));
+        }
     }
     let mut data = documents::draft_data(tx, business, &row).await?;
     let missing = documents::missing(&data);
@@ -825,14 +834,16 @@ pub async fn issue(
             .map(|g| g.net)
             .sum()
     };
-    if data.deductions.iter().flat_map(|d| &d.vat).any(|g| {
-        deducted(g.rate)
-            > data
-                .vat
-                .iter()
-                .find(|v| v.rate == g.rate)
-                .map_or(Decimal::ZERO, |v| v.net)
-    }) {
+    if row.invoice_type == Some(InvoiceType::Final)
+        && data.deductions.iter().flat_map(|d| &d.vat).any(|g| {
+            deducted(g.rate)
+                > data
+                    .vat
+                    .iter()
+                    .find(|v| v.rate == g.rate)
+                    .map_or(Decimal::ZERO, |v| v.net)
+        })
+    {
         return Err(ApiError::new(ErrorCode::DeductionsExceedInvoice));
     }
     let today = today(business)?;
@@ -972,6 +983,13 @@ pub async fn issue(
             .bind(id)
             .bind(partial.id)
             .bind(partial.state)
+            .execute(&mut *tx)
+            .await?;
+    }
+    if let (Kind::Cancellation, Some(invoice)) = (row.kind, row.source_id) {
+        // a new final invoice may take them in
+        sqlx::query("DELETE FROM final_partial WHERE final_id = ?")
+            .bind(invoice)
             .execute(&mut *tx)
             .await?;
     }

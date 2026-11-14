@@ -567,15 +567,18 @@ pub async fn draft_data(
             }
         })
         .collect();
-    let deductions: Vec<Deduction> = partials(db, row)
-        .await?
-        .into_iter()
-        .filter_map(|(_, deduction)| deduction)
-        .collect();
+    let deductions = match (row.kind, row.source_id) {
+        (Kind::Cancellation, Some(invoice)) => reversed_deductions(db, invoice).await?,
+        _ => partials(db, row)
+            .await?
+            .into_iter()
+            .filter_map(|(_, deduction)| deduction)
+            .collect(),
+    };
     let totals = priced.then(|| {
         let net: Decimal = vat.iter().map(|v| v.net).sum();
         let tax: Decimal = vat.iter().map(|v| v.tax).sum();
-        let prepaid = (row.invoice_type == Some(InvoiceType::Final))
+        let prepaid = (row.invoice_type == Some(InvoiceType::Final) || !deductions.is_empty())
             .then(|| deductions.iter().map(|d| d.gross).sum::<Decimal>());
         Totals {
             net,
@@ -632,6 +635,39 @@ pub struct PartialInvoice {
     pub id: i64,
     pub number: String,
     pub state: PartialState,
+}
+
+/// A cancelled final invoice's deductions, negated: its cancellation, always in full, reverses
+/// them with the rest.
+async fn reversed_deductions(
+    db: &mut SqliteConnection,
+    invoice: i64,
+) -> Result<Vec<Deduction>, sqlx::Error> {
+    let data: Option<String> = sqlx::query_scalar("SELECT data FROM document WHERE id = ?")
+        .bind(invoice)
+        .fetch_one(db)
+        .await?;
+    let Some(data) = data else {
+        return Ok(Vec::new());
+    };
+    let data: Data = serde_json::from_str(&data).expect("issued data parses");
+    Ok(data
+        .deductions
+        .into_iter()
+        .map(|d| Deduction {
+            vat: d
+                .vat
+                .into_iter()
+                .map(|g| VatData {
+                    rate: g.rate,
+                    net: -g.net,
+                    tax: -g.tax,
+                })
+                .collect(),
+            gross: -d.gross,
+            ..d
+        })
+        .collect())
 }
 
 /// The partial invoices of a final invoice, with what it deducts for each paid one: as taken in

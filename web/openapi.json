@@ -8212,6 +8212,7 @@
           "final_invoice_settled",
           "partial_invoice_partly_paid",
           "deductions_exceed_invoice",
+          "final_invoice_in_full",
           "mail_not_configured",
           "mail_failed",
           "rate_limited",
