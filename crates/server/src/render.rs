@@ -189,6 +189,29 @@ impl DocWorld {
     }
 }
 
+impl DocWorld {
+    /// A document of the app's own, such as the process documentation, from its data.
+    fn report(source: &str, data: &serde_json::Value) -> Self {
+        let files = HashMap::from([
+            (project("/main.typ"), Bytes::from_string(source.to_owned())),
+            (project("/data.json"), Bytes::from_string(data.to_string())),
+        ]);
+        let fonts = FONTS.clone();
+        Self {
+            book: LazyHash::new(FontBook::from_fonts(&fonts)),
+            fonts,
+            main: project("/main.typ"),
+            files,
+            today: None,
+        }
+    }
+}
+
+/// Lays out a document of the app's own; CPU-bound like [`render`].
+pub fn report(source: &str, data: &serde_json::Value) -> Result<Rendered, Error> {
+    compile(&DocWorld::report(source, data))
+}
+
 impl World for DocWorld {
     fn library(&self) -> &LazyHash<Library> {
         &LIB
@@ -281,8 +304,11 @@ fn messages(diagnostics: impl IntoIterator<Item = SourceDiagnostic>) -> Error {
 
 /// Lays out `data` with `layout`; CPU-bound, so callers run it on a blocking thread.
 pub fn render(layout: &Layout, data: &Data, attachments: &[Attachment]) -> Result<Rendered, Error> {
-    let world = DocWorld::new(layout, data, attachments)?;
-    let document = typst::compile::<PagedDocument>(&world)
+    compile(&DocWorld::new(layout, data, attachments)?)
+}
+
+fn compile(world: &DocWorld) -> Result<Rendered, Error> {
+    let document = typst::compile::<PagedDocument>(world)
         .output
         .map_err(messages)?;
     let now = jiff::Timestamp::now().to_zoned(jiff::tz::TimeZone::UTC);

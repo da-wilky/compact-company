@@ -86,6 +86,7 @@ pub async fn resync(db: &SqlitePool) -> Result<u64, sqlx::Error> {
            UNION SELECT 'receipt:' || id FROM receipt WHERE file IS NOT NULL
            UNION SELECT 'bank_import:' || id FROM bank_import
            UNION SELECT 'year:' || year FROM closed_year
+           UNION SELECT 'process:' || id FROM process_version
            UNION SELECT subject FROM mirror_file)
          WHERE true
          ON CONFLICT (subject) DO UPDATE SET due_at = ?1, attempts = 0, force = 1, seq = seq + 1",
@@ -326,6 +327,22 @@ async fn wanted(app: &App, subject: &str) -> Result<BTreeMap<String, ContentHash
             .await?;
             if let Some(archive) = archive {
                 add(format!("{id}/Jahresarchiv-{id}.tar.gz"), &archive);
+            }
+        }
+        "process" => {
+            let row: Option<(String, String, String)> = sqlx::query_as(
+                "SELECT valid_from, pdf_de, pdf_en FROM process_version WHERE id = ?",
+            )
+            .bind(id)
+            .fetch_optional(&mut *db)
+            .await?;
+            if let Some((from, de, en)) = row {
+                let dir = "Verfahrensdokumentation";
+                add(
+                    format!("{dir}/Verfahrensdokumentation v{id} {from}.pdf"),
+                    &de,
+                );
+                add(format!("{dir}/Process documentation v{id} {from}.pdf"), &en);
             }
         }
         _ => {}

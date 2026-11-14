@@ -111,6 +111,10 @@ async fn serve(config: Option<PathBuf>) -> Result<(), Box<dyn std::error::Error>
             app.public_url, app.setup_token
         );
     }
+    // a new program version makes a new version of the process documentation
+    if let Err(e) = compact_company::process::refresh(&app).await {
+        eprintln!("process documentation not updated: {e}");
+    }
     tokio::spawn(remind(app.clone()));
     tokio::spawn(compact_company::mirror::run(app.clone()));
     tokio::spawn(compact_company::backup::schedule(app.clone()));
@@ -124,7 +128,8 @@ async fn serve(config: Option<PathBuf>) -> Result<(), Box<dyn std::error::Error>
     Ok(())
 }
 
-/// Mails deadline reminders and drafts recurring invoices, checking every hour.
+/// Mails deadline reminders, drafts recurring invoices and versions the process documentation,
+/// checking every hour.
 async fn remind(app: Arc<App>) {
     loop {
         let today = app
@@ -140,6 +145,9 @@ async fn remind(app: Arc<App>) {
                 }
                 if let Err(e) = api::recurring::draft_due(&app, today).await {
                     eprintln!("drafting recurring invoices failed: {}", e.message);
+                }
+                if let Err(e) = compact_company::process::refresh(&app).await {
+                    eprintln!("process documentation not updated: {e}");
                 }
             }
             Err(e) => eprintln!("deadline reminders failed: {e}"),

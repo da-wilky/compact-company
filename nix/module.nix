@@ -71,6 +71,7 @@ in
       wantedBy = [ "multi-user.target" ];
       wants = [ "network-online.target" ];
       after = [ "network-online.target" ];
+      environment.COMPACT_COMPANY_PLATFORM = "nixos";
       serviceConfig = {
         ExecStart = "${lib.getExe cfg.package} serve --config ${toml.generate "compact-company.toml" settings}";
         Restart = "on-failure";

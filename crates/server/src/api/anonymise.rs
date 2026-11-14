@@ -368,6 +368,30 @@ pub async fn anonymise_year(
         }
     }
 
+    // a version of the process documentation is kept while a year it applied to is
+    let superseded: Vec<(i64, String, String, String)> = sqlx::query_as(
+        "SELECT v.id, v.data, v.pdf_de, v.pdf_en FROM process_version v
+         WHERE (SELECT min(n.valid_from) FROM process_version n WHERE n.id > v.id) <= ?",
+    )
+    .bind(format!("{}-01-01", year + 1))
+    .fetch_all(&mut *tx)
+    .await?;
+    let mut process_hashes = Vec::new();
+    for (id, data, de, en) in superseded {
+        let subject = format!("process:{id}");
+        for hash in [data, de, en] {
+            sqlx::query(
+                "INSERT OR IGNORE INTO deleted_file (subject, hash, deletion_id) VALUES (?, ?, ?)",
+            )
+            .bind(&subject)
+            .bind(&hash)
+            .bind(deletion)
+            .execute(&mut *tx)
+            .await?;
+            process_hashes.push(hash);
+        }
+        mirror::queue(&app, &mut tx, &subject).await?;
+    }
     for item in &records {
         mirror::queue(&app, &mut tx, &item.subject).await?;
     }
@@ -394,6 +418,7 @@ pub async fn anonymise_year(
         .iter()
         .flat_map(|i| i.hashes.clone())
         .chain([archive])
+        .chain(process_hashes)
         .collect();
     let gone = unused(&mut tx, &hashes).await?;
     tx.commit().await?;

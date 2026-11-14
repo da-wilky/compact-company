@@ -27,6 +27,7 @@ pub mod oidc;
 pub mod open_items;
 pub mod overview;
 pub mod passkeys;
+pub mod process;
 pub mod projects;
 pub mod receipts;
 pub mod recurring;
@@ -209,6 +210,9 @@ pub fn routes() -> OpenApiRouter<Arc<App>> {
         .routes(routes!(retention::list_retention))
         .routes(routes!(retention::delete_expired))
         .routes(routes!(anonymise::anonymise_year))
+        .routes(routes!(process::get_process_documentation))
+        .routes(routes!(process::put_answers))
+        .routes(routes!(process::process_pdf))
         .routes(routes!(years::list_years))
         .routes(routes!(years::close_year))
         .routes(routes!(years::year_archive))

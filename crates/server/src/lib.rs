@@ -37,6 +37,7 @@ pub mod mail;
 pub mod mirror;
 pub mod money;
 pub mod oidc;
+pub mod process;
 pub mod rates;
 pub mod render;
 pub mod rules;
@@ -64,6 +65,8 @@ pub struct App {
     pub mirror: Option<mirror::Mirror>,
     pub backup: Option<backup::Backup>,
     pub data_dir: std::path::PathBuf,
+    /// What the config sets up, for the process documentation.
+    pub setup: std::collections::BTreeMap<String, String>,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -145,6 +148,7 @@ impl App {
                 .map(backup::Backup::new)
                 .transpose()?,
             data_dir: config.data_dir.clone(),
+            setup: process::setup(config),
         })
     }
 

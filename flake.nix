@@ -64,6 +64,8 @@
               nativeBuildInputs
               ;
             strictDeps = true;
+            # the process documentation names the revision each version ran (GoBD Rz. 154)
+            COMPACT_COMPANY_REVISION = self.shortRev or self.dirtyShortRev or "unknown";
             # rust-embed reads the client from web/build at compile time
             preBuild = "mkdir -p web && cp -r ${web} web/build";
           };
@@ -115,7 +117,10 @@
                   data_dir = "/data"
                 ''}"
               ];
-              Env = [ "SSL_CERT_FILE=${b.caBundle}" ];
+              Env = [
+                "SSL_CERT_FILE=${b.caBundle}"
+                "COMPACT_COMPANY_PLATFORM=oci"
+              ];
               ExposedPorts."9440/tcp" = { };
               Volumes."/data" = { };
             };

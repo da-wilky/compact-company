@@ -45,6 +45,9 @@ pub struct Years {
     closed: Vec<ClosedYear>,
     /// The year that may be closed next: finished, booked, and every year before it closed.
     next: Option<i16>,
+    /// Questions of the process documentation unanswered or unchanged for a year, to review
+    /// before closing.
+    review_answers: Vec<String>,
 }
 
 async fn closed(db: &mut SqliteConnection) -> Result<Vec<ClosedYear>, sqlx::Error> {
@@ -81,6 +84,7 @@ pub async fn list_years(
     Ok(Json(Years {
         closed: closed(&mut db).await?,
         next: next(&mut db, &business).await?,
+        review_answers: super::process::stale(&mut db).await?,
     }))
 }
 
@@ -94,6 +98,10 @@ pub async fn close_year(
     Path(year): Path<i16>,
 ) -> Result<Json<ClosedYear>, ApiError> {
     let business = business(&app).await?;
+    // the archive carries the process documentation as it is now
+    crate::process::refresh(&app)
+        .await
+        .map_err(ApiError::internal)?;
     let mut tx = app.db.begin_with("BEGIN IMMEDIATE").await?;
     let books = started(&mut tx).await?;
     let done: bool = sqlx::query_scalar("SELECT count(*) > 0 FROM closed_year WHERE year = ?")
@@ -344,6 +352,13 @@ async fn archive_files(
     for (id, file, name) in statements {
         let name = file_name(name.as_deref().unwrap_or("statement"));
         files.push((format!("bank/{id}-{name}"), stored(app, &file).await?));
+    }
+
+    for (id, data, de, en) in crate::process::versions_of_year(db, year).await? {
+        let base = format!("process-documentation/v{id}");
+        files.push((format!("{base}.json"), stored(app, &data).await?));
+        files.push((format!("{base}-de.pdf"), stored(app, &de).await?));
+        files.push((format!("{base}-en.pdf"), stored(app, &en).await?));
     }
 
     let tz = jiff::tz::TimeZone::get(business.timezone.as_deref().unwrap_or("Europe/Berlin"))

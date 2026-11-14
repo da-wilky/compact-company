@@ -95,6 +95,13 @@ const SIGNED_IN: &[(&str, &str, &[&str])] = &[
     ("GET", "/api/retention", OWNER),
     ("POST", "/api/retention/{year}/delete", OWNER),
     ("POST", "/api/retention/{year}/anonymise", OWNER),
+    ("GET", "/api/process-documentation", OWNER_ACCOUNTANT),
+    ("PUT", "/api/process-documentation/answers", OWNER),
+    (
+        "GET",
+        "/api/process-documentation/versions/{id}/pdf",
+        OWNER_ACCOUNTANT,
+    ),
     ("GET", "/api/years/{year}/archive", OWNER_ACCOUNTANT),
     ("GET", "/api/tokens", ANY),
     ("POST", "/api/tokens", ANY),

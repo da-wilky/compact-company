@@ -27,6 +27,7 @@ mod openapi;
 mod overview;
 mod partial_invoices;
 mod posting_rules;
+mod process;
 mod projects;
 mod quotes;
 mod receipts;

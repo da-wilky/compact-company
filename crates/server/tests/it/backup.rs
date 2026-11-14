@@ -53,7 +53,8 @@ async fn a_backup_restores_onto_a_fresh_instance_with_matching_checksums() {
     close_years(&app, &mut owner, last, last).await;
 
     let first = backup::run(&app.app).await.unwrap();
-    assert_eq!(first.uploaded, Some(2), "the receipt and the year archive");
+    let files = app.app.files.hashes().await.unwrap().len();
+    assert_eq!(first.uploaded, Some(i64::try_from(files).unwrap()));
     let receipt = ContentHash::of(b"%PDF-1.4 a receipt to back up");
     let stored = std::fs::read(bucket_file(bucket.path(), receipt)).unwrap();
     assert!(

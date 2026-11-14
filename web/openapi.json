@@ -3322,6 +3322,169 @@
         }
       }
     },
+    "/api/process-documentation": {
+      "get": {
+        "tags": [
+          "storage"
+        ],
+        "operationId": "get_process_documentation",
+        "parameters": [
+          {
+            "name": "language",
+            "in": "path",
+            "description": "German when unset.",
+            "required": true,
+            "schema": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/Language"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProcessDocumentation"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/process-documentation/answers": {
+      "put": {
+        "tags": [
+          "storage"
+        ],
+        "summary": "Saves answers and makes a new version when one changed.",
+        "operationId": "put_answers",
+        "parameters": [
+          {
+            "name": "language",
+            "in": "path",
+            "description": "German when unset.",
+            "required": true,
+            "schema": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/Language"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnswersInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProcessDocumentation"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/process-documentation/versions/{id}/pdf": {
+      "get": {
+        "tags": [
+          "storage"
+        ],
+        "operationId": "process_pdf",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "language",
+            "in": "path",
+            "description": "German when unset.",
+            "required": true,
+            "schema": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/Language"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "integer",
+                    "format": "int32",
+                    "minimum": 0
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/projects": {
       "get": {
         "tags": [
@@ -6065,6 +6228,24 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/Named"
+            }
+          }
+        }
+      },
+      "AnswersInput": {
+        "type": "object",
+        "required": [
+          "answers"
+        ],
+        "properties": {
+          "answers": {
+            "type": "object",
+            "description": "Answers by question key; an empty one removes the answer.",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "propertyNames": {
+              "type": "string"
             }
           }
         }
@@ -9775,6 +9956,16 @@
         },
         "additionalProperties": false
       },
+      "Part": {
+        "type": "string",
+        "description": "The four parts of GoBD Rz. 151.",
+        "enum": [
+          "general",
+          "user",
+          "technical",
+          "operations"
+        ]
+      },
       "PartKind": {
         "type": "string",
         "enum": [
@@ -10141,6 +10332,104 @@
           "normal",
           "high"
         ]
+      },
+      "ProcessDocumentation": {
+        "type": "object",
+        "required": [
+          "questions",
+          "versions"
+        ],
+        "properties": {
+          "questions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProcessQuestion"
+            }
+          },
+          "versions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProcessVersion"
+            },
+            "description": "Newest first."
+          }
+        }
+      },
+      "ProcessQuestion": {
+        "type": "object",
+        "required": [
+          "key",
+          "part",
+          "question",
+          "help",
+          "suggestion"
+        ],
+        "properties": {
+          "answer": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "help": {
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          },
+          "part": {
+            "$ref": "#/components/schemas/Part"
+          },
+          "question": {
+            "type": "string"
+          },
+          "suggestion": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          }
+        }
+      },
+      "ProcessVersion": {
+        "type": "object",
+        "required": [
+          "id",
+          "valid_from",
+          "created_at",
+          "changes"
+        ],
+        "properties": {
+          "changes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "What differs from the version before, by label."
+          },
+          "created_at": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "valid_from": {
+            "type": "string"
+          },
+          "valid_until": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The day before the next version's; none for the current one."
+          }
+        }
       },
       "Produced": {
         "type": "object",
@@ -12467,7 +12756,8 @@
       "Years": {
         "type": "object",
         "required": [
-          "closed"
+          "closed",
+          "review_answers"
         ],
         "properties": {
           "closed": {
@@ -12484,6 +12774,13 @@
             ],
             "format": "int32",
             "description": "The year that may be closed next: finished, booked, and every year before it closed."
+          },
+          "review_answers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Questions of the process documentation unanswered or unchanged for a year, to review\nbefore closing."
           }
         }
       }
