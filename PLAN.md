@@ -142,6 +142,7 @@ Crate names are candidates; verify each before the foundation phase settles them
 - Backup to S3: scheduled SQLite snapshot and files, rotation, a restore command
 - Retention: receipts and issued invoices deletable 8 years after their year, business letters after 6, a whole year after 10 (§ 147 AO, § 14b UStG as amended by BEG IV); deletions reach the mirror and age out of backups
 - Process documentation (GoBD Verfahrensdokumentation): technical and operations parts generated from the instance, organisational parts from a guided questionnaire, versioned and carried in each year archive
+- Page titles: "Compact Company" as display name, each tab naming its page first (#163)
 - Done when: a receipt uploaded shows up in Nextcloud within a minute, a backup restores onto a fresh instance with identical archive checksums, a year past its period is deleted with the owner's confirmation, and the process documentation for a year renders as one PDF
 
 ### Later
