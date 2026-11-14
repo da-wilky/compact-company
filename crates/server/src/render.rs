@@ -382,6 +382,28 @@ pub fn mandatory(data: &Data) -> Vec<(String, Vec<String>)> {
     if let Some(totals) = &data.totals {
         need("totals.net", vec![amount(totals.net, lang)]);
         need("totals.gross", vec![amount(totals.gross, lang)]);
+        if let Some(due) = totals.due {
+            need("totals.due", vec![amount(due, lang)]);
+        }
+    }
+    // § 14 Abs. 5 UStG: each deducted partial invoice with its amounts and their VAT
+    for (i, deduction) in data.deductions.iter().enumerate() {
+        need(
+            &format!("deductions.{i}.number"),
+            vec![deduction.number.clone()],
+        );
+        for group in &deduction.vat {
+            need(
+                &format!("deductions.{i}.net"),
+                vec![amount(group.net, lang)],
+            );
+            if !b.small_business {
+                need(
+                    &format!("deductions.{i}.tax"),
+                    vec![amount(group.tax, lang)],
+                );
+            }
+        }
     }
     if b.small_business {
         need("small_business", vec!["§ 19 UStG".to_owned()]);

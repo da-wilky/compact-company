@@ -116,7 +116,8 @@ impl EuerLine {
     pub fn seeded(skr04: &str, kind: AccountType) -> Option<Self> {
         Some(match skr04 {
             "4185" => Self::SmallBusinessIncome,
-            "4300" | "4400" => Self::TaxableIncome,
+            // advances received count as income when they arrive
+            "4300" | "4400" | "3260" | "3272" | "3280" => Self::TaxableIncome,
             "4840" | "7100" => Self::TaxFreeIncome,
             "3801" | "3806" | "3811" | "3816" => Self::VatCollected,
             "1401" | "1406" => Self::InputVat,
@@ -153,6 +154,8 @@ struct Part {
     account: i64,
     amount: i64,
     kind: Kind,
+    /// Of a partial invoice, its cancellation, or a payment of either.
+    advance: bool,
 }
 
 #[derive(sqlx::FromRow)]
@@ -201,6 +204,14 @@ impl Journal {
         .await?;
         let receivables = role(db, "receivables").await?;
         let payables = role(db, "payables").await?;
+        let advances: BTreeSet<i64> = sqlx::query_scalar(
+            "SELECT d.id FROM document d LEFT JOIN document s ON s.id = d.source_id
+             WHERE d.invoice_type = 'partial' OR (d.kind = 'cancellation' AND s.invoice_type = 'partial')",
+        )
+        .fetch_all(&mut *db)
+        .await?
+        .into_iter()
+        .collect();
         let mut journal = Self {
             postings: BTreeMap::new(),
             accounts,
@@ -209,11 +220,25 @@ impl Journal {
         };
         for row in rows {
             let lines = lines_of(db, row.id).await?;
+            let paid_invoice: Option<i64> = match row.payment_id {
+                Some(payment) => Some(
+                    sqlx::query_scalar("SELECT document_id FROM payment WHERE id = ?")
+                        .bind(payment)
+                        .fetch_one(&mut *db)
+                        .await?,
+                ),
+                None => None,
+            };
+            let advance = row
+                .document_id
+                .or(paid_invoice)
+                .is_some_and(|d| advances.contains(&d));
             let part = |(account, amount), kind| Part {
                 posting: row.id,
                 account,
                 amount,
                 kind,
+                advance,
             };
             journal
                 .booked
@@ -453,14 +478,25 @@ pub async fn vat_return(
         .map(|p| p.posting)
         .collect();
     let mut figures = Figures::default();
-    let base = match basis {
-        Basis::Accrual => &journal.booked,
-        Basis::Cash => &journal.realized,
+    // an advance is taxed when it arrives, under the accrual basis too
+    let base: Vec<&Part> = match basis {
+        Basis::Accrual => journal
+            .booked
+            .iter()
+            .filter(|p| !p.advance)
+            .chain(
+                journal
+                    .realized
+                    .iter()
+                    .filter(|p| p.advance && p.kind == Kind::Allocated),
+            )
+            .collect(),
+        Basis::Cash => journal.realized.iter().collect(),
     };
     for part in base {
         match journal.role(part.account) {
-            Some("revenue:19") => figures.add("81", part.posting, -part.amount),
-            Some("revenue:7") => figures.add("86", part.posting, -part.amount),
+            Some("revenue:19" | "advances:19") => figures.add("81", part.posting, -part.amount),
+            Some("revenue:7" | "advances:7") => figures.add("86", part.posting, -part.amount),
             _ => {}
         }
     }

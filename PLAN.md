@@ -27,6 +27,7 @@ Time tracking, invoicing and bookkeeping usually live in two or three tools with
 | EÜR | Payments count their share of what they pay; accounts name their EÜR line | 0021 |
 | Closing | A closed year takes no postings; its archive carries checksums | 0022 |
 | Depreciation | Computed from the asset, booked per finished year; disposals rebook their year | 0023 |
+| Partial invoices | Booked as advances, VAT due when paid; the final invoice deducts paid ones, cancels unpaid | 0024 |
 | Languages | UI and documents in German and English | – |
 | Platforms | x86_64 and arm64; NixOS module and OCI image | – |
 

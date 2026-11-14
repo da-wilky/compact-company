@@ -1,7 +1,8 @@
 // compact-company's helper library for layouts, imported as `#import "/cc.typ"`.
 // A layout defines `schema` (the data schema it is written for) and `render(data)`.
 
-#let _decimals = ("quantity", "unit_price", "net", "vat_rate", "rate", "tax", "gross", "hours", "amount_due")
+#let _decimals = ("quantity", "unit_price", "net", "vat_rate", "rate", "tax", "gross", "hours", "amount_due",
+  "prepaid", "due")
 #let _dates = ("issue_date", "due_date", "valid_until", "service_from", "service_to", "date",
   "invoice_date", "invoice_due_date", "pay_until")
 
@@ -34,6 +35,12 @@
   quote: ("Angebot", "Quote"),
   order_confirmation: ("Auftragsbestätigung", "Order confirmation"),
   invoice: ("Rechnung", "Invoice"),
+  partial: ("Abschlagsrechnung", "Partial invoice"),
+  final: ("Schlussrechnung", "Final invoice"),
+  less_partial: ("abzüglich Abschlagsrechnung", "less partial invoice"),
+  of_date: ("vom", "of"),
+  net: ("netto", "net"),
+  amount_to_pay: ("Zahlbetrag", "Amount to pay"),
   cancellation: ("Stornorechnung", "Cancellation invoice"),
   delivery_note: ("Lieferschein", "Delivery note"),
   acceptance_report: ("Abnahmeprotokoll", "Acceptance report"),
@@ -165,6 +172,8 @@
 #let title(data) = {
   let kind = if data.kind == "dunning" and data.dunning != none {
     t(data, "dunning_" + str(data.dunning.level))
+  } else if data.at("invoice_type", default: none) != none {
+    t(data, data.invoice_type)
   } else { t(data, data.kind) }
   if data.number == none { kind + " (" + t(data, "draft") + ")" } else { kind + " " + data.number }
 }

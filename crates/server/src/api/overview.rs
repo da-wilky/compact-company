@@ -81,6 +81,8 @@ pub struct Overview {
     unbilled: Vec<UnbilledProject>,
     /// For the owner and accountant only, oldest due first.
     open_invoices: Vec<OpenInvoice>,
+    /// Drafts from recurring invoices waiting to be issued; for the owner and accountant only.
+    recurring_drafts: Vec<super::recurring::WaitingDraft>,
 }
 
 #[utoipa::path(get, path = "/overview", tag = "overview",
@@ -101,19 +103,21 @@ pub async fn get_overview(
     .fetch_all(&mut *db)
     .await?;
     let money = matches!(role, Role::Owner | Role::Accountant);
-    let (unbilled, open_invoices) = if money {
+    let (unbilled, open_invoices, recurring_drafts) = if money {
         let today = today(&business(&app).await?)?.to_string();
         (
             unbilled(&mut db, None).await?,
             open_invoices(&mut db, &today).await?,
+            super::recurring::waiting(&mut db).await?,
         )
     } else {
-        (Vec::new(), Vec::new())
+        (Vec::new(), Vec::new(), Vec::new())
     };
     Ok(Json(Overview {
         running,
         unbilled,
         open_invoices,
+        recurring_drafts,
     }))
 }
 

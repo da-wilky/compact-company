@@ -545,7 +545,8 @@ async fn book_earlier(
             continue;
         };
         let data: Data = serde_json::from_str(&data).map_err(ApiError::internal)?;
-        rules::post_document(tx, business, user_id, id, &data, rate)
+        let advance = rules::is_advance(tx, id).await?;
+        rules::post_document(tx, business, user_id, id, &data, rate, advance)
             .await
             .map_err(rule_error)?;
     }

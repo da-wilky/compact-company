@@ -43,8 +43,15 @@
             npmDepsHash = "sha256-AsAlfrIffiIRWO9k++Aw2OI2kXVEx1YL9pQlUv+7q58=";
             installPhase = "cp -r build $out";
           };
+          # .cargo/config.toml links with mold
+          nativeBuildInputs = [ pkgs.mold ];
           cargoArtifacts = craneLib.buildDepsOnly {
-            inherit src pname version;
+            inherit
+              src
+              pname
+              version
+              nativeBuildInputs
+              ;
             strictDeps = true;
           };
           caBundle = "${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt";
@@ -54,6 +61,7 @@
               cargoArtifacts
               pname
               version
+              nativeBuildInputs
               ;
             strictDeps = true;
             # rust-embed reads the client from web/build at compile time
@@ -170,6 +178,7 @@
         default = (build pkgs).craneLib.devShell {
           packages = [
             pkgs.nodejs
+            pkgs.mold
             pkgs.rust-analyzer
             pkgs.clippy
             pkgs.rustfmt

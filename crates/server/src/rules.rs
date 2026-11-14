@@ -3,7 +3,7 @@ use sqlx::SqliteConnection;
 
 use crate::{
     books::{self, Line, NewPosting, Source},
-    documents::{Data, Kind},
+    documents::{Data, InvoiceType, Kind},
     settings::{Business, Taxation},
 };
 
@@ -48,6 +48,9 @@ pub(crate) fn rate_key(rate: Decimal) -> String {
 
 /// Books an issued invoice or cancellation invoice at `rate` EUR per unit of its currency:
 /// receivables against revenue per VAT rate and VAT owed, or VAT not yet due under the cash basis.
+/// An `advance`, a partial invoice or its cancellation, books advances received instead of revenue
+/// and its VAT as not yet due under any taxation, since it is owed when the money arrives
+/// (§ 13 Abs. 1 Nr. 1 a Satz 4 UStG). A final invoice clears the advances and the VAT it deducts.
 /// Nothing is booked before the books start or for a document dated before their first day.
 pub async fn post_document(
     tx: &mut SqliteConnection,
@@ -56,6 +59,7 @@ pub async fn post_document(
     id: i64,
     data: &Data,
     rate: Decimal,
+    advance: bool,
 ) -> Result<Option<i64>, Error> {
     let Some(books) = books::books(tx).await? else {
         return Ok(None);
@@ -67,16 +71,36 @@ pub async fn post_document(
     if date < books.start_date {
         return Ok(None);
     }
-    let vat_role = match business.taxation() {
-        Taxation::Cash => "vat_pending",
-        Taxation::Accrual | Taxation::SmallBusiness => "vat",
+    let vat_role = if advance || business.taxation() == Taxation::Cash {
+        "vat_pending"
+    } else {
+        "vat"
     };
     let mut lines = Vec::new();
     let mut receivable = 0;
+    for deduction in &data.deductions {
+        for group in &deduction.vat {
+            let net = round(Decimal::from(minor(group.net)) * rate);
+            let tax = round(Decimal::from(minor(group.tax)) * rate);
+            lines.push(Line {
+                account_id: role(tx, &format!("advances:{}", rate_key(group.rate))).await?,
+                amount: net,
+            });
+            if tax != 0 {
+                lines.push(Line {
+                    account_id: role(tx, &format!("{vat_role}:{}", rate_key(group.rate))).await?,
+                    amount: tax,
+                });
+            }
+            receivable -= net + tax;
+        }
+    }
     for group in &data.vat {
         let net = round(Decimal::from(minor(group.net)) * rate);
         let tax = round(Decimal::from(minor(group.tax)) * rate);
-        let revenue = if data.business.small_business {
+        let revenue = if advance {
+            format!("advances:{}", rate_key(group.rate))
+        } else if data.business.small_business {
             "revenue_small_business".to_owned()
         } else {
             format!("revenue:{}", rate_key(group.rate))
@@ -97,8 +121,10 @@ pub async fn post_document(
         account_id: role(tx, "receivables").await?,
         amount: receivable,
     });
-    let kind = match data.kind {
-        Kind::Cancellation => "Stornorechnung",
+    let kind = match (data.kind, data.invoice_type) {
+        (Kind::Cancellation, _) => "Stornorechnung",
+        (_, Some(InvoiceType::Partial)) => "Abschlagsrechnung",
+        (_, Some(InvoiceType::Final)) => "Schlussrechnung",
         _ => "Rechnung",
     };
     let posting = NewPosting {
@@ -172,9 +198,21 @@ async fn gross(db: &mut SqliteConnection, ids: &[i64]) -> Result<i64, sqlx::Erro
         .iter()
         .map(|d| {
             let data: Data = serde_json::from_str(d).expect("issued data parses");
-            data.totals.map_or(0, |t| minor(t.gross))
+            data.totals.map_or(0, |t| minor(t.payable()))
         })
         .sum())
+}
+
+/// Whether a document is a partial invoice or the cancellation of one.
+pub async fn is_advance(db: &mut SqliteConnection, id: i64) -> Result<bool, sqlx::Error> {
+    sqlx::query_scalar(
+        "SELECT EXISTS (SELECT 1 FROM document d LEFT JOIN document s ON s.id = d.source_id
+         WHERE d.id = ? AND (d.invoice_type = 'partial'
+             OR (d.kind = 'cancellation' AND s.invoice_type = 'partial')))",
+    )
+    .bind(id)
+    .fetch_one(db)
+    .await
 }
 
 /// What the documents' postings booked on `account`, EUR cents.
@@ -297,7 +335,7 @@ pub async fn post_payment(
             amount: -difference,
         });
     }
-    if business.taxation() == Taxation::Cash {
+    if business.taxation() == Taxation::Cash || is_advance(tx, invoice).await? {
         let pending: Vec<(i64, String)> = sqlx::query_as(
             "SELECT id, role FROM ledger_account WHERE role LIKE 'vat_pending:%' ORDER BY role",
         )

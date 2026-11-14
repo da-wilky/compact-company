@@ -601,10 +601,25 @@ async fn prepare(app: &App, upload: &Upload, source: &str) -> Result<BTreeSet<St
     let layout = Arc::new(layout);
     let small_business = business(app).await?.small_business();
     let mut problems = Vec::new();
-    for kind in &upload.kinds {
+    // a layout for invoices also lays out final invoices, with their deductions
+    let samples = upload.kinds.iter().flat_map(|kind| {
+        let fin = (*kind == Kind::Invoice).then_some(documents::InvoiceType::Final);
+        [(*kind, None)]
+            .into_iter()
+            .chain(fin.map(|f| (*kind, Some(f))))
+    });
+    for (kind, invoice_type) in samples {
         for language in [Language::De, Language::En] {
-            let data = documents::sample(*kind, language, small_business);
-            let at = format!("{} ({})", kind.name(), language.code());
+            let data = match invoice_type {
+                Some(t) => documents::sample_invoice(t, language, small_business),
+                None => documents::sample(kind, language, small_business),
+            };
+            let name = if invoice_type.is_some() {
+                "final_invoice"
+            } else {
+                kind.name()
+            };
+            let at = format!("{name} ({})", language.code());
             match render::render_blocking(layout.clone(), data, Vec::new()).await {
                 Err(e) => problems.push(format!("{at}: {e}")),
                 Ok((rendered, data)) => {

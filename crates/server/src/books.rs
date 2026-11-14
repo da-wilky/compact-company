@@ -108,6 +108,27 @@ const SEED: &[Seed] = &[
         "3816",
         "Umsatzsteuer nicht fällig 19 %",
     ),
+    seed(
+        Some("advances:0"),
+        Liability,
+        "1719",
+        "3280",
+        "Erhaltene Anzahlungen (Verbindlichkeiten)",
+    ),
+    seed(
+        Some("advances:7"),
+        Liability,
+        "1711",
+        "3260",
+        "Erhaltene, versteuerte Anzahlungen 7 % USt (Verbindlichkeiten)",
+    ),
+    seed(
+        Some("advances:19"),
+        Liability,
+        "1718",
+        "3272",
+        "Erhaltene, versteuerte Anzahlungen 19 % USt (Verbindlichkeiten)",
+    ),
     seed(Some("vat:7"), Liability, "1771", "3801", "Umsatzsteuer 7 %"),
     seed(
         Some("vat:19"),

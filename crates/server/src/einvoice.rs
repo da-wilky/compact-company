@@ -7,7 +7,10 @@ use quick_xml::{
 };
 use rust_decimal::Decimal;
 
-use crate::documents::{Data, Kind, Unit};
+use crate::{
+    api::customers::Language,
+    documents::{Data, Deduction, InvoiceType, Kind, Unit},
+};
 
 pub const ZUGFERD_NAME: &str = "factur-x.xml";
 const EN16931: &str = "urn:cen.eu:en16931:2017";
@@ -158,10 +161,54 @@ fn address(
         .child(text("ram:CountryID", country))
 }
 
+/// A deducted partial invoice with its net amount and VAT per rate, as § 14 Abs. 5 UStG asks.
+fn deduction_note(data: &Data, d: &Deduction) -> String {
+    let currency = &data.currency;
+    let de = data.language == Language::De;
+    let amounts = d
+        .vat
+        .iter()
+        .map(|g| {
+            let rate = g.rate.normalize();
+            if de {
+                format!(
+                    "netto {} {currency} zu {rate} %, USt {} {currency}",
+                    amount(g.net),
+                    amount(g.tax)
+                )
+            } else {
+                format!(
+                    "net {} {currency} at {rate} %, VAT {} {currency}",
+                    amount(g.net),
+                    amount(g.tax)
+                )
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("; ");
+    if de {
+        format!(
+            "Abzüglich Abschlagsrechnung {} vom {}: {amounts}",
+            d.number, d.issue_date
+        )
+    } else {
+        format!(
+            "Less partial invoice {} of {}: {amounts}",
+            d.number, d.issue_date
+        )
+    }
+}
+
 /// The invoice or cancellation invoice as CII XML. A cancellation invoice is a credit note
-/// (381) with its amounts positive.
+/// (381) with its amounts positive; a partial invoice is 326, and a final invoice carries its
+/// deductions as the paid amount (BT-113), a note each and its latest as preceding invoice (BG-3).
 pub fn cii(data: &Data, flavour: Flavour) -> Vec<u8> {
     let credit = data.kind == Kind::Cancellation;
+    let type_code = match (credit, data.invoice_type) {
+        (true, _) => "381",
+        (false, Some(InvoiceType::Partial)) => "326",
+        (false, _) => "380",
+    };
     let sign = |value: Decimal| if credit { -value } else { value };
     let b = &data.business;
     let c = &data.customer;
@@ -178,17 +225,21 @@ pub fn cii(data: &Data, flavour: Flavour) -> Vec<u8> {
                 .child(text("ram:ID", if xrechnung { XRECHNUNG } else { EN16931 })),
         );
 
-    let document = el("rsm:ExchangedDocument")
-        .child(text("ram:ID", data.number.as_deref().unwrap_or_default()))
-        .child(text("ram:TypeCode", if credit { "381" } else { "380" }))
-        .child(date(
-            "ram:IssueDateTime",
-            data.issue_date.as_deref().unwrap_or_default(),
-        ))
-        .opt(
-            b.small_business
-                .then(|| el("ram:IncludedNote").child(text("ram:Content", SMALL_BUSINESS))),
-        );
+    let document =
+        el("rsm:ExchangedDocument")
+            .child(text("ram:ID", data.number.as_deref().unwrap_or_default()))
+            .child(text("ram:TypeCode", type_code))
+            .child(date(
+                "ram:IssueDateTime",
+                data.issue_date.as_deref().unwrap_or_default(),
+            ))
+            .opt(
+                b.small_business
+                    .then(|| el("ram:IncludedNote").child(text("ram:Content", SMALL_BUSINESS))),
+            )
+            .all(data.deductions.iter().map(|d| {
+                el("ram:IncludedNote").child(text("ram:Content", deduction_note(data, d)))
+            }));
 
     let lines = data.lines.iter().map(|line| {
         let rate = line.vat_rate.unwrap_or_default();
@@ -328,20 +379,38 @@ pub fn cii(data: &Data, flavour: Flavour) -> Vec<u8> {
         net: Decimal::ZERO,
         tax: Decimal::ZERO,
         gross: Decimal::ZERO,
+        prepaid: None,
+        due: None,
     });
     let summation = el("ram:SpecifiedTradeSettlementHeaderMonetarySummation")
         .child(text("ram:LineTotalAmount", amount(sign(totals.net))))
         .child(text("ram:TaxBasisTotalAmount", amount(sign(totals.net))))
         .child(text("ram:TaxTotalAmount", amount(sign(totals.tax))).attr("currencyID", currency))
         .child(text("ram:GrandTotalAmount", amount(sign(totals.gross))))
-        .child(text("ram:DuePayableAmount", amount(sign(totals.gross))));
-    let preceding = data.preceding.as_ref().map(|p| {
+        .opt(
+            totals
+                .prepaid
+                .map(|p| text("ram:TotalPrepaidAmount", amount(sign(p)))),
+        )
+        .child(text("ram:DuePayableAmount", amount(sign(totals.payable()))));
+    let referenced = |number: &str, issue_date: &str| {
         el("ram:InvoiceReferencedDocument")
-            .child(text("ram:IssuerAssignedID", &p.number))
+            .child(text("ram:IssuerAssignedID", number))
             .child(el("ram:FormattedIssueDateTime").child(
-                text("qdt:DateTimeString", p.issue_date.replace('-', "")).attr("format", "102"),
+                text("qdt:DateTimeString", issue_date.replace('-', "")).attr("format", "102"),
             ))
-    });
+    };
+    // CII takes one preceding invoice reference; a final invoice names its latest deduction and
+    // lists every one in a note
+    let preceding = data
+        .preceding
+        .as_ref()
+        .map(|p| referenced(&p.number, &p.issue_date))
+        .or_else(|| {
+            data.deductions
+                .last()
+                .map(|d| referenced(&d.number, &d.issue_date))
+        });
     let settlement = el("ram:ApplicableHeaderTradeSettlement")
         .child(text("ram:InvoiceCurrencyCode", currency))
         .child(payment)

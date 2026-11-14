@@ -59,6 +59,17 @@ pub enum Unit {
     LumpSum,
 }
 
+/// What part of the work an invoice bills.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema, sqlx::Type)]
+#[serde(rename_all = "snake_case")]
+#[sqlx(rename_all = "snake_case")]
+pub enum InvoiceType {
+    /// An advance on work not yet done (Abschlagsrechnung).
+    Partial,
+    /// The whole work, less what was received on its partial invoices (Schlussrechnung).
+    Final,
+}
+
 impl Kind {
     /// The number range this kind draws from; a cancellation invoice is an invoice.
     pub fn range(self) -> Kind {
@@ -253,6 +264,22 @@ pub struct Data {
     pub preceding: Option<Preceding>,
     /// The overdue invoice a dunning letter is about.
     pub dunning: Option<DunningData>,
+    /// Invoices only: a partial or final invoice; none for an ordinary one.
+    pub invoice_type: Option<InvoiceType>,
+    /// A final invoice's paid partial invoices, deducted with their VAT (§ 14 Abs. 5 UStG).
+    #[serde(default)]
+    pub deductions: Vec<Deduction>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct Deduction {
+    pub number: String,
+    /// ISO date.
+    pub issue_date: String,
+    /// One entry per VAT rate.
+    pub vat: Vec<VatData>,
+    #[schema(value_type = String)]
+    pub gross: Decimal,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
@@ -329,6 +356,19 @@ pub struct Totals {
     pub tax: Decimal,
     #[schema(value_type = String)]
     pub gross: Decimal,
+    /// A final invoice's deductions, gross.
+    #[schema(value_type = Option<String>)]
+    pub prepaid: Option<Decimal>,
+    /// What a final invoice leaves to pay: the total less the deductions.
+    #[schema(value_type = Option<String>)]
+    pub due: Option<Decimal>,
+}
+
+impl Totals {
+    /// What the invoice asks to be paid.
+    pub fn payable(&self) -> Decimal {
+        self.due.unwrap_or(self.gross)
+    }
 }
 
 impl BusinessData {
@@ -384,6 +424,8 @@ pub struct Row {
     pub timesheet: bool,
     pub rounding: i64,
     pub dunning_level: Option<i64>,
+    pub recurring_id: Option<i64>,
+    pub invoice_type: Option<InvoiceType>,
 }
 
 #[derive(Debug, Clone, Serialize, ToSchema, sqlx::FromRow)]
@@ -525,13 +567,22 @@ pub async fn draft_data(
             }
         })
         .collect();
+    let deductions: Vec<Deduction> = partials(db, row)
+        .await?
+        .into_iter()
+        .filter_map(|(_, deduction)| deduction)
+        .collect();
     let totals = priced.then(|| {
         let net: Decimal = vat.iter().map(|v| v.net).sum();
         let tax: Decimal = vat.iter().map(|v| v.tax).sum();
+        let prepaid = (row.invoice_type == Some(InvoiceType::Final))
+            .then(|| deductions.iter().map(|d| d.gross).sum::<Decimal>());
         Totals {
             net,
             tax,
             gross: net + tax,
+            prepaid,
+            due: prepaid.map(|p| net + tax - p),
         }
     });
     Ok(Data {
@@ -558,7 +609,121 @@ pub async fn draft_data(
         timesheet,
         preceding: preceding(db, row).await?,
         dunning: dunning(db, row).await?,
+        invoice_type: row.invoice_type,
+        deductions,
     })
+}
+
+/// Where a partial invoice stands for its final invoice.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, ToSchema, sqlx::Type)]
+#[serde(rename_all = "snake_case")]
+#[sqlx(rename_all = "snake_case")]
+pub enum PartialState {
+    /// Paid, so the final invoice deducts it.
+    Deducted,
+    /// Unpaid, so issuing the final invoice cancels it.
+    Cancelled,
+    /// Paid in part: settle or cancel it before issuing the final invoice.
+    PartlyPaid,
+}
+
+#[derive(Debug, Clone, Serialize, ToSchema)]
+pub struct PartialInvoice {
+    pub id: i64,
+    pub number: String,
+    pub state: PartialState,
+}
+
+/// The partial invoices of a final invoice, with what it deducts for each paid one: as taken in
+/// when it was issued, or for a draft the issued partial invoices of its quote, or else of its
+/// project, that no final invoice took in yet. One cancelled in full is left out.
+pub async fn partials(
+    db: &mut SqliteConnection,
+    row: &Row,
+) -> Result<Vec<(PartialInvoice, Option<Deduction>)>, sqlx::Error> {
+    if row.invoice_type != Some(InvoiceType::Final) {
+        return Ok(Vec::new());
+    }
+    let ids: Vec<(i64, Option<PartialState>)> = if row.status == Status::Issued {
+        sqlx::query_as(
+            "SELECT partial_id, state FROM final_partial WHERE final_id = ? ORDER BY partial_id",
+        )
+        .bind(row.id)
+        .fetch_all(&mut *db)
+        .await?
+    } else {
+        sqlx::query_as(
+            "SELECT d.id, NULL FROM document d WHERE d.kind = 'invoice'
+             AND d.invoice_type = 'partial' AND d.status = 'issued' AND d.customer_id = ?1
+             AND CASE WHEN ?2 IS NOT NULL THEN d.source_id = ?2 ELSE d.project_id IS ?3 END
+             AND NOT EXISTS (SELECT 1 FROM final_partial f WHERE f.partial_id = d.id)
+             ORDER BY d.issue_date, d.id",
+        )
+        .bind(row.customer_id)
+        .bind(row.source_id)
+        .bind(row.project_id)
+        .fetch_all(&mut *db)
+        .await?
+    };
+    let mut partials = Vec::new();
+    for (id, taken) in ids {
+        let mut family: Vec<String> = sqlx::query_scalar(
+            "SELECT data FROM document WHERE source_id = ? AND kind = 'cancellation'
+             AND status = 'issued' ORDER BY id",
+        )
+        .bind(id)
+        .fetch_all(&mut *db)
+        .await?;
+        let (number, issue_date, data): (String, String, String) =
+            sqlx::query_as("SELECT number, issue_date, data FROM document WHERE id = ?")
+                .bind(id)
+                .fetch_one(&mut *db)
+                .await?;
+        family.push(data);
+        let mut vat: BTreeMap<Decimal, (Decimal, Decimal)> = BTreeMap::new();
+        for data in &family {
+            let data: Data = serde_json::from_str(data).expect("issued data parses");
+            for group in data.vat {
+                let entry = vat.entry(group.rate).or_default();
+                entry.0 += group.net;
+                entry.1 += group.tax;
+            }
+        }
+        let vat: Vec<VatData> = vat
+            .into_iter()
+            .filter(|(_, (net, tax))| !net.is_zero() || !tax.is_zero())
+            .map(|(rate, (net, tax))| VatData { rate, net, tax })
+            .collect();
+        let gross: Decimal = vat.iter().map(|v| v.net + v.tax).sum();
+        let state = match taken {
+            Some(state) => state,
+            None if gross.is_zero() => continue,
+            None => {
+                let paid: i64 = sqlx::query_scalar(
+                    "SELECT coalesce(sum(amount), 0) FROM payment
+                     WHERE document_id = ? AND reversed_at IS NULL",
+                )
+                .bind(id)
+                .fetch_one(&mut *db)
+                .await?;
+                if amount_due(db, id).await? <= 0 {
+                    PartialState::Deducted
+                } else if paid == 0 {
+                    PartialState::Cancelled
+                } else {
+                    PartialState::PartlyPaid
+                }
+            }
+        };
+        let deduction = (state == PartialState::Deducted).then(|| Deduction {
+            number: number.clone(),
+            issue_date,
+            vat,
+            gross,
+        });
+        partials.push((PartialInvoice { id, number, state }, deduction));
+    }
+    Ok(partials)
 }
 
 /// What is missing before a document may be issued, keyed by the field it concerns.
@@ -728,6 +893,8 @@ fn sample_amounts(kind: Kind, language: Language, small_business: bool) -> Data 
             net: d("1234.00"),
             tax,
             gross: d("1234.00") + tax,
+            prepaid: None,
+            due: None,
         }),
         due_date: matches!(kind, Kind::Invoice | Kind::Cancellation)
             .then(|| "2026-04-10".to_owned()),
@@ -759,6 +926,8 @@ fn sample_amounts(kind: Kind, language: Language, small_business: bool) -> Data 
                 hours: d("4.25"),
             }]
         }),
+        invoice_type: None,
+        deductions: Vec::new(),
     }
 }
 
@@ -917,6 +1086,49 @@ pub fn sample(kind: Kind, language: Language, small_business: bool) -> Data {
     data
 }
 
+/// Sample data of a partial invoice, or of a final invoice deducting two paid partial invoices
+/// of 30 % and 20 % of its amounts.
+pub fn sample_invoice(invoice_type: InvoiceType, language: Language, small_business: bool) -> Data {
+    let mut data = sample(Kind::Invoice, language, small_business);
+    data.invoice_type = Some(invoice_type);
+    if invoice_type == InvoiceType::Partial {
+        data.timesheet = None;
+        return data;
+    }
+    let share = |percent: i64| {
+        let part = |value: Decimal| (value * Decimal::new(percent, 2)).round_dp(2);
+        data.vat
+            .iter()
+            .map(|g| VatData {
+                rate: g.rate,
+                net: part(g.net),
+                tax: part(g.tax),
+            })
+            .collect::<Vec<_>>()
+    };
+    data.deductions = [
+        ("SAMPLE-2026-017", "2026-01-15", 30),
+        ("SAMPLE-2026-029", "2026-02-16", 20),
+    ]
+    .into_iter()
+    .map(|(number, issue_date, percent)| {
+        let vat = share(percent);
+        Deduction {
+            number: number.to_owned(),
+            issue_date: issue_date.to_owned(),
+            gross: vat.iter().map(|g| g.net + g.tax).sum(),
+            vat,
+        }
+    })
+    .collect();
+    let prepaid: Decimal = data.deductions.iter().map(|d| d.gross).sum();
+    if let Some(totals) = &mut data.totals {
+        totals.prepaid = Some(prepaid);
+        totals.due = Some(totals.gross - prepaid);
+    }
+    data
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct DunningData {
     /// 1 payment reminder, 2 dunning letter, 3 final dunning letter.
@@ -932,13 +1144,13 @@ pub struct DunningData {
     pub pay_until: Option<String>,
 }
 
-/// What is still owed on an issued invoice, in minor units: its total less its payments and its
-/// cancellation invoices.
+/// What is still owed on an issued invoice, in minor units: what it asks to be paid less its
+/// payments and its cancellation invoices.
 pub async fn amount_due(db: &mut SqliteConnection, invoice: i64) -> Result<i64, sqlx::Error> {
     let gross = |data: &str| {
         let data: Data = serde_json::from_str(data).expect("issued data parses");
         data.totals
-            .map_or(0, |t| round_minor(t.gross * Decimal::ONE_HUNDRED))
+            .map_or(0, |t| round_minor(t.payable() * Decimal::ONE_HUNDRED))
     };
     let data: String = sqlx::query_scalar("SELECT data FROM document WHERE id = ?")
         .bind(invoice)

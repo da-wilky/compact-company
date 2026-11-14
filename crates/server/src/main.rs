@@ -3,8 +3,11 @@ use std::{io::Write, path::PathBuf, process::ExitCode, sync::Arc};
 use clap::{Parser, Subcommand};
 use compact_company::{
     App, api,
+    api::customers::Language,
     config::Config,
-    deadlines, documents, einvoice,
+    deadlines,
+    documents::{self, InvoiceType},
+    einvoice,
     render::{self, Layout},
 };
 
@@ -31,6 +34,7 @@ enum Command {
         /// without it
         #[arg(long)]
         layout: Option<PathBuf>,
+        /// A document kind, or `partial` or `final` for those invoices
         #[arg(long, default_value = "invoice")]
         kind: String,
         #[arg(long, default_value = "de")]
@@ -40,6 +44,7 @@ enum Command {
     },
     /// Write the e-invoice XML of sample data to stdout, for checking it with a validator
     Einvoice {
+        /// A document kind, or `partial` or `final` for those invoices
         #[arg(long, default_value = "invoice")]
         kind: String,
         #[arg(long)]
@@ -99,7 +104,7 @@ async fn serve(config: Option<PathBuf>) -> Result<(), Box<dyn std::error::Error>
     Ok(())
 }
 
-/// Mails deadline reminders, checking every hour.
+/// Mails deadline reminders and drafts recurring invoices, checking every hour.
 async fn remind(app: Arc<App>) {
     loop {
         let today = app
@@ -112,6 +117,9 @@ async fn remind(app: Arc<App>) {
             Ok(today) => {
                 if let Err(e) = deadlines::remind(&app, today).await {
                     eprintln!("deadline reminders failed: {e}");
+                }
+                if let Err(e) = api::recurring::draft_due(&app, today).await {
+                    eprintln!("drafting recurring invoices failed: {}", e.message);
                 }
             }
             Err(e) => eprintln!("deadline reminders failed: {e}"),
@@ -131,13 +139,12 @@ fn sample(
     language: &str,
     small_business: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let kind = serde_json::from_value(serde_json::Value::from(kind))?;
     let language = serde_json::from_value(serde_json::Value::from(language))?;
     let layout = match dir {
         Some(dir) => Layout::from_dir(&dir)?,
         None => Layout::built_in(),
     };
-    let data = documents::sample(kind, language, small_business);
+    let data = sample_data(kind, language, small_business)?;
     let rendered = render::render(&layout, &data, &[])?;
     for key in render::missing(&data, &rendered) {
         eprintln!("not shown: {key}");
@@ -151,12 +158,7 @@ fn einvoice(
     small_business: bool,
     xrechnung: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let kind = serde_json::from_value(serde_json::Value::from(kind))?;
-    let data = documents::sample(
-        kind,
-        compact_company::api::customers::Language::De,
-        small_business,
-    );
+    let data = sample_data(kind, Language::De, small_business)?;
     let flavour = if xrechnung {
         einvoice::Flavour::Xrechnung
     } else {
@@ -164,4 +166,21 @@ fn einvoice(
     };
     std::io::stdout().write_all(&einvoice::cii(&data, flavour))?;
     Ok(())
+}
+
+/// Sample data of a document kind, or of a `partial` or `final` invoice.
+fn sample_data(
+    kind: &str,
+    language: Language,
+    small_business: bool,
+) -> Result<documents::Data, serde_json::Error> {
+    let invoice_type: Option<InvoiceType> = serde_json::from_value(kind.into()).ok();
+    Ok(match invoice_type {
+        Some(invoice_type) => documents::sample_invoice(invoice_type, language, small_business),
+        None => documents::sample(
+            serde_json::from_value(kind.into())?,
+            language,
+            small_business,
+        ),
+    })
 }

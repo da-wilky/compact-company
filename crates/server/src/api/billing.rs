@@ -143,7 +143,7 @@ pub async fn add_time(
     check.done()?;
     let mut tx = app.db.begin_with("BEGIN IMMEDIATE").await?;
     let row = draft_row(&mut tx, id).await?;
-    if row.kind != Kind::Invoice {
+    if row.kind != Kind::Invoice || row.invoice_type == Some(documents::InvoiceType::Partial) {
         return Err(ApiError::new(ErrorCode::FollowUpNotAllowed));
     }
     let entries: Vec<Entry> = sqlx::query_as(sqlx::AssertSqlSafe(format!(
