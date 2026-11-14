@@ -74,6 +74,12 @@ pub enum ErrorCode {
     DeductionsExceedInvoice,
     FinalInvoiceInFull,
     MailNotConfigured,
+    MirrorNotConfigured,
+    BackupNotConfigured,
+    NothingToDelete,
+    YearAnonymised,
+    AnonymisationNotDue,
+    FileDeleted,
     MailFailed,
     RateLimited,
     Internal,
@@ -139,6 +145,12 @@ impl ErrorCode {
         Self::DeductionsExceedInvoice,
         Self::FinalInvoiceInFull,
         Self::MailNotConfigured,
+        Self::MirrorNotConfigured,
+        Self::BackupNotConfigured,
+        Self::NothingToDelete,
+        Self::YearAnonymised,
+        Self::AnonymisationNotDue,
+        Self::FileDeleted,
         Self::MailFailed,
         Self::RateLimited,
         Self::Internal,
@@ -190,7 +202,13 @@ impl ErrorCode {
             | Self::PartialInvoicePartlyPaid
             | Self::DeductionsExceedInvoice
             | Self::FinalInvoiceInFull
-            | Self::MailNotConfigured => StatusCode::CONFLICT,
+            | Self::MailNotConfigured
+            | Self::MirrorNotConfigured
+            | Self::BackupNotConfigured
+            | Self::NothingToDelete
+            | Self::YearAnonymised
+            | Self::AnonymisationNotDue => StatusCode::CONFLICT,
+            Self::FileDeleted => StatusCode::GONE,
             Self::RateLimited => StatusCode::TOO_MANY_REQUESTS,
             Self::Internal => StatusCode::INTERNAL_SERVER_ERROR,
         }

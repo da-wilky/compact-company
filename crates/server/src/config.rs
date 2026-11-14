@@ -32,6 +32,51 @@ pub struct Config {
     /// Where approved Typst packages are downloaded from.
     #[serde(default = "default_typst_packages")]
     pub typst_packages: Url,
+    #[serde(default)]
+    pub mirror: Mirror,
+    pub backup: Option<Backup>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Backup {
+    pub s3: S3,
+    /// Key prefix inside the bucket.
+    #[serde(default)]
+    pub prefix: String,
+    /// The age public key backups are encrypted to (`age1…`); its identity is only needed to
+    /// restore and belongs off this server.
+    pub recipient: String,
+    /// Time of day in the business's timezone.
+    #[serde(default = "default_backup_time")]
+    pub time: jiff::civil::Time,
+    /// The newest snapshot of each of this many days is kept.
+    #[serde(default = "default_keep_daily")]
+    pub keep_daily: usize,
+    /// The newest snapshot of each of this many months is kept.
+    #[serde(default = "default_keep_monthly")]
+    pub keep_monthly: usize,
+}
+
+#[derive(Debug, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Mirror {
+    /// A readable copy of every stored document, such as a Nextcloud folder.
+    pub webdav: Option<Webdav>,
+    /// The language of folder and file names; the business language when unset.
+    pub language: Option<crate::api::customers::Language>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Webdav {
+    /// For Nextcloud `https://<host>/remote.php/dav/files/<user>/<folder>`.
+    pub url: Url,
+    pub username: String,
+    /// For Nextcloud an app password.
+    password_file: PathBuf,
+    #[serde(skip)]
+    pub password: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -120,6 +165,11 @@ impl Config {
         if url.path() != "/" || url.query().is_some() || url.fragment().is_some() {
             return Err(Error::PublicUrl(url.clone()));
         }
+        if let Some(backup) = &mut config.backup {
+            backup.s3.secret_access_key = read(&backup.s3.secret_access_key_file)?
+                .trim_end()
+                .to_owned();
+        }
         if let Some(s3) = &mut config.storage.s3 {
             s3.secret_access_key = read(&s3.secret_access_key_file)?.trim_end().to_owned();
         }
@@ -127,6 +177,9 @@ impl Config {
             && let Some(file) = &smtp.password_file
         {
             smtp.password = Some(read(file)?.trim_end().to_owned());
+        }
+        if let Some(webdav) = &mut config.mirror.webdav {
+            webdav.password = read(&webdav.password_file)?.trim_end().to_owned();
         }
         if let Some(oidc) = &mut config.oidc {
             oidc.client_secret = read(&oidc.client_secret_file)?.trim_end().to_owned();
@@ -161,4 +214,16 @@ fn default_typst_packages() -> Url {
 
 fn default_smtp_port() -> u16 {
     587
+}
+
+fn default_backup_time() -> jiff::civil::Time {
+    jiff::civil::time(3, 0, 0, 0)
+}
+
+fn default_keep_daily() -> usize {
+    7
+}
+
+fn default_keep_monthly() -> usize {
+    12
 }

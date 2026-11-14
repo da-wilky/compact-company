@@ -1,11 +1,10 @@
 use std::fs;
 
-use axum::{body::Bytes, error_handling::HandleError, http::StatusCode};
+use axum::body::Bytes;
 use compact_company::{
     config::Config,
     files::{ContentHash, Error, Files},
 };
-use s3s::{auth::SimpleAuth, service::S3ServiceBuilder};
 
 async fn round_trip(files: &Files) {
     let bytes = Bytes::from_static(b"%PDF-1.7 invoice");
@@ -38,18 +37,7 @@ async fn local_disk_detects_corruption() {
 
 #[tokio::test]
 async fn s3_round_trip() {
-    let root = tempfile::tempdir().unwrap();
-    fs::create_dir(root.path().join("files")).unwrap();
-    let mut s3 = S3ServiceBuilder::new(s3s_fs::FileSystem::new(root.path()).unwrap());
-    s3.set_auth(SimpleAuth::from_single("test-key", "test-secret"));
-    let s3 = HandleError::new(s3.build(), |_| async { StatusCode::INTERNAL_SERVER_ERROR });
-    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
-    let endpoint = format!("http://{}", listener.local_addr().unwrap());
-    tokio::spawn(async move {
-        axum::serve(listener, axum::Router::new().fallback_service(s3))
-            .await
-            .unwrap()
-    });
+    let (endpoint, root) = crate::common::s3("files").await;
 
     fs::write(root.path().join("secret"), "test-secret").unwrap();
     let config = root.path().join("config.toml");
@@ -64,4 +52,20 @@ async fn s3_round_trip() {
     .unwrap();
     let config = Config::load(&config).unwrap();
     round_trip(&Files::s3(config.storage.s3.as_ref().unwrap()).unwrap()).await;
+}
+
+#[tokio::test]
+async fn lists_and_deletes_stored_files() {
+    let dir = tempfile::tempdir().unwrap();
+    let files = Files::local(dir.path()).unwrap();
+    let a = files.put(Bytes::from_static(b"a")).await.unwrap();
+    let b = files.put(Bytes::from_static(b"b")).await.unwrap();
+    let mut listed = files.hashes().await.unwrap();
+    listed.sort_by_key(ToString::to_string);
+    let mut expected = vec![a, b];
+    expected.sort_by_key(ToString::to_string);
+    assert_eq!(listed, expected);
+    files.delete(a).await.unwrap();
+    files.delete(a).await.unwrap();
+    assert_eq!(files.hashes().await.unwrap(), [b]);
 }

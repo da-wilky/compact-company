@@ -18,7 +18,11 @@
 
 	function show(result: { data?: Schemas['BusinessView']; error?: ApiError }) {
 		if (result.data) {
-			values = { ...result.data.values, taxation: result.data.values.taxation ?? 'accrual' };
+			values = {
+				...result.data.values,
+				taxation: result.data.values.taxation ?? 'accrual',
+				language: result.data.values.language ?? 'en'
+			};
 			pinned = result.data.pinned;
 		}
 		error = result.error;
@@ -114,6 +118,13 @@
 		{/each}
 		<section class="card">
 			<h2>{t('business.section_defaults')}</h2>
+			<Field label={t('business.language')} error={error?.fields?.language} note={note('language')}>
+				<select bind:value={values.language} disabled={pinned.includes('language')}>
+					{#each ['en', 'de'] as const as language (language)}
+						<option value={language}>{t(`language.${language}`)}</option>
+					{/each}
+				</select>
+			</Field>
 			<Field label={t('business.currency')} error={error?.fields?.currency} note={note('currency')}>
 				<select bind:value={values.currency} disabled={pinned.includes('currency')}>
 					{#each currencies as code (code)}<option value={code}>{code}</option>{/each}

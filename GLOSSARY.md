@@ -304,3 +304,37 @@ _Avoid_: Retirement, removal
 **Asset register** (de: Anlagenverzeichnis):
 The list of fixed assets with their cost, depreciation and book values per year, as the Anlage AVEÜR asks for it.
 _Avoid_: Inventory
+
+### Retention and backup
+
+**Retention period** (de: Aufbewahrungsfrist):
+How long a record must be kept: 10 years for books and year-end archives, 8 for booking documents, 6 for business letters, each from the end of its year.
+_Avoid_: Storage period, Löschfrist
+
+**Booking document** (de: Buchungsbeleg):
+A record a posting rests on: an invoice issued or received, a receipt, a bank statement; kept 8 years.
+
+**Business letter** (de: Handelsbrief):
+A document that prepares or settles a deal without being booked, such as a quote or a dunning letter; kept 6 years.
+
+**Pruned archive** (de: bereinigtes Jahresarchiv):
+A year-end archive rewritten without the files deleted after their retention period, keeping the original checksums beside its own.
+
+**Anonymisation** (de: Anonymisierung):
+Removing the names from a year ten years on: its files and work records go, its postings stay without their texts.
+_Avoid_: Deletion of a year
+
+**Mirror** (de: Spiegelung):
+A readable copy of every stored document in a folder tree outside the app, such as Nextcloud; the app overwrites whatever changes there.
+_Avoid_: Sync, backup
+
+**Business language** (de: Geschäftssprache):
+The language the mirror names its folders and files in, English unless set; the mirror can set its own.
+
+**Backup** (de: Sicherung):
+An encrypted snapshot of the database and every file in an S3 bucket, from which a fresh instance can be restored.
+_Avoid_: Mirror, export
+
+**Process documentation** (de: Verfahrensdokumentation):
+The description of how documents enter the business and are booked, kept and protected, partly generated and partly answered by the owner, in versions.
+_Avoid_: Manual, Verfahrensbeschreibung

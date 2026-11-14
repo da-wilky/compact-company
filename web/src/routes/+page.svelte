@@ -54,6 +54,10 @@
 	</div>
 </div>
 
+{#if overview?.backup_failure}
+	<p class="alert" role="alert">{t('home.backup_failed')} <a href="/backup">{t('backup.title')}</a></p>
+{/if}
+
 {#if works}
 	<div class="grid">
 		<section class="card stack">

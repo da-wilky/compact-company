@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { APP_NAME } from '#lib/title.svelte.ts';
+
 	let { size = 32, wordmark = true }: { size?: number; wordmark?: boolean } = $props();
 </script>
 
@@ -23,7 +25,7 @@
 	{#if wordmark}
 		<span class="word">compact<br /><span>company</span></span>
 	{:else}
-		<span class="visually-hidden">compact-company</span>
+		<span class="visually-hidden">{APP_NAME}</span>
 	{/if}
 </span>
 

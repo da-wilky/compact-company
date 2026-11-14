@@ -1,0 +1,7 @@
+# The process documentation is generated where the instance knows, and versioned
+
+The process documentation (GoBD Rz. 150–155) has four parts: general description, user, technical system and operations documentation. What the instance knows is generated: program and revision (Rz. 154), platform, storage, mirror, backup schedule and rotation, sign-in methods, users and roles, API scopes in use, chart of accounts, taxation and posting rules, number ranges, bank accounts, retention and the deletions done. The rest comes from a questionnaire, each question explained and with a suggested answer for a business of one person, including the scanning instruction of Rz. 136 and what happens to paper after capture (Rz. 139–140).
+
+Facts and answers form one JSON document. Whenever it differs from the latest version's, at start-up, hourly, after answers are saved and before a year is closed, a new version is made: valid from that day, naming the keys that changed, its JSON and its PDF in German and English stored content-addressed and never overwritten. Each year archive carries the versions valid in that year, or the current one when none reaches back so far; closing a year lists the answers unchanged for twelve months to review. A version is kept as long as a year it applied to (ADR 0025).
+
+Considered: a free-form document the owner writes, which goes stale as soon as the configuration changes; and rendering versions on demand from stored answers, which would change an old version's PDF with every program update.

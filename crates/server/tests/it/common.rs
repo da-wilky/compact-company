@@ -404,3 +404,248 @@ pub fn smtp_config(port: u16) -> Config {
     ))
     .unwrap()
 }
+
+/// A WebDAV server's files and folders by decoded path, as a mirror sees them.
+pub struct Dav {
+    pub files: Mutex<BTreeMap<String, Vec<u8>>>,
+    pub folders: Mutex<std::collections::BTreeSet<String>>,
+    pub down: std::sync::atomic::AtomicBool,
+}
+
+/// Serves WebDAV's PUT, MKCOL, DELETE and PROPFIND like Nextcloud: a file's folder must exist
+/// first, deleting a folder deletes what is in it, and a listing names the folder itself too.
+pub async fn webdav() -> (String, Arc<Dav>) {
+    use axum::{extract::Request, response::IntoResponse};
+    use std::sync::atomic::Ordering;
+
+    const ROOT: &str = "/remote.php/dav/files/samuel/Firma";
+    let dav = Arc::new(Dav {
+        files: Mutex::default(),
+        folders: Mutex::new([String::new()].into()),
+        down: Default::default(),
+    });
+    let state = dav.clone();
+    let handler = move |request: Request| {
+        let dav = state.clone();
+        async move {
+            if dav.down.load(Ordering::SeqCst) {
+                return StatusCode::SERVICE_UNAVAILABLE.into_response();
+            }
+            let raw = request.uri().path().to_owned();
+            let Some(path) = raw.strip_prefix(ROOT) else {
+                return StatusCode::NOT_FOUND.into_response();
+            };
+            let path = decode(path.trim_matches('/'));
+            let parent = path.rsplit_once('/').map_or("", |(p, _)| p).to_owned();
+            let method = request.method().as_str().to_owned();
+            let body = request.into_body().collect().await.unwrap().to_bytes();
+            let mut dirs = dav.folders.lock().unwrap();
+            let mut files = dav.files.lock().unwrap();
+            match method.as_str() {
+                "PUT" if !dirs.contains(&parent) => StatusCode::CONFLICT.into_response(),
+                "PUT" => {
+                    files.insert(path, body.to_vec());
+                    StatusCode::CREATED.into_response()
+                }
+                "MKCOL" if !dirs.contains(&parent) => StatusCode::CONFLICT.into_response(),
+                "MKCOL" if dirs.contains(&path) => StatusCode::METHOD_NOT_ALLOWED.into_response(),
+                "MKCOL" => {
+                    dirs.insert(path);
+                    StatusCode::CREATED.into_response()
+                }
+                "DELETE" if dirs.remove(&path) => {
+                    let inside = |p: &String| p.starts_with(&format!("{path}/"));
+                    dirs.retain(|d| !inside(d));
+                    files.retain(|f, _| !inside(f));
+                    StatusCode::NO_CONTENT.into_response()
+                }
+                "DELETE" => match files.remove(&path) {
+                    Some(_) => StatusCode::NO_CONTENT.into_response(),
+                    None => StatusCode::NOT_FOUND.into_response(),
+                },
+                "PROPFIND" if !dirs.contains(&path) => StatusCode::NOT_FOUND.into_response(),
+                "PROPFIND" => {
+                    let child = |p: &String| {
+                        let parent = p.rsplit_once('/').map_or("", |(parent, _)| parent);
+                        !p.is_empty() && parent == path
+                    };
+                    let entry = |p: &str, size: Option<usize>| {
+                        let href = format!("{ROOT}/{p}");
+                        let (href, kind, size) = match size {
+                            Some(size) => (
+                                href,
+                                String::new(),
+                                format!("<d:getcontentlength>{size}</d:getcontentlength>"),
+                            ),
+                            None if p.is_empty() => {
+                                (href, "<d:collection/>".to_owned(), String::new())
+                            }
+                            None => (
+                                format!("{href}/"),
+                                "<d:collection/>".to_owned(),
+                                String::new(),
+                            ),
+                        };
+                        format!(
+                            "<d:response><d:href>{href}</d:href><d:propstat><d:prop>\
+                             <d:getlastmodified>Sat, 14 Nov 2026 12:00:00 GMT</d:getlastmodified>\
+                             {size}<d:resourcetype>{kind}</d:resourcetype></d:prop>\
+                             <d:status>HTTP/1.1 200 OK</d:status></d:propstat></d:response>"
+                        )
+                    };
+                    let mut xml =
+                        String::from(r#"<?xml version="1.0"?><d:multistatus xmlns:d="DAV:">"#);
+                    xml.push_str(&entry(&path, None));
+                    for dir in dirs.iter().filter(|d| child(d)) {
+                        xml.push_str(&entry(dir, None));
+                    }
+                    for (file, bytes) in files.iter().filter(|(f, _)| child(f)) {
+                        xml.push_str(&entry(file, Some(bytes.len())));
+                    }
+                    xml.push_str("</d:multistatus>");
+                    (StatusCode::MULTI_STATUS, xml).into_response()
+                }
+                _ => StatusCode::METHOD_NOT_ALLOWED.into_response(),
+            }
+        }
+    };
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let url = format!("http://{}{ROOT}", listener.local_addr().unwrap());
+    tokio::spawn(async move {
+        axum::serve(listener, Router::new().fallback(handler))
+            .await
+            .unwrap()
+    });
+    (url, dav)
+}
+
+fn decode(path: &str) -> String {
+    let bytes = path.as_bytes();
+    let mut out = Vec::new();
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i] == b'%' {
+            out.push(u8::from_str_radix(&path[i + 1..i + 3], 16).unwrap());
+            i += 3;
+        } else {
+            out.push(bytes[i]);
+            i += 1;
+        }
+    }
+    String::from_utf8(out).unwrap()
+}
+
+/// A config mirroring to `url` with the test password.
+pub fn mirror_config(url: &str) -> Config {
+    let mut config: Config = toml::from_str(&format!(
+        "[mirror.webdav]\nurl = \"{url}\"\nusername = \"samuel\"\npassword_file = \"/dev/null\""
+    ))
+    .unwrap();
+    config.mirror.webdav.as_mut().unwrap().password = "app-password".into();
+    config
+}
+
+/// An S3-compatible server with an empty bucket `bucket`, storing its objects under the
+/// returned directory as `<bucket>/<key>`.
+pub async fn s3(bucket: &str) -> (String, tempfile::TempDir) {
+    use axum::error_handling::HandleError;
+    use s3s::{auth::SimpleAuth, service::S3ServiceBuilder};
+
+    let root = tempfile::tempdir().unwrap();
+    std::fs::create_dir(root.path().join(bucket)).unwrap();
+    let mut s3 = S3ServiceBuilder::new(s3s_fs::FileSystem::new(root.path()).unwrap());
+    s3.set_auth(SimpleAuth::from_single("test-key", "test-secret"));
+    let s3 = HandleError::new(s3.build(), |_| async { StatusCode::INTERNAL_SERVER_ERROR });
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let endpoint = format!("http://{}", listener.local_addr().unwrap());
+    tokio::spawn(async move {
+        axum::serve(listener, Router::new().fallback_service(s3))
+            .await
+            .unwrap()
+    });
+    (endpoint, root)
+}
+
+/// Starts the books on 1 January of `first` and closes every year from it to `last`.
+pub async fn close_years(app: &TestApp, owner: &mut Browser, first: i16, last: i16) {
+    app.ok(
+        owner,
+        "POST",
+        "/api/books",
+        json!({ "chart": "skr04", "start_date": format!("{first}-01-01") }),
+    )
+    .await;
+    for year in first..=last {
+        app.ok(
+            owner,
+            "POST",
+            &format!("/api/years/{year}/close"),
+            json!({}),
+        )
+        .await;
+    }
+}
+
+pub async fn account(app: &TestApp, owner: &mut Browser, number: &str) -> Value {
+    app.ok(owner, "GET", "/api/accounts", json!({}))
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|a| a["number"] == number)
+        .unwrap()["id"]
+        .clone()
+}
+
+pub async fn receipt(
+    app: &TestApp,
+    owner: &mut Browser,
+    file: &[u8],
+    content: Value,
+    paid_from: &Value,
+) -> i64 {
+    let response = app
+        .multipart(
+            owner,
+            "POST",
+            "/api/receipts",
+            &[("file", Some("scan.pdf"), file)],
+        )
+        .await;
+    let id = json(response).await["id"].as_i64().unwrap();
+    let path = format!("/api/receipts/{id}");
+    app.ok(owner, "PUT", &path, content).await;
+    app.ok(
+        owner,
+        "POST",
+        &format!("{path}/book"),
+        json!({ "paid_from": paid_from }),
+    )
+    .await;
+    id
+}
+
+/// Moves an issued document into an earlier year, which issuing never does.
+pub async fn backdate(app: &TestApp, id: i64, date: &str) {
+    let db = &mut *app.app.db.acquire().await.unwrap();
+    let trigger: String =
+        sqlx::query_scalar("SELECT sql FROM sqlite_master WHERE name = 'document_issued_fixed'")
+            .fetch_one(&mut *db)
+            .await
+            .unwrap();
+    sqlx::query("DROP TRIGGER document_issued_fixed")
+        .execute(&mut *db)
+        .await
+        .unwrap();
+    sqlx::query("UPDATE document SET issue_date = ?1, created_at = unixepoch(?1) WHERE id = ?2")
+        .bind(date)
+        .bind(id)
+        .execute(&mut *db)
+        .await
+        .unwrap();
+    // the trigger as the migration wrote it
+    sqlx::query(sqlx::AssertSqlSafe(trigger))
+        .execute(&mut *db)
+        .await
+        .unwrap();
+}

@@ -314,6 +314,7 @@ pub async fn import_statement(
         })),
     )
     .await?;
+    crate::mirror::queue(&app, &mut tx, &format!("bank_import:{import}")).await?;
     tx.commit().await?;
     Ok(Json(ImportResult {
         format,

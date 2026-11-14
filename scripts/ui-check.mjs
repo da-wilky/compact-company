@@ -200,6 +200,18 @@ try {
 		writeFileSync(join(out, `${name}-${width}-${theme}.png`), Buffer.from(data, 'base64'));
 	}
 
+	// the tab names the page before the app, and no text but code calls the app by its code name
+	async function named(name) {
+		const title = await evaluate('document.title');
+		if (!/^.+ · Compact Company$/.test(title)) failures.push(`${name}: tab title "${title}"`);
+		const codeName = await evaluate(`(() => {
+			const body = document.body.cloneNode(true);
+			body.querySelectorAll('code, pre').forEach((e) => e.remove());
+			return body.innerText.includes('compact-company');
+		})()`);
+		if (codeName) failures.push(`${name}: shows "compact-company"`);
+	}
+
 	// every screen at every size and theme; `prepare` brings the page into the state to show
 	async function screen(name, url, prepare = async () => {}, only = Object.keys(widths)) {
 		for (const width of only) {
@@ -211,6 +223,7 @@ try {
 				await settle();
 				await shoot(name, width, theme);
 				for (const error of errors) failures.push(`${name} ${width} ${theme}: ${error}`);
+				if (width === only[0] && theme === themes[0]) await named(name);
 			}
 		}
 	}
@@ -320,7 +333,7 @@ try {
 	await api('POST', '/api/snippets', { name: 'Zahlungshinweis', language: 'de', body: 'Bitte überweisen Sie den Betrag ohne Abzug.' });
 
 	await screen('books-start', `${origin}/books`);
-	await api('POST', '/api/books', { chart: 'skr03', start_date: '2026-01-01' });
+	await api('POST', '/api/books', { chart: 'skr03', start_date: '2025-01-01' });
 	const accounts = await api('GET', '/api/accounts');
 	const account = (number) => accounts.find((a) => a.number === number).id;
 	await api('POST', '/api/postings', {
@@ -596,6 +609,10 @@ try {
 	await screen('audit', `${origin}/audit`);
 	await api('POST', '/api/tokens', { name: 'Zeitimport', scopes: ['work:read', 'work:write'] });
 	await screen('account', `${origin}/account`);
+	await screen('backup', `${origin}/backup`);
+	await screen('process-documentation', `${origin}/process-documentation`);
+	await api('POST', '/api/years/2025/close');
+	await screen('retention', `${origin}/retention`);
 	await screen('more', `${origin}/`, () => click('.bar button'), ['phone']);
 
 	let invitation;

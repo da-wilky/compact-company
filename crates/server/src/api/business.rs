@@ -88,6 +88,7 @@ fn validate(business: Business) -> Result<Business, ApiError> {
         bic: check
             .text("bic", b.bic, 11)
             .map(|v| v.replace(' ', "").to_ascii_uppercase()),
+        language: b.language,
         currency: b.currency,
         timezone: check.text("timezone", b.timezone, 64),
         vat_rate: b.vat_rate,

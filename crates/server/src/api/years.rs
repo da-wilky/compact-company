@@ -28,10 +28,13 @@ use crate::{
 #[derive(Debug, Serialize, ToSchema, sqlx::FromRow)]
 pub struct ClosedYear {
     year: i16,
-    /// SHA-256 of the archive.
-    archive: String,
+    /// SHA-256 of the archive as it is now: pruned after retention periods, none once the year
+    /// is anonymised.
+    archive: Option<String>,
     /// Bytes.
-    size: i64,
+    size: Option<i64>,
+    /// Whether files were deleted from the archive after their retention period.
+    pruned: bool,
     closed_at: i64,
     closed_by: String,
 }
@@ -42,12 +45,17 @@ pub struct Years {
     closed: Vec<ClosedYear>,
     /// The year that may be closed next: finished, booked, and every year before it closed.
     next: Option<i16>,
+    /// Questions of the process documentation unanswered or unchanged for a year, to review
+    /// before closing.
+    review_answers: Vec<String>,
 }
 
 async fn closed(db: &mut SqliteConnection) -> Result<Vec<ClosedYear>, sqlx::Error> {
     sqlx::query_as(
-        "SELECT c.year, c.archive, c.size, c.closed_at, u.name AS closed_by FROM closed_year c
-         JOIN user u ON u.id = c.closed_by ORDER BY c.year DESC",
+        "SELECT c.year, a.archive, a.size, a.pruned, c.closed_at, u.name AS closed_by
+         FROM closed_year c
+         JOIN year_archive a ON a.year = c.year JOIN user u ON u.id = c.closed_by
+         ORDER BY c.year DESC",
     )
     .fetch_all(db)
     .await
@@ -76,6 +84,7 @@ pub async fn list_years(
     Ok(Json(Years {
         closed: closed(&mut db).await?,
         next: next(&mut db, &business).await?,
+        review_answers: super::process::stale(&mut db).await?,
     }))
 }
 
@@ -89,6 +98,10 @@ pub async fn close_year(
     Path(year): Path<i16>,
 ) -> Result<Json<ClosedYear>, ApiError> {
     let business = business(&app).await?;
+    // the archive carries the process documentation as it is now
+    crate::process::refresh(&app)
+        .await
+        .map_err(ApiError::internal)?;
     let mut tx = app.db.begin_with("BEGIN IMMEDIATE").await?;
     let books = started(&mut tx).await?;
     let done: bool = sqlx::query_scalar("SELECT count(*) > 0 FROM closed_year WHERE year = ?")
@@ -108,7 +121,7 @@ pub async fn close_year(
     }
     let closed_at = now();
     let files = archive_files(&app, &mut tx, &business, books.chart, year, closed_at).await?;
-    let archive = tar_gz(files, closed_at)?;
+    let archive = tar_gz(files, closed_at, SUMS)?;
     let size = i64::try_from(archive.len()).map_err(ApiError::internal)?;
     let hash = app
         .files
@@ -134,6 +147,7 @@ pub async fn close_year(
         Some(serde_json::json!({ "archive": hash.to_string(), "size": size })),
     )
     .await?;
+    crate::mirror::queue(&app, &mut tx, &format!("year:{year}")).await?;
     let closed = closed(&mut tx)
         .await?
         .into_iter()
@@ -151,11 +165,13 @@ pub async fn year_archive(
     _: Auth<OwnerOrAccountant>,
     Path(year): Path<i16>,
 ) -> Result<Response, ApiError> {
-    let hash: String = sqlx::query_scalar("SELECT archive FROM closed_year WHERE year = ?")
-        .bind(year)
-        .fetch_optional(&app.db)
-        .await?
-        .ok_or(ApiError::new(ErrorCode::NotFound))?;
+    let hash: String =
+        sqlx::query_scalar::<_, Option<String>>("SELECT archive FROM year_archive WHERE year = ?")
+            .bind(year)
+            .fetch_optional(&app.db)
+            .await?
+            .flatten()
+            .ok_or(ApiError::new(ErrorCode::NotFound))?;
     let hash: ContentHash = hash.parse().map_err(ApiError::internal)?;
     let bytes = app.files.get(hash).await.map_err(ApiError::internal)?;
     Ok((
@@ -338,6 +354,13 @@ async fn archive_files(
         files.push((format!("bank/{id}-{name}"), stored(app, &file).await?));
     }
 
+    for (id, data, de, en) in crate::process::versions_of_year(db, year).await? {
+        let base = format!("process-documentation/v{id}");
+        files.push((format!("{base}.json"), stored(app, &data).await?));
+        files.push((format!("{base}-de.pdf"), stored(app, &de).await?));
+        files.push((format!("{base}-en.pdf"), stored(app, &en).await?));
+    }
+
     let tz = jiff::tz::TimeZone::get(business.timezone.as_deref().unwrap_or("Europe/Berlin"))
         .map_err(ApiError::internal)?;
     let second = |y: i16| -> Result<i64, ApiError> {
@@ -384,8 +407,13 @@ async fn stored(app: &App, hash: &str) -> Result<Vec<u8>, ApiError> {
         .to_vec())
 }
 
-/// A gzipped tar of the files with `SHA256SUMS`, in the format `sha256sum -c` checks.
-fn tar_gz(files: Vec<(String, Vec<u8>)>, mtime: i64) -> Result<Vec<u8>, ApiError> {
+/// A gzipped tar of the files with their checksums under `sums_name`, in the format
+/// `sha256sum -c` checks.
+pub(super) fn tar_gz(
+    files: Vec<(String, Vec<u8>)>,
+    mtime: i64,
+    sums_name: &str,
+) -> Result<Vec<u8>, ApiError> {
     let mut sums = String::new();
     for (path, bytes) in &files {
         writeln!(sums, "{}  {path}", ContentHash::of(bytes)).expect("writing to a string");
@@ -396,7 +424,7 @@ fn tar_gz(files: Vec<(String, Vec<u8>)>, mtime: i64) -> Result<Vec<u8>, ApiError
     for (path, bytes) in files
         .iter()
         .map(|(p, b)| (p.as_str(), b.as_slice()))
-        .chain([("SHA256SUMS", sums.as_bytes())])
+        .chain([(sums_name, sums.as_bytes())])
     {
         let mut header = tar::Header::new_gnu();
         header.set_size(bytes.len() as u64);
@@ -410,3 +438,44 @@ fn tar_gz(files: Vec<(String, Vec<u8>)>, mtime: i64) -> Result<Vec<u8>, ApiError
     gz.flush().map_err(ApiError::internal)?;
     gz.finish().map_err(ApiError::internal)
 }
+
+/// The files of a year archive by path.
+pub fn unpack(archive: &[u8]) -> Result<Vec<(String, Vec<u8>)>, String> {
+    let mut tar = tar::Archive::new(flate2::read::GzDecoder::new(archive));
+    let mut files = Vec::new();
+    for entry in tar.entries().map_err(|e| e.to_string())? {
+        let mut entry = entry.map_err(|e| e.to_string())?;
+        let path = entry
+            .path()
+            .map_err(|e| e.to_string())?
+            .to_string_lossy()
+            .into_owned();
+        let mut bytes = Vec::new();
+        std::io::Read::read_to_end(&mut entry, &mut bytes).map_err(|e| e.to_string())?;
+        files.push((path, bytes));
+    }
+    Ok(files)
+}
+
+/// Checks every file of a year archive against its checksum list, the pruned one if any.
+pub fn verify_archive(archive: &[u8]) -> Result<(), String> {
+    let files: std::collections::BTreeMap<String, Vec<u8>> = unpack(archive)?.into_iter().collect();
+    let sums = files
+        .get(PRUNED_SUMS)
+        .or_else(|| files.get(SUMS))
+        .ok_or("no SHA256SUMS")?;
+    for line in String::from_utf8_lossy(sums).lines() {
+        let (hash, path) = line.split_once("  ").ok_or("malformed SHA256SUMS")?;
+        let bytes = files
+            .get(path)
+            .ok_or_else(|| format!("{path} is missing"))?;
+        if ContentHash::of(bytes).to_string() != hash {
+            return Err(format!("{path} does not match its checksum"));
+        }
+    }
+    Ok(())
+}
+
+pub(super) const SUMS: &str = "SHA256SUMS";
+/// In an archive pruned after retention periods: the checksums of what it still holds.
+pub(super) const PRUNED_SUMS: &str = "SHA256SUMS.pruned";

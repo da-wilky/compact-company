@@ -4,6 +4,7 @@ use clap::{Parser, Subcommand};
 use compact_company::{
     App, api,
     api::customers::Language,
+    backup,
     config::Config,
     deadlines,
     documents::{self, InvoiceType},
@@ -25,6 +26,18 @@ enum Command {
         /// TOML config; without it, defaults apply
         #[arg(long)]
         config: Option<PathBuf>,
+    },
+    /// Restore a backup snapshot into the empty data directory and file store of a config, then
+    /// check every file and year archive against its checksum; lists the snapshots without one
+    Restore {
+        #[arg(long)]
+        config: PathBuf,
+        /// The age identity whose public key the config's backups are encrypted to
+        #[arg(long)]
+        identity: PathBuf,
+        /// Name of the snapshot, such as 20261114T020000.000Z
+        #[arg(long)]
+        snapshot: Option<String>,
     },
     /// Print the API's OpenAPI description
     Openapi,
@@ -59,6 +72,11 @@ enum Command {
 async fn main() -> ExitCode {
     let result = match Cli::parse().command {
         Command::Serve { config } => serve(config).await,
+        Command::Restore {
+            config,
+            identity,
+            snapshot,
+        } => restore(&config, &identity, snapshot).await,
         Command::Openapi => openapi(),
         Command::Sample {
             layout,
@@ -93,7 +111,13 @@ async fn serve(config: Option<PathBuf>) -> Result<(), Box<dyn std::error::Error>
             app.public_url, app.setup_token
         );
     }
+    // a new program version makes a new version of the process documentation
+    if let Err(e) = compact_company::process::refresh(&app).await {
+        eprintln!("process documentation not updated: {e}");
+    }
     tokio::spawn(remind(app.clone()));
+    tokio::spawn(compact_company::mirror::run(app.clone()));
+    tokio::spawn(compact_company::backup::schedule(app.clone()));
     let listener = tokio::net::TcpListener::bind(config.listen).await?;
     eprintln!("listening on http://{}", listener.local_addr()?);
     axum::serve(
@@ -104,7 +128,8 @@ async fn serve(config: Option<PathBuf>) -> Result<(), Box<dyn std::error::Error>
     Ok(())
 }
 
-/// Mails deadline reminders and drafts recurring invoices, checking every hour.
+/// Mails deadline reminders, drafts recurring invoices and versions the process documentation,
+/// checking every hour.
 async fn remind(app: Arc<App>) {
     loop {
         let today = app
@@ -121,11 +146,30 @@ async fn remind(app: Arc<App>) {
                 if let Err(e) = api::recurring::draft_due(&app, today).await {
                     eprintln!("drafting recurring invoices failed: {}", e.message);
                 }
+                if let Err(e) = compact_company::process::refresh(&app).await {
+                    eprintln!("process documentation not updated: {e}");
+                }
             }
             Err(e) => eprintln!("deadline reminders failed: {e}"),
         }
         tokio::time::sleep(std::time::Duration::from_secs(3600)).await;
     }
+}
+
+async fn restore(
+    config: &std::path::Path,
+    identity: &std::path::Path,
+    snapshot: Option<String>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let config = Config::load(config)?;
+    let Some(snapshot) = snapshot else {
+        for name in backup::list_snapshots(&config).await? {
+            println!("{name}");
+        }
+        return Err("choose a snapshot with --snapshot".into());
+    };
+    println!("{}", backup::restore(&config, identity, &snapshot).await?);
+    Ok(())
 }
 
 fn openapi() -> Result<(), Box<dyn std::error::Error>> {

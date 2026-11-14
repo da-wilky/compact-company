@@ -672,6 +672,55 @@
         }
       }
     },
+    "/api/backup": {
+      "get": {
+        "tags": [
+          "storage"
+        ],
+        "operationId": "get_backup",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BackupStatus"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/backup/run": {
+      "post": {
+        "tags": [
+          "storage"
+        ],
+        "summary": "Starts a backup now; its outcome shows in the backup status.",
+        "operationId": "run_backup",
+        "responses": {
+          "202": {},
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/bank-accounts": {
       "get": {
         "tags": [
@@ -2709,6 +2758,55 @@
         }
       }
     },
+    "/api/mirror": {
+      "get": {
+        "tags": [
+          "storage"
+        ],
+        "operationId": "get_mirror",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MirrorStatus"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/mirror/resync": {
+      "post": {
+        "tags": [
+          "storage"
+        ],
+        "summary": "Copies every stored document to the mirror again, replacing whatever was changed there.",
+        "operationId": "resync_mirror",
+        "responses": {
+          "204": {},
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/oidc/callback": {
       "get": {
         "tags": [
@@ -3208,6 +3306,148 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Posting"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/process-documentation": {
+      "get": {
+        "tags": [
+          "storage"
+        ],
+        "operationId": "get_process_documentation",
+        "parameters": [
+          {
+            "name": "language",
+            "in": "query",
+            "description": "German when unset.",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/Language"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProcessDocumentation"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/process-documentation/answers": {
+      "put": {
+        "tags": [
+          "storage"
+        ],
+        "summary": "Saves answers and makes a new version when one changed.",
+        "operationId": "put_answers",
+        "parameters": [
+          {
+            "name": "language",
+            "in": "query",
+            "description": "German when unset.",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/Language"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnswersInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProcessDocumentation"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/process-documentation/versions/{id}/pdf": {
+      "get": {
+        "tags": [
+          "storage"
+        ],
+        "operationId": "process_pdf",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "language",
+            "in": "query",
+            "description": "German when unset.",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/Language"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "integer",
+                    "format": "int32",
+                    "minimum": 0
+                  }
                 }
               }
             }
@@ -3989,6 +4229,138 @@
         ],
         "responses": {
           "204": {},
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/retention": {
+      "get": {
+        "tags": [
+          "storage"
+        ],
+        "summary": "Every closed year with what may be deleted from when, and what is held back and why.",
+        "operationId": "list_retention",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RetentionYear"
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/retention/{year}/anonymise": {
+      "post": {
+        "tags": [
+          "storage"
+        ],
+        "summary": "Anonymises a closed year ten years on: its archive and remaining files, time entries,\ncomments and sent-mail logs go; postings keep their amounts and accounts but lose their texts;\ncustomers, suppliers and former users with nothing kept after it lose their names.",
+        "operationId": "anonymise_year",
+        "parameters": [
+          {
+            "name": "year",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeleteInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetentionYear"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/retention/{year}/delete": {
+      "post": {
+        "tags": [
+          "storage"
+        ],
+        "summary": "Deletes the files of a closed year whose retention period has passed; their records stay.",
+        "operationId": "delete_expired",
+        "parameters": [
+          {
+            "name": "year",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeleteInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetentionYear"
+                }
+              }
+            }
+          },
           "default": {
             "content": {
               "application/json": {
@@ -5790,6 +6162,176 @@
         },
         "additionalProperties": false
       },
+      "Anonymisation": {
+        "type": "object",
+        "description": "What anonymising a year does, for the owner to see first.",
+        "required": [
+          "from",
+          "blockers",
+          "customers",
+          "suppliers",
+          "users"
+        ],
+        "properties": {
+          "anonymised_at": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "blockers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AnonymisationBlocker"
+            }
+          },
+          "customers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AnonymisedName"
+            },
+            "description": "Customers, suppliers and users with nothing kept after the year, whose names go."
+          },
+          "from": {
+            "type": "string",
+            "description": "1 January after the ten years of § 147 Abs. 3 AO end."
+          },
+          "suppliers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AnonymisedName"
+            }
+          },
+          "users": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AnonymisedName"
+            }
+          }
+        }
+      },
+      "AnonymisationBlocker": {
+        "oneOf": [
+          {
+            "type": "object",
+            "description": "An earlier closed year that isn't anonymised; years go oldest first.",
+            "required": [
+              "by",
+              "reason"
+            ],
+            "properties": {
+              "by": {
+                "type": "integer",
+                "format": "int32",
+                "description": "An earlier closed year that isn't anonymised; years go oldest first."
+              },
+              "reason": {
+                "type": "string",
+                "enum": [
+                  "earlier_year"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "description": "An asset acquired by then that is still in the register.",
+            "required": [
+              "by",
+              "reason"
+            ],
+            "properties": {
+              "by": {
+                "type": "string",
+                "description": "An asset acquired by then that is still in the register."
+              },
+              "reason": {
+                "type": "string",
+                "enum": [
+                  "asset"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "description": "An invoice of the year or before that isn't paid in full.",
+            "required": [
+              "by",
+              "reason"
+            ],
+            "properties": {
+              "by": {
+                "type": "string",
+                "description": "An invoice of the year or before that isn't paid in full."
+              },
+              "reason": {
+                "type": "string",
+                "enum": [
+                  "open_invoice"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "description": "A receipt of the year or before that isn't paid in full.",
+            "required": [
+              "by",
+              "reason"
+            ],
+            "properties": {
+              "by": {
+                "type": "integer",
+                "format": "int64",
+                "description": "A receipt of the year or before that isn't paid in full."
+              },
+              "reason": {
+                "type": "string",
+                "enum": [
+                  "open_receipt"
+                ]
+              }
+            }
+          }
+        ],
+        "description": "Why a year can't be anonymised yet."
+      },
+      "AnonymisedName": {
+        "type": "object",
+        "required": [
+          "id",
+          "name"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "AnswersInput": {
+        "type": "object",
+        "required": [
+          "answers"
+        ],
+        "properties": {
+          "answers": {
+            "type": "object",
+            "description": "Answers by question key; an empty one removes the answer.",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "propertyNames": {
+              "type": "string"
+            }
+          }
+        }
+      },
       "ApiError": {
         "type": "object",
         "description": "The one error body every endpoint returns; `message` and each field error are catalog keys.",
@@ -6134,6 +6676,102 @@
           }
         }
       },
+      "BackupRun": {
+        "type": "object",
+        "required": [
+          "started_at"
+        ],
+        "properties": {
+          "error": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "finished_at": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "snapshot": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "started_at": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "uploaded": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          }
+        }
+      },
+      "BackupStatus": {
+        "type": "object",
+        "required": [
+          "configured",
+          "running"
+        ],
+        "properties": {
+          "configured": {
+            "type": "boolean",
+            "description": "Whether the config sets up backups."
+          },
+          "failure": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/BackupRun",
+                "description": "The latest run, when it failed after the last success."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "keep_daily": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "keep_monthly": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "last_success": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/BackupRun"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "running": {
+            "type": "boolean"
+          },
+          "time": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Daily, as HH:MM in the business's timezone."
+          }
+        }
+      },
       "BankAccount": {
         "type": "object",
         "required": [
@@ -6469,6 +7107,17 @@
               "null"
             ],
             "description": "Also numbers cancellation invoices, which are invoices."
+          },
+          "language": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Language",
+                "description": "Names the folders and files of the mirror unless the mirror sets its own; English when\nunset."
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "legal_form": {
             "type": [
@@ -6823,15 +7472,17 @@
         "type": "object",
         "required": [
           "year",
-          "archive",
-          "size",
+          "pruned",
           "closed_at",
           "closed_by"
         ],
         "properties": {
           "archive": {
-            "type": "string",
-            "description": "SHA-256 of the archive."
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "SHA-256 of the archive as it is now: pruned after retention periods, none once the year\nis anonymised."
           },
           "closed_at": {
             "type": "integer",
@@ -6840,8 +7491,15 @@
           "closed_by": {
             "type": "string"
           },
+          "pruned": {
+            "type": "boolean",
+            "description": "Whether files were deleted from the archive after their retention period."
+          },
           "size": {
-            "type": "integer",
+            "type": [
+              "integer",
+              "null"
+            ],
             "format": "int64",
             "description": "Bytes."
           },
@@ -7218,6 +7876,18 @@
           }
         }
       },
+      "DeleteInput": {
+        "type": "object",
+        "required": [
+          "no_open_assessment"
+        ],
+        "properties": {
+          "no_open_assessment": {
+            "type": "boolean",
+            "description": "The owner confirms that no audit, objection or other open assessment concerns the year."
+          }
+        }
+      },
       "DepreciationInput": {
         "type": "object",
         "required": [
@@ -7301,6 +7971,14 @@
               "string",
               "null"
             ]
+          },
+          "file_deleted_at": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "When its PDF was deleted after the retention period; the record stays."
           },
           "follow_ups": {
             "type": "array",
@@ -8214,6 +8892,12 @@
           "deductions_exceed_invoice",
           "final_invoice_in_full",
           "mail_not_configured",
+          "mirror_not_configured",
+          "backup_not_configured",
+          "nothing_to_delete",
+          "year_anonymised",
+          "anonymisation_not_due",
+          "file_deleted",
           "mail_failed",
           "rate_limited",
           "internal"
@@ -8869,6 +9553,45 @@
           "low_value"
         ]
       },
+      "MirrorStatus": {
+        "type": "object",
+        "required": [
+          "configured",
+          "pending"
+        ],
+        "properties": {
+          "configured": {
+            "type": "boolean",
+            "description": "Whether the config sets up a mirror."
+          },
+          "error": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The latest error of a copy still pending."
+          },
+          "failed_at": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "last_copy_at": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "pending": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Records whose files are still to be copied or deleted."
+          }
+        }
+      },
       "Money": {
         "type": "object",
         "description": "An amount in the minor unit of its currency (cents for EUR), never a float.",
@@ -9121,6 +9844,17 @@
           "recurring_drafts"
         ],
         "properties": {
+          "backup_failure": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/BackupRun",
+                "description": "The latest backup, when it failed; for the owner only."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "open_invoices": {
             "type": "array",
             "items": {
@@ -9559,6 +10293,114 @@
           "high"
         ]
       },
+      "ProcessDocumentation": {
+        "type": "object",
+        "required": [
+          "questions",
+          "versions"
+        ],
+        "properties": {
+          "questions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProcessQuestion"
+            }
+          },
+          "versions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProcessVersion"
+            },
+            "description": "Newest first."
+          }
+        }
+      },
+      "ProcessPart": {
+        "type": "string",
+        "description": "The four parts of GoBD Rz. 151.",
+        "enum": [
+          "general",
+          "user",
+          "technical",
+          "operations"
+        ]
+      },
+      "ProcessQuestion": {
+        "type": "object",
+        "required": [
+          "key",
+          "part",
+          "question",
+          "help",
+          "suggestion"
+        ],
+        "properties": {
+          "answer": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "help": {
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          },
+          "part": {
+            "$ref": "#/components/schemas/ProcessPart"
+          },
+          "question": {
+            "type": "string"
+          },
+          "suggestion": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          }
+        }
+      },
+      "ProcessVersion": {
+        "type": "object",
+        "required": [
+          "id",
+          "valid_from",
+          "created_at",
+          "changes"
+        ],
+        "properties": {
+          "changes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "What differs from the version before, by label."
+          },
+          "created_at": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "valid_from": {
+            "type": "string"
+          },
+          "valid_until": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The day before the next version's; none for the current one."
+          }
+        }
+      },
       "Produced": {
         "type": "object",
         "required": [
@@ -9771,6 +10613,14 @@
               "null"
             ],
             "description": "EUR per unit of a receipt in another currency."
+          },
+          "file_deleted_at": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "When its file was deleted after the retention period; the record stays."
           },
           "file_name": {
             "type": [
@@ -10490,6 +11340,211 @@
           "passkey_name": {
             "type": "string",
             "description": "Shown in the user's list of passkeys."
+          }
+        }
+      },
+      "RetentionClass": {
+        "type": "string",
+        "description": "How long a record must be kept (§ 147 Abs. 3 AO, § 14b Abs. 1 UStG; ADR 0025).",
+        "enum": [
+          "booking_document",
+          "business_letter",
+          "delivery_note"
+        ]
+      },
+      "RetentionDeletion": {
+        "type": "object",
+        "required": [
+          "at",
+          "user",
+          "confirmation",
+          "files"
+        ],
+        "properties": {
+          "at": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "confirmation": {
+            "type": "string"
+          },
+          "files": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "user": {
+            "type": "string"
+          }
+        }
+      },
+      "RetentionHold": {
+        "oneOf": [
+          {
+            "type": "object",
+            "description": "It documents an asset still in the register, or disposed of fewer than 8 years ago.",
+            "required": [
+              "by",
+              "reason"
+            ],
+            "properties": {
+              "by": {
+                "type": "string",
+                "description": "It documents an asset still in the register, or disposed of fewer than 8 years ago."
+              },
+              "reason": {
+                "type": "string",
+                "enum": [
+                  "asset"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "description": "A partial invoice whose final invoice is still kept.",
+            "required": [
+              "by",
+              "reason"
+            ],
+            "properties": {
+              "by": {
+                "type": "string",
+                "description": "A partial invoice whose final invoice is still kept."
+              },
+              "reason": {
+                "type": "string",
+                "enum": [
+                  "final_invoice"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "description": "A document of a later year that is still kept refers to it.",
+            "required": [
+              "by",
+              "reason"
+            ],
+            "properties": {
+              "by": {
+                "type": "string",
+                "description": "A document of a later year that is still kept refers to it."
+              },
+              "reason": {
+                "type": "string",
+                "enum": [
+                  "later_document"
+                ]
+              }
+            }
+          }
+        ],
+        "description": "Why a record past its date is kept."
+      },
+      "RetentionItem": {
+        "type": "object",
+        "required": [
+          "subject",
+          "kind",
+          "label",
+          "date",
+          "class",
+          "deletable_from"
+        ],
+        "properties": {
+          "class": {
+            "$ref": "#/components/schemas/RetentionClass"
+          },
+          "date": {
+            "type": "string"
+          },
+          "deletable_from": {
+            "type": "string"
+          },
+          "deleted_at": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "held": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/RetentionHold"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "kind": {
+            "$ref": "#/components/schemas/RetentionKind"
+          },
+          "label": {
+            "type": "string",
+            "description": "The document number, the receipt's supplier and number, or the bank account."
+          },
+          "subject": {
+            "type": "string",
+            "description": "Such as `document:12`, `receipt:3` or `bank_import:2`."
+          }
+        }
+      },
+      "RetentionKind": {
+        "type": "string",
+        "enum": [
+          "quote",
+          "order_confirmation",
+          "invoice",
+          "cancellation",
+          "delivery_note",
+          "acceptance_report",
+          "dunning",
+          "receipt",
+          "bank_statement"
+        ]
+      },
+      "RetentionYear": {
+        "type": "object",
+        "required": [
+          "year",
+          "pruned",
+          "items",
+          "deletable",
+          "deletions",
+          "anonymisation"
+        ],
+        "properties": {
+          "anonymisation": {
+            "$ref": "#/components/schemas/Anonymisation"
+          },
+          "deletable": {
+            "type": "integer",
+            "description": "Records whose file may be deleted today.",
+            "minimum": 0
+          },
+          "deletions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RetentionDeletion"
+            }
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RetentionItem"
+            },
+            "description": "Records with a file, oldest first."
+          },
+          "pruned": {
+            "type": "boolean",
+            "description": "Whether files were deleted from its archive."
+          },
+          "year": {
+            "type": "integer",
+            "format": "int32"
           }
         }
       },
@@ -11767,7 +12822,8 @@
       "Years": {
         "type": "object",
         "required": [
-          "closed"
+          "closed",
+          "review_answers"
         ],
         "properties": {
           "closed": {
@@ -11784,6 +12840,13 @@
             ],
             "format": "int32",
             "description": "The year that may be closed next: finished, booked, and every year before it closed."
+          },
+          "review_answers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Questions of the process documentation unanswered or unchanged for a year, to review\nbefore closing."
           }
         }
       }

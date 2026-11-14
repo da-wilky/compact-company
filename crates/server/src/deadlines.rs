@@ -241,7 +241,7 @@ pub async fn remind(app: &App, today: Date) -> Result<usize, settings::Error> {
         let day = due.strftime("%d.%m.%Y");
         let subject = format!("Frist: {} am {day}", deadline.title);
         let body = format!(
-            "Guten Tag,\n\n{} ist am {day} fällig.\nDie Zahlen dazu: {}tax\n\ncompact-company\n",
+            "Guten Tag,\n\n{} ist am {day} fällig.\nDie Zahlen dazu: {}tax\n\nCompact Company\n",
             deadline.title, app.public_url
         );
         match mailer.notify(to, &subject, &body).await {

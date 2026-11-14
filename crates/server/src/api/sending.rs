@@ -57,6 +57,7 @@ pub async fn send_document(
     let (Status::Issued, Some(number), Some(pdf)) = (row.status, &row.number, &row.pdf) else {
         return Err(ApiError::new(ErrorCode::FollowUpNotAllowed));
     };
+    super::retention::kept(&mut db, &format!("document:{id}")).await?;
     let customer_email: Option<String> =
         sqlx::query_scalar("SELECT email FROM customer WHERE id = ?")
             .bind(row.customer_id)

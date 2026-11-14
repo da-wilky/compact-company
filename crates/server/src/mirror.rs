@@ -1,0 +1,531 @@
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    sync::Arc,
+    time::Duration,
+};
+
+use base64::{Engine, engine::general_purpose::STANDARD as BASE64};
+use object_store::{
+    ClientOptions, HeaderMap, HeaderValue, ObjectStore, ObjectStoreExt, RetryConfig,
+    http::HttpBuilder, path::Path as StorePath,
+};
+use percent_encoding::percent_decode_str;
+use serde::Serialize;
+use sqlx::{SqliteConnection, SqlitePool};
+use utoipa::ToSchema;
+
+use crate::{
+    App, api::customers::Language, auth::now, config::Webdav, documents::Kind, files::ContentHash,
+};
+
+/// A one-way copy of every stored document into a readable folder tree; the file store stays
+/// the main storage, and whatever changes in the mirror is overwritten by the next copy.
+pub struct Mirror {
+    store: Arc<dyn ObjectStore>,
+    /// The path of the mirror's URL, as object_store reports listed folders.
+    base: String,
+    language: Option<Language>,
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum Error {
+    #[error(transparent)]
+    Db(#[from] sqlx::Error),
+    #[error(transparent)]
+    Store(#[from] object_store::Error),
+    #[error(transparent)]
+    Files(#[from] crate::files::Error),
+    #[error(transparent)]
+    Settings(#[from] crate::settings::Error),
+    #[error("invalid mirror credentials: {0}")]
+    Credentials(#[from] axum::http::header::InvalidHeaderValue),
+}
+
+impl Mirror {
+    pub fn webdav(config: &Webdav, language: Option<Language>) -> Result<Self, Error> {
+        let credentials = BASE64.encode(format!("{}:{}", config.username, config.password));
+        let mut auth = HeaderValue::from_str(&format!("Basic {credentials}"))?;
+        auth.set_sensitive(true);
+        let headers = HeaderMap::from_iter([(axum::http::header::AUTHORIZATION, auth)]);
+        let store = HttpBuilder::new()
+            .with_url(config.url.as_str())
+            .with_client_options(
+                ClientOptions::new()
+                    .with_default_headers(headers)
+                    .with_allow_http(config.url.scheme() == "http")
+                    .with_timeout(Duration::from_secs(120)),
+            )
+            // pending copies back off on their own, so a failing server isn't hammered
+            .with_retry(RetryConfig {
+                max_retries: 1,
+                retry_timeout: Duration::from_secs(30),
+                ..RetryConfig::default()
+            })
+            .build()?;
+        Ok(Self {
+            store: Arc::new(store),
+            base: percent_decode_str(config.url.path().trim_matches('/'))
+                .decode_utf8_lossy()
+                .into_owned(),
+            language,
+        })
+    }
+}
+
+/// Marks a record's files for copying; call it in the transaction that changes the record.
+pub async fn queue(app: &App, tx: &mut SqliteConnection, subject: &str) -> Result<(), sqlx::Error> {
+    if app.mirror.is_none() {
+        return Ok(());
+    }
+    sqlx::query(
+        "INSERT INTO mirror_pending (subject, due_at) VALUES (?, ?)
+         ON CONFLICT (subject) DO UPDATE SET due_at = excluded.due_at, attempts = 0,
+         seq = seq + 1",
+    )
+    .bind(subject)
+    .bind(now())
+    .execute(tx)
+    .await?;
+    Ok(())
+}
+
+/// Copies everything again, overwriting what the mirror holds; the first copy of existing data.
+pub async fn resync(db: &SqlitePool) -> Result<u64, sqlx::Error> {
+    let result = sqlx::query(
+        "INSERT INTO mirror_pending (subject, due_at, force)
+         SELECT subject, ?1, 1 FROM (
+           SELECT 'document:' || id AS subject FROM document WHERE status = 'issued'
+           UNION SELECT 'receipt:' || id FROM receipt WHERE file IS NOT NULL
+           UNION SELECT 'bank_import:' || id FROM bank_import
+           UNION SELECT 'year:' || year FROM closed_year
+           UNION SELECT 'process:' || id FROM process_version
+           UNION SELECT subject FROM mirror_file)
+         WHERE true
+         ON CONFLICT (subject) DO UPDATE SET due_at = ?1, attempts = 0, force = 1, seq = seq + 1",
+    )
+    .bind(now())
+    .execute(db)
+    .await?;
+    Ok(result.rows_affected())
+}
+
+#[derive(Debug, Serialize, ToSchema)]
+pub struct MirrorStatus {
+    /// Whether the config sets up a mirror.
+    configured: bool,
+    /// Records whose files are still to be copied or deleted.
+    pending: i64,
+    last_copy_at: Option<i64>,
+    /// The latest error of a copy still pending.
+    error: Option<String>,
+    failed_at: Option<i64>,
+}
+
+pub async fn status(app: &App) -> Result<MirrorStatus, sqlx::Error> {
+    let (pending, last_copy_at): (i64, Option<i64>) = sqlx::query_as(
+        "SELECT (SELECT count(*) FROM mirror_pending), (SELECT max(copied_at) FROM mirror_file)",
+    )
+    .fetch_one(&app.db)
+    .await?;
+    let failed: Option<(String, i64)> = sqlx::query_as(
+        "SELECT error, failed_at FROM mirror_pending WHERE error IS NOT NULL
+         ORDER BY failed_at DESC LIMIT 1",
+    )
+    .fetch_optional(&app.db)
+    .await?;
+    let (error, failed_at) = failed.unzip();
+    Ok(MirrorStatus {
+        configured: app.mirror.is_some(),
+        pending,
+        last_copy_at,
+        error,
+        failed_at,
+    })
+}
+
+/// Works off pending copies, checking every few seconds.
+pub async fn run(app: Arc<App>) {
+    loop {
+        if let Err(e) = copy_due(&app).await {
+            eprintln!("mirror failed: {e}");
+        }
+        tokio::time::sleep(Duration::from_secs(10)).await;
+    }
+}
+
+/// Copies every record that is due and returns how many are done.
+pub async fn copy_due(app: &App) -> Result<usize, Error> {
+    let Some(mirror) = &app.mirror else {
+        return Ok(0);
+    };
+    let language = match mirror.language {
+        Some(language) => language,
+        None => app
+            .settings
+            .business()
+            .await?
+            .language
+            .unwrap_or(Language::En),
+    };
+    follow_language(&app.db, language).await?;
+    let due: Vec<(String, i64, i64, bool)> = sqlx::query_as(
+        "SELECT subject, attempts, seq, force FROM mirror_pending WHERE due_at <= ?
+         ORDER BY due_at",
+    )
+    .bind(now())
+    .fetch_all(&app.db)
+    .await?;
+    let mut done = 0;
+    for (subject, attempts, seq, force) in due {
+        match copy(app, mirror, language, &subject, force).await {
+            Ok(()) => {
+                sqlx::query("DELETE FROM mirror_pending WHERE subject = ? AND seq = ?")
+                    .bind(&subject)
+                    .bind(seq)
+                    .execute(&app.db)
+                    .await?;
+                done += 1;
+            }
+            Err(e) => {
+                let wait = 30_i64 << attempts.min(7);
+                sqlx::query(
+                    "UPDATE mirror_pending SET attempts = attempts + 1, due_at = ?, error = ?,
+                     failed_at = ? WHERE subject = ?",
+                )
+                .bind(now() + wait.min(3600))
+                .bind(e.to_string())
+                .bind(now())
+                .bind(&subject)
+                .execute(&app.db)
+                .await?;
+            }
+        }
+    }
+    Ok(done)
+}
+
+/// Copies everything again under its new names once the language changes.
+async fn follow_language(db: &SqlitePool, language: Language) -> Result<(), sqlx::Error> {
+    let built: Option<Language> = sqlx::query_scalar("SELECT language FROM mirror_language")
+        .fetch_optional(db)
+        .await?;
+    if built == Some(language) {
+        return Ok(());
+    }
+    let held: bool = sqlx::query_scalar("SELECT EXISTS (SELECT 1 FROM mirror_file)")
+        .fetch_one(db)
+        .await?;
+    if built.is_some() || held {
+        resync(db).await?;
+    }
+    sqlx::query(
+        "INSERT INTO mirror_language (id, language) VALUES (1, ?)
+         ON CONFLICT (id) DO UPDATE SET language = excluded.language",
+    )
+    .bind(language)
+    .execute(db)
+    .await?;
+    Ok(())
+}
+
+async fn copy(
+    app: &App,
+    mirror: &Mirror,
+    language: Language,
+    subject: &str,
+    force: bool,
+) -> Result<(), Error> {
+    let wanted = wanted(app, language, subject).await?;
+    let held: BTreeMap<String, String> =
+        sqlx::query_as("SELECT path, hash FROM mirror_file WHERE subject = ?")
+            .bind(subject)
+            .fetch_all(&app.db)
+            .await?
+            .into_iter()
+            .collect();
+    for (path, hash) in &wanted {
+        if !force && held.get(path) == Some(&hash.to_string()) {
+            continue;
+        }
+        let bytes = app.files.get(*hash).await?;
+        mirror.store.put(&store_path(path)?, bytes.into()).await?;
+        sqlx::query(
+            "INSERT INTO mirror_file (path, subject, hash, copied_at) VALUES (?, ?, ?, ?)
+             ON CONFLICT (path) DO UPDATE SET subject = excluded.subject, hash = excluded.hash,
+             copied_at = excluded.copied_at",
+        )
+        .bind(path)
+        .bind(subject)
+        .bind(hash.to_string())
+        .bind(now())
+        .execute(&app.db)
+        .await?;
+    }
+    for path in held.keys().filter(|path| !wanted.contains_key(*path)) {
+        match mirror.store.delete(&store_path(path)?).await {
+            Ok(()) | Err(object_store::Error::NotFound { .. }) => {}
+            Err(e) => return Err(e.into()),
+        }
+        remove_empty_folders(mirror, path).await?;
+        sqlx::query("DELETE FROM mirror_file WHERE path = ?")
+            .bind(path)
+            .execute(&app.db)
+            .await?;
+    }
+    Ok(())
+}
+
+/// Deletes the folders above a deleted file, from the innermost, as long as they are empty;
+/// a folder holding anything else, such as a file added in Nextcloud, stays with its parents.
+async fn remove_empty_folders(mirror: &Mirror, path: &str) -> Result<(), Error> {
+    let mut folder = path;
+    while let Some((parent, _)) = folder.rsplit_once('/') {
+        folder = parent;
+        let location = store_path(folder)?;
+        let listing = mirror.store.list_with_delimiter(Some(&location)).await?;
+        // object_store lists the folder itself among its subfolders when the URL has a path
+        let empty = listing.objects.is_empty()
+            && match listing.common_prefixes.as_slice() {
+                [] => true,
+                [only] => only.as_ref() == format!("{}/{folder}", mirror.base),
+                _ => false,
+            };
+        if !empty {
+            break;
+        }
+        match mirror.store.delete(&location).await {
+            Ok(()) | Err(object_store::Error::NotFound { .. }) => {}
+            Err(e) => return Err(e.into()),
+        }
+    }
+    Ok(())
+}
+
+/// Taken as is: `Path::from` would percent-encode umlauts, which WebDAV then encodes again.
+fn store_path(path: &str) -> Result<StorePath, object_store::Error> {
+    Ok(StorePath::parse(path)?)
+}
+
+/// The files a record should have in the mirror, by path.
+async fn wanted(
+    app: &App,
+    language: Language,
+    subject: &str,
+) -> Result<BTreeMap<String, ContentHash>, Error> {
+    let mut files = BTreeMap::new();
+    let Some((kind, id)) = subject.split_once(':') else {
+        return Ok(files);
+    };
+    let Ok(id) = id.parse::<i64>() else {
+        return Ok(files);
+    };
+    let mut db = app.db.acquire().await?;
+    // a file deleted after its retention period leaves the mirror too
+    let stored: BTreeSet<String> =
+        sqlx::query_scalar("SELECT hash FROM stored_file WHERE subject = ?")
+            .bind(subject)
+            .fetch_all(&mut *db)
+            .await?
+            .into_iter()
+            .collect();
+    let mut add = |path: String, hash: &str| {
+        if let Ok(parsed) = hash.parse()
+            && stored.contains(hash)
+        {
+            files.insert(path, parsed);
+        }
+    };
+    match kind {
+        "document" => {
+            let row: Option<(Kind, String, String, String, Option<String>)> = sqlx::query_as(
+                "SELECT kind, number, issue_date, pdf, xml FROM document
+                 WHERE id = ? AND status = 'issued' AND pdf IS NOT NULL",
+            )
+            .bind(id)
+            .fetch_optional(&mut *db)
+            .await?;
+            if let Some((kind, number, date, pdf, xml)) = row {
+                let base = format!(
+                    "{}/{}/{}",
+                    &date[..4],
+                    folder(kind, language),
+                    name(&number)
+                );
+                add(format!("{base}.pdf"), &pdf);
+                if let Some(xml) = xml {
+                    add(format!("{base}.xml"), &xml);
+                }
+            }
+        }
+        "receipt" => {
+            let row: Option<Receipt> = sqlx::query_as(
+                "SELECT r.file, r.file_name, r.file_type, r.date, r.number, s.name AS supplier,
+                 date(r.created_at, 'unixepoch') AS created
+                 FROM receipt r LEFT JOIN supplier s ON s.id = r.supplier_id
+                 WHERE r.id = ? AND r.file IS NOT NULL",
+            )
+            .bind(id)
+            .fetch_optional(&mut *db)
+            .await?;
+            if let Some(r) = row {
+                let date = r.date.unwrap_or(r.created);
+                let mut parts = vec![date.clone()];
+                parts.extend(r.supplier);
+                parts.extend(r.number);
+                if parts.len() == 1 {
+                    parts.push(format!("{} {id}", tr(language, "Beleg", "Receipt")));
+                }
+                let ext = extension(r.file_name.as_deref(), r.file_type.as_deref());
+                add(
+                    format!(
+                        "{}/{}/{}{ext}",
+                        &date[..4],
+                        tr(language, "Belege", "Receipts"),
+                        name(&parts.join(" "))
+                    ),
+                    &r.file,
+                );
+            }
+        }
+        "bank_import" => {
+            let row: Option<(String, Option<String>, String, String, String)> = sqlx::query_as(
+                "SELECT i.file, i.file_name, a.name,
+                 coalesce(min(t.booking_date), date(i.created_at, 'unixepoch')),
+                 coalesce(max(t.booking_date), date(i.created_at, 'unixepoch'))
+                 FROM bank_import i JOIN bank_account a ON a.id = i.bank_account_id
+                 LEFT JOIN bank_transaction t ON t.import_id = i.id
+                 WHERE i.id = ? GROUP BY i.id",
+            )
+            .bind(id)
+            .fetch_optional(&mut *db)
+            .await?;
+            if let Some((file, file_name, account, from, to)) = row {
+                let ext = extension(file_name.as_deref(), None);
+                add(
+                    format!(
+                        "{}/{}/{}{ext}",
+                        &to[..4],
+                        tr(language, "Kontoauszüge", "Bank statements"),
+                        name(&format!(
+                            "{from} {} {to} {account}",
+                            tr(language, "bis", "to")
+                        ))
+                    ),
+                    &file,
+                );
+            }
+        }
+        "year" => {
+            let archive: Option<String> = sqlx::query_scalar(
+                "SELECT archive FROM year_archive WHERE year = ? AND archive IS NOT NULL",
+            )
+            .bind(id)
+            .fetch_optional(&mut *db)
+            .await?;
+            if let Some(archive) = archive {
+                let archive_name = tr(language, "Jahresarchiv-", "Year-end-archive-");
+                add(format!("{id}/{archive_name}{id}.tar.gz"), &archive);
+            }
+        }
+        "process" => {
+            let row: Option<(String, String, String)> = sqlx::query_as(
+                "SELECT valid_from, pdf_de, pdf_en FROM process_version WHERE id = ?",
+            )
+            .bind(id)
+            .fetch_optional(&mut *db)
+            .await?;
+            if let Some((from, de, en)) = row {
+                let dir = tr(language, "Verfahrensdokumentation", "Process documentation");
+                add(
+                    format!("{dir}/Verfahrensdokumentation v{id} {from}.pdf"),
+                    &de,
+                );
+                add(format!("{dir}/Process documentation v{id} {from}.pdf"), &en);
+            }
+        }
+        _ => {}
+    }
+    Ok(files)
+}
+
+#[derive(sqlx::FromRow)]
+struct Receipt {
+    file: String,
+    file_name: Option<String>,
+    file_type: Option<String>,
+    date: Option<String>,
+    number: Option<String>,
+    supplier: Option<String>,
+    created: String,
+}
+
+fn tr(language: Language, de: &'static str, en: &'static str) -> &'static str {
+    match language {
+        Language::De => de,
+        Language::En => en,
+    }
+}
+
+fn folder(kind: Kind, language: Language) -> &'static str {
+    let (de, en) = match kind {
+        Kind::Quote => ("Angebote", "Quotes"),
+        Kind::OrderConfirmation => ("Auftragsbestätigungen", "Order confirmations"),
+        Kind::Invoice | Kind::Cancellation => ("Rechnungen", "Invoices"),
+        Kind::DeliveryNote => ("Lieferscheine", "Delivery notes"),
+        Kind::AcceptanceReport => ("Abnahmeprotokolle", "Acceptance reports"),
+        Kind::Dunning => ("Mahnungen", "Dunning letters"),
+    };
+    tr(language, de, en)
+}
+
+/// A file or folder name that WebDAV servers and every desktop file system accept.
+fn name(value: &str) -> String {
+    let name: String = value
+        .chars()
+        .map(|c| {
+            if c.is_alphanumeric() || " -_.,()&+'".contains(c) {
+                c
+            } else {
+                '-'
+            }
+        })
+        .collect();
+    name.trim_matches(|c| c == ' ' || c == '.').to_owned()
+}
+
+fn extension(file_name: Option<&str>, file_type: Option<&str>) -> String {
+    let from_name = file_name
+        .and_then(|n| n.rsplit_once('.'))
+        .map(|(_, ext)| ext.to_ascii_lowercase())
+        .filter(|ext| {
+            !ext.is_empty() && ext.len() <= 5 && ext.chars().all(|c| c.is_ascii_alphanumeric())
+        });
+    let ext = from_name.or_else(|| {
+        match file_type? {
+            "application/pdf" => Some("pdf"),
+            "image/jpeg" => Some("jpg"),
+            "image/png" => Some("png"),
+            "application/xml" | "text/xml" => Some("xml"),
+            _ => None,
+        }
+        .map(str::to_owned)
+    });
+    ext.map(|ext| format!(".{ext}")).unwrap_or_default()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn names_keep_letters_and_drop_separators() {
+        assert_eq!(
+            name("2026-03-04 Müller & Söhne R/12"),
+            "2026-03-04 Müller & Söhne R-12"
+        );
+        assert_eq!(name("..hidden."), "hidden");
+        assert_eq!(extension(Some("scan.PDF"), None), ".pdf");
+        assert_eq!(extension(Some("noext"), Some("image/png")), ".png");
+        assert_eq!(extension(None, None), "");
+    }
+}

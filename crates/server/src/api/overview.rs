@@ -83,6 +83,8 @@ pub struct Overview {
     open_invoices: Vec<OpenInvoice>,
     /// Drafts from recurring invoices waiting to be issued; for the owner and accountant only.
     recurring_drafts: Vec<super::recurring::WaitingDraft>,
+    /// The latest backup, when it failed; for the owner only.
+    backup_failure: Option<crate::backup::BackupRun>,
 }
 
 #[utoipa::path(get, path = "/overview", tag = "overview",
@@ -113,11 +115,16 @@ pub async fn get_overview(
     } else {
         (Vec::new(), Vec::new(), Vec::new())
     };
+    let backup_failure = match role {
+        Role::Owner => crate::backup::failure(&app).await?,
+        _ => None,
+    };
     Ok(Json(Overview {
         running,
         unbilled,
         open_invoices,
         recurring_drafts,
+        backup_failure,
     }))
 }
 

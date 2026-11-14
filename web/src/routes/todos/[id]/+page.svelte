@@ -9,11 +9,13 @@
 	import TodoForm from '#lib/components/TodoForm.svelte';
 	import { dueLabel, formatDay } from '#lib/dates.ts';
 	import { i18n, t } from '#lib/i18n.svelte.ts';
+	import { namePage } from '#lib/title.svelte.ts';
 	import { toast } from '#lib/toast.svelte.ts';
 	import { loadWork } from '#lib/work.svelte.ts';
 
 	const id = $derived(Number(page.params.id));
 	let detail = $state<Schemas['TodoDetail']>();
+	namePage(() => detail?.todo.title);
 	let statuses = $state<Schemas['Status'][]>([]);
 	let projects = $state<Schemas['Project'][]>([]);
 	let assignees = $state<Schemas['Assignee'][]>([]);

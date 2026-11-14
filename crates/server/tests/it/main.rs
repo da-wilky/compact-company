@@ -1,8 +1,10 @@
 // one test binary: each would otherwise link the whole app with Typst
 
+mod anonymise;
 mod assets;
 mod audit;
 mod auth;
+mod backup;
 mod bank;
 mod books;
 mod cancellations;
@@ -19,16 +21,19 @@ mod files;
 mod invoices;
 mod layouts;
 mod limit;
+mod mirror;
 mod oidc;
 mod openapi;
 mod overview;
 mod partial_invoices;
 mod posting_rules;
+mod process;
 mod projects;
 mod quotes;
 mod receipts;
 mod recurring;
 mod render;
+mod retention;
 mod roles;
 mod router;
 mod sending;
