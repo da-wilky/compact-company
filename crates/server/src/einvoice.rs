@@ -161,7 +161,8 @@ fn address(
         .child(text("ram:CountryID", country))
 }
 
-/// A deducted partial invoice with its net amount and VAT per rate, as § 14 Abs. 5 UStG asks.
+/// A deducted partial invoice with its net amount and VAT per rate, as § 14 Abs. 5 UStG asks;
+/// positive on a credit note like its other amounts.
 fn deduction_note(data: &Data, d: &Deduction) -> String {
     let currency = &data.currency;
     let de = data.language == Language::De;
@@ -173,14 +174,14 @@ fn deduction_note(data: &Data, d: &Deduction) -> String {
             if de {
                 format!(
                     "netto {} {currency} zu {rate} %, USt {} {currency}",
-                    amount(g.net),
-                    amount(g.tax)
+                    amount(g.net.abs()),
+                    amount(g.tax.abs())
                 )
             } else {
                 format!(
                     "net {} {currency} at {rate} %, VAT {} {currency}",
-                    amount(g.net),
-                    amount(g.tax)
+                    amount(g.net.abs()),
+                    amount(g.tax.abs())
                 )
             }
         })

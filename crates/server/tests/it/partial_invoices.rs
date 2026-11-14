@@ -224,17 +224,15 @@ async fn two_partial_invoices_close_with_a_final_invoice_deducting_the_paid_one(
             first["number"].as_str().unwrap()
         )));
 
-        for id in [&first["id"], &fin["id"]] {
-            let refused = app
-                .as_browser(
-                    &mut owner,
-                    "POST",
-                    &format!("/api/documents/{id}/follow-up"),
-                    json!({ "kind": "cancellation" }),
-                )
-                .await;
-            assert_eq!(body(refused).await["code"], "final_invoice_settled");
-        }
+        let refused = app
+            .as_browser(
+                &mut owner,
+                "POST",
+                &format!("/api/documents/{}/follow-up", first["id"]),
+                json!({ "kind": "cancellation" }),
+            )
+            .await;
+        assert_eq!(body(refused).await["code"], "final_invoice_settled");
 
         let today = fin["issue_date"].as_str().unwrap().to_owned();
         app.ok(
@@ -446,4 +444,197 @@ async fn a_final_invoice_from_the_order_confirmation_deducts_the_quotes_partial_
     )
     .await;
     assert_eq!(draft["partials"][0]["id"], partial["id"]);
+}
+
+async fn balances(app: &TestApp, owner: &mut Browser) -> BTreeMap<String, i64> {
+    app.ok(owner, "GET", "/api/accounts", json!({}))
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|a| a["balance"] != 0 && a["role"].is_string())
+        .map(|a| {
+            (
+                a["role"].as_str().unwrap().to_owned(),
+                a["balance"].as_i64().unwrap(),
+            )
+        })
+        .collect()
+}
+
+#[tokio::test]
+async fn cancelling_a_final_invoice_releases_its_partial_invoices() {
+    for taxation in ["accrual", "cash"] {
+        let app = start(Config::default()).await;
+        let mut owner = app.setup_owner().await;
+        let customer = app.ready_to_issue(&mut owner).await;
+        set_taxation(&app, &mut owner, taxation).await;
+        app.ok(
+            &mut owner,
+            "POST",
+            "/api/books",
+            json!({ "chart": "skr04", "start_date": "2026-01-01" }),
+        )
+        .await;
+        let quote = accepted_quote(&app, &mut owner, customer).await;
+        let partial = follow_up(
+            &app,
+            &mut owner,
+            quote,
+            json!({ "kind": "invoice", "invoice_type": "partial", "percent": "30" }),
+        )
+        .await;
+        issue(&app, &mut owner, &partial["id"]).await;
+        let partial_path = format!("/api/documents/{}", partial["id"]);
+        let paid = app
+            .ok(
+                &mut owner,
+                "POST",
+                &format!("{partial_path}/payments"),
+                json!({ "date": "2026-01-15", "amount": 357_000 }),
+            )
+            .await;
+        let payment = paid["payments"][0]["id"].clone();
+
+        let draft = follow_up(
+            &app,
+            &mut owner,
+            quote,
+            json!({ "kind": "invoice", "invoice_type": "final" }),
+        )
+        .await;
+        app.ok(
+            &mut owner,
+            "PUT",
+            &format!("/api/documents/{}", draft["id"]),
+            json!({ "kind": "invoice", "customer_id": customer, "invoice_type": "final",
+                    "lines": [
+                        { "description": "Design", "quantity": "1", "unit": "lump_sum",
+                          "unit_price": 600_000, "vat_rate": "19" },
+                        { "description": "Umsetzung", "quantity": "1", "unit": "lump_sum",
+                          "unit_price": 400_000, "vat_rate": "19" }] }),
+        )
+        .await;
+        let fin = issue(&app, &mut owner, &draft["id"]).await;
+        let today = fin["issue_date"].as_str().unwrap().to_owned();
+        let reverse = format!("/api/payments/{payment}/reverse");
+        let refused = app
+            .as_browser(&mut owner, "POST", &reverse, json!({}))
+            .await;
+        assert_eq!(body(refused).await["code"], "final_invoice_settled");
+
+        let cancellation = follow_up(
+            &app,
+            &mut owner,
+            fin["id"].as_i64().unwrap(),
+            json!({ "kind": "cancellation" }),
+        )
+        .await;
+        let cancellation_path = format!("/api/documents/{}", cancellation["id"]);
+        let all: Vec<Value> = cancellation["lines"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|l| {
+                json!({ "description": l["description"], "quantity": l["quantity"],
+                        "unit": l["unit"], "cancels_line_id": l["cancels_line_id"] })
+            })
+            .collect();
+        assert_eq!(all.len(), 2);
+        app.ok(
+            &mut owner,
+            "PUT",
+            &cancellation_path,
+            json!({ "kind": "cancellation", "customer_id": customer, "lines": [all[0]] }),
+        )
+        .await;
+        let refused = app
+            .as_browser(
+                &mut owner,
+                "POST",
+                &format!("{cancellation_path}/issue"),
+                json!({}),
+            )
+            .await;
+        assert_eq!(body(refused).await["code"], "final_invoice_in_full");
+        app.ok(
+            &mut owner,
+            "PUT",
+            &cancellation_path,
+            json!({ "kind": "cancellation", "customer_id": customer, "lines": all }),
+        )
+        .await;
+        issue(&app, &mut owner, &cancellation["id"]).await;
+        let xml = text(
+            app.as_browser(
+                &mut owner,
+                "GET",
+                &format!("{cancellation_path}/xml"),
+                json!({}),
+            )
+            .await,
+        )
+        .await;
+        assert!(
+            xml.contains("<ram:TotalPrepaidAmount>3570.00</ram:TotalPrepaidAmount>"),
+            "{xml}"
+        );
+        assert!(
+            xml.contains("<ram:DuePayableAmount>8330.00</ram:DuePayableAmount>"),
+            "{xml}"
+        );
+
+        let open = app
+            .ok(&mut owner, "GET", "/api/open-items", json!({}))
+            .await;
+        assert_eq!(open["invoices"], json!([]), "{taxation}: nothing owed");
+        let reversed = app
+            .as_browser(&mut owner, "POST", &reverse, json!({}))
+            .await;
+        assert_eq!(reversed.status(), 204);
+
+        let draft = follow_up(
+            &app,
+            &mut owner,
+            quote,
+            json!({ "kind": "invoice", "invoice_type": "final" }),
+        )
+        .await;
+        assert_eq!(draft["partials"][0]["state"], "cancelled");
+        let fin = issue(&app, &mut owner, &draft["id"]).await;
+        assert_eq!(fin["amount_due"]["minor"], 1_190_000, "{taxation}");
+        let open = app
+            .ok(&mut owner, "GET", "/api/open-items", json!({}))
+            .await;
+        assert_eq!(open["invoices"].as_array().unwrap().len(), 1, "{taxation}");
+
+        let vat = if taxation == "accrual" {
+            "vat:19"
+        } else {
+            "vat_pending:19"
+        };
+        assert_eq!(
+            balances(&app, &mut owner).await,
+            expect(&[
+                ("receivables", 1_190_000),
+                ("revenue:19", -1_000_000),
+                (vat, -190_000)
+            ]),
+            "{taxation}: only the new final invoice remains"
+        );
+        let base = app
+            .ok(
+                &mut owner,
+                "GET",
+                &format!("/api/tax/vat-return?from=2026-01-01&to={today}"),
+                json!({}),
+            )
+            .await;
+        let base = amounts(&base["figures"])["81"];
+        assert_eq!(
+            base,
+            if taxation == "accrual" { 1_000_000 } else { 0 },
+            "{taxation}"
+        );
+    }
 }
