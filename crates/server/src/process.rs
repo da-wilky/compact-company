@@ -631,7 +631,10 @@ fn document(
                 .map(|(label, text)| serde_json::json!({ "label": tr(label), "text": tr(text) }))
                 .collect();
             entries.extend(FACTS.iter().filter(|f| f.1 == part).map(|(key, _, label)| {
-                let value = content.facts.get(*key).map(|v| value(key, v, language));
+                let value = match content.facts.get(*key).filter(|v| !v.is_empty()) {
+                    Some(v) => value(key, v, language),
+                    None => tr(t("nicht eingerichtet", "not set up")).to_owned(),
+                };
                 serde_json::json!({ "label": tr(*label), "text": value })
             }));
             entries.extend(QUESTIONS.iter().filter(|q| q.part == part).map(|q| {
