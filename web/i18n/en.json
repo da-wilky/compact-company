@@ -400,6 +400,7 @@
   "error.package_not_approved": "The layout imports packages that are not approved yet.",
   "error.package_unavailable": "The package could not be downloaded.",
   "error.partial_invoice_partly_paid": "A partial invoice is paid only in part. Record the rest of the payment or cancel it before issuing the final invoice.",
+  "error.deductions_exceed_invoice": "The paid partial invoices exceed this final invoice at a VAT rate. Bill the whole work in the final invoice.",
   "error.passkey_cancelled": "The passkey prompt was cancelled.",
   "error.passkey_rejected": "The passkey was not accepted.",
   "error.quote_decided": "The customer's answer is already recorded.",

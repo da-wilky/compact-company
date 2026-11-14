@@ -60,6 +60,24 @@ async fn a_monthly_invoice_started_in_the_past_drafts_each_missed_month_once() {
         0,
         "a restart drafts nothing twice"
     );
+    for next_date in ["2026-03-31", "1999-12-31"] {
+        let mut changed = input.clone();
+        changed["next_date"] = json!(next_date);
+        changed["ends_on"] = Value::Null;
+        let refused = app
+            .as_browser(
+                &mut owner,
+                "PUT",
+                &format!("/api/recurring-invoices/{id}"),
+                changed,
+            )
+            .await;
+        assert_eq!(
+            json(refused).await["fields"]["next_date"],
+            "invalid_format",
+            "{next_date}: already drafted or too far back"
+        );
+    }
 
     let issued = app
         .ok(

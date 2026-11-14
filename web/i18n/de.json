@@ -400,6 +400,7 @@
   "error.package_not_approved": "Das Layout importiert Pakete, die noch nicht freigegeben sind.",
   "error.package_unavailable": "Das Paket ließ sich nicht laden.",
   "error.partial_invoice_partly_paid": "Eine Abschlagsrechnung ist nur zum Teil bezahlt. Erfassen Sie den Rest der Zahlung oder stornieren Sie sie, bevor Sie die Schlussrechnung ausstellen.",
+  "error.deductions_exceed_invoice": "Die bezahlten Abschlagsrechnungen übersteigen diese Schlussrechnung bei einem Steuersatz. Berechnen Sie in der Schlussrechnung die gesamte Leistung.",
   "error.passkey_cancelled": "Die Passkey-Abfrage wurde abgebrochen.",
   "error.passkey_rejected": "Der Passkey wurde nicht akzeptiert.",
   "error.quote_decided": "Die Antwort des Kunden ist schon erfasst.",

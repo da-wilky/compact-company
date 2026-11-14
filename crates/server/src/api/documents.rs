@@ -802,6 +802,24 @@ pub async fn issue(
     {
         return Err(ApiError::new(ErrorCode::PartialInvoicePartlyPaid));
     }
+    let deducted = |rate| -> Decimal {
+        data.deductions
+            .iter()
+            .flat_map(|d| &d.vat)
+            .filter(|g| g.rate == rate)
+            .map(|g| g.net)
+            .sum()
+    };
+    if data.deductions.iter().flat_map(|d| &d.vat).any(|g| {
+        deducted(g.rate)
+            > data
+                .vat
+                .iter()
+                .find(|v| v.rate == g.rate)
+                .map_or(Decimal::ZERO, |v| v.net)
+    }) {
+        return Err(ApiError::new(ErrorCode::DeductionsExceedInvoice));
+    }
     let today = today(business)?;
     let valid_until = match (row.kind, row.valid_until.as_deref()) {
         (Kind::Quote, Some(date)) if date < today.to_string().as_str() => {

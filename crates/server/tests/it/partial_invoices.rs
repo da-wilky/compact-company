@@ -353,6 +353,28 @@ async fn a_partly_paid_partial_invoice_holds_up_its_final_invoice() {
         .await;
     assert_eq!(body(refused).await["code"], "partial_invoice_partly_paid");
 
+    app.ok(
+        &mut owner,
+        "POST",
+        &format!("{path}/payments"),
+        json!({ "date": "2026-02-02", "amount": 197_500 }),
+    )
+    .await;
+    let final_path = format!("/api/documents/{}", draft["id"]);
+    app.ok(
+        &mut owner,
+        "PUT",
+        &final_path,
+        json!({ "kind": "invoice", "customer_id": customer, "invoice_type": "final",
+                "lines": [{ "description": "Leistung", "quantity": "1", "unit": "lump_sum",
+                            "unit_price": 200_000 }] }),
+    )
+    .await;
+    let refused = app
+        .as_browser(&mut owner, "POST", &format!("{final_path}/issue"), json!({}))
+        .await;
+    assert_eq!(body(refused).await["code"], "deductions_exceed_invoice");
+
     let percent = app
         .as_browser(
             &mut owner,
