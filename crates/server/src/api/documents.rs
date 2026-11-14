@@ -969,6 +969,7 @@ pub async fn issue(
         Some(serde_json::json!({ "number": number, "issue_date": data.issue_date })),
     )
     .await?;
+    crate::mirror::queue(app, tx, &format!("document:{id}")).await?;
     if let Some(rate) = rate {
         let advance = rules::is_advance(tx, id).await?;
         rules::post_document(tx, business, user_id, id, &data, rate, advance)

@@ -390,6 +390,8 @@
   "error.layout_failed": "Das Layout ließ sich nicht setzen.",
   "error.mail_failed": "Der Mailserver hat die Nachricht abgelehnt.",
   "error.mail_not_configured": "Zum Versenden braucht die Serverkonfiguration einen Abschnitt [smtp].",
+  "error.mirror_not_configured": "Die Spiegelung braucht einen Abschnitt [mirror.webdav] in der Serverkonfiguration.",
+  "error.backup_not_configured": "Sicherungen brauchen einen Abschnitt [backup.s3] in der Serverkonfiguration.",
   "error.malformed_request": "Die Anfrage konnte nicht gelesen werden.",
   "error.network": "Der Server ist nicht erreichbar.",
   "error.no_ledger_account": "Für diese Buchung ist kein Sachkonto eingerichtet.",

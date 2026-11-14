@@ -404,3 +404,134 @@ pub fn smtp_config(port: u16) -> Config {
     ))
     .unwrap()
 }
+
+/// A WebDAV server's files by decoded path, as a mirror sees them.
+#[derive(Default)]
+pub struct Dav {
+    pub files: Mutex<BTreeMap<String, Vec<u8>>>,
+    pub down: std::sync::atomic::AtomicBool,
+}
+
+/// Serves WebDAV's PUT, MKCOL and DELETE like Nextcloud: a file's folder must exist first.
+pub async fn webdav() -> (String, Arc<Dav>) {
+    use axum::{extract::Request, response::IntoResponse};
+    use std::sync::atomic::Ordering;
+
+    const ROOT: &str = "/remote.php/dav/files/samuel/Firma";
+    let dav = Arc::new(Dav::default());
+    let dirs = Arc::new(Mutex::new(std::collections::BTreeSet::from(
+        [String::new()],
+    )));
+    let state = dav.clone();
+    let handler = move |request: Request| {
+        let (dav, dirs) = (state.clone(), dirs.clone());
+        async move {
+            if dav.down.load(Ordering::SeqCst) {
+                return StatusCode::SERVICE_UNAVAILABLE.into_response();
+            }
+            let raw = request.uri().path().to_owned();
+            let Some(path) = raw.strip_prefix(ROOT) else {
+                return StatusCode::NOT_FOUND.into_response();
+            };
+            let path = decode(path.trim_matches('/'));
+            let parent = path.rsplit_once('/').map_or("", |(p, _)| p).to_owned();
+            let method = request.method().as_str().to_owned();
+            let body = request.into_body().collect().await.unwrap().to_bytes();
+            let mut dirs = dirs.lock().unwrap();
+            let mut files = dav.files.lock().unwrap();
+            match method.as_str() {
+                "PUT" if !dirs.contains(&parent) => StatusCode::CONFLICT.into_response(),
+                "PUT" => {
+                    files.insert(path, body.to_vec());
+                    StatusCode::CREATED.into_response()
+                }
+                "MKCOL" if !dirs.contains(&parent) => StatusCode::CONFLICT.into_response(),
+                "MKCOL" if dirs.contains(&path) => StatusCode::METHOD_NOT_ALLOWED.into_response(),
+                "MKCOL" => {
+                    dirs.insert(path);
+                    StatusCode::CREATED.into_response()
+                }
+                "DELETE" => match files.remove(&path) {
+                    Some(_) => StatusCode::NO_CONTENT.into_response(),
+                    None => StatusCode::NOT_FOUND.into_response(),
+                },
+                _ => StatusCode::METHOD_NOT_ALLOWED.into_response(),
+            }
+        }
+    };
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let url = format!("http://{}{ROOT}", listener.local_addr().unwrap());
+    tokio::spawn(async move {
+        axum::serve(listener, Router::new().fallback(handler))
+            .await
+            .unwrap()
+    });
+    (url, dav)
+}
+
+fn decode(path: &str) -> String {
+    let bytes = path.as_bytes();
+    let mut out = Vec::new();
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i] == b'%' {
+            out.push(u8::from_str_radix(&path[i + 1..i + 3], 16).unwrap());
+            i += 3;
+        } else {
+            out.push(bytes[i]);
+            i += 1;
+        }
+    }
+    String::from_utf8(out).unwrap()
+}
+
+/// A config mirroring to `url` with the test password.
+pub fn mirror_config(url: &str) -> Config {
+    let mut config: Config = toml::from_str(&format!(
+        "[mirror.webdav]\nurl = \"{url}\"\nusername = \"samuel\"\npassword_file = \"/dev/null\""
+    ))
+    .unwrap();
+    config.mirror.webdav.as_mut().unwrap().password = "app-password".into();
+    config
+}
+
+/// An S3-compatible server with an empty bucket `bucket`, storing its objects under the
+/// returned directory as `<bucket>/<key>`.
+pub async fn s3(bucket: &str) -> (String, tempfile::TempDir) {
+    use axum::error_handling::HandleError;
+    use s3s::{auth::SimpleAuth, service::S3ServiceBuilder};
+
+    let root = tempfile::tempdir().unwrap();
+    std::fs::create_dir(root.path().join(bucket)).unwrap();
+    let mut s3 = S3ServiceBuilder::new(s3s_fs::FileSystem::new(root.path()).unwrap());
+    s3.set_auth(SimpleAuth::from_single("test-key", "test-secret"));
+    let s3 = HandleError::new(s3.build(), |_| async { StatusCode::INTERNAL_SERVER_ERROR });
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let endpoint = format!("http://{}", listener.local_addr().unwrap());
+    tokio::spawn(async move {
+        axum::serve(listener, Router::new().fallback_service(s3))
+            .await
+            .unwrap()
+    });
+    (endpoint, root)
+}
+
+/// Starts the books on 1 January of `first` and closes every year from it to `last`.
+pub async fn close_years(app: &TestApp, owner: &mut Browser, first: i16, last: i16) {
+    app.ok(
+        owner,
+        "POST",
+        "/api/books",
+        json!({ "chart": "skr04", "start_date": format!("{first}-01-01") }),
+    )
+    .await;
+    for year in first..=last {
+        app.ok(
+            owner,
+            "POST",
+            &format!("/api/years/{year}/close"),
+            json!({}),
+        )
+        .await;
+    }
+}

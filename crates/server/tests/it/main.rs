@@ -3,6 +3,7 @@
 mod assets;
 mod audit;
 mod auth;
+mod backup;
 mod bank;
 mod books;
 mod cancellations;
@@ -19,6 +20,7 @@ mod files;
 mod invoices;
 mod layouts;
 mod limit;
+mod mirror;
 mod oidc;
 mod openapi;
 mod overview;

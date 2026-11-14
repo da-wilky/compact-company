@@ -134,6 +134,7 @@ pub async fn close_year(
         Some(serde_json::json!({ "archive": hash.to_string(), "size": size })),
     )
     .await?;
+    crate::mirror::queue(&app, &mut tx, &format!("year:{year}")).await?;
     let closed = closed(&mut tx)
         .await?
         .into_iter()
@@ -396,7 +397,7 @@ fn tar_gz(files: Vec<(String, Vec<u8>)>, mtime: i64) -> Result<Vec<u8>, ApiError
     for (path, bytes) in files
         .iter()
         .map(|(p, b)| (p.as_str(), b.as_slice()))
-        .chain([("SHA256SUMS", sums.as_bytes())])
+        .chain([(SUMS, sums.as_bytes())])
     {
         let mut header = tar::Header::new_gnu();
         header.set_size(bytes.len() as u64);
@@ -410,3 +411,44 @@ fn tar_gz(files: Vec<(String, Vec<u8>)>, mtime: i64) -> Result<Vec<u8>, ApiError
     gz.flush().map_err(ApiError::internal)?;
     gz.finish().map_err(ApiError::internal)
 }
+
+/// The files of a year archive by path.
+pub fn unpack(archive: &[u8]) -> Result<Vec<(String, Vec<u8>)>, String> {
+    let mut tar = tar::Archive::new(flate2::read::GzDecoder::new(archive));
+    let mut files = Vec::new();
+    for entry in tar.entries().map_err(|e| e.to_string())? {
+        let mut entry = entry.map_err(|e| e.to_string())?;
+        let path = entry
+            .path()
+            .map_err(|e| e.to_string())?
+            .to_string_lossy()
+            .into_owned();
+        let mut bytes = Vec::new();
+        std::io::Read::read_to_end(&mut entry, &mut bytes).map_err(|e| e.to_string())?;
+        files.push((path, bytes));
+    }
+    Ok(files)
+}
+
+/// Checks every file of a year archive against its checksum list, the pruned one if any.
+pub fn verify_archive(archive: &[u8]) -> Result<(), String> {
+    let files: std::collections::BTreeMap<String, Vec<u8>> = unpack(archive)?.into_iter().collect();
+    let sums = files
+        .get(PRUNED_SUMS)
+        .or_else(|| files.get(SUMS))
+        .ok_or("no SHA256SUMS")?;
+    for line in String::from_utf8_lossy(sums).lines() {
+        let (hash, path) = line.split_once("  ").ok_or("malformed SHA256SUMS")?;
+        let bytes = files
+            .get(path)
+            .ok_or_else(|| format!("{path} is missing"))?;
+        if ContentHash::of(bytes).to_string() != hash {
+            return Err(format!("{path} does not match its checksum"));
+        }
+    }
+    Ok(())
+}
+
+const SUMS: &str = "SHA256SUMS";
+/// In an archive pruned after retention periods: the checksums of what it still holds.
+const PRUNED_SUMS: &str = "SHA256SUMS.pruned";

@@ -39,6 +39,20 @@ impl fmt::Display for ContentHash {
     }
 }
 
+pub fn s3(config: &S3) -> Result<Arc<dyn ObjectStore>, object_store::Error> {
+    let mut builder = AmazonS3Builder::new()
+        .with_bucket_name(&config.bucket)
+        .with_region(&config.region)
+        .with_access_key_id(&config.access_key_id)
+        .with_secret_access_key(&config.secret_access_key);
+    if let Some(endpoint) = &config.endpoint {
+        builder = builder
+            .with_endpoint(endpoint)
+            .with_allow_http(endpoint.starts_with("http://"));
+    }
+    Ok(Arc::new(builder.build()?))
+}
+
 /// Content-addressed: a file is stored under its SHA-256 and never overwritten (ADR 0016).
 pub struct Files {
     store: Arc<dyn ObjectStore>,
@@ -63,19 +77,7 @@ impl Files {
     }
 
     pub fn s3(config: &S3) -> Result<Self, Error> {
-        let mut builder = AmazonS3Builder::new()
-            .with_bucket_name(&config.bucket)
-            .with_region(&config.region)
-            .with_access_key_id(&config.access_key_id)
-            .with_secret_access_key(&config.secret_access_key);
-        if let Some(endpoint) = &config.endpoint {
-            builder = builder
-                .with_endpoint(endpoint)
-                .with_allow_http(endpoint.starts_with("http://"));
-        }
-        Ok(Self {
-            store: Arc::new(builder.build()?),
-        })
+        Ok(Self { store: s3(config)? })
     }
 
     pub async fn put(&self, bytes: Bytes) -> Result<ContentHash, Error> {
@@ -86,6 +88,33 @@ impl Files {
             .await
         {
             Ok(_) | Err(object_store::Error::AlreadyExists { .. }) => Ok(hash),
+            Err(e) => Err(e.into()),
+        }
+    }
+
+    /// Every stored file.
+    pub async fn hashes(&self) -> Result<Vec<ContentHash>, Error> {
+        let mut hashes = Vec::new();
+        let root = self
+            .store
+            .list_with_delimiter(Some(&StorePath::from("sha256")))
+            .await?;
+        for dir in root.common_prefixes {
+            let prefix = dir.filename().unwrap_or_default().to_owned();
+            for object in self.store.list_with_delimiter(Some(&dir)).await?.objects {
+                let rest = object.location.filename().unwrap_or_default();
+                if let Ok(hash) = format!("{prefix}{rest}").parse() {
+                    hashes.push(hash);
+                }
+            }
+        }
+        Ok(hashes)
+    }
+
+    /// Only for files no record needs any more, such as after their retention period.
+    pub async fn delete(&self, hash: ContentHash) -> Result<(), Error> {
+        match self.store.delete(&hash.path()).await {
+            Ok(()) | Err(object_store::Error::NotFound { .. }) => Ok(()),
             Err(e) => Err(e.into()),
         }
     }

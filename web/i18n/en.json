@@ -390,6 +390,8 @@
   "error.layout_failed": "The layout could not be rendered.",
   "error.mail_failed": "The mail server refused the message.",
   "error.mail_not_configured": "Sending needs an [smtp] section in the server configuration.",
+  "error.mirror_not_configured": "The mirror needs a [mirror.webdav] section in the server configuration.",
+  "error.backup_not_configured": "Backups need a [backup.s3] section in the server configuration.",
   "error.malformed_request": "The request could not be read.",
   "error.network": "The server cannot be reached.",
   "error.no_ledger_account": "No ledger account is set up for this booking.",

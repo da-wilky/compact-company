@@ -22,6 +22,7 @@ pub mod api;
 pub mod assets;
 pub mod audit;
 pub mod auth;
+pub mod backup;
 pub mod books;
 pub mod config;
 pub mod datev;
@@ -33,6 +34,7 @@ pub mod incoming;
 pub mod layouts;
 pub mod limit;
 pub mod mail;
+pub mod mirror;
 pub mod money;
 pub mod oidc;
 pub mod rates;
@@ -43,6 +45,9 @@ pub mod statements;
 pub mod tax;
 pub mod tokens;
 pub mod xml;
+
+/// The database's file name in the data directory.
+pub const DATABASE: &str = "compact-company.db";
 
 pub struct App {
     pub db: SqlitePool,
@@ -56,6 +61,9 @@ pub struct App {
     pub limiter: limit::Limiter,
     pub typst_packages: Url,
     pub mailer: Option<mail::Mailer>,
+    pub mirror: Option<mirror::Mirror>,
+    pub backup: Option<backup::Backup>,
+    pub data_dir: std::path::PathBuf,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -72,6 +80,10 @@ pub enum Error {
     Oidc(#[from] oidc::Error),
     #[error(transparent)]
     Mail(#[from] mail::Error),
+    #[error("cannot set up the mirror: {0}")]
+    Mirror(#[from] mirror::Error),
+    #[error("cannot set up backups: {0}")]
+    Backup(#[from] backup::Error),
     #[error("invalid public_url {0}: {1}")]
     PublicUrl(Url, WebauthnError),
 }
@@ -82,7 +94,7 @@ impl App {
             .map_err(|e| Error::DataDir(config.data_dir.display().to_string(), e))?;
         let db = SqlitePool::connect_with(
             SqliteConnectOptions::new()
-                .filename(config.data_dir.join("compact-company.db"))
+                .filename(config.data_dir.join(DATABASE))
                 .create_if_missing(true)
                 .journal_mode(SqliteJournalMode::Wal)
                 .foreign_keys(true)
@@ -119,6 +131,18 @@ impl App {
             limiter: limit::Limiter::new(config.trusted_proxies.clone()),
             typst_packages: config.typst_packages.clone(),
             mailer: config.smtp.as_ref().map(mail::Mailer::new).transpose()?,
+            mirror: config
+                .mirror
+                .webdav
+                .as_ref()
+                .map(mirror::Mirror::webdav)
+                .transpose()?,
+            backup: config
+                .backup
+                .as_ref()
+                .map(backup::Backup::new)
+                .transpose()?,
+            data_dir: config.data_dir.clone(),
         })
     }
 

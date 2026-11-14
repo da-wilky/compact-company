@@ -74,6 +74,8 @@ pub enum ErrorCode {
     DeductionsExceedInvoice,
     FinalInvoiceInFull,
     MailNotConfigured,
+    MirrorNotConfigured,
+    BackupNotConfigured,
     MailFailed,
     RateLimited,
     Internal,
@@ -139,6 +141,8 @@ impl ErrorCode {
         Self::DeductionsExceedInvoice,
         Self::FinalInvoiceInFull,
         Self::MailNotConfigured,
+        Self::MirrorNotConfigured,
+        Self::BackupNotConfigured,
         Self::MailFailed,
         Self::RateLimited,
         Self::Internal,
@@ -190,7 +194,9 @@ impl ErrorCode {
             | Self::PartialInvoicePartlyPaid
             | Self::DeductionsExceedInvoice
             | Self::FinalInvoiceInFull
-            | Self::MailNotConfigured => StatusCode::CONFLICT,
+            | Self::MailNotConfigured
+            | Self::MirrorNotConfigured
+            | Self::BackupNotConfigured => StatusCode::CONFLICT,
             Self::RateLimited => StatusCode::TOO_MANY_REQUESTS,
             Self::Internal => StatusCode::INTERNAL_SERVER_ERROR,
         }

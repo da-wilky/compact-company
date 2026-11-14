@@ -302,6 +302,7 @@ pub async fn create_receipt(
         Some(serde_json::json!({ "file": file.map(|f| f.0), "format": receipt.format })),
     )
     .await?;
+    crate::mirror::queue(&app, &mut tx, &format!("receipt:{id}")).await?;
     tx.commit().await?;
     Ok(Json(receipt))
 }
@@ -691,6 +692,7 @@ pub async fn put_receipt(
         )
         .await?;
     }
+    crate::mirror::queue(&app, &mut tx, &format!("receipt:{id}")).await?;
     tx.commit().await?;
     Ok(Json(after))
 }
@@ -738,6 +740,7 @@ pub async fn delete_receipt(
         None,
     )
     .await?;
+    crate::mirror::queue(&app, &mut tx, &format!("receipt:{id}")).await?;
     tx.commit().await?;
     Ok(StatusCode::NO_CONTENT)
 }
@@ -807,6 +810,7 @@ pub async fn book_receipt(
         pay(&mut tx, auth.user.id, payment).await?;
     }
     let receipt = find(&mut tx, id).await?;
+    crate::mirror::queue(&app, &mut tx, &format!("receipt:{id}")).await?;
     tx.commit().await?;
     Ok(Json(receipt))
 }
