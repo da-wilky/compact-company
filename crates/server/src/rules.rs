@@ -291,12 +291,15 @@ pub async fn post_payment(
     let invoice = payment.document_id;
     let ids = family(tx, invoice).await?;
     let receivables = role(tx, "receivables").await?;
+    // only payments booked so far: starting the books posts earlier payments one by one
     let paid: i64 = sqlx::query_scalar(
-        "SELECT coalesce(sum(amount), 0) FROM payment
-         WHERE document_id = ? AND reversed_at IS NULL AND date >= ?",
+        "SELECT coalesce(sum(amount), 0) FROM payment y
+         WHERE document_id = ? AND reversed_at IS NULL AND date >= ?
+         AND (id = ? OR EXISTS (SELECT 1 FROM posting p WHERE p.payment_id = y.id))",
     )
     .bind(invoice)
     .bind(&books.start_date)
+    .bind(payment_id)
     .fetch_one(&mut *tx)
     .await?;
     let gross = gross(tx, &ids).await?;
