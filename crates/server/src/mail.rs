@@ -14,6 +14,7 @@ pub struct Mailer {
     transport: AsyncSmtpTransport<Tokio1Executor>,
     from: Mailbox,
     bcc: Option<Mailbox>,
+    reply_to: Option<Mailbox>,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -59,6 +60,12 @@ impl Mailer {
                 .map(str::parse)
                 .transpose()
                 .map_err(|e| invalid(&e))?,
+            reply_to: config
+                .reply_to
+                .as_deref()
+                .map(str::parse)
+                .transpose()
+                .map_err(|e| invalid(&e))?,
         })
     }
 
@@ -87,6 +94,22 @@ impl Mailer {
         files: Vec<File>,
         copy: bool,
     ) -> Result<(), String> {
+        let message = self.message(to, subject, body, files, copy)?;
+        self.transport
+            .send(message)
+            .await
+            .map(|_| ())
+            .map_err(|e| e.to_string())
+    }
+
+    fn message(
+        &self,
+        to: &str,
+        subject: &str,
+        body: &str,
+        files: Vec<File>,
+        copy: bool,
+    ) -> Result<Message, String> {
         let to: Mailbox = to
             .parse()
             .map_err(|e: lettre::address::AddressError| e.to_string())?;
@@ -97,18 +120,16 @@ impl Mailer {
         if let Some(bcc) = self.bcc.as_ref().filter(|_| copy) {
             builder = builder.bcc(bcc.clone());
         }
+        if let Some(reply_to) = &self.reply_to {
+            builder = builder.reply_to(reply_to.clone());
+        }
         let mut parts = MultiPart::mixed().singlepart(SinglePart::plain(body.to_owned()));
         for file in files {
             let content_type =
                 ContentType::parse(file.content_type).expect("the app's content types parse");
             parts = parts.singlepart(Attachment::new(file.name).body(file.bytes, content_type));
         }
-        let message = builder.multipart(parts).map_err(|e| e.to_string())?;
-        self.transport
-            .send(message)
-            .await
-            .map(|_| ())
-            .map_err(|e| e.to_string())
+        builder.multipart(parts).map_err(|e| e.to_string())
     }
 }
 
@@ -145,4 +166,31 @@ pub fn default_text(
         format!("Hello,\n\nplease find attached {subject}.\n\nKind regards\n{business}\n")
     };
     (subject, body)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn replies_go_to_reply_to_and_notes_skip_the_copy() {
+        let mailer = Mailer {
+            transport: AsyncSmtpTransport::<Tokio1Executor>::unencrypted_localhost(),
+            from: "Example GmbH <rechnung@example.com>".parse().unwrap(),
+            bcc: Some("archiv@example.com".parse().unwrap()),
+            reply_to: Some("Erika Muster <kontakt@example.com>".parse().unwrap()),
+        };
+        let message = |copy| {
+            mailer
+                .message("kunde@example.com", "Rechnung", "Text", Vec::new(), copy)
+                .unwrap()
+        };
+        let headers = message(true).headers().to_string();
+        assert!(
+            headers.contains(r#"Reply-To: "Erika Muster" <kontakt@example.com>"#),
+            "{headers}"
+        );
+        assert_eq!(message(true).envelope().to().len(), 2);
+        assert_eq!(message(false).envelope().to().len(), 1);
+    }
 }

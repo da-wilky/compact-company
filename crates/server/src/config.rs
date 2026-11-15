@@ -104,10 +104,12 @@ pub struct Smtp {
     password_file: Option<PathBuf>,
     #[serde(skip)]
     pub password: Option<String>,
-    /// Sender, such as `swilk <rechnung@swilk.eu>`.
+    /// Sender, such as `Example GmbH <rechnung@example.com>`.
     pub from: String,
     /// Gets a blind copy of every document sent, for the business's own records.
     pub bcc: Option<String>,
+    /// Where replies go, if not to `from`.
+    pub reply_to: Option<String>,
 }
 
 #[derive(Debug, Default, Clone, Copy, Deserialize)]
