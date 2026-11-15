@@ -280,7 +280,7 @@ nix run .#ui-check  # every screen at desktop and phone width, light and dark, i
 
 ## Documentation
 
-- [`PLAN.md`](PLAN.md): scope, stack and phases
+- [`PLAN.md`](PLAN.md): scope, decisions and stack
 - [`docs/adr/`](docs/adr): the decisions and why they were made
 - [`GLOSSARY.md`](GLOSSARY.md): the domain terms, in English and German
 - [`docs/legal-sources.md`](docs/legal-sources.md): the legal texts the rules are based on
