@@ -716,7 +716,7 @@
 						<dt><strong>{t('documents.total')}</strong></dt><dd><strong>{formatAmount(doc.data.totals.gross, doc.currency)}</strong></dd>
 						{#each doc.data.deductions as deduction (deduction.number)}
 							<dt>{t('documents.less_partial', { number: deduction.number, date: formatDay(deduction.issue_date, { dateStyle: 'medium' }) })}</dt>
-							<dd>-{formatAmount(deduction.gross, doc.currency)}</dd>
+							<dd>{formatAmount(String(-Number(deduction.gross)), doc.currency)}</dd>
 							{#each deduction.vat as group (group.rate)}
 								<dt class="muted sub">{t('documents.net')} {formatAmount(group.net, doc.currency)}{#if Number(group.rate) > 0}, {t('documents.vat_at', { rate: decimalInput(group.rate) })}{/if}</dt>
 								<dd class="muted sub">{Number(group.rate) > 0 ? formatAmount(group.tax, doc.currency) : ''}</dd>
