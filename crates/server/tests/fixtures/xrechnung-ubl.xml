@@ -33,7 +33,7 @@
         <cbc:CityName>Dresden</cbc:CityName>
         <cac:Country><cbc:IdentificationCode>DE</cbc:IdentificationCode></cac:Country>
       </cac:PostalAddress>
-      <cac:PartyLegalEntity><cbc:RegistrationName>swilk UG</cbc:RegistrationName></cac:PartyLegalEntity>
+      <cac:PartyLegalEntity><cbc:RegistrationName>Beispiel UG</cbc:RegistrationName></cac:PartyLegalEntity>
     </cac:Party>
   </cac:AccountingCustomerParty>
   <cac:PaymentMeans>

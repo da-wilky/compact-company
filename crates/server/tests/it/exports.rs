@@ -16,7 +16,7 @@ async fn a_years_journal_exports_as_a_datev_batch_whose_rows_balance_with_it() {
         "PUT",
         "/api/business",
         json!({
-            "name": "swilk UG (haftungsbeschränkt)", "street": "Hauptstraße 1",
+            "name": "Beispiel UG (haftungsbeschränkt)", "street": "Hauptstraße 1",
             "postcode": "01067", "city": "Dresden", "tax_number": "201/123/45678",
             "taxation": "accrual", "iban": "DE89370400440532013000",
             "datev_consultant_number": 29098, "datev_client_number": 10042

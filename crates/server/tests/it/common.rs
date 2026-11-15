@@ -163,7 +163,7 @@ impl TestApp {
             .send_json(
                 "POST",
                 "/api/setup/start",
-                json!({ "token": self.app.setup_token, "name": "Samuel" }),
+                json!({ "token": self.app.setup_token, "name": "Erika" }),
             )
             .await;
         assert_eq!(start.status(), StatusCode::OK);
@@ -321,7 +321,7 @@ impl TestApp {
             "PUT",
             "/api/business",
             json!({
-                "name": "swilk UG (haftungsbeschränkt)", "street": "Hauptstraße 1",
+                "name": "Beispiel UG (haftungsbeschränkt)", "street": "Hauptstraße 1",
                 "postcode": "01067", "city": "Dresden", "tax_number": "201/123/45678",
                 "taxation": "small_business", "iban": "DE89370400440532013000"
             }),
@@ -400,7 +400,7 @@ pub async fn smtp(refuse: bool) -> (u16, Arc<Mutex<Vec<String>>>) {
 
 pub fn smtp_config(port: u16) -> Config {
     toml::from_str(&format!(
-        "[smtp]\nhost = \"127.0.0.1\"\nport = {port}\nsecurity = \"none\"\nfrom = \"swilk <rechnung@swilk.example>\""
+        "[smtp]\nhost = \"127.0.0.1\"\nport = {port}\nsecurity = \"none\"\nfrom = \"Beispiel UG <rechnung@beispiel.example>\""
     ))
     .unwrap()
 }
@@ -418,7 +418,7 @@ pub async fn webdav() -> (String, Arc<Dav>) {
     use axum::{extract::Request, response::IntoResponse};
     use std::sync::atomic::Ordering;
 
-    const ROOT: &str = "/remote.php/dav/files/samuel/Firma";
+    const ROOT: &str = "/remote.php/dav/files/erika/Firma";
     let dav = Arc::new(Dav {
         files: Mutex::default(),
         folders: Mutex::new([String::new()].into()),
@@ -538,7 +538,7 @@ fn decode(path: &str) -> String {
 /// A config mirroring to `url` with the test password.
 pub fn mirror_config(url: &str) -> Config {
     let mut config: Config = toml::from_str(&format!(
-        "[mirror.webdav]\nurl = \"{url}\"\nusername = \"samuel\"\npassword_file = \"/dev/null\""
+        "[mirror.webdav]\nurl = \"{url}\"\nusername = \"erika\"\npassword_file = \"/dev/null\""
     ))
     .unwrap();
     config.mirror.webdav.as_mut().unwrap().password = "app-password".into();

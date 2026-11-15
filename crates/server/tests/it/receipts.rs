@@ -67,7 +67,7 @@ async fn business(app: &TestApp, owner: &mut Browser, taxation: &str) {
         "PUT",
         "/api/business",
         json!({
-            "name": "swilk UG (haftungsbeschränkt)", "street": "Hauptstraße 1",
+            "name": "Beispiel UG (haftungsbeschränkt)", "street": "Hauptstraße 1",
             "postcode": "01067", "city": "Dresden", "tax_number": "201/123/45678",
             "vat_id": "DE123456789", "taxation": taxation, "iban": "DE89370400440532013000"
         }),
@@ -124,7 +124,7 @@ async fn e_invoices_and_a_photo_become_booked_receipts_with_their_input_vat() {
     let zugferd = upload(&app, &mut owner, "rechnung.pdf", &pdf).await;
     assert_eq!(zugferd["format"], "zugferd");
     assert_eq!(zugferd["number"], invoice["number"]);
-    assert_eq!(zugferd["supplier_name"], "swilk UG (haftungsbeschränkt)");
+    assert_eq!(zugferd["supplier_name"], "Beispiel UG (haftungsbeschränkt)");
     assert_eq!(zugferd["date"], invoice["issue_date"]);
     assert_eq!(zugferd["lines"][0]["net"], 10_000);
     assert_eq!(zugferd["lines"][0]["tax"], 1_900);

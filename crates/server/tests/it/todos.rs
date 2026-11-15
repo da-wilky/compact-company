@@ -43,7 +43,7 @@ async fn staff_move_a_todo_across_the_board_and_comment_and_the_owner_sees_both(
         .as_array()
         .unwrap()
         .iter()
-        .find(|a| a["name"] != "Samuel")
+        .find(|a| a["name"] != "Erika")
         .unwrap()["id"]
         .clone();
     let todo = ok(&app, &mut staff, "POST", "/api/todos", json!({ "project_id": project, "title": "Startseite", "assignee_id": me, "due_date": "2026-11-12", "priority": "high" })).await;

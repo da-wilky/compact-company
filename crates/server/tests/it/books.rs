@@ -103,7 +103,7 @@ async fn the_owner_starts_skr04_books_and_books_and_reverses_by_hand() {
         )
         .await;
     assert_eq!(opening["lines"][0]["number"], "1800");
-    assert_eq!(opening["user_name"], "Samuel");
+    assert_eq!(opening["user_name"], "Erika");
 
     let reversal = app
         .ok(

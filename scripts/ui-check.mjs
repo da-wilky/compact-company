@@ -243,7 +243,7 @@ try {
 	await view('desktop', 'light');
 	await open(setupLink);
 	await fill([
-		['form input:not([type])', 'Samuel Wilk'],
+		['form input:not([type])', 'Erika Muster'],
 		['form label:nth-of-type(2) input', 'Laptop']
 	]);
 	await click('form button.primary');
@@ -412,7 +412,7 @@ try {
 		<Acct><Id><IBAN>DE89370400440532013000</IBAN></Id></Acct>
 		${entry('2026-11-02', '383.10', 'CRDT', 'Baeckerei Krume GmbH', 'DE44500105175407324931', `Rechnung ${invoiceNumber} Restbetrag`)}
 		${entry('2026-11-03', '4.90', 'DBIT', '', '', 'Kontofuehrungsentgelt Oktober')}
-		${entry('2026-11-05', '250.00', 'DBIT', 'Samuel Wilk', 'DE02120300000000202051', 'Privatentnahme')}
+		${entry('2026-11-05', '250.00', 'DBIT', 'Erika Muster', 'DE02120300000000202051', 'Privatentnahme')}
 		${entry('2026-03-11', '119.00', 'DBIT', 'Hosting und Mehr AG', 'DE02120300000000202051', 'HA-2026-0815 Kundennummer 4711')}
 		</Stmt></BkToCstmrStmt></Document>`;
 	await evaluate(`(async () => {
