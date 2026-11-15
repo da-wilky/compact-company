@@ -177,7 +177,7 @@
   "business.city": "Ort",
   "business.country": "Land (ISO-Code)",
   "business.currency": "Währung für neue Kunden",
-  "business.language": "Geschäftssprache (Namen in der Spiegelung)",
+  "business.language": "Geschäftssprache (Namen in Spiegelung und Anonymisierung)",
   "business.datev_client_number": "DATEV-Mandantennummer",
   "business.datev_consultant_number": "DATEV-Beraternummer",
   "business.delivery_note_number_format": "Lieferscheine",
