@@ -84,7 +84,7 @@
   for d in data.deductions {
     rows.push((
       cc.t(data, "less_partial") + " " + d.number + " " + cc.t(data, "of_date") + " " + cc.date(data, d.issue_date),
-      "", "", "-" + cc.money(data, d.gross),
+      "", "", cc.money(data, -d.gross),
     ))
     for group in d.vat {
       rows.push((

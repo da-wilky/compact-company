@@ -43,7 +43,7 @@ enum Command {
     Openapi,
     /// Render sample data with a layout and write the PDF to stdout, for writing layouts
     Sample {
-        /// Directory with `layout.typ` and optional `assets/` and `fonts/`; the built-in layout
+        /// Directory with `layout.typ` and the fonts and images next to it; the built-in layout
         /// without it
         #[arg(long)]
         layout: Option<PathBuf>,
