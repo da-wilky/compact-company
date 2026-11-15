@@ -329,7 +329,7 @@ A readable copy of every stored document in a folder tree outside the app, such 
 _Avoid_: Sync, backup
 
 **Business language** (de: Geschäftssprache):
-The language the mirror names its folders and files in, English unless set; the mirror can set its own.
+The language the mirror names its folders and files in and anonymisation writes its stand-in names in ("Customer 3 (anonymised)"), English unless set; the mirror can set its own.
 
 **Backup** (de: Sicherung):
 An encrypted snapshot of the database and every file in an S3 bucket, from which a fresh instance can be restored.

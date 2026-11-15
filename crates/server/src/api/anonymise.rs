@@ -8,6 +8,7 @@ use sqlx::SqliteConnection;
 use utoipa::ToSchema;
 
 use super::{
+    customers::Language,
     documents::{business, today},
     error::{ApiError, ErrorCode, FieldError, Json, Path},
     input::field_error,
@@ -19,9 +20,6 @@ use crate::{
     auth::{Auth, OwnerOnly, now},
     mirror,
 };
-
-/// What stands in for a text that might name a person.
-const LABEL: &str = "anonymisiert";
 
 #[derive(Debug, Serialize, ToSchema, sqlx::FromRow)]
 #[schema(as = AnonymisedName)]
@@ -183,6 +181,9 @@ pub async fn anonymise_year(
     }
     let business = business(&app).await?;
     let today = today(&business)?;
+    let language = business.language.unwrap_or(Language::En);
+    let label = language.pick("anonymisiert", "anonymised");
+    let customer_name = format!("{} %s ({label})", language.pick("Kunde", "Customer"));
     let tz = jiff::tz::TimeZone::get(business.timezone.as_deref().unwrap_or("Europe/Berlin"))
         .map_err(ApiError::internal)?;
     let second = |y: i16| -> Result<i64, ApiError> {
@@ -260,11 +261,30 @@ pub async fn anonymise_year(
         "DELETE FROM todo_comment WHERE created_at >= ?1 AND created_at < ?2",
         "DELETE FROM document_send WHERE at >= ?1 AND at < ?2",
         "UPDATE audit SET before = NULL, after = NULL WHERE at >= ?1 AND at < ?2",
-        "UPDATE invitation SET name = 'anonymisiert' WHERE created_at >= ?1 AND created_at < ?2",
     ] {
         sqlx::query(sql)
             .bind(start)
             .bind(end)
+            .execute(&mut *tx)
+            .await?;
+    }
+    sqlx::query("UPDATE invitation SET name = ?3 WHERE created_at >= ?1 AND created_at < ?2")
+        .bind(start)
+        .bind(end)
+        .bind(label)
+        .execute(&mut *tx)
+        .await?;
+    for sql in [
+        "UPDATE posting SET description = ?3 WHERE date >= ?1 AND date <= ?2",
+        "UPDATE receipt_line SET description = ?3 WHERE receipt_id IN (SELECT id
+         FROM receipt WHERE coalesce(date, date(created_at, 'unixepoch')) BETWEEN ?1 AND ?2)",
+        "UPDATE document_line SET description = ?3 WHERE document_id IN (SELECT id
+         FROM document WHERE status = 'issued' AND issue_date BETWEEN ?1 AND ?2)",
+    ] {
+        sqlx::query(sql)
+            .bind(&from)
+            .bind(&to)
+            .bind(label)
             .execute(&mut *tx)
             .await?;
     }
@@ -273,19 +293,14 @@ pub async fn anonymise_year(
          (SELECT 'posting:' || id FROM posting WHERE date >= ?1 AND date <= ?2
           UNION SELECT 'bank_transaction:' || id FROM bank_transaction
           WHERE booking_date >= ?1 AND booking_date <= ?2)",
-        "UPDATE posting SET description = 'anonymisiert' WHERE date >= ?1 AND date <= ?2",
         "UPDATE payment SET note = NULL WHERE date >= ?1 AND date <= ?2",
         "UPDATE receipt_payment SET note = NULL WHERE date >= ?1 AND date <= ?2",
         "UPDATE bank_transaction SET counterparty = NULL, counterparty_iban = NULL, purpose = NULL,
          reference = NULL WHERE booking_date >= ?1 AND booking_date <= ?2",
         "UPDATE bank_import SET file_name = NULL WHERE id IN (SELECT import_id FROM bank_transaction
          WHERE booking_date >= ?1 AND booking_date <= ?2)",
-        "UPDATE receipt_line SET description = 'anonymisiert' WHERE receipt_id IN (SELECT id
-         FROM receipt WHERE coalesce(date, date(created_at, 'unixepoch')) BETWEEN ?1 AND ?2)",
         "UPDATE receipt SET note = NULL, file_name = NULL
          WHERE coalesce(date, date(created_at, 'unixepoch')) BETWEEN ?1 AND ?2",
-        "UPDATE document_line SET description = 'anonymisiert' WHERE document_id IN (SELECT id
-         FROM document WHERE status = 'issued' AND issue_date BETWEEN ?1 AND ?2)",
     ] {
         sqlx::query(sql)
             .bind(&from)
@@ -302,7 +317,7 @@ pub async fn anonymise_year(
     .await?;
     for (id, data) in documents {
         let mut data: Value = serde_json::from_str(&data).map_err(ApiError::internal)?;
-        scrub(&mut data);
+        scrub(&mut data, language);
         sqlx::query(
             "UPDATE document SET title = NULL, intro = NULL, outro = NULL, data = ? WHERE id = ?",
         )
@@ -314,19 +329,22 @@ pub async fn anonymise_year(
 
     for customer in &plan.customers {
         sqlx::query(
-            "UPDATE customer SET name = 'Kunde ' || number || ' (anonymisiert)', street = NULL,
+            "UPDATE customer SET name = printf(?, number), street = NULL,
              postcode = NULL, city = NULL, vat_id = NULL, leitweg_id = NULL,
              email = NULL, note = NULL, anonymised = 1 WHERE id = ?",
         )
+        .bind(&customer_name)
         .bind(customer.id)
         .execute(&mut *tx)
         .await?;
-        sqlx::query(
-            "UPDATE project SET name = 'Projekt ' || id || ' (anonymisiert)' WHERE customer_id = ?",
-        )
-        .bind(customer.id)
-        .execute(&mut *tx)
-        .await?;
+        sqlx::query("UPDATE project SET name = printf(?, id) WHERE customer_id = ?")
+            .bind(format!(
+                "{} %d ({label})",
+                language.pick("Projekt", "Project")
+            ))
+            .bind(customer.id)
+            .execute(&mut *tx)
+            .await?;
         for sql in [
             "UPDATE audit SET before = NULL, after = NULL WHERE subject IN (SELECT 'todo:' || t.id
              FROM todo t JOIN project p ON p.id = t.project_id WHERE p.customer_id = ?1)",
@@ -341,10 +359,14 @@ pub async fn anonymise_year(
     }
     for supplier in &plan.suppliers {
         sqlx::query(
-            "UPDATE supplier SET name = 'Lieferant ' || id || ' (anonymisiert)', street = NULL,
+            "UPDATE supplier SET name = printf(?, id), street = NULL,
              postcode = NULL, city = NULL, vat_id = NULL, iban = NULL, email = NULL,
-             anonymised = 1 WHERE id = ?1",
+             anonymised = 1 WHERE id = ?",
         )
+        .bind(format!(
+            "{} %d ({label})",
+            language.pick("Lieferant", "Supplier")
+        ))
         .bind(supplier.id)
         .execute(&mut *tx)
         .await?;
@@ -356,10 +378,17 @@ pub async fn anonymise_year(
         .await?;
     }
     for user in &plan.users {
+        sqlx::query("UPDATE user SET name = printf(?, id), anonymised = 1 WHERE id = ?")
+            .bind(format!("{} %d ({label})", language.pick("Nutzer", "User")))
+            .bind(user.id)
+            .execute(&mut *tx)
+            .await?;
+        sqlx::query("UPDATE invitation SET name = ? WHERE accepted_by = ?")
+            .bind(label)
+            .bind(user.id)
+            .execute(&mut *tx)
+            .await?;
         for sql in [
-            "UPDATE user SET name = 'Nutzer ' || id || ' (anonymisiert)', anonymised = 1
-             WHERE id = ?1",
-            "UPDATE invitation SET name = 'anonymisiert' WHERE accepted_by = ?1",
             "DELETE FROM passkey WHERE user_id = ?1",
             "DELETE FROM session WHERE user_id = ?1",
             "DELETE FROM oidc_identity WHERE user_id = ?1",
@@ -434,7 +463,8 @@ pub async fn anonymise_year(
 }
 
 /// Replaces what may name a person in a document's layout data; numbers, dates and amounts stay.
-fn scrub(data: &mut Value) {
+fn scrub(data: &mut Value, language: Language) {
+    let label = language.pick("anonymisiert", "anonymised");
     for key in ["title", "intro", "outro", "timesheet"] {
         if let Some(value) = data.get_mut(key) {
             *value = Value::Null;
@@ -445,7 +475,8 @@ fn scrub(data: &mut Value) {
         customer.insert(
             "name".into(),
             Value::from(format!(
-                "Kunde {} ({LABEL})",
+                "{} {} ({label})",
+                language.pick("Kunde", "Customer"),
                 number.as_str().unwrap_or_default()
             )),
         );
@@ -462,7 +493,7 @@ fn scrub(data: &mut Value) {
     }
     if let Some(lines) = data.get_mut("lines").and_then(Value::as_array_mut) {
         for line in lines {
-            line["description"] = Value::from(LABEL);
+            line["description"] = Value::from(label);
         }
     }
 }

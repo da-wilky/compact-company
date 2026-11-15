@@ -226,6 +226,16 @@ async fn an_anonymised_year_keeps_later_figures_and_no_names() {
         contains(&bytes, "Papierladen Schulz"),
         "later suppliers stay"
     );
+    let name: String = sqlx::query_scalar("SELECT name FROM supplier WHERE id = ?")
+        .bind(meyer)
+        .fetch_one(&app.app.db)
+        .await
+        .unwrap();
+    assert_eq!(
+        name,
+        format!("Supplier {meyer} (anonymised)"),
+        "English without a business language"
+    );
 }
 
 /// The EÜR of a year and every account's balance.

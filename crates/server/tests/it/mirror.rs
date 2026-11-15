@@ -228,3 +228,62 @@ async fn names_follow_the_business_language_unless_the_mirror_sets_one() {
         paths(&dav)
     );
 }
+
+#[tokio::test]
+async fn a_renamed_supplier_renames_its_receipts() {
+    let (url, dav) = webdav().await;
+    let app = start(mirror_config(&url)).await;
+    let mut owner = app.setup_owner().await;
+    let year = jiff::Zoned::now().year();
+    let today = jiff::Timestamp::now().strftime("%Y-%m-%d").to_string();
+    let supplier = app
+        .ok(
+            &mut owner,
+            "POST",
+            "/api/suppliers",
+            json!({ "name": "Meyer" }),
+        )
+        .await;
+    let response = app
+        .multipart(
+            &mut owner,
+            "POST",
+            "/api/receipts",
+            &[("file", Some("scan.pdf"), b"%PDF-1.4 receipt")],
+        )
+        .await;
+    let id = body(response).await["id"].as_i64().unwrap();
+    app.ok(
+        &mut owner,
+        "PUT",
+        &format!("/api/receipts/{id}"),
+        json!({ "supplier_id": supplier["id"], "number": "R-1" }),
+    )
+    .await;
+    let paths = |dav: &common::Dav| {
+        dav.files
+            .lock()
+            .unwrap()
+            .keys()
+            .cloned()
+            .collect::<Vec<_>>()
+    };
+    mirror::copy_due(&app.app).await.unwrap();
+    assert_eq!(
+        paths(&dav),
+        [format!("{year}/Receipts/{today} Meyer R-1.pdf")]
+    );
+
+    app.ok(
+        &mut owner,
+        "PUT",
+        &format!("/api/suppliers/{}", supplier["id"]),
+        json!({ "name": "Meyer GmbH" }),
+    )
+    .await;
+    mirror::copy_due(&app.app).await.unwrap();
+    assert_eq!(
+        paths(&dav),
+        [format!("{year}/Receipts/{today} Meyer GmbH R-1.pdf")]
+    );
+}
