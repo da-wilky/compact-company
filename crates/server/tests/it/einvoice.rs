@@ -31,17 +31,28 @@ async fn an_issued_invoice_carries_zugferd_and_an_xrechnung_customer_gets_its_xm
         .await;
     assert_eq!(draft["missing"]["business.email"], "required");
     assert_eq!(draft["missing"]["business.phone"], "required");
-    app.ok(
-        &mut owner,
-        "PUT",
-        "/api/business",
-        json!({ "name": "Beispiel UG (haftungsbeschränkt)", "street": "Hauptstraße 1",
-                "postcode": "01067", "city": "Dresden", "tax_number": "201/123/45678",
-                "taxation": "small_business", "iban": "DE89370400440532013000",
-                "email": "post@beispiel.example", "phone": "+49 351 123456" }),
-    )
-    .await;
     let id = draft["id"].as_i64().unwrap();
+    let mut business = json!({ "name": "Beispiel UG (haftungsbeschränkt)", "street": "Hauptstraße 1",
+            "postcode": "01067", "city": "Dresden", "tax_number": "201/123/45678",
+            "taxation": "small_business", "iban": "DE89370400440532013000",
+            "email": "post@beispiel.example", "phone": "+49 351 123456" });
+    app.ok(&mut owner, "PUT", "/api/business", business.clone())
+        .await;
+    let draft = app
+        .ok(
+            &mut owner,
+            "GET",
+            &format!("/api/documents/{id}"),
+            json!({}),
+        )
+        .await;
+    assert_eq!(
+        draft["missing"],
+        json!({ "business.seller_identifier": "required" }),
+        "a tax number alone fails BR-CO-26"
+    );
+    business["seller_identifier"] = json!("DE123456789-00001");
+    app.ok(&mut owner, "PUT", "/api/business", business).await;
     let issued = app
         .ok(
             &mut owner,
@@ -115,6 +126,7 @@ async fn an_issued_invoice_carries_zugferd_and_an_xrechnung_customer_gets_its_xm
     assert!(xml.contains("urn:xeinkauf.de:kosit:xrechnung_3.0"), "{xml}");
     assert!(xml.contains("<ram:BuyerReference>991-12345-67</ram:BuyerReference>"));
     assert!(xml.contains(&format!("<ram:ID>{number}</ram:ID>")));
+    assert!(xml.contains("<ram:ID>DE123456789-00001</ram:ID>"));
     assert!(xml.contains("<ram:CategoryCode>E</ram:CategoryCode>"));
 
     let quote = app

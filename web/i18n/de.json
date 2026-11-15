@@ -198,6 +198,7 @@
   "business.quote_valid_days": "Angebote gelten (Tage)",
   "business.register_court": "Registergericht",
   "business.register_number": "Registernummer",
+  "business.seller_identifier": "Verkäuferkennung (z. B. W-IdNr.)",
   "business.section_bank": "Bankverbindung",
   "business.section_company": "Unternehmen",
   "business.section_defaults": "Voreinstellungen",

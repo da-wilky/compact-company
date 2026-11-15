@@ -26,6 +26,9 @@ pub struct Business {
     pub legal_form: Option<String>,
     pub register_court: Option<String>,
     pub register_number: Option<String>,
+    /// Seller identifier (BT-29) in e-invoices, such as the Wirtschafts-Identifikationsnummer;
+    /// stands in for the VAT ID and register number that EN 16931 wants one of (BR-CO-26).
+    pub seller_identifier: Option<String>,
     pub managing_directors: Option<String>,
     pub bank_name: Option<String>,
     pub iban: Option<String>,

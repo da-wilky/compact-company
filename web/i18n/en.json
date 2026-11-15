@@ -198,6 +198,7 @@
   "business.quote_valid_days": "Quotes stand for (days)",
   "business.register_court": "Register court",
   "business.register_number": "Register number",
+  "business.seller_identifier": "Seller identifier (e.g. W-IdNr.)",
   "business.section_bank": "Bank account",
   "business.section_company": "Business",
   "business.section_defaults": "Defaults",

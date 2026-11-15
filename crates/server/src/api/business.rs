@@ -80,6 +80,7 @@ fn validate(business: Business) -> Result<Business, ApiError> {
         legal_form: check.text("legal_form", b.legal_form, 100),
         register_court: check.text("register_court", b.register_court, 100),
         register_number: check.text("register_number", b.register_number, 50),
+        seller_identifier: check.text("seller_identifier", b.seller_identifier, 100),
         managing_directors: check.text("managing_directors", b.managing_directors, 300),
         bank_name: check.text("bank_name", b.bank_name, 100),
         iban: check

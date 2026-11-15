@@ -298,6 +298,7 @@ pub struct BusinessData {
     pub legal_form: Option<String>,
     pub register_court: Option<String>,
     pub register_number: Option<String>,
+    pub seller_identifier: Option<String>,
     pub managing_directors: Option<String>,
     pub bank_name: Option<String>,
     pub iban: Option<String>,
@@ -389,6 +390,7 @@ impl BusinessData {
             legal_form: b.legal_form,
             register_court: b.register_court,
             register_number: b.register_number,
+            seller_identifier: b.seller_identifier,
             managing_directors: b.managing_directors,
             bank_name: b.bank_name,
             iban: b.iban,
@@ -804,6 +806,17 @@ pub fn missing(data: &Data) -> BTreeMap<String, FieldError> {
             }
         }
     }
+    // every invoice carries an e-invoice, which EN 16931 rejects without one of these (BR-CO-26)
+    if matches!(data.kind, Kind::Invoice | Kind::Cancellation)
+        && b.seller_identifier.is_none()
+        && b.register_number.is_none()
+        && b.vat_id.is_none()
+    {
+        missing.insert(
+            "business.seller_identifier".to_owned(),
+            FieldError::Required,
+        );
+    }
     if matches!(data.kind, Kind::Invoice | Kind::Cancellation) && data.customer.xrechnung {
         for key in crate::einvoice::missing(data, crate::einvoice::Flavour::Xrechnung) {
             missing.insert(key.to_owned(), FieldError::Required);
@@ -900,6 +913,7 @@ fn sample_amounts(kind: Kind, language: Language, small_business: bool) -> Data 
             legal_form: Some("UG (haftungsbeschränkt)".to_owned()),
             register_court: Some("Amtsgericht Dresden".to_owned()),
             register_number: Some("HRB 12345".to_owned()),
+            seller_identifier: None,
             managing_directors: Some("Erika Muster".to_owned()),
             bank_name: Some("Beispielbank".to_owned()),
             iban: Some("DE89370400440532013000".to_owned()),
