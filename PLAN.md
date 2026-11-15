@@ -1,6 +1,6 @@
 # compact-company – Plan
 
-A self-hosted business suite for one German business: todos and timers, quotes and invoices with e-invoicing and free Typst layouts, receipts, bank import and double-entry books. Rebuilt in Rust; the Go version stays in use until this one replaces it. Open source (AGPL-3.0-or-later).
+A self-hosted business suite for one German business: todos and timers, quotes and invoices with e-invoicing and free Typst layouts, receipts, bank import and double-entry books. Open source (AGPL-3.0-or-later). Open work is in the GitHub issues.
 
 ## Why
 
@@ -11,7 +11,7 @@ Time tracking, invoicing and bookkeeping usually live in two or three tools with
 | Area | Decision | ADR |
 | --- | --- | --- |
 | Scope | Suite for one business; UG/GmbH year-end closing by the tax advisor | 0008 |
-| Audience | Built for swilk, public repo others may self-host, no support promises | – |
+| Audience | Built for one business, public repo others may self-host, no support promises | – |
 | Tenancy | One business per instance | 0003 |
 | Language | Rust, rebuilt from scratch, no data migration from the Go version | 0009 |
 | Frontend | Svelte SPA over the app's own JSON API | 0010 |
@@ -91,70 +91,3 @@ Time tracking, invoicing and bookkeeping usually live in two or three tools with
 | Storage | `object_store` (local disk or S3) |
 | Frontend | Svelte 5, SvelteKit with the static adapter, embedded in the binary |
 | Nix | `crane` for Rust, `buildNpmPackage` for the client, `dockerTools` for the image, NixOS module with VM test |
-
-Crate names are candidates; verify each before the foundation phase settles them.
-
-## Phases
-
-### Phase 1 – Foundation
-- Cargo workspace, Svelte client, flake (dev shell, package, image, checks), CI
-- Config (TOML, secrets only from files), SQLite migrations, file storage on disk/S3
-- Passkeys, optional OIDC, sessions, CSRF, roles; audit log
-- API skeleton with OpenAPI and generated client types; i18n catalog shared by server and client
-- NixOS module and OCI image, x86_64 and arm64
-- Done when: an owner registers a passkey on a fresh instance and invites a staff user
-
-### Phase 2 – Work
-- Customers, projects, activities, rates, todos with list and board, statuses
-- Parallel timers, manual entries, week view, billable duration
-- Dark mode
-- Rate limiting of unauthenticated endpoints (sign-in, setup, invitation and OIDC starts)
-- Done when: a staff user tracks time on a todo of a new customer's project
-
-### Phase 3 – Documents (first release, replaces the Go version)
-- Layout engine: built-in layouts, upload with fonts, package approval, sample render and § 14 check, per-customer override
-- Quotes → order confirmation → invoice; invoices from time; cancellation invoices; delivery note, timesheet, acceptance report
-- ZUGFeRD and XRechnung, validated by KoSIT in CI
-- Email sending with sent log; overview (running timers, unbilled time, open invoices)
-- Done when: swilk's invoices and quotes are issued from it with the corporate-design layout, and the Go version is retired
-
-### Phase 4 – Books
-- Journal, SKR03/SKR04, posting rules for invoices and payments under each taxation
-- Receipts with incoming e-invoice parsing
-- Bank import and matching, open items, dunning letters
-- Done when: a quarter of swilk's receipts and bank statements is booked and every open invoice is matched
-
-### Phase 5 – Tax and exports
-- VAT return and EÜR figures with drill-down to postings
-- DATEV export, deadlines (ICS, reminders), year-end archive
-- Accountant role in use; API tokens with scopes
-- Done when: a VAT return and an EÜR are entered in Mein ELSTER from its figures, and the DATEV export imports into a DATEV-compatible tool without errors
-
-### Phase 6 – Fixed assets
-- Assets, straight-line depreciation, low-value assets; postings and EÜR lines
-- Done when: swilk's fixed assets are in the register, their depreciation is booked, and the EÜR and Anlage AVEÜR figures for a year come from it
-
-### Phase 7 – Recurring and partial invoices
-- Recurring invoice: a customer, lines, interval (monthly, quarterly, yearly) and next date; on that date a draft invoice is created with its service period filled in, for the owner to issue and send
-- Partial invoices (Abschlagsrechnung) against an accepted quote or project; the final invoice (Schlussrechnung) lists the whole work and deducts each partial invoice's net, VAT and payment (§ 14 Abs. 5 Satz 2 UStG)
-- E-invoices carry the deductions as the prepaid amount (BT-113); type codes checked against EN 16931 and XRechnung before building
-- Done when: a monthly recurring invoice drafts itself on its date, and a project billed in two partial invoices closes with a final invoice that KoSIT accepts and whose open item is only the remainder
-
-### Phase 8 – Retention, backup and process documentation
-- Nextcloud mirror over WebDAV: every stored document copied in real time into a readable folder tree; the app stays the main storage
-- Backup to S3: scheduled SQLite snapshot and files, rotation, a restore command
-- Retention: receipts and issued invoices deletable 8 years after their year, business letters after 6, a whole year after 10 (§ 147 AO, § 14b UStG as amended by BEG IV); deletions reach the mirror and age out of backups
-- Process documentation (GoBD Verfahrensdokumentation): technical and operations parts generated from the instance, organisational parts from a guided questionnaire, versioned and carried in each year archive
-- Page titles: "Compact Company" as display name, each tab naming its page first (#163)
-- Done when: a receipt uploaded shows up in Nextcloud within a minute, a backup restores onto a fresh instance with identical archive checksums, a year past its period is deleted with the owner's confirmation, and the process documentation for a year renders as one PDF
-
-### Later
-- FinTS bank fetch (free; needs a product registration with the Deutsche Kreditwirtschaft)
-- AI extraction of receipts (optional endpoint), IMAP receipt inbox, MCP server
-
-## Context (swilk)
-
-- Brand and Typst library for swilk's layouts: `~/workspace/swilk/gewerbe/corporate-design` (`typst/lib/vorlagen.typ`, `typst/firma.toml`, private `typst/firma.local.toml`); never commit them, the repo is public
-- Server: pi5dd (arm64), `/etc/nix-config/hosts/pi5dd/apps/`
-- Login today: Keycloak `https://user.swilk.eu/realms/public`
-- Tax: Kleinunternehmer (§ 19 UStG); receiving e-invoices is mandatory, issuing is not
