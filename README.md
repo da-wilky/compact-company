@@ -177,6 +177,7 @@ username = "rechnung@example.com"
 password_file = "/run/secrets/smtp"
 from = "Example GmbH <rechnung@example.com>"
 bcc = "archiv@example.com"     # a copy of everything sent
+reply_to = "Example GmbH <kontakt@example.com>"  # where replies go, if not to `from`
 
 [mirror]
 language = "de"                # folder and file names; else the business language, else English

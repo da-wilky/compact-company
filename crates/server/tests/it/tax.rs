@@ -24,7 +24,7 @@ async fn set_taxation(app: &TestApp, owner: &mut Browser, taxation: &str) {
         "PUT",
         "/api/business",
         json!({
-            "name": "swilk UG (haftungsbeschränkt)", "street": "Hauptstraße 1",
+            "name": "Beispiel UG (haftungsbeschränkt)", "street": "Hauptstraße 1",
             "postcode": "01067", "city": "Dresden", "tax_number": "201/123/45678",
             "taxation": taxation, "iban": "DE89370400440532013000"
         }),

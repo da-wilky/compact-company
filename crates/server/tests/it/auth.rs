@@ -38,7 +38,7 @@ async fn setup_creates_the_owner_once() {
             .await,
     )
     .await;
-    assert_eq!(session["user"]["name"], "Samuel");
+    assert_eq!(session["user"]["name"], "Erika");
     assert_eq!(session["user"]["role"], "owner");
     assert_eq!(session["setup_required"], false);
 
@@ -78,11 +78,11 @@ async fn owner_signs_out_and_back_in_and_edits_the_business() {
             &mut owner,
             "PUT",
             "/api/business",
-            json!({ "name": "Wilk IT" }),
+            json!({ "name": "Muster IT" }),
         )
         .await;
     assert_eq!(response.status(), StatusCode::OK);
-    assert_eq!(json(response).await["values"]["name"], "Wilk IT");
+    assert_eq!(json(response).await["values"]["name"], "Muster IT");
 }
 
 #[tokio::test]

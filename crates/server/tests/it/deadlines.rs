@@ -14,7 +14,7 @@ async fn a_calendar_subscribes_to_the_deadlines_and_a_reminder_goes_out_a_week_b
         "PUT",
         "/api/business",
         json!({
-            "name": "swilk", "email": "fristen@swilk.example", "taxation": "accrual",
+            "name": "Beispiel UG", "email": "fristen@beispiel.example", "taxation": "accrual",
             "vat_period": "quarterly", "vat_extension": false
         }),
     )
@@ -74,7 +74,7 @@ async fn a_calendar_subscribes_to_the_deadlines_and_a_reminder_goes_out_a_week_b
     assert_eq!(remind("2026-10-11").await.unwrap(), 1, "and the day before");
     let mails = received.lock().unwrap().clone();
     assert_eq!(mails.len(), 2);
-    assert!(mails[0].contains("To: fristen@swilk.example"));
+    assert!(mails[0].contains("To: fristen@beispiel.example"));
     assert!(
         mails[0].contains("Frist: USt-Voranmeldung 3. Quartal 2026 am 12.10.2026"),
         "{}",

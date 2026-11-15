@@ -35,10 +35,10 @@ async fn an_issued_invoice_carries_zugferd_and_an_xrechnung_customer_gets_its_xm
         &mut owner,
         "PUT",
         "/api/business",
-        json!({ "name": "swilk UG (haftungsbeschränkt)", "street": "Hauptstraße 1",
+        json!({ "name": "Beispiel UG (haftungsbeschränkt)", "street": "Hauptstraße 1",
                 "postcode": "01067", "city": "Dresden", "tax_number": "201/123/45678",
                 "taxation": "small_business", "iban": "DE89370400440532013000",
-                "email": "post@swilk.example", "phone": "+49 351 123456" }),
+                "email": "post@beispiel.example", "phone": "+49 351 123456" }),
     )
     .await;
     let id = draft["id"].as_i64().unwrap();

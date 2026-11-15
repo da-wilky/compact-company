@@ -128,7 +128,7 @@ async fn an_uploaded_layout_renders_one_customers_invoices_and_the_others_keep_t
             json!({ "spec": "@preview/stamp:0.1.0" }),
         )
         .await;
-    assert_eq!(package["approved_by"], "Samuel");
+    assert_eq!(package["approved_by"], "Erika");
 
     let incomplete = app
         .multipart(

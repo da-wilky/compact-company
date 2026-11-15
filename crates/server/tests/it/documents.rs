@@ -77,7 +77,7 @@ async fn an_issued_document_keeps_its_data_amounts_and_number() {
         &mut owner,
         "PUT",
         "/api/business",
-        json!({ "name": "swilk UG (haftungsbeschränkt)", "street": "Hauptstraße 1",
+        json!({ "name": "Beispiel UG (haftungsbeschränkt)", "street": "Hauptstraße 1",
                 "postcode": "01067", "city": "Dresden", "tax_number": "201/123/45678",
                 "taxation": "small_business", "invoice_number_format": "R{yy}-{nnnn}" }),
     )

@@ -70,7 +70,7 @@ async fn the_overview_shows_timers_unbilled_time_and_open_invoices_by_role() {
         )
         .await;
     assert_eq!(paid["amount_due"]["minor"], 6000);
-    assert_eq!(paid["payments"][0]["user_name"], "Samuel");
+    assert_eq!(paid["payments"][0]["user_name"], "Erika");
 
     let overview = app.ok(&mut owner, "GET", "/api/overview", json!({})).await;
     assert_eq!(overview["running"].as_array().unwrap().len(), 2);

@@ -21,14 +21,14 @@ async fn business_and_role_changes_are_logged_with_old_and_new_values() {
         &mut owner,
         "PUT",
         "/api/business",
-        json!({ "name": "Wilk IT" }),
+        json!({ "name": "Muster IT" }),
     )
     .await;
     app.as_browser(
         &mut owner,
         "PUT",
         "/api/business",
-        json!({ "name": "Wilk IT GmbH" }),
+        json!({ "name": "Muster IT GmbH" }),
     )
     .await;
     let mut alex = app.with_role(&mut owner, "staff").await;
@@ -49,9 +49,9 @@ async fn business_and_role_changes_are_logged_with_old_and_new_values() {
     let business = entries(&app, &mut owner, "?subject=business").await;
     assert_eq!(business.len(), 2);
     assert_eq!(business[0]["action"], "business.update");
-    assert_eq!(business[0]["user_name"], "Samuel");
-    assert_eq!(business[0]["before"], json!({ "name": "Wilk IT" }));
-    assert_eq!(business[0]["after"], json!({ "name": "Wilk IT GmbH" }));
+    assert_eq!(business[0]["user_name"], "Erika");
+    assert_eq!(business[0]["before"], json!({ "name": "Muster IT" }));
+    assert_eq!(business[0]["after"], json!({ "name": "Muster IT GmbH" }));
     assert_eq!(business[1]["before"], json!({ "name": null }));
 
     let alex_log = entries(&app, &mut alex, &format!("?subject=user:{alex_id}")).await;
@@ -87,7 +87,7 @@ async fn a_failed_change_leaves_no_entry() {
             &mut owner,
             "PUT",
             "/api/business",
-            json!({ "name": "Wilk IT", "vat_id": "x" }),
+            json!({ "name": "Muster IT", "vat_id": "x" }),
         )
         .await;
     assert_eq!(invalid.status(), StatusCode::UNPROCESSABLE_ENTITY);
@@ -104,7 +104,7 @@ async fn an_unchanged_save_leaves_no_entry() {
             &mut owner,
             "PUT",
             "/api/business",
-            json!({ "name": "Wilk IT" }),
+            json!({ "name": "Muster IT" }),
         )
         .await;
     }
