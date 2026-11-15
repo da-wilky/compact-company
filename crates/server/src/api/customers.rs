@@ -30,6 +30,13 @@ impl Language {
             Self::En => "en",
         }
     }
+
+    pub fn pick<'a>(self, de: &'a str, en: &'a str) -> &'a str {
+        match self {
+            Self::De => de,
+            Self::En => en,
+        }
+    }
 }
 
 #[derive(Debug, Deserialize, ToSchema)]

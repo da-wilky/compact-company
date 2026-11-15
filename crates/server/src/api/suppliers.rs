@@ -13,6 +13,7 @@ use super::{
 use crate::{
     App, audit,
     auth::{Auth, OwnerOnly, OwnerOrAccountant, now},
+    mirror,
 };
 
 #[derive(Debug, Deserialize, ToSchema)]
@@ -160,6 +161,16 @@ pub async fn put_supplier(
     .bind(id)
     .execute(&mut *tx)
     .await?;
+    if fields.name != before.fields.name {
+        let receipts: Vec<i64> =
+            sqlx::query_scalar("SELECT id FROM receipt WHERE supplier_id = ? AND file IS NOT NULL")
+                .bind(id)
+                .fetch_all(&mut *tx)
+                .await?;
+        for receipt in receipts {
+            mirror::queue(&app, &mut tx, &format!("receipt:{receipt}")).await?;
+        }
+    }
     if let Some((old, new)) = audit::changes(&before.fields, &fields) {
         audit::record(
             &mut tx,

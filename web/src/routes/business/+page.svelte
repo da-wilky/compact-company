@@ -21,7 +21,8 @@
 			values = {
 				...result.data.values,
 				taxation: result.data.values.taxation ?? 'accrual',
-				language: result.data.values.language ?? 'en'
+				language: result.data.values.language ?? 'en',
+				currency: result.data.values.currency ?? 'EUR'
 			};
 			pinned = result.data.pinned;
 		}

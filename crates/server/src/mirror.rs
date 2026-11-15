@@ -373,14 +373,14 @@ async fn wanted(
                 parts.extend(r.supplier);
                 parts.extend(r.number);
                 if parts.len() == 1 {
-                    parts.push(format!("{} {id}", tr(language, "Beleg", "Receipt")));
+                    parts.push(format!("{} {id}", language.pick("Beleg", "Receipt")));
                 }
                 let ext = extension(r.file_name.as_deref(), r.file_type.as_deref());
                 add(
                     format!(
                         "{}/{}/{}{ext}",
                         &date[..4],
-                        tr(language, "Belege", "Receipts"),
+                        language.pick("Belege", "Receipts"),
                         name(&parts.join(" "))
                     ),
                     &r.file,
@@ -405,10 +405,10 @@ async fn wanted(
                     format!(
                         "{}/{}/{}{ext}",
                         &to[..4],
-                        tr(language, "Kontoauszüge", "Bank statements"),
+                        language.pick("Kontoauszüge", "Bank statements"),
                         name(&format!(
                             "{from} {} {to} {account}",
-                            tr(language, "bis", "to")
+                            language.pick("bis", "to")
                         ))
                     ),
                     &file,
@@ -423,7 +423,7 @@ async fn wanted(
             .fetch_optional(&mut *db)
             .await?;
             if let Some(archive) = archive {
-                let archive_name = tr(language, "Jahresarchiv-", "Year-end-archive-");
+                let archive_name = language.pick("Jahresarchiv-", "Year-end-archive-");
                 add(format!("{id}/{archive_name}{id}.tar.gz"), &archive);
             }
         }
@@ -435,7 +435,7 @@ async fn wanted(
             .fetch_optional(&mut *db)
             .await?;
             if let Some((from, de, en)) = row {
-                let dir = tr(language, "Verfahrensdokumentation", "Process documentation");
+                let dir = language.pick("Verfahrensdokumentation", "Process documentation");
                 add(
                     format!("{dir}/Verfahrensdokumentation v{id} {from}.pdf"),
                     &de,
@@ -459,13 +459,6 @@ struct Receipt {
     created: String,
 }
 
-fn tr(language: Language, de: &'static str, en: &'static str) -> &'static str {
-    match language {
-        Language::De => de,
-        Language::En => en,
-    }
-}
-
 fn folder(kind: Kind, language: Language) -> &'static str {
     let (de, en) = match kind {
         Kind::Quote => ("Angebote", "Quotes"),
@@ -475,7 +468,7 @@ fn folder(kind: Kind, language: Language) -> &'static str {
         Kind::AcceptanceReport => ("Abnahmeprotokolle", "Acceptance reports"),
         Kind::Dunning => ("Mahnungen", "Dunning letters"),
     };
-    tr(language, de, en)
+    language.pick(de, en)
 }
 
 /// A file or folder name that WebDAV servers and every desktop file system accept.
