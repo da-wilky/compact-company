@@ -7192,6 +7192,13 @@
               "null"
             ]
           },
+          "seller_identifier": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Seller identifier (BT-29) in e-invoices, such as the Wirtschafts-Identifikationsnummer;\nstands in for the VAT ID and register number that EN 16931 wants one of (BR-CO-26)."
+          },
           "street": {
             "type": [
               "string",
@@ -7339,6 +7346,12 @@
             ]
           },
           "register_number": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "seller_identifier": {
             "type": [
               "string",
               "null"

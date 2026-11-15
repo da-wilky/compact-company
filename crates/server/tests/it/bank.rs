@@ -95,6 +95,7 @@ async fn a_statement_is_imported_and_its_transactions_matched_from_suggestions()
         json!({
             "name": "Beispiel UG (haftungsbeschränkt)", "street": "Hauptstraße 1",
             "postcode": "01067", "city": "Dresden", "tax_number": "201/123/45678",
+            "seller_identifier": "DE123456789-00001",
             "taxation": "accrual", "iban": "DE89370400440532013000"
         }),
     )

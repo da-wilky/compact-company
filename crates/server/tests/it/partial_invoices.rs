@@ -14,6 +14,7 @@ async fn set_taxation(app: &TestApp, owner: &mut Browser, taxation: &str) {
         json!({
             "name": "Beispiel UG (haftungsbeschränkt)", "street": "Hauptstraße 1",
             "postcode": "01067", "city": "Dresden", "tax_number": "201/123/45678",
+            "seller_identifier": "DE123456789-00001",
             "taxation": taxation, "iban": "DE89370400440532013000"
         }),
     )

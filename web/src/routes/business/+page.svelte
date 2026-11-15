@@ -57,6 +57,7 @@
 				'legal_form',
 				'register_court',
 				'register_number',
+				'seller_identifier',
 				'managing_directors'
 			]
 		},

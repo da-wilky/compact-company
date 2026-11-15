@@ -298,6 +298,7 @@ pub fn cii(data: &Data, flavour: Flavour) -> Vec<u8> {
             )
     });
     let seller = el("ram:SellerTradeParty")
+        .opt(b.seller_identifier.as_ref().map(|i| text("ram:ID", i)))
         .child(text("ram:Name", b.name.as_deref().unwrap_or_default()))
         .opt(
             b.register_number

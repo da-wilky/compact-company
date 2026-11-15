@@ -144,6 +144,10 @@ _Avoid_: Bill
 **E-invoice** (de: E-Rechnung):
 An invoice whose content is also carried in a structured, machine-readable form (ZUGFeRD or XRechnung).
 
+**Seller identifier** (de: Verkäuferkennung):
+An identifier of the business in its e-invoices (BT-29), such as the Wirtschafts-Identifikationsnummer; an invoice needs it, a VAT ID or a register number, or EN 16931 rejects its e-invoice.
+_Avoid_: Tax number (which does not count)
+
 **Service period** (de: Leistungszeitraum):
 When the invoiced work was done; from its time entries if it has any, otherwise set by hand or the issue date.
 _Avoid_: Billing period
