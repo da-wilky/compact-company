@@ -361,3 +361,43 @@ async fn foreign_currency_books_at_the_rate_given_and_the_difference_is_an_excha
     let totals = balances(&app, &mut owner).await;
     assert_eq!(totals["1200"], 22_000, "only the second invoice is open");
 }
+
+#[tokio::test]
+async fn payments_from_before_the_books_clear_the_invoice_in_turn_without_an_exchange_result() {
+    let app = start(Config::default()).await;
+    let mut owner = app.setup_owner().await;
+    let customer = app.ready_to_issue(&mut owner).await;
+    let invoice = invoice(&app, &mut owner, customer).await;
+    let pay = format!("/api/documents/{}/payments", invoice["id"]);
+    for (date, amount) in [("2026-01-10", 80_000), ("2026-01-05", 30_000)] {
+        app.ok(
+            &mut owner,
+            "POST",
+            &pay,
+            json!({ "date": date, "amount": amount }),
+        )
+        .await;
+    }
+    app.ok(
+        &mut owner,
+        "POST",
+        "/api/books",
+        json!({ "chart": "skr04", "start_date": "2026-01-01" }),
+    )
+    .await;
+
+    let postings = journal(&app, &mut owner).await;
+    let payments: Vec<_> = postings
+        .iter()
+        .filter(|p| !p["payment_id"].is_null())
+        .map(lines)
+        .collect();
+    assert_eq!(
+        payments,
+        [
+            expect(&[("1800", 30_000), ("1200", -30_000)]),
+            expect(&[("1800", 80_000), ("1200", -80_000)]),
+        ]
+    );
+    assert_eq!(balances(&app, &mut owner).await["1200"], 0);
+}
