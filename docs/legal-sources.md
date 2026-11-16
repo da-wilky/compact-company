@@ -61,6 +61,25 @@ Rz. 154:
 Rz. 155:
 > Soweit eine fehlende oder ungenügende Verfahrensdokumentation die Nachvollziehbarkeit und Nachprüfbarkeit nicht beeinträchtigt, liegt kein formeller Mangel mit sachlichem Gewicht vor, der zum Verwerfen der Buchführung führen kann.
 
+### Internal controls and data security (Rz. 100, 102, 103, 106, 2019 text)
+
+Read 2026-11-16 from the same copy.
+
+Rz. 100 (excerpt):
+> Für die Einhaltung der Ordnungsvorschriften des § 146 AO (siehe unter 3.) hat der Steuerpflichtige Kontrollen einzurichten, auszuüben und zu protokollieren. Hierzu gehören beispielsweise
+> • Zugangs- und Zugriffsberechtigungskontrollen auf Basis entsprechender Zugangs- und Zugriffsberechtigungskonzepte (z. B. spezifische Zugangs- und Zugriffsberechtigungen),
+> […]
+> Die konkrete Ausgestaltung des Kontrollsystems ist abhängig von der Komplexität und Diversifikation der Geschäftstätigkeit und der Organisationsstruktur sowie des eingesetzten DV-Systems.
+
+Rz. 102:
+> Die Beschreibung des IKS ist Bestandteil der Verfahrensdokumentation (siehe unter 10.1).
+
+Rz. 103:
+> Der Steuerpflichtige hat sein DV-System gegen Verlust (z. B. Unauffindbarkeit, Vernichtung, Untergang und Diebstahl) zu sichern und gegen unberechtigte Eingaben und Veränderungen (z. B. durch Zugangs- und Zugriffskontrollen) zu schützen.
+
+Rz. 106:
+> Die Beschreibung der Vorgehensweise zur Datensicherung ist Bestandteil der Verfahrensdokumentation (siehe unter 10.1). Die konkrete Ausgestaltung der Beschreibung ist abhängig von der Komplexität und Diversifikation der Geschäftstätigkeit und der Organisationsstruktur sowie des eingesetzten DV-Systems.
+
 ### Scanning paper (Rz. 136, 139, 140, 2019 text)
 
 Rz. 136 (excerpt):
@@ -126,6 +145,33 @@ For the app: the final invoice deducts amounts received (not merely invoiced) be
 Read 2026-11-13 at https://www.gesetze-im-internet.de/ustg_1980/__13.html.
 
 > […] Wird das Entgelt oder ein Teil des Entgelts vereinnahmt, bevor die Leistung oder die Teilleistung ausgeführt worden ist, so entsteht insoweit die Steuer mit Ablauf des Voranmeldungszeitraums, in dem das Entgelt oder das Teilentgelt vereinnahmt worden ist,
+
+## Anlage EÜR 2025 – Beschränkt abziehbare Betriebsausgaben
+
+BMF-Schreiben of 29.08.2025 with the form and its Anleitung. Read 2026-11-16 from the copy at https://www.steuerschroeder.de/blog/wp-content/uploads/2025/09/2025-08-29-anlage-EUER-2025.pdf. The form has two columns, "nicht abziehbar" and "abziehbar": Zeile 62 Geschenke (Kz 164/174) and Zeile 63 Bewirtungsaufwendungen (Kz 165/175). Zeile 75 is "Summe Betriebsausgaben".
+
+> Beschränkt abziehbare Betriebsausgaben sind in den Zeilen 62 bis 67 einzutragen. Sie sind in der Regel in einen nicht abziehbaren und einen abziehbaren Teil aufzuteilen. Die in den Zeilen 62 bis 67 genannten Betriebsausgaben sind auch dann dort einzutragen, wenn diese letztlich vollständig abziehbar oder vollständig nicht abziehbar sind.
+>
+> Aufwendungen für die in § 4 Abs. 7 EStG genannten Zwecke – insbesondere Geschenke und Bewirtungen – sind einzeln und getrennt von den sonstigen Betriebsausgaben aufzuzeichnen.
+
+> Zeile 63 Aufwendungen für die Bewirtung von Personen aus geschäftlichem Anlass sind zu 70 % abziehbar und zu 30 % nicht abziehbar. Die hierauf entfallende Vorsteuer ist allerdings abziehbar, soweit die Aufwendungen angemessen und nachgewiesen sind, und insoweit in Zeile 57 zu erfassen.
+
+## § 4 Abs. 5 and 7 EStG – Geschenke and Bewirtung
+
+Read 2026-11-16 at https://www.gesetze-im-internet.de/estg/__4.html. Not deductible are:
+
+> 1. Aufwendungen für Geschenke an Personen, die nicht Arbeitnehmer des Steuerpflichtigen sind. Satz 1 gilt nicht, wenn die Anschaffungs- oder Herstellungskosten der dem Empfänger im Wirtschaftsjahr zugewendeten Gegenstände insgesamt 50 Euro nicht übersteigen;
+> 2. Aufwendungen für die Bewirtung von Personen aus geschäftlichem Anlass, soweit sie 70 Prozent der Aufwendungen übersteigen, die nach der allgemeinen Verkehrsauffassung als angemessen anzusehen und deren Höhe und betriebliche Veranlassung nachgewiesen sind.
+
+> (7) Aufwendungen im Sinne des Absatzes 5 Satz 1 Nummer 1 bis 4, 6b und 7 sind einzeln und getrennt von den sonstigen Betriebsausgaben aufzuzeichnen.
+
+## § 241a HGB, § 141 AO – When an Einzelunternehmen may keep an EÜR
+
+Read 2026-11-16 at https://www.gesetze-im-internet.de/hgb/__241a.html and https://www.gesetze-im-internet.de/ao_1977/__141.html.
+
+> Einzelkaufleute, die an den Abschlussstichtagen von zwei aufeinander folgenden Geschäftsjahren nicht mehr als jeweils 800 000 Euro Umsatzerlöse und jeweils 80 000 Euro Jahresüberschuss aufweisen, brauchen die §§ 238 bis 241 nicht anzuwenden.
+
+§ 141 Abs. 1 AO requires books and a balance sheet for tax purposes above a Gesamtumsatz of 800 000 € per calendar year (Nr. 1) or a Gewinn aus Gewerbebetrieb of 80 000 € per Wirtschaftsjahr (Nr. 4).
 
 ## Not yet checked against the primary text
 
