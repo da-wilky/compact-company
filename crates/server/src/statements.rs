@@ -335,10 +335,10 @@ fn csv(text: &str) -> Result<Statement, Error> {
     Ok(statement)
 }
 
-/// `31.12.2026`, `31.12.26` or `2026-12-31`.
+/// `31.12.2026`, `31.12.26`, `31/12/2026` or `2026-12-31`.
 fn csv_date(text: &str) -> Option<String> {
-    let date = if let Some((d, rest)) = text.split_once('.') {
-        let (m, y) = rest.split_once('.')?;
+    let date = if let Some((d, rest)) = text.split_once(['.', '/']) {
+        let (m, y) = rest.split_once(['.', '/'])?;
         let y: i16 = match y.len() {
             2 => 2000 + y.parse::<i16>().ok()?,
             4 => y.parse().ok()?,
@@ -390,6 +390,7 @@ mod tests {
         assert_eq!(csv_date("03.02.2026").as_deref(), Some("2026-02-03"));
         assert_eq!(csv_date("03.02.26").as_deref(), Some("2026-02-03"));
         assert_eq!(csv_date("2026-02-03").as_deref(), Some("2026-02-03"));
+        assert_eq!(csv_date("03/02/2026").as_deref(), Some("2026-02-03"));
         assert_eq!(csv_date("31.02.2026"), None);
     }
 }
