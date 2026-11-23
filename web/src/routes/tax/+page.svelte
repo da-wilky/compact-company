@@ -21,9 +21,24 @@
 	let books = $state<Schemas['BooksView']>();
 
 	const now = new Date();
-	const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-	let vatYear = $state(lastMonth.getFullYear());
-	let period = $state(`m${lastMonth.getMonth() + 1}`);
+
+	/** The last finished period of the business's VAT period, quarterly when unset. */
+	function lastPeriod(vatPeriod: Schemas['VatPeriod'] | null | undefined): { year: number; period: string } {
+		const month = now.getMonth();
+		if (vatPeriod === 'annual') return { year: now.getFullYear() - 1, period: 'y' };
+		if (vatPeriod === 'monthly') {
+			const last = new Date(now.getFullYear(), month - 1, 1);
+			return { year: last.getFullYear(), period: `m${last.getMonth() + 1}` };
+		}
+		const quarter = Math.floor(month / 3);
+		return quarter === 0 ? { year: now.getFullYear() - 1, period: 'q4' } : { year: now.getFullYear(), period: `q${quarter}` };
+	}
+
+	let vatYear = $state(lastPeriod(null).year);
+	let period = $state(lastPeriod(null).period);
+	call(api.GET('/api/business')).then((result) => {
+		({ year: vatYear, period } = lastPeriod(result.data?.values.vat_period));
+	});
 	let euerYear = $state(now.getFullYear() - (now.getMonth() < 6 ? 1 : 0));
 
 	const years = $derived.by(() => {
