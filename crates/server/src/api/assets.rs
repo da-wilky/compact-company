@@ -243,8 +243,9 @@ async fn fields(
     db: &mut SqliteConnection,
     business: &Business,
     input: AssetInput,
-    except: Option<i64>,
+    before: Option<&Asset>,
 ) -> Result<Fields, ApiError> {
+    let except = before.map(|asset| asset.id);
     let mut check = Check::default();
     let name = check.required("name", input.name, 200);
     let (account_id, date, cost, net) = match input.receipt_line_id {
@@ -281,6 +282,15 @@ async fn fields(
             String::new()
         }
     };
+    // bought within the books, its purchase is booked from a receipt line; by hand only what
+    // predates the books, and assets entered before this rule keep their date
+    let kept = before.is_some_and(|b| b.receipt_line_id.is_none() && b.acquired == acquired);
+    if input.receipt_line_id.is_none() && !acquired.is_empty() && !kept {
+        let books = started(db).await?;
+        if acquired >= books.start_date {
+            check.fail("acquired", FieldError::AfterBooksStart);
+        }
+    }
     let life_years = match input.method {
         Method::StraightLine => {
             if !input.life_years.is_some_and(|y| (1..=50).contains(&y)) {
@@ -368,7 +378,7 @@ pub async fn put_asset(
     let mut tx = app.db.begin_with("BEGIN IMMEDIATE").await?;
     started(&mut tx).await?;
     let before = find(&mut tx, id).await?;
-    let f = fields(&mut tx, &business, input, Some(id)).await?;
+    let f = fields(&mut tx, &business, input, Some(&before)).await?;
     if postings(&mut tx, id).await? > 0 {
         let kept = Fields {
             name: f.name.clone(),

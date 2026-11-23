@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { page } from '$app/state';
 	import { api, call, type ApiError, type Schemas } from '#lib/api/index.ts';
 	import Dialog from '#lib/components/Dialog.svelte';
 	import Field from '#lib/components/Field.svelte';
@@ -27,6 +28,12 @@
 		const result = await call(api.GET('/api/assets'));
 		view = result.data;
 		error = result.error;
+		const line = Number(page.url.searchParams.get('line'));
+		if (line && view?.candidates.some((c) => c.receipt_line_id === line)) {
+			edit();
+			lineId = line;
+			chooseLine();
+		}
 	}
 
 	async function loadAccounts() {

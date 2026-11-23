@@ -48,6 +48,8 @@ pub struct ReceiptLine {
     vat_rate: String,
     /// In the minor unit of the receipt's currency.
     tax: i64,
+    /// On a fixed-asset account with no asset registered from it, so never depreciated.
+    needs_asset: bool,
 }
 
 #[derive(Debug, Serialize, ToSchema, sqlx::FromRow)]
@@ -435,8 +437,11 @@ pub async fn find(db: &mut SqliteConnection, id: i64) -> Result<Receipt, ApiErro
         .await?
         .ok_or(ApiError::new(ErrorCode::NotFound))?;
     let lines: Vec<ReceiptLine> = sqlx::query_as(
-        "SELECT id, description, account_id, net, vat_rate, tax FROM receipt_line
-         WHERE receipt_id = ? ORDER BY position",
+        "SELECT l.id, l.description, l.account_id, l.net, l.vat_rate, l.tax,
+         EXISTS (SELECT 1 FROM ledger_account a WHERE a.id = l.account_id AND a.type = 'asset'
+                 AND a.role IS NULL AND a.number LIKE '0%')
+         AND NOT EXISTS (SELECT 1 FROM asset x WHERE x.receipt_line_id = l.id) AS needs_asset
+         FROM receipt_line l WHERE l.receipt_id = ? ORDER BY l.position",
     )
     .bind(id)
     .fetch_all(&mut *db)

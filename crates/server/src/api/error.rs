@@ -95,6 +95,7 @@ pub enum FieldError {
     Locked,
     NotShown,
     Taken,
+    AfterBooksStart,
 }
 
 impl ErrorCode {
@@ -228,6 +229,7 @@ impl FieldError {
         Self::Locked,
         Self::NotShown,
         Self::Taken,
+        Self::AfterBooksStart,
     ];
 
     pub fn key(self) -> String {
