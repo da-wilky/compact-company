@@ -8984,7 +8984,11 @@
           "57",
           "58",
           "60",
+          "62",
+          "62_nd",
           "63",
+          "64",
+          "66",
           "68",
           "69",
           "70",
@@ -9068,9 +9072,16 @@
             "type": "string",
             "description": "What is entered in ELSTER: whole euros, cents dropped, for a VAT base; the amount\notherwise."
           },
+          "kennzahl": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The Kennzahl of an EÜR line."
+          },
           "key": {
             "type": "string",
-            "description": "The Kennzahl of the VAT return, or the Zeile of the Anlage EÜR."
+            "description": "The Kennzahl of the VAT return, or the Zeile of the Anlage EÜR with `_nd` for its\n\"nicht abziehbar\" column."
           },
           "sources": {
             "type": "array",

@@ -163,8 +163,9 @@
 	let accountError = $state<ApiError>();
 	const euerLines: Schemas['EuerLine'][] = [
 		'12', '15', '16', '17', '18', '27', '29', '30', '32', '33', '36', '38', '39', '40', '41', '42', '43', '44', '45', '46', '47',
-		'48', '49', '50', '51', '52', '53', '54', '55', '56', '57', '58', '60', '63', '68', '69', '70', '71', '72', '73', '74'
+		'48', '49', '50', '51', '52', '53', '54', '55', '56', '57', '58', '60', '62', '62_nd', '63', '64', '66', '68', '69', '70', '71', '72', '73', '74'
 	];
+	const lineName = (line: string) => (line.endsWith('_nd') ? `${parseInt(line)} ${t('tax.non_deductible')}` : line);
 	const lineDefault = (type: Schemas['AccountType']): Schemas['EuerLine'] | null =>
 		type === 'income' ? '15' : type === 'expense' ? '60' : null;
 
@@ -348,7 +349,7 @@
 								<td data-label={t('books.number')}><span class="number">{account.number}</span></td>
 								<td data-label={t('books.account_name')}>{account.name}</td>
 								<td data-label={t('books.type')}>{t(`books.type.${account.type}`)}</td>
-								<td data-label={t('books.euer_line')}>{account.euer_line ?? '–'}</td>
+								<td data-label={t('books.euer_line')}>{account.euer_line ? lineName(account.euer_line) : '–'}</td>
 								<td data-label={t('books.balance')} class="amount">{balance(account.balance)}</td>
 								{#if owner}
 									<td class="actions">
@@ -430,7 +431,7 @@
 			<select bind:value={euerLine}>
 				<option value={null}>{t('books.euer_none')}</option>
 				{#each euerLines as line (line)}
-					<option value={line}>{t('tax.zeile', { line })} · {t(`tax.euer.${line}`)}</option>
+					<option value={line}>{t('tax.zeile', { line: parseInt(line) })} · {t(`tax.euer.${line}`)}</option>
 				{/each}
 			</select>
 		</Field>

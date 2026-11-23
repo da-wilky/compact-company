@@ -418,3 +418,68 @@ async fn expenses_land_on_their_own_zeile_and_corrections_change_the_sum() {
     );
     assert_eq!(euer["profit"], -44_000);
 }
+
+#[tokio::test]
+async fn bewirtung_is_split_70_30_and_only_deductible_gifts_count() {
+    let app = start(Config::default()).await;
+    let mut owner = app.setup_owner().await;
+    let today = day(0);
+    let year = &today[..4];
+    app.ok(
+        &mut owner,
+        "POST",
+        "/api/books",
+        json!({ "chart": "skr04", "start_date": format!("{year}-01-01") }),
+    )
+    .await;
+    let bank = account(&app, &mut owner, "1800").await["id"].clone();
+    let deposits = account(&app, &mut owner, "2180").await["id"].clone();
+    let meals = account(&app, &mut owner, "6674").await;
+    assert_eq!(meals["euer_line"], "64");
+    for (number, from, amount) in [
+        ("6640", &bank, 10_001),
+        ("6610", &bank, 2_000),
+        ("6620", &bank, 8_000),
+        // lump sums aren't paid from the business account
+        ("6674", &deposits, 2_800),
+    ] {
+        let id = account(&app, &mut owner, number).await["id"].clone();
+        app.ok(
+            &mut owner,
+            "POST",
+            "/api/postings",
+            json!({ "date": today, "description": "Ausgabe", "lines": [
+                { "account_id": id, "amount": amount },
+                { "account_id": from, "amount": -amount }
+            ] }),
+        )
+        .await;
+    }
+    let euer = app
+        .ok(
+            &mut owner,
+            "GET",
+            &format!("/api/tax/euer?year={year}"),
+            json!({}),
+        )
+        .await;
+    assert_eq!(
+        amounts(&euer["lines"]),
+        expect(&[
+            ("62", 2_000),
+            ("62_nd", 8_000),
+            ("63", 7_001),
+            ("63_nd", 3_000),
+            ("64", 2_800)
+        ])
+    );
+    let kennzahlen: Vec<_> = euer["lines"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|l| l["kennzahl"].as_str().unwrap())
+        .collect();
+    assert_eq!(kennzahlen, ["174", "164", "175", "165", "171"]);
+    assert_eq!(euer["expenses"], 2_000 + 7_001 + 2_800);
+    assert_eq!(euer["profit"], -11_801);
+}

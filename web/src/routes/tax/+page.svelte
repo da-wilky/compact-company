@@ -133,8 +133,14 @@
 		toast(t('app.copied'));
 	}
 
-	const income = $derived((euer?.lines ?? []).filter((l) => Number(l.key) <= 18));
-	const expenses = $derived((euer?.lines ?? []).filter((l) => Number(l.key) > 18));
+	const income = $derived((euer?.lines ?? []).filter((l) => parseInt(l.key) <= 18));
+	const expenses = $derived((euer?.lines ?? []).filter((l) => parseInt(l.key) > 18));
+	const euerRow = (l: Schemas['Figure']) => ({
+		...l,
+		label: t(`tax.euer.${l.key}`),
+		code: t(l.kennzahl ? 'tax.zeile_kz' : 'tax.zeile', { line: parseInt(l.key), kz: l.kennzahl ?? '' })
+	});
+	const homeOfficeOver = $derived((euer?.lines.find((l) => l.key === '66')?.amount ?? 0) > 126000);
 </script>
 
 {#snippet sources(figure: Schemas['Figure'])}
@@ -325,13 +331,14 @@
 			{#if euer.small_business}<p class="muted">{t('tax.euer_small_business')}</p>{/if}
 			<h2>{t('tax.income')}</h2>
 			{#if income.length}
-				{@render table(income.map((l) => ({ ...l, label: t(`tax.euer.${l.key}`), code: t('tax.zeile', { line: l.key }) })), false)}
+				{@render table(income.map(euerRow), false)}
 			{:else}
 				<p class="card empty">{t('tax.nothing')}</p>
 			{/if}
 			<h2>{t('tax.expenses')}</h2>
 			{#if expenses.length}
-				{@render table(expenses.map((l) => ({ ...l, label: t(`tax.euer.${l.key}`), code: t('tax.zeile', { line: l.key }) })), false)}
+				{#if homeOfficeOver}<p class="alert" role="status">{t('tax.home_office_over')}</p>{/if}
+				{@render table(expenses.map(euerRow), false)}
 			{:else}
 				<p class="card empty">{t('tax.nothing')}</p>
 			{/if}

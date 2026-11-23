@@ -148,10 +148,26 @@ pub enum EuerLine {
     #[serde(rename = "60")]
     #[sqlx(rename = "60")]
     OtherExpenses,
-    /// Bewirtungsaufwendungen
+    /// Geschenke, abziehbar: at most 50 € per recipient and year
+    #[serde(rename = "62")]
+    #[sqlx(rename = "62")]
+    Gifts,
+    /// Geschenke, nicht abziehbar
+    #[serde(rename = "62_nd")]
+    #[sqlx(rename = "62_nd")]
+    GiftsNonDeductible,
+    /// Bewirtungsaufwendungen: 70 % abziehbar, the rest under `63_nd`
     #[serde(rename = "63")]
     #[sqlx(rename = "63")]
     Entertainment,
+    /// Verpflegungsmehraufwendungen, at the lump sums
+    #[serde(rename = "64")]
+    #[sqlx(rename = "64")]
+    MealAllowance,
+    /// Tagespauschale für die Tätigkeit in der häuslichen Wohnung
+    #[serde(rename = "66")]
+    #[sqlx(rename = "66")]
+    HomeOfficeDays,
     /// Kfz: Leasingkosten
     #[serde(rename = "68")]
     #[sqlx(rename = "68")]
@@ -190,7 +206,7 @@ impl EuerLine {
     /// How the line's amount goes into the Summe Betriebsausgaben (Zeile 75).
     fn expense_sign(self) -> i64 {
         match self {
-            Self::PropertyMaintenance => 0,
+            Self::PropertyMaintenance | Self::GiftsNonDeductible => 0,
             Self::Commute | Self::NonDeductible => -1,
             _ => 1,
         }
@@ -224,6 +240,9 @@ impl EuerLine {
             "6895" => Self::DisposedBookValue,
             "7300" => Self::Interest,
             "6640" => Self::Entertainment,
+            "6610" => Self::Gifts,
+            "6620" => Self::GiftsNonDeductible,
+            "6674" => Self::MealAllowance,
             "6805" | "6810" => Self::Telecom,
             "6821" => Self::Training,
             "6825" | "6830" => Self::Advice,
@@ -490,8 +509,11 @@ pub struct Source {
 
 #[derive(Debug, Clone, Serialize, ToSchema)]
 pub struct Figure {
-    /// The Kennzahl of the VAT return, or the Zeile of the Anlage EÜR.
+    /// The Kennzahl of the VAT return, or the Zeile of the Anlage EÜR with `_nd` for its
+    /// "nicht abziehbar" column.
     pub key: String,
+    /// The Kennzahl of an EÜR line.
+    pub kennzahl: Option<String>,
     /// EUR cents.
     pub amount: i64,
     /// What is entered in ELSTER: whole euros, cents dropped, for a VAT base; the amount
@@ -543,6 +565,7 @@ impl Figures {
         };
         Figure {
             key: key.to_owned(),
+            kennzahl: None,
             amount,
             entered,
             sources,
@@ -633,6 +656,62 @@ pub async fn vat_return(
     .collect())
 }
 
+/// The 30 % of Bewirtung that may not be deducted, in Zeile 63's "nicht abziehbar" column.
+const ENTERTAINMENT_NON_DEDUCTIBLE: &str = "63_nd";
+
+/// The Kennzahl of an EÜR figure, as the form 2025 prints it.
+fn kennzahl(key: &str) -> Option<&'static str> {
+    Some(match key {
+        "12" => "111",
+        "15" => "112",
+        "16" => "103",
+        "17" => "140",
+        "18" => "141",
+        "27" => "100",
+        "29" => "110",
+        "30" => "120",
+        "32" => "131",
+        "33" => "130",
+        "36" => "132",
+        "38" => "135",
+        "39" => "150",
+        "40" => "152",
+        "41" => "151",
+        "42" => "153",
+        "43" => "280",
+        "44" => "221",
+        "45" => "281",
+        "46" => "194",
+        "47" => "222",
+        "48" => "225",
+        "49" => "223",
+        "50" => "228",
+        "51" => "229",
+        "52" => "226",
+        "53" => "227",
+        "54" => "224",
+        "55" => "232",
+        "56" => "234",
+        "57" => "185",
+        "58" => "186",
+        "60" => "183",
+        "62" => "174",
+        "62_nd" => "164",
+        "63" => "175",
+        "63_nd" => "165",
+        "64" => "171",
+        "66" => "163",
+        "68" => "144",
+        "69" => "145",
+        "70" => "146",
+        "71" => "147",
+        "72" => "142",
+        "73" => "176",
+        "74" => "139",
+        _ => return None,
+    })
+}
+
 #[derive(Debug, Clone, Serialize, ToSchema)]
 pub struct Euer {
     /// One entry per Zeile with an amount, in the order of the form.
@@ -675,20 +754,40 @@ pub async fn euer(
         } else {
             part.amount
         };
-        let lines = match line {
-            PropertyMaintenance => vec![PropertyCosts, PropertyMaintenance],
-            _ => vec![line],
-        };
-        for line in lines {
+        let key = |line: EuerLine| {
             let key = serde_json::to_value(line).expect("lines serialize");
-            let key = key.as_str().expect("lines are strings");
-            figures.add(key, part.posting, amount);
-            keys.insert((line, key.to_owned()));
+            key.as_str().expect("lines are strings").to_owned()
+        };
+        let shares = match line {
+            PropertyMaintenance => vec![
+                (PropertyCosts, key(PropertyCosts), amount),
+                (line, key(line), amount),
+            ],
+            // § 4 Abs. 5 Satz 1 Nr. 2 EStG; the rounding goes to the non-deductible share
+            Entertainment => {
+                let deductible = round(Decimal::from(amount) * Decimal::new(7, 1));
+                vec![
+                    (line, key(line), deductible),
+                    (
+                        line,
+                        ENTERTAINMENT_NON_DEDUCTIBLE.to_owned(),
+                        amount - deductible,
+                    ),
+                ]
+            }
+            _ => vec![(line, key(line), amount)],
+        };
+        for (line, key, amount) in shares {
+            figures.add(&key, part.posting, amount);
+            keys.insert((line, key));
         }
     }
     let lines: Vec<Figure> = keys
         .iter()
-        .map(|(_, key)| figures.figure(&journal, key, false))
+        .map(|(_, key)| Figure {
+            kennzahl: kennzahl(key).map(str::to_owned),
+            ..figures.figure(&journal, key, false)
+        })
         .filter(|f| f.amount != 0 || !f.sources.is_empty())
         .collect();
     let income = keys
@@ -698,7 +797,7 @@ pub async fn euer(
         .sum::<i64>();
     let expenses = keys
         .iter()
-        .filter(|(line, _)| !line.income())
+        .filter(|(line, key)| !line.income() && key != ENTERTAINMENT_NON_DEDUCTIBLE)
         .map(|(line, key)| line.expense_sign() * figures.total(key))
         .sum::<i64>();
     Ok(Euer {
