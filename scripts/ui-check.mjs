@@ -395,6 +395,8 @@ try {
 	await api('POST', `/api/receipts/${hosting.id}/book`, { paid_from: null });
 	await api('POST', `/api/receipts/${hosting.id}/payments`, { date: '2026-03-10', amount: 11900 });
 	const photo = await uploadReceipt('bon.png', 'image/png', null);
+	// a chair booked on a fixed-asset account without registering it as an asset
+	const chair = await uploadReceipt('stuhl.png', 'image/png', null);
 	const restaurant = await api('POST', '/api/suppliers', { name: 'Gasthaus Linde', city: 'Dresden' });
 	// a bank account with a statement: one transaction matched, three to match
 	const girokonto = await api('POST', '/api/bank-accounts', {
@@ -432,11 +434,17 @@ try {
 		date: '2026-04-03',
 		lines: [{ description: 'Geschäftsessen mit Kundin', account_id: account('4650'), net: 4000, vat_rate: '19' }]
 	});
+	await api('PUT', `/api/receipts/${chair.id}`, {
+		supplier_id: restaurant.id,
+		date: '2026-05-06',
+		lines: [{ description: 'Bürostuhl', account_id: account('0420'), net: 45000, vat_rate: '19' }]
+	});
+	await api('POST', `/api/receipts/${chair.id}/book`, { paid_from: null });
 
 
-	// fixed assets: a laptop depreciated over three years and a low-value monitor
+	// fixed assets bought before the books started: a laptop over three years and a low-value monitor
 	await api('POST', '/api/postings', {
-		date: '2026-04-15',
+		date: '2025-01-01',
 		description: 'Laptop und Monitor',
 		lines: [
 			{ account_id: account('0420'), amount: 180000 },
@@ -450,7 +458,7 @@ try {
 		method: 'straight_line',
 		life_years: 3,
 		account_id: account('0420'),
-		acquired: '2026-04-15',
+		acquired: '2024-11-15',
 		cost: 180000
 	});
 	await api('POST', '/api/assets', {
@@ -458,7 +466,7 @@ try {
 		kind: 'office',
 		method: 'low_value',
 		account_id: account('0480'),
-		acquired: '2026-04-15',
+		acquired: '2024-11-15',
 		cost: 30000
 	});
 	await api('POST', `/api/documents/${quote.id}/outcome`, { outcome: 'accepted' });
@@ -501,6 +509,18 @@ try {
 	await screen('receipts', `${origin}/receipts`);
 	await screen('receipt-draft', `${origin}/receipts/${photo.id}`);
 	await screen('receipt-booked', `${origin}/receipts/${hosting.id}`);
+	await screen('receipt-needs-asset', `${origin}/receipts/${chair.id}`);
+	await screen('confirm-dialog', `${origin}/receipts/${photo.id}`, async () => {
+		await until('the receipt', () => evaluate("!!document.querySelector('.page-head .row button.ghost')"));
+		await click('.page-head .row button.ghost');
+		await until('the dialog', () => evaluate("[...document.querySelectorAll('dialog')].some((d) => d.open)"));
+	});
+	await screen('prompt-dialog', `${origin}/documents/${quote.id}`, async () => {
+		const partial = "[...document.querySelectorAll('button')].find((b) => b.textContent.includes('Abschlagsrechnung'))";
+		await until('the quote', () => evaluate(`!!${partial}`));
+		await evaluate(`${partial}.click()`);
+		await until('the dialog', () => evaluate("!!document.querySelector('dialog[open] input')"));
+	});
 	await screen('suppliers', `${origin}/suppliers`);
 	await screen('open-items', `${origin}/open-items`);
 	await screen('document-dunning', `${origin}/documents/${dunning.id}`);
@@ -531,6 +551,13 @@ try {
 		await click('[role=radiogroup] [role=radio]:nth-child(2)');
 		await until('the EÜR', () => evaluate("!!document.querySelector('.totals')"));
 	});
+	await screen('tax-euer-elster', `${origin}/tax`, async () => {
+		await until('the books', () => evaluate("!!document.querySelector('[role=radiogroup]')"));
+		await click('[role=radiogroup] [role=radio]:nth-child(2)');
+		await until('the EÜR', () => evaluate("document.querySelectorAll('[role=radiogroup]').length === 2"));
+		await evaluate("document.querySelectorAll('[role=radiogroup]')[1].querySelector('[role=radio]:nth-child(2)').click()");
+		await until('the entries', () => evaluate("!!document.querySelector('.elster-row')"));
+	});
 	await screen('tax-exports', `${origin}/tax`, async () => {
 		await until('the books', () => evaluate("!!document.querySelector('[role=radiogroup]')"));
 		await click('[role=radiogroup] [role=radio]:nth-child(3)');
@@ -540,7 +567,6 @@ try {
 		await until('the books', () => evaluate("!!document.querySelector('[role=radiogroup]')"));
 		await click('[role=radiogroup] [role=radio]:nth-child(4)');
 		await until('the calendar', () => evaluate("!!document.querySelector('.deadlines') && !!document.querySelector('section .row button')"));
-		await evaluate('window.confirm = () => true');
 		await click('section .row button.primary');
 		await until('the link', () => evaluate("!!document.querySelector('.link input')"));
 	});
