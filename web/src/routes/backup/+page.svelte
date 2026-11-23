@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { api, call, type ApiError, type Schemas } from '#lib/api/index.ts';
 	import Icon from '#lib/components/Icon.svelte';
+	import { confirm } from '#lib/confirm.svelte.ts';
 	import { i18n, t } from '#lib/i18n.svelte.ts';
 	import { toast } from '#lib/toast.svelte.ts';
 
@@ -28,7 +29,7 @@
 	}
 
 	async function resync() {
-		if (!confirm(t('mirror.resync_confirm'))) return;
+		if (!(await confirm({ text: t('mirror.resync_confirm'), action: t('mirror.resync') }))) return;
 		const result = await call(api.POST('/api/mirror/resync'));
 		error = result.error;
 		if (result.error) return;

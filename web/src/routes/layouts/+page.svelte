@@ -4,6 +4,7 @@
 	import Field from '#lib/components/Field.svelte';
 	import Icon from '#lib/components/Icon.svelte';
 	import { kindLabel, kinds, type Kind } from '#lib/documents.ts';
+	import { confirm } from '#lib/confirm.svelte.ts';
 	import { t } from '#lib/i18n.svelte.ts';
 	import { toast } from '#lib/toast.svelte.ts';
 
@@ -74,7 +75,7 @@
 	}
 
 	async function remove(layout: Layout) {
-		if (!confirm(t('layouts.delete_confirm', { name: layout.name }))) return;
+		if (!(await confirm({ text: t('layouts.delete_confirm', { name: layout.name }), action: t('app.delete'), danger: true }))) return;
 		const result = await call(
 			api.DELETE('/api/layouts/{id}', { params: { path: { id: layout.id } } })
 		);

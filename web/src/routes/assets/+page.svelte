@@ -6,6 +6,7 @@
 	import Icon from '#lib/components/Icon.svelte';
 	import Segmented from '#lib/components/Segmented.svelte';
 	import { formatDay, today } from '#lib/dates.ts';
+	import { confirm } from '#lib/confirm.svelte.ts';
 	import { t } from '#lib/i18n.svelte.ts';
 	import { formatMoney, parseMoney } from '#lib/money.ts';
 	import { session } from '#lib/session.svelte.ts';
@@ -155,7 +156,7 @@
 	}
 
 	async function remove(asset: Schemas['AssetView']) {
-		if (!confirm(t('assets.delete_confirm'))) return;
+		if (!(await confirm({ text: t('assets.delete_confirm'), action: t('app.delete'), danger: true }))) return;
 		const result = await call(api.DELETE('/api/assets/{id}', { params: { path: { id: asset.id } } }));
 		error = result.error;
 		await load();

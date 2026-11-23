@@ -5,6 +5,7 @@
 	import Segmented from '#lib/components/Segmented.svelte';
 	import { formatDay, isoDay } from '#lib/dates.ts';
 	import { daysUntil, deadlineTitle, monthName } from '#lib/deadlines.ts';
+	import { confirm } from '#lib/confirm.svelte.ts';
 	import { t } from '#lib/i18n.svelte.ts';
 	import { formatMoney } from '#lib/money.ts';
 	import { session } from '#lib/session.svelte.ts';
@@ -121,7 +122,7 @@
 	});
 
 	async function closeYear(year: number) {
-		if (!confirm(t('tax.close_confirm', { year }))) return;
+		if (!(await confirm({ text: t('tax.close_confirm', { year }), action: t('tax.close_year', { year }), danger: true }))) return;
 		const result = await call(api.POST('/api/years/{year}/close', { params: { path: { year } } }));
 		error = result.error;
 		if (result.data) {
@@ -131,7 +132,7 @@
 	}
 
 	async function renewFeed() {
-		if (feed?.created_at && !confirm(t('tax.calendar_renew_confirm'))) return;
+		if (feed?.created_at && !(await confirm({ text: t('tax.calendar_renew_confirm'), action: t('tax.calendar_renew'), danger: true }))) return;
 		const result = await call(api.POST('/api/calendar-feed'));
 		error = result.error;
 		if (result.data) feed = result.data;

@@ -21,6 +21,7 @@
 	import { formatMoney, moneyInput, parseMoney } from '#lib/money.ts';
 	import { session } from '#lib/session.svelte.ts';
 	import { namePage } from '#lib/title.svelte.ts';
+	import { confirm, prompt } from '#lib/confirm.svelte.ts';
 	import { toast } from '#lib/toast.svelte.ts';
 
 	type Doc = Schemas['Document'];
@@ -167,12 +168,20 @@
 
 	async function issue() {
 		if (dirty && !(await save())) return;
-		if (!confirm(t('documents.issue_confirm'))) return;
+		if (!(await confirm({ text: t('documents.issue_confirm'), action: t('documents.issue') }))) return;
 		busy = true;
 		let result = await call(api.POST('/api/documents/{id}/issue', { params: { path: { id } } }));
 		// the books need the exchange rate of an invoice in another currency
 		if (result.error?.fields?.exchange_rate === 'required' && doc) {
-			const rate = prompt(t('documents.exchange_rate_prompt', { currency: doc.currency }))?.trim().replace(',', '.');
+			const rate = (
+				await prompt({
+					text: t('documents.exchange_rate_prompt', { currency: doc.currency }),
+					action: t('documents.issue'),
+					input: { label: t('receipts.exchange_rate'), inputmode: 'decimal', check: positiveRate }
+				})
+			)
+				?.trim()
+				.replace(',', '.');
 			if (rate) {
 				result = await call(
 					api.POST('/api/documents/{id}/issue', {
@@ -191,7 +200,7 @@
 	}
 
 	async function remove() {
-		if (!confirm(t('documents.delete_confirm'))) return;
+		if (!(await confirm({ text: t('documents.delete_confirm'), action: t('app.delete'), danger: true }))) return;
 		const result = await call(api.DELETE('/api/documents/{id}', { params: { path: { id } } }));
 		error = result.error;
 		if (!result.error) goto('/documents');
@@ -203,10 +212,23 @@
 		if (result.data) goto(`/documents/${result.data.id}`);
 	}
 
+	const positiveRate = (typed: string) =>
+		/^\d+([.,]\d+)?$/.test(typed.trim()) && Number(typed.trim().replace(',', '.')) > 0 ? undefined : t('field.invalid_format');
+	const percentOrEmpty = (typed: string) => {
+		const parsed = parseDecimal(typed);
+		return parsed === null || (typeof parsed === 'string' && Number(parsed) > 0 && Number(parsed) <= 100)
+			? undefined
+			: t('field.invalid_format');
+	};
+
 	async function followUp(kind: Kind, invoice_type?: Schemas['InvoiceType']) {
 		let percent: string | null = null;
 		if (invoice_type === 'partial') {
-			const typed = prompt(t('documents.partial_percent_prompt'));
+			const typed = await prompt({
+				text: t('documents.partial_percent_prompt'),
+				action: t('term.partial_invoice'),
+				input: { label: t('documents.partial_percent'), inputmode: 'decimal', check: percentOrEmpty }
+			});
 			if (typed == null) return;
 			const parsed = parseDecimal(typed);
 			percent = typeof parsed === 'string' ? parsed : null;
@@ -296,7 +318,7 @@
 	}
 
 	async function unpay(paymentId: number) {
-		if (!confirm(t('documents.payment_reverse_confirm'))) return;
+		if (!(await confirm({ text: t('documents.payment_reverse_confirm'), action: t('books.reverse'), danger: true }))) return;
 		const result = await call(api.POST('/api/payments/{id}/reverse', { params: { path: { id: paymentId } } }));
 		error = result.error;
 		const reload = await call(api.GET('/api/documents/{id}', { params: { path: { id } } }));

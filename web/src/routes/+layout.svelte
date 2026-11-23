@@ -7,6 +7,7 @@
 	import Icon, { type IconName } from '#lib/components/Icon.svelte';
 	import Logo from '#lib/components/Logo.svelte';
 	import Preferences from '#lib/components/Preferences.svelte';
+	import Confirm from '#lib/components/Confirm.svelte';
 	import Toaster from '#lib/components/Toaster.svelte';
 	import { i18n, t } from '#lib/i18n.svelte.ts';
 	import { applyTheme } from '#lib/preferences.svelte.ts';
@@ -223,6 +224,7 @@
 {/if}
 
 <Toaster />
+<Confirm />
 
 <style>
 	.shell {

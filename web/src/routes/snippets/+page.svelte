@@ -3,6 +3,7 @@
 	import Dialog from '#lib/components/Dialog.svelte';
 	import Field from '#lib/components/Field.svelte';
 	import Icon from '#lib/components/Icon.svelte';
+	import { confirm } from '#lib/confirm.svelte.ts';
 	import { t } from '#lib/i18n.svelte.ts';
 	import { toast } from '#lib/toast.svelte.ts';
 
@@ -45,7 +46,7 @@
 	}
 
 	async function remove(snippet: Schemas['Snippet']) {
-		if (!confirm(t('snippets.delete_confirm', { name: snippet.name }))) return;
+		if (!(await confirm({ text: t('snippets.delete_confirm', { name: snippet.name }), action: t('app.delete'), danger: true }))) return;
 		const result = await call(api.DELETE('/api/snippets/{id}', { params: { path: { id: snippet.id } } }));
 		error = result.error;
 		await load();
