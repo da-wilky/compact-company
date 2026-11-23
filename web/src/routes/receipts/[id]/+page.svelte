@@ -253,6 +253,14 @@
 		</p>
 	{/if}
 	{#if error}<p class="alert" role="alert">{t(error.message)}</p>{/if}
+	{#if receipt.status === 'booked' && !receipt.reversed}
+		{#each receipt.lines.filter((l) => l.needs_asset) as line (line.id)}
+			<p class="alert" role="status">
+				{t('receipts.needs_asset', { line: line.description })}
+				{#if owner}<a href="/assets?line={line.id}">{t('assets.new')}</a>{/if}
+			</p>
+		{/each}
+	{/if}
 
 	{#if receipt.file_deleted_at}
 		<p class="muted" role="status">{t('retention.file_deleted', { date: formatDay(isoDay(new Date(receipt.file_deleted_at * 1000)), { dateStyle: 'medium' }) })}</p>

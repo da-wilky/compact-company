@@ -9025,7 +9025,8 @@
           "pinned",
           "locked",
           "not_shown",
-          "taken"
+          "taken",
+          "after_books_start"
         ]
       },
       "Figure": {
@@ -10799,7 +10800,8 @@
           "description",
           "net",
           "vat_rate",
-          "tax"
+          "tax",
+          "needs_asset"
         ],
         "properties": {
           "account_id": {
@@ -10815,6 +10817,10 @@
           "id": {
             "type": "integer",
             "format": "int64"
+          },
+          "needs_asset": {
+            "type": "boolean",
+            "description": "On a fixed-asset account with no asset registered from it, so never depreciated."
           },
           "net": {
             "type": "integer",

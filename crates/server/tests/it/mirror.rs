@@ -287,3 +287,22 @@ async fn a_renamed_supplier_renames_its_receipts() {
         [format!("{year}/Receipts/{today} Meyer GmbH R-1.pdf")]
     );
 }
+
+#[tokio::test]
+async fn a_missing_mirror_folder_is_created() {
+    let (url, dav) = webdav().await;
+    dav.folders.lock().unwrap().clear();
+    let app = start(mirror_config(&url)).await;
+    let mut owner = app.setup_owner().await;
+
+    app.multipart(
+        &mut owner,
+        "POST",
+        "/api/receipts",
+        &[("file", Some("scan.pdf"), b"%PDF-1.4 receipt")],
+    )
+    .await;
+    assert_eq!(mirror::copy_due(&app.app).await.unwrap(), 1);
+    assert!(dav.folders.lock().unwrap().contains(""));
+    assert_eq!(dav.files.lock().unwrap().len(), 1);
+}

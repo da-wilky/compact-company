@@ -26,6 +26,10 @@ async fn account(app: &TestApp, owner: &mut Browser, number: &str) -> Value {
 
 /// An owner of a business on accrual with SKR 04 books from the first day of last year.
 async fn books(app: &TestApp) -> Browser {
+    books_from(app, &format!("{}-01-01", this_year() - 1)).await
+}
+
+async fn books_from(app: &TestApp, start_date: &str) -> Browser {
     let mut owner = app.setup_owner().await;
     app.ready_to_issue(&mut owner).await;
     app.ok(
@@ -43,7 +47,7 @@ async fn books(app: &TestApp) -> Browser {
         &mut owner,
         "POST",
         "/api/books",
-        json!({ "chart": "skr04", "start_date": format!("{}-01-01", this_year() - 1) }),
+        json!({ "chart": "skr04", "start_date": start_date }),
     )
     .await;
     owner
@@ -156,6 +160,35 @@ async fn a_laptop_depreciates_pro_rata_and_a_monitor_is_written_off_at_once() {
         .await;
     assert_eq!(laptop["cost"], 180_000);
     assert_eq!(laptop["acquired"], format!("{last}-04-15"));
+    let booked = app.ok(&mut owner, "GET", &path, json!({})).await;
+    let needs_asset: Vec<_> = booked["lines"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|l| {
+            (
+                l["description"].as_str().unwrap(),
+                l["needs_asset"].as_bool().unwrap(),
+            )
+        })
+        .collect();
+    assert_eq!(needs_asset, [("Laptop", false), ("Monitor", true)]);
+
+    let (status_code, error) = status(
+        &app,
+        &mut owner,
+        "POST",
+        "/api/assets",
+        json!({ "name": "Drucker", "kind": "office", "method": "straight_line",
+                "life_years": 3, "account_id": office, "acquired": format!("{last}-01-01"),
+                "cost": 50_000 }),
+    )
+    .await;
+    assert_eq!(status_code, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(
+        error["fields"]["acquired"], "after_books_start",
+        "bought within the books, it comes from its receipt line"
+    );
     assert_eq!(laptop["schedule"][0]["depreciation"], 45_000);
     app.ok(
         &mut owner,
@@ -260,8 +293,9 @@ async fn a_laptop_depreciates_pro_rata_and_a_monitor_is_written_off_at_once() {
 #[tokio::test]
 async fn a_disposal_books_depreciation_through_its_month_and_writes_off_the_rest() {
     let app = start(Config::default()).await;
-    let mut owner = books(&app).await;
     let (last, this) = (this_year() - 1, this_year());
+    // bought before the books started, so entered by hand with an opening posting
+    let mut owner = books_from(&app, &format!("{last}-02-01")).await;
     let bank = account(&app, &mut owner, "1800").await["id"].clone();
     let mut by_hand = async |number: &str, name: &str, kind: &str, cost: i64, life: i16| {
         let id = account(&app, &mut owner, number).await["id"].clone();
@@ -269,7 +303,7 @@ async fn a_disposal_books_depreciation_through_its_month_and_writes_off_the_rest
             &mut owner,
             "POST",
             "/api/postings",
-            json!({ "date": format!("{last}-01-10"), "description": name, "lines": [
+            json!({ "date": format!("{last}-02-01"), "description": name, "lines": [
                 { "account_id": id, "amount": cost }, { "account_id": bank, "amount": -cost }
             ] }),
         )
