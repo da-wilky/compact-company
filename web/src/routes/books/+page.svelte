@@ -7,6 +7,7 @@
 	import Icon from '#lib/components/Icon.svelte';
 	import Segmented from '#lib/components/Segmented.svelte';
 	import { formatDay, today } from '#lib/dates.ts';
+	import { confirm } from '#lib/confirm.svelte.ts';
 	import { t } from '#lib/i18n.svelte.ts';
 	import { formatMoney, parseMoney } from '#lib/money.ts';
 	import { session } from '#lib/session.svelte.ts';
@@ -142,7 +143,7 @@
 	}
 
 	async function reverse(p: Schemas['Posting']) {
-		if (!confirm(t('books.reverse_confirm'))) return;
+		if (!(await confirm({ text: t('books.reverse_confirm'), action: t('books.reverse'), danger: true }))) return;
 		const result = await call(
 			api.POST('/api/postings/{id}/reverse', { params: { path: { id: p.id } }, body: {} })
 		);
@@ -427,7 +428,11 @@
 				{/each}
 			</select>
 		</Field>
-		<Field label={t('books.euer_line')} error={accountError?.fields?.euer_line}>
+		<Field
+			label={t('books.euer_line')}
+			error={accountError?.fields?.euer_line}
+			note={euerLine && ['64', '66', '72', '73', '74'].includes(euerLine) ? t('books.euer_line_no_money') : undefined}
+		>
 			<select bind:value={euerLine}>
 				<option value={null}>{t('books.euer_none')}</option>
 				{#each euerLines as line (line)}

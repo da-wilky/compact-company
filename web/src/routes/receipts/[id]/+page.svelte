@@ -6,6 +6,7 @@
 	import Field from '#lib/components/Field.svelte';
 	import Icon from '#lib/components/Icon.svelte';
 	import { formatDay, isoDay, today } from '#lib/dates.ts';
+	import { confirm } from '#lib/confirm.svelte.ts';
 	import { t } from '#lib/i18n.svelte.ts';
 	import { formatMoney, moneyInput, parseMoney } from '#lib/money.ts';
 	import { session } from '#lib/session.svelte.ts';
@@ -138,7 +139,7 @@
 	let paidFrom = $state<number | null>(null);
 	async function book() {
 		if (!(await save())) return;
-		if (!confirm(t('receipts.book_confirm'))) return;
+		if (!(await confirm({ text: t('receipts.book_confirm'), action: t('books.book') }))) return;
 		busy = true;
 		const result = await call(
 			api.POST('/api/receipts/{id}/book', { params: { path: { id } }, body: { paid_from: paidFrom } })
@@ -152,14 +153,14 @@
 	}
 
 	async function remove() {
-		if (!confirm(t('receipts.delete_confirm'))) return;
+		if (!(await confirm({ text: t('receipts.delete_confirm'), action: t('app.delete'), danger: true }))) return;
 		const result = await call(api.DELETE('/api/receipts/{id}', { params: { path: { id } } }));
 		error = result.error;
 		if (!result.error) goto('/receipts');
 	}
 
 	async function reverse() {
-		if (!confirm(t('receipts.reverse_confirm'))) return;
+		if (!(await confirm({ text: t('receipts.reverse_confirm'), action: t('books.reverse'), danger: true }))) return;
 		const result = await call(api.POST('/api/receipts/{id}/reverse', { params: { path: { id } } }));
 		error = result.error;
 		if (result.data) show(result.data);
@@ -214,7 +215,7 @@
 	}
 
 	async function unpay(paymentId: number) {
-		if (!confirm(t('documents.payment_reverse_confirm'))) return;
+		if (!(await confirm({ text: t('documents.payment_reverse_confirm'), action: t('books.reverse'), danger: true }))) return;
 		const result = await call(api.POST('/api/receipt-payments/{id}/reverse', { params: { path: { id: paymentId } } }));
 		error = result.error;
 		await load();

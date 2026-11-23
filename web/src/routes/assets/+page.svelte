@@ -6,6 +6,7 @@
 	import Icon from '#lib/components/Icon.svelte';
 	import Segmented from '#lib/components/Segmented.svelte';
 	import { formatDay, today } from '#lib/dates.ts';
+	import { confirm } from '#lib/confirm.svelte.ts';
 	import { t } from '#lib/i18n.svelte.ts';
 	import { formatMoney, parseMoney } from '#lib/money.ts';
 	import { session } from '#lib/session.svelte.ts';
@@ -28,13 +29,17 @@
 		const result = await call(api.GET('/api/assets'));
 		view = result.data;
 		error = result.error;
+	}
+
+	// a receipt's link to register the asset of one of its lines
+	load().then(() => {
 		const line = Number(page.url.searchParams.get('line'));
-		if (line && view?.candidates.some((c) => c.receipt_line_id === line)) {
+		if (owner && line && view?.candidates.some((c) => c.receipt_line_id === line)) {
 			edit();
 			lineId = line;
 			chooseLine();
 		}
-	}
+	});
 
 	async function loadAccounts() {
 		const result = await call(api.GET('/api/accounts', { params: { query: { archived: false } } }));
@@ -46,7 +51,6 @@
 		register = result.data;
 	}
 
-	load();
 	loadAccounts();
 	$effect(() => {
 		if (tab !== 'register') return;
@@ -155,7 +159,7 @@
 	}
 
 	async function remove(asset: Schemas['AssetView']) {
-		if (!confirm(t('assets.delete_confirm'))) return;
+		if (!(await confirm({ text: t('assets.delete_confirm'), action: t('app.delete'), danger: true }))) return;
 		const result = await call(api.DELETE('/api/assets/{id}', { params: { path: { id: asset.id } } }));
 		error = result.error;
 		await load();

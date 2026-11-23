@@ -4,6 +4,7 @@
 	import Field from '#lib/components/Field.svelte';
 	import Icon from '#lib/components/Icon.svelte';
 	import Preferences from '#lib/components/Preferences.svelte';
+	import { confirm } from '#lib/confirm.svelte.ts';
 	import { i18n, t } from '#lib/i18n.svelte.ts';
 	import { session } from '#lib/session.svelte.ts';
 	import { toast } from '#lib/toast.svelte.ts';
@@ -85,7 +86,7 @@
 	}
 
 	async function revoke(token: Schemas['Token']) {
-		if (!confirm(t('tokens.revoke_confirm', { name: token.name }))) return;
+		if (!(await confirm({ text: t('tokens.revoke_confirm', { name: token.name }), action: t('tokens.revoke'), danger: true }))) return;
 		const result = await call(api.DELETE('/api/tokens/{id}', { params: { path: { id: token.id } } }));
 		if (result.data) tokens = result.data;
 		tokenError = result.error;

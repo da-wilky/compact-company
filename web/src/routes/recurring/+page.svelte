@@ -6,6 +6,7 @@
 	import Segmented from '#lib/components/Segmented.svelte';
 	import { decimalInput, parseDecimal, units } from '#lib/documents.ts';
 	import { formatDay } from '#lib/dates.ts';
+	import { confirm } from '#lib/confirm.svelte.ts';
 	import { t } from '#lib/i18n.svelte.ts';
 	import { moneyInput, parseMoney } from '#lib/money.ts';
 	import { session } from '#lib/session.svelte.ts';
@@ -123,7 +124,7 @@
 	}
 
 	async function remove() {
-		if (!editing || !confirm(t('recurring.delete_confirm'))) return;
+		if (!editing || !(await confirm({ text: t('recurring.delete_confirm'), action: t('app.delete'), danger: true }))) return;
 		const result = await call(api.DELETE('/api/recurring-invoices/{id}', { params: { path: { id: editing } } }));
 		formError = result.error;
 		if (!result.error) {

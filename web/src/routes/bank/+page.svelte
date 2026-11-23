@@ -5,6 +5,7 @@
 	import Icon from '#lib/components/Icon.svelte';
 	import Segmented from '#lib/components/Segmented.svelte';
 	import { formatDay } from '#lib/dates.ts';
+	import { confirm } from '#lib/confirm.svelte.ts';
 	import { t } from '#lib/i18n.svelte.ts';
 	import { formatMoney, moneyInput, parseMoney } from '#lib/money.ts';
 	import { session } from '#lib/session.svelte.ts';
@@ -207,7 +208,7 @@
 	}
 
 	async function unmatch(transaction: Schemas['BankTransaction']) {
-		if (!confirm(t('bank.unmatch_confirm'))) return;
+		if (!(await confirm({ text: t('bank.unmatch_confirm'), action: t('bank.unmatch'), danger: true }))) return;
 		const result = await call(api.POST('/api/bank-transactions/{id}/unmatch', { params: { path: { id: transaction.id } } }));
 		error = result.error;
 		await Promise.all([loadBanks(), loadTransactions()]);

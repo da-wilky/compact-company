@@ -13,7 +13,7 @@ export async function createPasskey(options: { [key: string]: unknown }): Promis
 		residentKey: 'required',
 		requireResidentKey: true
 	};
-	return prompt(() => navigator.credentials.create({ publicKey }));
+	return ceremony(() => navigator.credentials.create({ publicKey }));
 }
 
 /** Lets the user pick one of their passkeys for the server's sign-in options. */
@@ -21,10 +21,10 @@ export async function usePasskey(options: { [key: string]: unknown }): Promise<R
 	const publicKey = PublicKeyCredential.parseRequestOptionsFromJSON(
 		options.publicKey as PublicKeyCredentialRequestOptionsJSON
 	);
-	return prompt(() => navigator.credentials.get({ publicKey }));
+	return ceremony(() => navigator.credentials.get({ publicKey }));
 }
 
-async function prompt(ask: () => Promise<Credential | null>): Promise<Result> {
+async function ceremony(ask: () => Promise<Credential | null>): Promise<Result> {
 	try {
 		const credential = (await ask()) as PublicKeyCredential | null;
 		if (credential) return { credential: credential.toJSON() };

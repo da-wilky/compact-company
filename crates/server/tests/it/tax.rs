@@ -373,13 +373,27 @@ async fn expenses_land_on_their_own_zeile_and_corrections_change_the_sum() {
     let telephone = account(&app, &mut owner, "6805").await;
     assert_eq!(telephone["euer_line"], "43");
     let advertising = account(&app, &mut owner, "6600").await["id"].clone();
-    for (account, amount) in [
-        (telephone["id"].clone(), 10_000),
-        (advertising, 5_000),
-        (property, 20_000),
-        (repairs, 8_000),
-        (commute, 3_000),
-        (allowance, 4_000),
+    let travel = account(&app, &mut owner, "6673").await["id"].clone();
+    let deposits = account(&app, &mut owner, "2180").await["id"].clone();
+    // corrections that move no money are booked against an account outside the EÜR
+    let clearing = app
+        .ok(
+            &mut owner,
+            "POST",
+            "/api/accounts",
+            json!({ "number": "2190", "name": "Verrechnung", "type": "equity" }),
+        )
+        .await["id"]
+        .clone();
+    for (account, from, amount) in [
+        (telephone["id"].clone(), &bank, 10_000),
+        (advertising, &bank, 5_000),
+        (property, &bank, 20_000),
+        (repairs, &bank, 8_000),
+        // a commuting ticket: paid on 70, taken off again on 72, the allowance added on 73
+        (travel, &bank, 3_000),
+        (commute, &clearing, 3_000),
+        (allowance, &deposits, 4_000),
     ] {
         app.ok(
             &mut owner,
@@ -387,7 +401,7 @@ async fn expenses_land_on_their_own_zeile_and_corrections_change_the_sum() {
             "/api/postings",
             json!({ "date": today, "description": "Ausgabe", "lines": [
                 { "account_id": account, "amount": amount },
-                { "account_id": bank, "amount": -amount }
+                { "account_id": from, "amount": -amount }
             ] }),
         )
         .await;
@@ -407,16 +421,17 @@ async fn expenses_land_on_their_own_zeile_and_corrections_change_the_sum() {
             ("42", 8_000),
             ("43", 10_000),
             ("54", 5_000),
+            ("70", 3_000),
             ("72", 3_000),
             ("73", 4_000)
         ])
     );
     assert_eq!(
         euer["expenses"],
-        28_000 + 10_000 + 5_000 - 3_000 + 4_000,
+        28_000 + 10_000 + 5_000 + 3_000 - 3_000 + 4_000,
         "Zeile 42 is part of 41, 72 is taken off and 73 added"
     );
-    assert_eq!(euer["profit"], -44_000);
+    assert_eq!(euer["profit"], -47_000);
 }
 
 #[tokio::test]
