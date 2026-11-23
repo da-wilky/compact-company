@@ -1,6 +1,9 @@
 use std::{
     collections::{BTreeMap, BTreeSet},
-    sync::Arc,
+    sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+    },
     time::Duration,
 };
 
@@ -25,6 +28,9 @@ pub struct Mirror {
     /// The path of the mirror's URL, as object_store reports listed folders.
     base: String,
     language: Option<Language>,
+    url: url::Url,
+    http: reqwest::Client,
+    base_created: AtomicBool,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -39,6 +45,8 @@ pub enum Error {
     Settings(#[from] crate::settings::Error),
     #[error("invalid mirror credentials: {0}")]
     Credentials(#[from] axum::http::header::InvalidHeaderValue),
+    #[error("the mirror folder {0} can't be created: {1}")]
+    Base(url::Url, String),
 }
 
 impl Mirror {
@@ -47,6 +55,12 @@ impl Mirror {
         let mut auth = HeaderValue::from_str(&format!("Basic {credentials}"))?;
         auth.set_sensitive(true);
         let headers = HeaderMap::from_iter([(axum::http::header::AUTHORIZATION, auth)]);
+        let http = reqwest::Client::builder()
+            .default_headers(headers.clone())
+            .redirect(reqwest::redirect::Policy::none())
+            .timeout(Duration::from_secs(30))
+            .build()
+            .map_err(|e| Error::Base(config.url.clone(), e.to_string()))?;
         let store = HttpBuilder::new()
             .with_url(config.url.as_str())
             .with_client_options(
@@ -68,7 +82,32 @@ impl Mirror {
                 .decode_utf8_lossy()
                 .into_owned(),
             language,
+            url: config.url.clone(),
+            http,
+            base_created: AtomicBool::new(false),
         })
+    }
+
+    /// object_store creates missing folders below the URL, but not the URL's own folder.
+    async fn create_base(&self) -> Result<(), Error> {
+        if self.base_created.load(Ordering::Relaxed) {
+            return Ok(());
+        }
+        let failed = |reason: String| Error::Base(self.url.clone(), reason);
+        let mkcol = reqwest::Method::from_bytes(b"MKCOL").expect("valid method");
+        let status = self
+            .http
+            .request(mkcol, self.url.clone())
+            .send()
+            .await
+            .map_err(|e| failed(e.to_string()))?
+            .status();
+        // 405: the folder exists already
+        if !(status.is_success() || status == reqwest::StatusCode::METHOD_NOT_ALLOWED) {
+            return Err(failed(status.to_string()));
+        }
+        self.base_created.store(true, Ordering::Relaxed);
+        Ok(())
     }
 }
 
@@ -235,6 +274,7 @@ async fn copy(
     subject: &str,
     force: bool,
 ) -> Result<(), Error> {
+    mirror.create_base().await?;
     let wanted = wanted(app, language, subject).await?;
     let held: BTreeMap<String, String> =
         sqlx::query_as("SELECT path, hash FROM mirror_file WHERE subject = ?")

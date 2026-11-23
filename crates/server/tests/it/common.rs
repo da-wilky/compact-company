@@ -448,7 +448,9 @@ pub async fn webdav() -> (String, Arc<Dav>) {
                     files.insert(path, body.to_vec());
                     StatusCode::CREATED.into_response()
                 }
-                "MKCOL" if !dirs.contains(&parent) => StatusCode::CONFLICT.into_response(),
+                "MKCOL" if !path.is_empty() && !dirs.contains(&parent) => {
+                    StatusCode::CONFLICT.into_response()
+                }
                 "MKCOL" if dirs.contains(&path) => StatusCode::METHOD_NOT_ALLOWED.into_response(),
                 "MKCOL" => {
                     dirs.insert(path);
