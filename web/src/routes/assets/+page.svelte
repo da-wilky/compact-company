@@ -29,13 +29,17 @@
 		const result = await call(api.GET('/api/assets'));
 		view = result.data;
 		error = result.error;
+	}
+
+	// a receipt's link to register the asset of one of its lines
+	load().then(() => {
 		const line = Number(page.url.searchParams.get('line'));
-		if (line && view?.candidates.some((c) => c.receipt_line_id === line)) {
+		if (owner && line && view?.candidates.some((c) => c.receipt_line_id === line)) {
 			edit();
 			lineId = line;
 			chooseLine();
 		}
-	}
+	});
 
 	async function loadAccounts() {
 		const result = await call(api.GET('/api/accounts', { params: { query: { archived: false } } }));
@@ -47,7 +51,6 @@
 		register = result.data;
 	}
 
-	load();
 	loadAccounts();
 	$effect(() => {
 		if (tab !== 'register') return;

@@ -102,9 +102,10 @@ impl Mirror {
             .await
             .map_err(|e| failed(e.to_string()))?
             .status();
-        // 405: the folder exists already
-        if !(status.is_success() || status == reqwest::StatusCode::METHOD_NOT_ALLOWED) {
-            return Err(failed(status.to_string()));
+        // 409 means the folder above is missing too; anything else (405 for an existing folder, or
+        // a server that refuses MKCOL on a folder it has) leaves the copies to show what is wrong
+        if status == reqwest::StatusCode::CONFLICT {
+            return Err(failed("the folder above it doesn't exist".to_owned()));
         }
         self.base_created.store(true, Ordering::Relaxed);
         Ok(())

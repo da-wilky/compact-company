@@ -428,7 +428,11 @@
 				{/each}
 			</select>
 		</Field>
-		<Field label={t('books.euer_line')} error={accountError?.fields?.euer_line}>
+		<Field
+			label={t('books.euer_line')}
+			error={accountError?.fields?.euer_line}
+			note={euerLine && ['64', '66', '72', '73', '74'].includes(euerLine) ? t('books.euer_line_no_money') : undefined}
+		>
 			<select bind:value={euerLine}>
 				<option value={null}>{t('books.euer_none')}</option>
 				{#each euerLines as line (line)}

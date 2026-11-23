@@ -37,8 +37,10 @@
 
 	let vatYear = $state(lastPeriod(null).year);
 	let period = $state(lastPeriod(null).period);
+	let periodKnown = $state(false);
 	call(api.GET('/api/business')).then((result) => {
 		({ year: vatYear, period } = lastPeriod(result.data?.values.vat_period));
+		periodKnown = true;
 	});
 	let euerYear = $state(now.getFullYear() - (now.getMonth() < 6 ? 1 : 0));
 
@@ -75,7 +77,10 @@
 	}
 
 	async function loadVat() {
-		const result = await call(api.GET('/api/tax/vat-return', { params: { query: range(vatYear, period) } }));
+		const asked = range(vatYear, period);
+		const result = await call(api.GET('/api/tax/vat-return', { params: { query: asked } }));
+		// a slower answer for a period chosen before must not overwrite the current one
+		if (asked.from !== range(vatYear, period).from || asked.to !== range(vatYear, period).to) return;
 		vat = result.data;
 		error = result.error;
 	}
@@ -88,7 +93,7 @@
 
 	loadBooks();
 	$effect(() => {
-		if (!books?.books || tab !== 'vat') return;
+		if (!books?.books || tab !== 'vat' || !periodKnown) return;
 		vatYear;
 		period;
 		loadVat();

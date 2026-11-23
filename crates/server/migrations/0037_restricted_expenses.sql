@@ -27,7 +27,14 @@ SELECT id, number, name, type, role, archived, euer_line FROM ledger_account;
 DROP TABLE ledger_account;
 ALTER TABLE ledger_account_new RENAME TO ledger_account;
 
--- gifts and meal allowances, seeded since
+-- gifts and meal allowances, seeded since; accounts of those numbers still on Zeile 60 move
+UPDATE ledger_account SET euer_line = CASE number
+    WHEN '6610' THEN '62' WHEN '4630' THEN '62'
+    WHEN '6620' THEN '62_nd' WHEN '4635' THEN '62_nd'
+    ELSE '64' END
+WHERE euer_line = '60' AND type = 'expense' AND number IN (
+    SELECT value FROM json_each(CASE (SELECT chart FROM books)
+        WHEN 'skr04' THEN '["6610","6620","6674"]' ELSE '["4630","4635","4674"]' END));
 INSERT OR IGNORE INTO ledger_account (number, name, type, euer_line)
 SELECT CASE chart WHEN 'skr04' THEN '6610' ELSE '4630' END,
     'Geschenke abzugsfähig ohne § 37b EStG', 'expense', '62'

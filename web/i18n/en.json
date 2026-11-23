@@ -142,6 +142,7 @@
   "books.difference": "Difference {amount}",
   "books.edit_account": "Edit ledger account",
   "books.euer_line": "EÜR line",
+  "books.euer_line_no_money": "No money moves here: book by hand, lump sums against private deposits, reductions (lines 72, 74) against an account without an EÜR line.",
   "books.euer_none": "Not in the EÜR",
   "books.intro": "{chart} since {start}, {taxation}.",
   "books.intro_not_started": "The journal, ledger accounts and balances of the business.",

@@ -142,6 +142,7 @@
   "books.difference": "Differenz {amount}",
   "books.edit_account": "Sachkonto bearbeiten",
   "books.euer_line": "EÜR-Zeile",
+  "books.euer_line_no_money": "Hier fließt kein Geld: von Hand buchen, Pauschalen gegen Privateinlagen, Kürzungen (Zeilen 72, 74) gegen ein Konto ohne EÜR-Zeile.",
   "books.euer_none": "Nicht in der EÜR",
   "books.intro": "{chart} seit {start}, {taxation}.",
   "books.intro_not_started": "Journal, Sachkonten und Salden des Unternehmens.",
