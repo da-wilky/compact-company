@@ -68,10 +68,66 @@ pub enum EuerLine {
     #[serde(rename = "39")]
     #[sqlx(rename = "39")]
     Rooms,
+    /// Aufwendungen für doppelte Haushaltsführung
+    #[serde(rename = "40")]
+    #[sqlx(rename = "40")]
+    DoubleHousehold,
+    /// Sonstige Aufwendungen für betrieblich genutzte Grundstücke
+    #[serde(rename = "41")]
+    #[sqlx(rename = "41")]
+    PropertyCosts,
+    /// In Zeile 41 enthaltene Erhaltungsaufwendungen: counted in 41 too, and not again in the sum
+    #[serde(rename = "42")]
+    #[sqlx(rename = "42")]
+    PropertyMaintenance,
+    /// Aufwendungen für Telekommunikation
+    #[serde(rename = "43")]
+    #[sqlx(rename = "43")]
+    Telecom,
     /// Übernachtungs- und Reisenebenkosten
     #[serde(rename = "44")]
     #[sqlx(rename = "44")]
     Travel,
+    /// Fortbildungskosten
+    #[serde(rename = "45")]
+    #[sqlx(rename = "45")]
+    Training,
+    /// Kosten für Rechts- und Steuerberatung, Buchführung
+    #[serde(rename = "46")]
+    #[sqlx(rename = "46")]
+    Advice,
+    /// Miete/Leasing für bewegliche Wirtschaftsgüter (ohne Kfz)
+    #[serde(rename = "47")]
+    #[sqlx(rename = "47")]
+    Rental,
+    /// Erhaltungsaufwendungen (ohne Gebäude und Kfz)
+    #[serde(rename = "48")]
+    #[sqlx(rename = "48")]
+    Maintenance,
+    /// Beiträge, Gebühren, Abgaben und Versicherungen
+    #[serde(rename = "49")]
+    #[sqlx(rename = "49")]
+    Fees,
+    /// Laufende EDV-Kosten
+    #[serde(rename = "50")]
+    #[sqlx(rename = "50")]
+    ItCosts,
+    /// Arbeitsmittel
+    #[serde(rename = "51")]
+    #[sqlx(rename = "51")]
+    WorkEquipment,
+    /// Kosten für Abfallbeseitigung und Entsorgung
+    #[serde(rename = "52")]
+    #[sqlx(rename = "52")]
+    Waste,
+    /// Kosten für Verpackung und Transport
+    #[serde(rename = "53")]
+    #[sqlx(rename = "53")]
+    Packaging,
+    /// Werbekosten
+    #[serde(rename = "54")]
+    #[sqlx(rename = "54")]
+    Advertising,
     /// Schuldzinsen für Anlagevermögen
     #[serde(rename = "55")]
     #[sqlx(rename = "55")]
@@ -96,11 +152,48 @@ pub enum EuerLine {
     #[serde(rename = "63")]
     #[sqlx(rename = "63")]
     Entertainment,
+    /// Kfz: Leasingkosten
+    #[serde(rename = "68")]
+    #[sqlx(rename = "68")]
+    VehicleLeasing,
+    /// Kfz: Steuern, Versicherungen und Maut
+    #[serde(rename = "69")]
+    #[sqlx(rename = "69")]
+    VehicleTaxes,
+    /// Sonstige tatsächliche Fahrtkosten
+    #[serde(rename = "70")]
+    #[sqlx(rename = "70")]
+    TravelCosts,
+    /// Fahrtkosten für nicht zum Betriebsvermögen gehörende Fahrzeuge (Nutzungseinlage)
+    #[serde(rename = "71")]
+    #[sqlx(rename = "71")]
+    PrivateVehicle,
+    /// Fahrtkosten für Wege zwischen Wohnung und erster Betriebsstätte: taken off the expenses
+    #[serde(rename = "72")]
+    #[sqlx(rename = "72")]
+    Commute,
+    /// Mindestens abziehbare Fahrtkosten (Entfernungspauschale): added to the expenses
+    #[serde(rename = "73")]
+    #[sqlx(rename = "73")]
+    CommuteAllowance,
+    /// Nicht abziehbare Beträge, already in Zeilen 27 to 73: taken off the expenses
+    #[serde(rename = "74")]
+    #[sqlx(rename = "74")]
+    NonDeductible,
 }
 
 impl EuerLine {
     pub fn income(self) -> bool {
         self <= Self::VatRefunded
+    }
+
+    /// How the line's amount goes into the Summe Betriebsausgaben (Zeile 75).
+    fn expense_sign(self) -> i64 {
+        match self {
+            Self::PropertyMaintenance => 0,
+            Self::Commute | Self::NonDeductible => -1,
+            _ => 1,
+        }
     }
 
     /// Where a new account of `kind` counts unless the owner says otherwise.
@@ -131,6 +224,13 @@ impl EuerLine {
             "6895" => Self::DisposedBookValue,
             "7300" => Self::Interest,
             "6640" => Self::Entertainment,
+            "6805" | "6810" => Self::Telecom,
+            "6821" => Self::Training,
+            "6825" | "6830" => Self::Advice,
+            "6400" | "6420" => Self::Fees,
+            "6800" | "6815" | "6820" => Self::WorkEquipment,
+            "6600" => Self::Advertising,
+            "6530" | "6673" => Self::TravelCosts,
             _ => return Self::default_for(kind).filter(|_| kind == AccountType::Expense),
         })
     }
@@ -575,10 +675,16 @@ pub async fn euer(
         } else {
             part.amount
         };
-        let key = serde_json::to_value(line).expect("lines serialize");
-        let key = key.as_str().expect("lines are strings");
-        figures.add(key, part.posting, amount);
-        keys.insert((line, key.to_owned()));
+        let lines = match line {
+            PropertyMaintenance => vec![PropertyCosts, PropertyMaintenance],
+            _ => vec![line],
+        };
+        for line in lines {
+            let key = serde_json::to_value(line).expect("lines serialize");
+            let key = key.as_str().expect("lines are strings");
+            figures.add(key, part.posting, amount);
+            keys.insert((line, key.to_owned()));
+        }
     }
     let lines: Vec<Figure> = keys
         .iter()
@@ -593,7 +699,7 @@ pub async fn euer(
     let expenses = keys
         .iter()
         .filter(|(line, _)| !line.income())
-        .map(|(_, key)| figures.total(key))
+        .map(|(line, key)| line.expense_sign() * figures.total(key))
         .sum::<i64>();
     Ok(Euer {
         lines,

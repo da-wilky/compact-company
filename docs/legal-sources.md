@@ -156,6 +156,22 @@ BMF-Schreiben of 29.08.2025 with the form and its Anleitung. Read 2026-11-16 fro
 
 > Zeile 63 Aufwendungen für die Bewirtung von Personen aus geschäftlichem Anlass sind zu 70 % abziehbar und zu 30 % nicht abziehbar. Die hierauf entfallende Vorsteuer ist allerdings abziehbar, soweit die Aufwendungen angemessen und nachgewiesen sind, und insoweit in Zeile 57 zu erfassen.
 
+## Anlage EÜR 2025 – Zeilen 40–54, 64, 66 and 68–74
+
+Same BMF copy, read 2026-11-23. The form's Kennzahlen: 40 (152), 41 (151), 42 (153, "in Zeile 41 enthaltene Erhaltungsaufwendungen"), 43 (280), 45 (281), 46 (194), 47 (222), 48 (225), 49 (223), 50 (228), 51 (229), 52 (226), 53 (227), 54 (224), 64 (171), 66 (163), 68 (144), 69 (145), 70 (146), 71 (147), 72 (142, marked "−"), 73 (176, "+"), 74 (139, "−"); Entnahmen Zeile 106 (122), Einlagen Zeile 107 (123).
+
+> Zeile 64 Verpflegungsmehraufwendungen anlässlich einer Geschäftsreise oder einer betrieblich veranlassten doppelten Haushaltsführung sind hier zu erfassen. […] Aufwendungen für die Verpflegung sind unabhängig vom tatsächlichen Aufwand nur in Höhe der Pauschbeträge abziehbar. […] bei 24 Stunden Abwesenheit 28 € […] bei mehr als 8 Stunden Abwesenheit (ohne Übernachtung) oder An- und Abreisetag bei auswärtiger Übernachtung jeweils 14 €
+
+> Zeile 66 Unabhängig davon, ob ein Arbeitszimmer vorliegt, kann für jeden Kalendertag, an dem die betriebliche oder berufliche Tätigkeit überwiegend in der häuslichen Wohnung ausgeübt und die erste Tätigkeitsstätte nicht aufgesucht wird, für die gesamte betriebliche und berufliche Betätigung ein Betrag von 6 € (Tagespauschale), höchstens 1.260 € im Wj., abgezogen werden. […] Die Tagespauschale darf nicht abgezogen werden, soweit für die Wohnung Unterkunftskosten für eine doppelte Haushaltsführung abgezogen werden können. Dasselbe gilt, soweit tatsächliche Aufwendungen oder die Jahrespauschale für ein Arbeitszimmer abgezogen werden.
+
+> Zeile 72 […] Grundsätzlich darf nur die Entfernungspauschale als Betriebsausgabe berücksichtigt werden (vgl. Zeile 73). Deshalb werden hier zunächst die tatsächlichen Aufwendungen, die auf Wege zwischen Wohnung und erster Betriebsstätte entfallen, eingetragen (z. B. auch Kosten für öffentliche Verkehrsmittel). Sie mindern damit die tatsächlich ermittelten Gesamtaufwendungen (Beträge aus Zeilen 68 bis 70 zuzüglich AfA und Zinsen).
+
+> Zeile 73 Arbeitstage, an denen die erste Betriebsstätte aufgesucht wird x 0,30 €/km der einfachen Entfernung zwischen Wohnung und erster Betriebsstätte für die ersten 20 km und 0,38 € für jeden weiteren km.
+
+> Zeile 74 Hier sind Beträge einzutragen, die bereits in den Zeilen 27 bis 73 berücksichtigt worden sind und die den Gewinn nicht mindern dürfen […]
+
+For the app: Zeile 42 is shown but counted only within 41; 72 and 74 are taken off the expenses, 73 added. Their amounts come from accounts the owner maps to them.
+
 ## § 4 Abs. 5 and 7 EStG – Geschenke and Bewirtung
 
 Read 2026-11-16 at https://www.gesetze-im-internet.de/estg/__4.html. Not deductible are:

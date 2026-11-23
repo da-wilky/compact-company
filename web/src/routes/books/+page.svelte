@@ -162,7 +162,8 @@
 	let euerLine = $state<Schemas['EuerLine'] | null>(null);
 	let accountError = $state<ApiError>();
 	const euerLines: Schemas['EuerLine'][] = [
-		'12', '15', '16', '17', '18', '27', '29', '30', '32', '33', '36', '38', '39', '44', '55', '56', '57', '58', '60', '63'
+		'12', '15', '16', '17', '18', '27', '29', '30', '32', '33', '36', '38', '39', '40', '41', '42', '43', '44', '45', '46', '47',
+		'48', '49', '50', '51', '52', '53', '54', '55', '56', '57', '58', '60', '63', '68', '69', '70', '71', '72', '73', '74'
 	];
 	const lineDefault = (type: Schemas['AccountType']): Schemas['EuerLine'] | null =>
 		type === 'income' ? '15' : type === 'expense' ? '60' : null;

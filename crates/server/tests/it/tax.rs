@@ -340,3 +340,81 @@ async fn an_invoice_from_before_the_books_counts_when_paid_and_accounts_carry_th
         .await;
     assert_eq!(refused.status(), StatusCode::FORBIDDEN);
 }
+
+#[tokio::test]
+async fn expenses_land_on_their_own_zeile_and_corrections_change_the_sum() {
+    let app = start(Config::default()).await;
+    let mut owner = app.setup_owner().await;
+    let today = day(0);
+    let year = &today[..4];
+    app.ok(
+        &mut owner,
+        "POST",
+        "/api/books",
+        json!({ "chart": "skr04", "start_date": format!("{year}-01-01") }),
+    )
+    .await;
+    let bank = account(&app, &mut owner, "1800").await["id"].clone();
+    let mut own = async |number: &str, line: &str| {
+        app.ok(
+            &mut owner,
+            "POST",
+            "/api/accounts",
+            json!({ "number": number, "name": format!("Zeile {line}"), "type": "expense",
+                    "euer_line": line }),
+        )
+        .await["id"]
+            .clone()
+    };
+    let property = own("6350", "41").await;
+    let repairs = own("6335", "42").await;
+    let commute = own("6690", "72").await;
+    let allowance = own("6691", "73").await;
+    let telephone = account(&app, &mut owner, "6805").await;
+    assert_eq!(telephone["euer_line"], "43");
+    let advertising = account(&app, &mut owner, "6600").await["id"].clone();
+    for (account, amount) in [
+        (telephone["id"].clone(), 10_000),
+        (advertising, 5_000),
+        (property, 20_000),
+        (repairs, 8_000),
+        (commute, 3_000),
+        (allowance, 4_000),
+    ] {
+        app.ok(
+            &mut owner,
+            "POST",
+            "/api/postings",
+            json!({ "date": today, "description": "Ausgabe", "lines": [
+                { "account_id": account, "amount": amount },
+                { "account_id": bank, "amount": -amount }
+            ] }),
+        )
+        .await;
+    }
+    let euer = app
+        .ok(
+            &mut owner,
+            "GET",
+            &format!("/api/tax/euer?year={year}"),
+            json!({}),
+        )
+        .await;
+    assert_eq!(
+        amounts(&euer["lines"]),
+        expect(&[
+            ("41", 28_000),
+            ("42", 8_000),
+            ("43", 10_000),
+            ("54", 5_000),
+            ("72", 3_000),
+            ("73", 4_000)
+        ])
+    );
+    assert_eq!(
+        euer["expenses"],
+        28_000 + 10_000 + 5_000 - 3_000 + 4_000,
+        "Zeile 42 is part of 41, 72 is taken off and 73 added"
+    );
+    assert_eq!(euer["profit"], -44_000);
+}
