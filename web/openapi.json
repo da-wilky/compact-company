@@ -8922,9 +8922,23 @@
           "lines",
           "income",
           "expenses",
-          "profit"
+          "profit",
+          "entries",
+          "withdrawals",
+          "deposits"
         ],
         "properties": {
+          "deposits": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "entries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EuerEntry"
+            },
+            "description": "What each account adds to a line, as Mein ELSTER asks for single entries per line."
+          },
           "expenses": {
             "type": "integer",
             "format": "int64"
@@ -8944,6 +8958,42 @@
           "profit": {
             "type": "integer",
             "format": "int64"
+          },
+          "withdrawals": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Entnahmen (Zeile 106) and Einlagen (Zeile 107), EUR cents."
+          }
+        }
+      },
+      "EuerEntry": {
+        "type": "object",
+        "required": [
+          "key",
+          "account_id",
+          "number",
+          "name",
+          "amount"
+        ],
+        "properties": {
+          "account_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "amount": {
+            "type": "integer",
+            "format": "int64",
+            "description": "EUR cents."
+          },
+          "key": {
+            "type": "string",
+            "description": "The line's key, as in `lines`."
+          },
+          "name": {
+            "type": "string"
+          },
+          "number": {
+            "type": "string"
           }
         }
       },

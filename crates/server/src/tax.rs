@@ -291,6 +291,8 @@ struct PostingRow {
 #[derive(sqlx::FromRow)]
 struct AccountRow {
     id: i64,
+    number: String,
+    name: String,
     role: Option<String>,
     euer_line: Option<EuerLine>,
 }
@@ -309,7 +311,7 @@ struct Journal {
 impl Journal {
     async fn load(db: &mut SqliteConnection, from: &str, to: &str) -> Result<Self, Error> {
         let accounts: Vec<AccountRow> =
-            sqlx::query_as("SELECT id, role, euer_line FROM ledger_account")
+            sqlx::query_as("SELECT id, number, name, role, euer_line FROM ledger_account")
                 .fetch_all(&mut *db)
                 .await?;
         let accounts: BTreeMap<i64, AccountRow> = accounts.into_iter().map(|a| (a.id, a)).collect();
@@ -720,6 +722,22 @@ pub struct Euer {
     pub income: i64,
     pub expenses: i64,
     pub profit: i64,
+    /// What each account adds to a line, as Mein ELSTER asks for single entries per line.
+    pub entries: Vec<EuerEntry>,
+    /// Entnahmen (Zeile 106) and Einlagen (Zeile 107), EUR cents.
+    pub withdrawals: i64,
+    pub deposits: i64,
+}
+
+#[derive(Debug, Clone, Serialize, ToSchema)]
+pub struct EuerEntry {
+    /// The line's key, as in `lines`.
+    pub key: String,
+    pub account_id: i64,
+    pub number: String,
+    pub name: String,
+    /// EUR cents.
+    pub amount: i64,
 }
 
 /// The Anlage EÜR of a period: income when it arrives and expenses when they are paid
@@ -734,6 +752,7 @@ pub async fn euer(
     let journal = Journal::load(db, from, to).await?;
     let mut figures = Figures::default();
     let mut keys = BTreeSet::new();
+    let mut by_account: BTreeMap<(String, i64), i64> = BTreeMap::new();
     for part in &journal.realized {
         let Some(line) = journal.accounts[&part.account].euer_line else {
             continue;
@@ -779,9 +798,33 @@ pub async fn euer(
         };
         for (line, key, amount) in shares {
             figures.add(&key, part.posting, amount);
+            *by_account.entry((key.clone(), part.account)).or_default() += amount;
             keys.insert((line, key));
         }
     }
+    let entries = keys
+        .iter()
+        .flat_map(|(_, key)| by_account.range((key.clone(), i64::MIN)..=(key.clone(), i64::MAX)))
+        .filter(|(_, amount)| **amount != 0)
+        .map(|((key, account), amount)| {
+            let account = &journal.accounts[account];
+            EuerEntry {
+                key: key.clone(),
+                account_id: account.id,
+                number: account.number.clone(),
+                name: account.name.clone(),
+                amount: *amount,
+            }
+        })
+        .collect();
+    let on_role = |role: &str| -> i64 {
+        journal
+            .booked
+            .iter()
+            .filter(|p| journal.role(p.account) == Some(role))
+            .map(|p| p.amount)
+            .sum()
+    };
     let lines: Vec<Figure> = keys
         .iter()
         .map(|(_, key)| Figure {
@@ -805,5 +848,8 @@ pub async fn euer(
         income,
         expenses,
         profit: income - expenses,
+        entries,
+        withdrawals: on_role("private_withdrawals"),
+        deposits: -on_role("private_deposits"),
     })
 }

@@ -482,4 +482,29 @@ async fn bewirtung_is_split_70_30_and_only_deductible_gifts_count() {
     assert_eq!(kennzahlen, ["174", "164", "175", "165", "171"]);
     assert_eq!(euer["expenses"], 2_000 + 7_001 + 2_800);
     assert_eq!(euer["profit"], -11_801);
+
+    let entries: Vec<_> = euer["entries"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|e| {
+            (
+                e["key"].as_str().unwrap(),
+                e["number"].as_str().unwrap(),
+                e["amount"].as_i64().unwrap(),
+            )
+        })
+        .collect();
+    assert_eq!(
+        entries,
+        [
+            ("62", "6610", 2_000),
+            ("62_nd", "6620", 8_000),
+            ("63", "6640", 7_001),
+            ("63_nd", "6640", 3_000),
+            ("64", "6674", 2_800)
+        ]
+    );
+    assert_eq!(euer["deposits"], 2_800);
+    assert_eq!(euer["withdrawals"], 0);
 }
