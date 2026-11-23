@@ -616,7 +616,8 @@
 								<Field
 									label={t('documents.unit_price')}
 									error={fieldError(`lines.${i}.unit_price`)}
-									note={!line.price && line.project_id ? t('documents.rate_hint') : doc.currency}
+									note={!line.price && line.project_id ? t('documents.rate_hint') : undefined}
+									suffix={doc.currency}
 								>
 									<input inputmode="decimal" bind:value={line.price} />
 								</Field>
@@ -759,12 +760,12 @@
 						<Field label={t('documents.payment_date')} error={payError?.fields?.date}>
 							<input type="date" bind:value={payDate} />
 						</Field>
-						<Field label={t('documents.payment_amount')} error={payError?.fields?.amount} note={doc.currency}>
+						<Field label={t('documents.payment_amount')} error={payError?.fields?.amount} suffix={doc.currency}>
 							<input inputmode="decimal" bind:value={payAmount} placeholder={moneyInput(doc.amount_due.minor, doc.currency)} />
 						</Field>
 						{#if payAccounts.length}
 							{#if doc.currency !== 'EUR'}
-								<Field label={t('documents.payment_eur')} error={payError?.fields?.eur_amount} note="EUR">
+								<Field label={t('documents.payment_eur')} error={payError?.fields?.eur_amount} suffix="EUR">
 									<input inputmode="decimal" bind:value={payEur} />
 								</Field>
 							{/if}

@@ -243,7 +243,7 @@
 						{#each units as unit (unit)}<option value={unit}>{t(`documents.unit.${unit}`)}</option>{/each}
 					</select>
 				</Field>
-				<Field label={t('documents.unit_price')} error={fieldError(`lines.${i}.unit_price`)} note={currency}>
+				<Field label={t('documents.unit_price')} error={fieldError(`lines.${i}.unit_price`)} suffix={currency}>
 					<input inputmode="decimal" bind:value={line.price} />
 				</Field>
 				<Field label={t('documents.vat')} error={fieldError(`lines.${i}.vat_rate`)}>

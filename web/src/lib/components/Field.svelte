@@ -7,12 +7,15 @@
 		label,
 		error,
 		note,
+		suffix,
 		inline = false,
 		children
 	}: {
 		label: string;
 		error?: Schemas['FieldError'];
 		note?: string;
+		/** Shown right after the input, such as a currency. */
+		suffix?: string;
 		inline?: boolean;
 		children: Snippet;
 	} = $props();
@@ -20,7 +23,11 @@
 
 <label class:invalid={error} class:inline>
 	<span class="label">{label}</span>
-	{@render children()}
+	{#if suffix}
+		<span class="group">{@render children()}<span class="suffix">{suffix}</span></span>
+	{:else}
+		{@render children()}
+	{/if}
 	{#if error}<small class="error">{t(`field.${error}`)}</small>{/if}
 	{#if note}<small>{note}</small>{/if}
 </label>
@@ -56,5 +63,25 @@
 	}
 	.invalid :global(:is(input, textarea, select)) {
 		border-color: var(--danger);
+	}
+	.group {
+		display: flex;
+	}
+	.group :global(input) {
+		min-width: 0;
+		border-start-end-radius: 0;
+		border-end-end-radius: 0;
+	}
+	.suffix {
+		display: flex;
+		align-items: center;
+		padding: 0 0.625rem;
+		border: 1px solid var(--border);
+		border-inline-start: none;
+		border-start-end-radius: var(--radius);
+		border-end-end-radius: var(--radius);
+		background: var(--surface-2);
+		color: var(--muted);
+		font-size: 0.875rem;
 	}
 </style>

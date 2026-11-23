@@ -425,11 +425,11 @@
 								<Field label={t('receipts.paid_on')} error={payError?.fields?.date}>
 									<input type="date" bind:value={payDate} />
 								</Field>
-								<Field label={t('documents.payment_amount')} error={payError?.fields?.amount} note={receipt.currency}>
+								<Field label={t('documents.payment_amount')} error={payError?.fields?.amount} suffix={receipt.currency}>
 									<input inputmode="decimal" bind:value={payAmount} placeholder={input(receipt.amount_due, receipt.currency)} />
 								</Field>
 								{#if receipt.currency !== 'EUR'}
-									<Field label={t('receipts.left_in_eur')} error={payError?.fields?.eur_amount} note="EUR">
+									<Field label={t('receipts.left_in_eur')} error={payError?.fields?.eur_amount} suffix="EUR">
 										<input inputmode="decimal" bind:value={payEur} />
 									</Field>
 								{/if}
