@@ -97,7 +97,7 @@
 			{#each currencies as code (code)}<option value={code}>{code}</option>{/each}
 		</select>
 	</Field>
-	<Field label={t('term.hourly_rate')} error={error?.fields?.hourly_rate} note={currency}>
+	<Field label={t('term.hourly_rate')} error={error?.fields?.hourly_rate} suffix={currency}>
 		<input inputmode="decimal" bind:value={rate} />
 	</Field>
 	<Field label={t('customers.vat_id')} error={error?.fields?.vat_id}>
