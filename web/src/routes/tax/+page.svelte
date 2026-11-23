@@ -48,6 +48,10 @@
 		const first = Number(books?.books?.start_date.slice(0, 4) ?? now.getFullYear());
 		return Array.from({ length: Math.max(now.getFullYear() - first + 1, 1) }, (_, i) => now.getFullYear() - i);
 	});
+	// in the books' first year there is no finished year before them yet
+	$effect(() => {
+		if (books?.books && periodKnown && !years.includes(vatYear)) vatYear = years.at(-1)!;
+	});
 
 	const periods = $derived([
 		...Array.from({ length: 12 }, (_, i) => ({ value: `m${i + 1}`, label: monthName(i + 1) })),
