@@ -271,6 +271,9 @@ try {
 			});
 			return response.status === 204 ? null : response.json();
 		})()`);
+	// e-invoices need a seller identifier when there is no VAT ID or register number
+	const { values: business } = await api('GET', '/api/business');
+	await api('PUT', '/api/business', { ...business, seller_identifier: 'DE123456789-00001' });
 	const krume = await api('POST', '/api/customers', {
 		name: 'Bäckerei Krume',
 		language: 'de',
@@ -316,6 +319,15 @@ try {
 		]
 	});
 	await api('POST', `/api/documents/${quote.id}/issue`);
+	// a second accepted quote with no invoices yet, to ask for a partial invoice's percentage
+	const openQuote = await api('POST', '/api/documents', {
+		kind: 'quote',
+		customer_id: krume.id,
+		title: 'Wartungsvertrag',
+		lines: [{ description: 'Wartung', quantity: '12', unit: 'month', unit_price: 9000 }]
+	});
+	await api('POST', `/api/documents/${openQuote.id}/issue`);
+	await api('POST', `/api/documents/${openQuote.id}/outcome`, { outcome: 'accepted' });
 	const invoice = await api('POST', '/api/documents', {
 		kind: 'invoice',
 		customer_id: krume.id,
@@ -515,8 +527,8 @@ try {
 		await click('.page-head .row button.ghost');
 		await until('the dialog', () => evaluate("[...document.querySelectorAll('dialog')].some((d) => d.open)"));
 	});
-	await screen('prompt-dialog', `${origin}/documents/${quote.id}`, async () => {
-		const partial = "[...document.querySelectorAll('button')].find((b) => b.textContent.includes('Abschlagsrechnung'))";
+	await screen('prompt-dialog', `${origin}/documents/${openQuote.id}`, async () => {
+		const partial = "[...document.querySelectorAll('button')].find((b) => /Abschlagsrechnung|Partial invoice/.test(b.textContent))";
 		await until('the quote', () => evaluate(`!!${partial}`));
 		await evaluate(`${partial}.click()`);
 		await until('the dialog', () => evaluate("!!document.querySelector('dialog[open] input')"));
@@ -554,8 +566,8 @@ try {
 	await screen('tax-euer-elster', `${origin}/tax`, async () => {
 		await until('the books', () => evaluate("!!document.querySelector('[role=radiogroup]')"));
 		await click('[role=radiogroup] [role=radio]:nth-child(2)');
-		await until('the EÜR', () => evaluate("document.querySelectorAll('[role=radiogroup]').length === 2"));
-		await evaluate("document.querySelectorAll('[role=radiogroup]')[1].querySelector('[role=radio]:nth-child(2)').click()");
+		await until('the EÜR', () => evaluate("!!document.querySelector('.totals')"));
+		await evaluate("document.querySelector('[role=radiogroup][aria-label=Ansicht], [role=radiogroup][aria-label=View]').querySelector('[role=radio]:nth-child(2)').click()");
 		await until('the entries', () => evaluate("!!document.querySelector('.elster-row')"));
 	});
 	await screen('tax-exports', `${origin}/tax`, async () => {
@@ -568,6 +580,9 @@ try {
 		await click('[role=radiogroup] [role=radio]:nth-child(4)');
 		await until('the calendar', () => evaluate("!!document.querySelector('.deadlines') && !!document.querySelector('section .row button')"));
 		await click('section .row button.primary');
+		// renewing an existing link asks first
+		await settle();
+		await evaluate("document.querySelector('dialog[open] button.danger')?.click()");
 		await until('the link', () => evaluate("!!document.querySelector('.link input')"));
 	});
 	await screen('assets', `${origin}/assets`);
