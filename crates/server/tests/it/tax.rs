@@ -340,3 +340,171 @@ async fn an_invoice_from_before_the_books_counts_when_paid_and_accounts_carry_th
         .await;
     assert_eq!(refused.status(), StatusCode::FORBIDDEN);
 }
+
+#[tokio::test]
+async fn expenses_land_on_their_own_zeile_and_corrections_change_the_sum() {
+    let app = start(Config::default()).await;
+    let mut owner = app.setup_owner().await;
+    let today = day(0);
+    let year = &today[..4];
+    app.ok(
+        &mut owner,
+        "POST",
+        "/api/books",
+        json!({ "chart": "skr04", "start_date": format!("{year}-01-01") }),
+    )
+    .await;
+    let bank = account(&app, &mut owner, "1800").await["id"].clone();
+    let mut own = async |number: &str, line: &str| {
+        app.ok(
+            &mut owner,
+            "POST",
+            "/api/accounts",
+            json!({ "number": number, "name": format!("Zeile {line}"), "type": "expense",
+                    "euer_line": line }),
+        )
+        .await["id"]
+            .clone()
+    };
+    let property = own("6350", "41").await;
+    let repairs = own("6335", "42").await;
+    let commute = own("6690", "72").await;
+    let allowance = own("6691", "73").await;
+    let telephone = account(&app, &mut owner, "6805").await;
+    assert_eq!(telephone["euer_line"], "43");
+    let advertising = account(&app, &mut owner, "6600").await["id"].clone();
+    for (account, amount) in [
+        (telephone["id"].clone(), 10_000),
+        (advertising, 5_000),
+        (property, 20_000),
+        (repairs, 8_000),
+        (commute, 3_000),
+        (allowance, 4_000),
+    ] {
+        app.ok(
+            &mut owner,
+            "POST",
+            "/api/postings",
+            json!({ "date": today, "description": "Ausgabe", "lines": [
+                { "account_id": account, "amount": amount },
+                { "account_id": bank, "amount": -amount }
+            ] }),
+        )
+        .await;
+    }
+    let euer = app
+        .ok(
+            &mut owner,
+            "GET",
+            &format!("/api/tax/euer?year={year}"),
+            json!({}),
+        )
+        .await;
+    assert_eq!(
+        amounts(&euer["lines"]),
+        expect(&[
+            ("41", 28_000),
+            ("42", 8_000),
+            ("43", 10_000),
+            ("54", 5_000),
+            ("72", 3_000),
+            ("73", 4_000)
+        ])
+    );
+    assert_eq!(
+        euer["expenses"],
+        28_000 + 10_000 + 5_000 - 3_000 + 4_000,
+        "Zeile 42 is part of 41, 72 is taken off and 73 added"
+    );
+    assert_eq!(euer["profit"], -44_000);
+}
+
+#[tokio::test]
+async fn bewirtung_is_split_70_30_and_only_deductible_gifts_count() {
+    let app = start(Config::default()).await;
+    let mut owner = app.setup_owner().await;
+    let today = day(0);
+    let year = &today[..4];
+    app.ok(
+        &mut owner,
+        "POST",
+        "/api/books",
+        json!({ "chart": "skr04", "start_date": format!("{year}-01-01") }),
+    )
+    .await;
+    let bank = account(&app, &mut owner, "1800").await["id"].clone();
+    let deposits = account(&app, &mut owner, "2180").await["id"].clone();
+    let meals = account(&app, &mut owner, "6674").await;
+    assert_eq!(meals["euer_line"], "64");
+    for (number, from, amount) in [
+        ("6640", &bank, 10_001),
+        ("6610", &bank, 2_000),
+        ("6620", &bank, 8_000),
+        // lump sums aren't paid from the business account
+        ("6674", &deposits, 2_800),
+    ] {
+        let id = account(&app, &mut owner, number).await["id"].clone();
+        app.ok(
+            &mut owner,
+            "POST",
+            "/api/postings",
+            json!({ "date": today, "description": "Ausgabe", "lines": [
+                { "account_id": id, "amount": amount },
+                { "account_id": from, "amount": -amount }
+            ] }),
+        )
+        .await;
+    }
+    let euer = app
+        .ok(
+            &mut owner,
+            "GET",
+            &format!("/api/tax/euer?year={year}"),
+            json!({}),
+        )
+        .await;
+    assert_eq!(
+        amounts(&euer["lines"]),
+        expect(&[
+            ("62", 2_000),
+            ("62_nd", 8_000),
+            ("63", 7_001),
+            ("63_nd", 3_000),
+            ("64", 2_800)
+        ])
+    );
+    let kennzahlen: Vec<_> = euer["lines"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|l| l["kennzahl"].as_str().unwrap())
+        .collect();
+    assert_eq!(kennzahlen, ["174", "164", "175", "165", "171"]);
+    assert_eq!(euer["expenses"], 2_000 + 7_001 + 2_800);
+    assert_eq!(euer["profit"], -11_801);
+
+    let entries: Vec<_> = euer["entries"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|e| {
+            (
+                e["key"].as_str().unwrap(),
+                e["number"].as_str().unwrap(),
+                e["amount"].as_i64().unwrap(),
+            )
+        })
+        .collect();
+    assert_eq!(
+        entries,
+        [
+            ("62", "6610", 2_000),
+            ("62_nd", "6620", 8_000),
+            ("63", "6640", 7_001),
+            ("63_nd", "6640", 3_000),
+            ("64", "6674", 2_800)
+        ]
+    );
+    assert_eq!(euer["deposits"], 2_800);
+    assert_eq!(euer["withdrawals"], 0);
+}

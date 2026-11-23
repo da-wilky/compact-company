@@ -133,8 +133,19 @@
 		toast(t('app.copied'));
 	}
 
-	const income = $derived((euer?.lines ?? []).filter((l) => Number(l.key) <= 18));
-	const expenses = $derived((euer?.lines ?? []).filter((l) => Number(l.key) > 18));
+	const income = $derived((euer?.lines ?? []).filter((l) => parseInt(l.key) <= 18));
+	const expenses = $derived((euer?.lines ?? []).filter((l) => parseInt(l.key) > 18));
+	const euerRow = (l: Schemas['Figure']) => ({
+		...l,
+		label: t(`tax.euer.${l.key}`),
+		code: t(l.kennzahl ? 'tax.zeile_kz' : 'tax.zeile', { line: parseInt(l.key), kz: l.kennzahl ?? '' })
+	});
+	let euerView = $state<'overview' | 'elster'>('overview');
+	/** As typed into Mein ELSTER, whatever the UI language. */
+	const elsterAmount = (minor: number) =>
+		new Intl.NumberFormat('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(minor / 100);
+	const entriesOf = (key: string) => (euer?.entries ?? []).filter((e) => e.key === key);
+	const homeOfficeOver =$derived((euer?.lines.find((l) => l.key === '66')?.amount ?? 0) > 126000);
 </script>
 
 {#snippet sources(figure: Schemas['Figure'])}
@@ -152,6 +163,31 @@
 			</ul>
 		</details>
 	{/if}
+{/snippet}
+
+{#snippet elsterRow(label: string, minor: number)}
+	<div class="elster-row">
+		<span>{label}</span>
+		<span class="amount">{elsterAmount(minor)}</span>
+		<button type="button" class="ghost icon" aria-label={t('app.copy')} onclick={() => copy(elsterAmount(minor))}>
+			<Icon name="copy" size={16} />
+		</button>
+	</div>
+{/snippet}
+
+{#snippet elsterLine(line: Schemas['Figure'])}
+	{@const row = euerRow(line)}
+	<section class="card elster">
+		<h3><span class="code">{row.code}</span> {row.label}</h3>
+		{#each entriesOf(line.key) as entry (entry.account_id)}
+			{@render elsterRow(entry.name, entry.amount)}
+		{/each}
+		<div class="elster-row sum">
+			<span>{t('tax.elster_line_sum')}</span>
+			<span class="amount">{elsterAmount(line.amount)}</span>
+			<span></span>
+		</div>
+	</section>
 {/snippet}
 
 {#snippet table(rows: (Schemas['Figure'] & { label: string; code: string })[], entered: boolean)}
@@ -322,16 +358,49 @@
 				<p class="card empty">{t('tax.small_business_no_return')}</p>
 			{/if}
 		{:else if tab === 'euer' && euer}
+			<Segmented
+				label={t('tax.euer_view')}
+				options={[
+					{ value: 'overview', label: t('tax.euer_overview') },
+					{ value: 'elster', label: t('tax.euer_elster') }
+				]}
+				value={euerView}
+				onchange={(v) => (euerView = v as typeof euerView)}
+			/>
+		{/if}
+		{#if tab === 'euer' && euer && euerView === 'elster'}
+			<p class="muted">{t('tax.elster_intro')}</p>
+			{#if euer.small_business}<p class="muted">{t('tax.elster_small_business')}</p>{/if}
+			{#if homeOfficeOver}<p class="alert" role="status">{t('tax.home_office_over')}</p>{/if}
+			<h2>{t('tax.elster_income')}</h2>
+			{#each income as line (line.key)}{@render elsterLine(line)}{:else}<p class="card empty">{t('tax.nothing')}</p>{/each}
+			<h2>{t('tax.elster_expenses')}</h2>
+			{#each expenses as line (line.key)}{@render elsterLine(line)}{:else}<p class="card empty">{t('tax.nothing')}</p>{/each}
+			<h2>{t('tax.elster_profit')}</h2>
+			<div class="card elster">
+				{@render elsterRow(t('tax.elster_sum_income'), euer.income)}
+				{@render elsterRow(t('tax.elster_sum_expenses'), euer.expenses)}
+				{@render elsterRow(t(euer.profit < 0 ? 'tax.loss' : 'tax.profit'), euer.profit)}
+			</div>
+			{#if euer.withdrawals || euer.deposits}
+				<h2>{t('tax.elster_private')}</h2>
+				<div class="card elster">
+					{#if euer.withdrawals}{@render elsterRow(t('tax.elster_withdrawals'), euer.withdrawals)}{/if}
+					{#if euer.deposits}{@render elsterRow(t('tax.elster_deposits'), euer.deposits)}{/if}
+				</div>
+			{/if}
+		{:else if tab === 'euer' && euer}
 			{#if euer.small_business}<p class="muted">{t('tax.euer_small_business')}</p>{/if}
 			<h2>{t('tax.income')}</h2>
 			{#if income.length}
-				{@render table(income.map((l) => ({ ...l, label: t(`tax.euer.${l.key}`), code: t('tax.zeile', { line: l.key }) })), false)}
+				{@render table(income.map(euerRow), false)}
 			{:else}
 				<p class="card empty">{t('tax.nothing')}</p>
 			{/if}
 			<h2>{t('tax.expenses')}</h2>
 			{#if expenses.length}
-				{@render table(expenses.map((l) => ({ ...l, label: t(`tax.euer.${l.key}`), code: t('tax.zeile', { line: l.key }) })), false)}
+				{#if homeOfficeOver}<p class="alert" role="status">{t('tax.home_office_over')}</p>{/if}
+				{@render table(expenses.map(euerRow), false)}
 			{:else}
 				<p class="card empty">{t('tax.nothing')}</p>
 			{/if}
@@ -409,6 +478,30 @@
 	}
 	.small {
 		font-size: 0.8125rem;
+	}
+	.elster {
+		display: grid;
+		gap: 0.25rem;
+		padding: 0.75rem 1rem;
+	}
+	.elster h3 {
+		margin: 0 0 0.25rem;
+		font-size: 0.9375rem;
+	}
+	.elster-row {
+		display: grid;
+		grid-template-columns: 1fr auto 2rem;
+		align-items: center;
+		gap: 0.75rem;
+		min-height: 2rem;
+	}
+	.elster-row span:first-child {
+		overflow-wrap: anywhere;
+	}
+	.elster-row.sum {
+		border-top: 1px solid var(--border);
+		padding-top: 0.25rem;
+		color: var(--muted);
 	}
 	.deadlines {
 		display: grid;

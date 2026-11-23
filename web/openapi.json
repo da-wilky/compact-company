@@ -8922,9 +8922,23 @@
           "lines",
           "income",
           "expenses",
-          "profit"
+          "profit",
+          "entries",
+          "withdrawals",
+          "deposits"
         ],
         "properties": {
+          "deposits": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "entries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EuerEntry"
+            },
+            "description": "What each account adds to a line, as Mein ELSTER asks for single entries per line."
+          },
           "expenses": {
             "type": "integer",
             "format": "int64"
@@ -8944,6 +8958,42 @@
           "profit": {
             "type": "integer",
             "format": "int64"
+          },
+          "withdrawals": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Entnahmen (Zeile 106) and Einlagen (Zeile 107), EUR cents."
+          }
+        }
+      },
+      "EuerEntry": {
+        "type": "object",
+        "required": [
+          "key",
+          "account_id",
+          "number",
+          "name",
+          "amount"
+        ],
+        "properties": {
+          "account_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "amount": {
+            "type": "integer",
+            "format": "int64",
+            "description": "EUR cents."
+          },
+          "key": {
+            "type": "string",
+            "description": "The line's key, as in `lines`."
+          },
+          "name": {
+            "type": "string"
+          },
+          "number": {
+            "type": "string"
           }
         }
       },
@@ -8964,13 +9014,38 @@
           "36",
           "38",
           "39",
+          "40",
+          "41",
+          "42",
+          "43",
           "44",
+          "45",
+          "46",
+          "47",
+          "48",
+          "49",
+          "50",
+          "51",
+          "52",
+          "53",
+          "54",
           "55",
           "56",
           "57",
           "58",
           "60",
-          "63"
+          "62",
+          "62_nd",
+          "63",
+          "64",
+          "66",
+          "68",
+          "69",
+          "70",
+          "71",
+          "72",
+          "73",
+          "74"
         ]
       },
       "EuerView": {
@@ -9047,9 +9122,16 @@
             "type": "string",
             "description": "What is entered in ELSTER: whole euros, cents dropped, for a VAT base; the amount\notherwise."
           },
+          "kennzahl": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The Kennzahl of an EÜR line."
+          },
           "key": {
             "type": "string",
-            "description": "The Kennzahl of the VAT return, or the Zeile of the Anlage EÜR."
+            "description": "The Kennzahl of the VAT return, or the Zeile of the Anlage EÜR with `_nd` for its\n\"nicht abziehbar\" column."
           },
           "sources": {
             "type": "array",

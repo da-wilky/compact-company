@@ -233,6 +233,27 @@ const SEED: &[Seed] = &[
     seed(
         None,
         Expense,
+        "4630",
+        "6610",
+        "Geschenke abzugsfähig ohne § 37b EStG",
+    ),
+    seed(
+        None,
+        Expense,
+        "4635",
+        "6620",
+        "Geschenke nicht abzugsfähig ohne § 37b EStG",
+    ),
+    seed(
+        None,
+        Expense,
+        "4674",
+        "6674",
+        "Reisekosten Unternehmer Verpflegungsmehraufwand",
+    ),
+    seed(
+        None,
+        Expense,
         "4673",
         "6673",
         "Reisekosten Unternehmer Fahrtkosten",
