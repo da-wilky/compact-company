@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Hint from '#lib/components/Hint.svelte';
 	import { goto } from '$app/navigation';
 	import { api, call, type ApiError, type Schemas } from '#lib/api/index.ts';
 	import { formatDay } from '#lib/dates.ts';
@@ -36,7 +37,7 @@
 
 <div class="page-head">
 	<div>
-		<h1>{t('open_items.title')}</h1>
+		<h1>{t('open_items.title')}<Hint term="open_items" /></h1>
 		<p class="muted">{t('open_items.intro')}</p>
 	</div>
 </div>
@@ -61,7 +62,7 @@
 								<th>{t('term.customer')}</th>
 								<th>{t('documents.due_date')}</th>
 								<th class="amount">{t('documents.amount_due')}</th>
-								<th>{t('term.dunning_letter')}</th>
+								<th>{t('term.dunning_letter')}<Hint term="dunning" /></th>
 								{#if owner}<th></th>{/if}
 							</tr>
 						</thead>

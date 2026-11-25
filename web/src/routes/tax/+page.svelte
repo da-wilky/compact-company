@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Hint from '#lib/components/Hint.svelte';
 	import { page } from '$app/state';
 	import { api, call, type ApiError, type Schemas } from '#lib/api/index.ts';
 	import Icon from '#lib/components/Icon.svelte';
@@ -16,6 +17,7 @@
 
 	type Tab = 'vat' | 'euer' | 'exports' | 'deadlines';
 	const tabs: Tab[] = ['vat', 'euer', 'exports', 'deadlines'];
+	const tabTerm = { vat: 'vat_period', euer: 'euer', exports: 'year_closing', deadlines: 'deadlines' } as const;
 	const asked = page.url.searchParams.get('tab') as Tab;
 	let tab = $state<Tab>(tabs.includes(asked) ? asked : 'vat');
 	let error = $state<ApiError>();
@@ -246,7 +248,7 @@
 <div class="page-head">
 	<div>
 		<h1>{t('tax.title')}</h1>
-		<p class="muted">{t('tax.intro')}</p>
+		<p class="muted">{t('tax.intro')}<Hint term={tabTerm[tab]} /></p>
 	</div>
 </div>
 

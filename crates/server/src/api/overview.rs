@@ -85,6 +85,43 @@ pub struct Overview {
     recurring_drafts: Vec<super::recurring::WaitingDraft>,
     /// The latest backup, when it failed; for the owner only.
     backup_failure: Option<crate::backup::BackupRun>,
+    /// Which first steps are done; for the owner only.
+    getting_started: Option<GettingStarted>,
+}
+
+#[derive(Debug, Serialize, ToSchema, sqlx::FromRow)]
+pub struct GettingStarted {
+    /// Name, address, tax number or VAT ID, IBAN and taxation are filled in.
+    business: bool,
+    /// An own layout is chosen for a document type.
+    layout: bool,
+    books: bool,
+    customer: bool,
+    /// An invoice is issued.
+    invoice: bool,
+    /// A bank statement is imported.
+    bank: bool,
+    /// A receipt is booked.
+    receipt: bool,
+    process_documentation: bool,
+}
+
+async fn getting_started(db: &mut SqliteConnection) -> Result<GettingStarted, sqlx::Error> {
+    sqlx::query_as(
+        "SELECT
+         (SELECT count(*) = 6 FROM setting
+          WHERE key IN ('name', 'street', 'postcode', 'city', 'iban', 'taxation'))
+         AND EXISTS (SELECT 1 FROM setting WHERE key IN ('tax_number', 'vat_id')) AS business,
+         EXISTS (SELECT 1 FROM layout_choice) AS layout,
+         EXISTS (SELECT 1 FROM books) AS books,
+         EXISTS (SELECT 1 FROM customer) AS customer,
+         EXISTS (SELECT 1 FROM document WHERE kind = 'invoice' AND status = 'issued') AS invoice,
+         EXISTS (SELECT 1 FROM bank_import) AS bank,
+         EXISTS (SELECT 1 FROM receipt WHERE status = 'booked') AS receipt,
+         EXISTS (SELECT 1 FROM process_version) AS process_documentation",
+    )
+    .fetch_one(db)
+    .await
 }
 
 #[utoipa::path(get, path = "/overview", tag = "overview",
@@ -115,9 +152,12 @@ pub async fn get_overview(
     } else {
         (Vec::new(), Vec::new(), Vec::new())
     };
-    let backup_failure = match role {
-        Role::Owner => crate::backup::failure(&app).await?,
-        _ => None,
+    let (backup_failure, getting_started) = match role {
+        Role::Owner => (
+            crate::backup::failure(&app).await?,
+            Some(getting_started(&mut db).await?),
+        ),
+        _ => (None, None),
     };
     Ok(Json(Overview {
         running,
@@ -125,6 +165,7 @@ pub async fn get_overview(
         open_invoices,
         recurring_drafts,
         backup_failure,
+        getting_started,
     }))
 }
 

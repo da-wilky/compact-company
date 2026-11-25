@@ -9205,6 +9205,50 @@
           "ubl"
         ]
       },
+      "GettingStarted": {
+        "type": "object",
+        "required": [
+          "business",
+          "layout",
+          "books",
+          "customer",
+          "invoice",
+          "bank",
+          "receipt",
+          "process_documentation"
+        ],
+        "properties": {
+          "bank": {
+            "type": "boolean",
+            "description": "A bank statement is imported."
+          },
+          "books": {
+            "type": "boolean"
+          },
+          "business": {
+            "type": "boolean",
+            "description": "Name, address, tax number or VAT ID, IBAN and taxation are filled in."
+          },
+          "customer": {
+            "type": "boolean"
+          },
+          "invoice": {
+            "type": "boolean",
+            "description": "An invoice is issued."
+          },
+          "layout": {
+            "type": "boolean",
+            "description": "An own layout is chosen for a document type."
+          },
+          "process_documentation": {
+            "type": "boolean"
+          },
+          "receipt": {
+            "type": "boolean",
+            "description": "A receipt is booked."
+          }
+        }
+      },
       "Grouping": {
         "type": "string",
         "description": "How time entries become invoice lines; entries with different rates never share a line.",
@@ -9945,6 +9989,17 @@
               {
                 "$ref": "#/components/schemas/BackupRun",
                 "description": "The latest backup, when it failed; for the owner only."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "getting_started": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/GettingStarted",
+                "description": "Which first steps are done; for the owner only."
               },
               {
                 "type": "null"

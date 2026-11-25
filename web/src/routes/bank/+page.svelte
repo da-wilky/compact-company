@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Hint from '#lib/components/Hint.svelte';
 	import { api, call, clientError, upload, type ApiError, type Schemas } from '#lib/api/index.ts';
 	import Dialog from '#lib/components/Dialog.svelte';
 	import Field from '#lib/components/Field.svelte';
@@ -221,7 +222,7 @@
 
 <div class="page-head">
 	<div>
-		<h1>{t('bank.title')}</h1>
+		<h1>{t('bank.title')}<Hint term="withdrawal" /></h1>
 		<p class="muted">{t('bank.intro')}</p>
 	</div>
 	{#if owner && books?.books}

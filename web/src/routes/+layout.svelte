@@ -8,6 +8,7 @@
 	import Logo from '#lib/components/Logo.svelte';
 	import Preferences from '#lib/components/Preferences.svelte';
 	import Confirm from '#lib/components/Confirm.svelte';
+	import Explain from '#lib/components/Explain.svelte';
 	import Toaster from '#lib/components/Toaster.svelte';
 	import { i18n, t } from '#lib/i18n.svelte.ts';
 	import { applyTheme } from '#lib/preferences.svelte.ts';
@@ -52,6 +53,7 @@
 		{ href: '/process-documentation', label: t('term.process_documentation'), icon: 'process', roles: ['owner', 'accountant'], group: 'admin' },
 		{ href: '/retention', label: t('retention.title'), icon: 'retention', roles: ['owner'], group: 'admin' },
 		{ href: '/backup', label: t('backup.title'), icon: 'backup', roles: ['owner'], group: 'admin' },
+		{ href: '/help', label: t('help.title'), icon: 'help', roles: all, group: 'me' },
 		{ href: '/account', label: t('account.title'), icon: 'account', roles: all, group: 'me' }
 	]);
 
@@ -151,6 +153,7 @@
 			<div class="bottom">
 				{#if tracks}<TimerList />{/if}
 			</div>
+			<a class="item" href="/help" aria-current={current('/help')}><Icon name="help" />{t('help.title')}</a>
 			<div class="me">
 				<a href="/account" aria-current={current('/account')}>
 					<span class="avatar" aria-hidden="true">{initials}</span>
@@ -225,6 +228,7 @@
 
 <Toaster />
 <Confirm />
+<Explain />
 
 <style>
 	.shell {

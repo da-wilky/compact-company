@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Hint from '#lib/components/Hint.svelte';
 	import { api, call, type ApiError, type Schemas } from '#lib/api/index.ts';
 	import { formatDay, isoDay, today } from '#lib/dates.ts';
 	import { t } from '#lib/i18n.svelte.ts';
@@ -80,7 +81,7 @@
 
 <div class="page-head">
 	<div>
-		<h1>{t('retention.title')}</h1>
+		<h1>{t('retention.title')}<Hint term="retention" /></h1>
 		<p class="muted">{t('retention.intro')}</p>
 	</div>
 </div>

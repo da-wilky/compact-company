@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Hint from '#lib/components/Hint.svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { api, call, clientError, type ApiError, type Schemas } from '#lib/api/index.ts';
@@ -517,7 +518,7 @@
 		{/if}
 		{#if doc.invoice_type === 'final' && doc.partials.length}
 			<div class="card notice">
-				<strong>{t(doc.status === 'draft' ? 'documents.partials_before' : 'documents.partials_taken')}</strong>
+				<strong>{t(doc.status === 'draft' ? 'documents.partials_before' : 'documents.partials_taken')}</strong><Hint term="partial_invoice" />
 				<ul>
 					{#each doc.partials as partial (partial.id)}
 						<li>
@@ -610,7 +611,7 @@
 				<div class="wide lines">
 					<h2>{t('documents.lines')}</h2>
 					{#if doc.kind === 'cancellation'}
-						<p class="muted">{t('documents.cancellation_hint')}</p>
+						<p class="muted">{t('documents.cancellation_hint')}<Hint term="cancellation" /></p>
 						{#each lines as line, i (line.cancels_line_id)}
 							<div class="reversal">
 								<span>{line.description}</span>
