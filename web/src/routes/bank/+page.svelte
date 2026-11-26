@@ -68,6 +68,15 @@
 
 	const bank = $derived(banks.find((b) => b.id === bankId));
 
+	async function archive(b: Schemas['BankAccount']) {
+		if (!b.archived && !(await confirm({ text: t('bank.archive_confirm'), action: t('customers.archive') }))) return;
+		const result = await call(
+			api.PUT('/api/bank-accounts/{id}', { params: { path: { id: b.id } }, body: { name: b.name, archived: !b.archived } })
+		);
+		error = result.error;
+		if (result.data) await Promise.all([loadBanks(), load()]);
+	}
+
 	// a new bank account
 	let creating = $state(false);
 	let name = $state('');
@@ -265,7 +274,11 @@
 				{#if bank}
 					<p class="muted summary">
 						{bank.iban ?? bank.ledger_account} · {t('books.balance')} {eur(bank.balance)} · {t('bank.open_count', { count: String(bank.open) })}
+						{#if bank.archived}<span class="badge">{t('term.archived')}</span>{/if}
 					</p>
+					{#if owner}
+						<button class="ghost" onclick={() => bank && archive(bank)}>{t(bank.archived ? 'bank.unarchive' : 'customers.archive')}</button>
+					{/if}
 				{/if}
 			</div>
 			{#if transactions.length}
