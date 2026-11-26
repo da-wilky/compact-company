@@ -243,13 +243,13 @@
 		<form class="card stack start" onsubmit={startBooks}>
 			<h2>{t('books.start')}</h2>
 			<p class="muted">{t('books.start_hint')}</p>
-			<Field label={t('term.chart_of_accounts')}>
+			<Field label={t('term.chart_of_accounts')} hint="chart">
 				<select bind:value={chart}>
 					<option value="skr03">SKR 03</option>
 					<option value="skr04">SKR 04</option>
 				</select>
 			</Field>
-			<Field label={t('books.start_date')} error={error?.fields?.start_date}>
+			<Field label={t('books.start_date')} hint="books_start" error={error?.fields?.start_date}>
 				<input type="date" bind:value={startDate} />
 			</Field>
 			{#if rates.length}
@@ -430,6 +430,7 @@
 		</Field>
 		<Field
 			label={t('books.euer_line')}
+			hint="euer_line"
 			error={accountError?.fields?.euer_line}
 			note={euerLine && ['64', '66', '72', '73', '74'].includes(euerLine) ? t('books.euer_line_no_money') : undefined}
 		>

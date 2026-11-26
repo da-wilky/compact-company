@@ -328,7 +328,8 @@ async fn a_statement_is_imported_and_its_transactions_matched_from_suggestions()
     let csv = "\"Umsätze Tagesgeld\";\"Zeitraum: 01.11.2026 - 30.11.2026\"\r\n\r\n\
         \"Buchungstag\";\"Valutadatum\";\"Name Zahlungsbeteiligter\";\"IBAN Zahlungsbeteiligter\";\"Verwendungszweck\";\"Betrag\";\"Waehrung\"\r\n\
         \"03.11.2026\";\"03.11.2026\";\"Bäckerei Krume\";\"DE44 5001 0517 5407 3249 31\";\"Zinsen; Teil 1\";\"1.190,00\";\"EUR\"\r\n\
-        \"04.11.26\";\"04.11.26\";\"Finanzamt\";\"\";\"USt 10/2026\";\"-50,00\";\"EUR\"\r\n";
+        \"04.11.26\";\"04.11.26\";\"Finanzamt\";\"\";\"USt 10/2026\";\"-50,00\";\"EUR\"\r\n\
+        \"05.11.2026\";\"05.11.2026\";\"Kartenprüfung\";\"\";\"\";\"0,00\";\"EUR\"\r\n";
     let latin1: Vec<u8> = csv
         .chars()
         .map(|c| u8::try_from(u32::from(c)).unwrap())

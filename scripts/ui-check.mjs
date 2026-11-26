@@ -499,6 +499,8 @@ try {
 	await screen('document-final-draft', `${origin}/documents/${finalDraft.id}`);
 	await api('POST', `/api/documents/${finalDraft.id}/issue`);
 	await screen('overview', `${origin}/`);
+	await screen('help', `${origin}/help`);
+	await screen('hint-dialog', `${origin}/business`, () => click('.hint'));
 	await screen('recurring', `${origin}/recurring`);
 	await screen('recurring-edit', `${origin}/recurring`, () => click('.card-list .row'));
 	await screen('document-final', `${origin}/documents/${finalDraft.id}`);

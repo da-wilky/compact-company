@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Hint from '#lib/components/Hint.svelte';
 	import { goto } from '$app/navigation';
 	import { api, call, type ApiError, type Schemas } from '#lib/api/index.ts';
 	import Dialog from '#lib/components/Dialog.svelte';
@@ -84,7 +85,7 @@
 </script>
 
 <div class="page-head">
-	<h1>{t('documents.title')}</h1>
+	<h1>{t('documents.title')}<Hint term="einvoice" /></h1>
 	{#if owner}
 		<div class="actions">
 			<a class="button ghost" href="/recurring"><Icon name="time" size={18} />{t('recurring.title')}</a>

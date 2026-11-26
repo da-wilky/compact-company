@@ -99,7 +99,7 @@
 					<p class="muted wide">{t('business.numbers_hint')}</p>
 				{/if}
 				{#each section.keys as key (key)}
-					<Field label={t(`business.${key}`)} error={error?.fields?.[key]} note={note(key)}>
+					<Field label={t(`business.${key}`)} hint={key === 'tax_number' || key === 'vat_id' ? 'tax_ids' : undefined} error={error?.fields?.[key]} note={note(key)}>
 						<input
 							bind:value={values[key]}
 							readonly={pinned.includes(key)}
@@ -108,7 +108,7 @@
 					</Field>
 				{/each}
 				{#if section.title === 'business.section_legal'}
-					<Field label={t('term.taxation')} note={note('taxation')}>
+					<Field label={t('term.taxation')} hint={values.taxation === 'small_business' ? 'small_business' : 'taxation'} note={note('taxation')}>
 						<select bind:value={values.taxation} disabled={pinned.includes('taxation')}>
 							{#each ['accrual', 'cash', 'small_business'] as const as taxation (taxation)}
 								<option value={taxation}>{t(`business.taxation.${taxation}`)}</option>
@@ -178,7 +178,7 @@
 		</section>
 		<section class="card">
 			<h2>{t('business.section_tax')}</h2>
-			<Field label={t('business.vat_period')} note={note('vat_period')}>
+			<Field label={t('business.vat_period')} hint="vat_period" note={note('vat_period')}>
 				<select bind:value={values.vat_period} disabled={pinned.includes('vat_period')}>
 					<option value={null}>{t('business.vat_period.quarterly')}</option>
 					{#each ['monthly', 'annual'] as const as period (period)}
@@ -191,7 +191,7 @@
 				{t('business.vat_extension')}
 			</label>
 			{#each ['datev_consultant_number', 'datev_client_number'] as const as key (key)}
-				<Field label={t(`business.${key}`)} error={error?.fields?.[key]} note={note(key)}>
+				<Field label={t(`business.${key}`)} hint="datev" error={error?.fields?.[key]} note={note(key)}>
 					<input
 						type="number"
 						bind:value={values[key]}

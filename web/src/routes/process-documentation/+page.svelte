@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Hint from '#lib/components/Hint.svelte';
 	import { api, call, type ApiError, type Schemas } from '#lib/api/index.ts';
 	import Icon from '#lib/components/Icon.svelte';
 	import { formatDay, isoDay } from '#lib/dates.ts';
@@ -51,7 +52,7 @@
 
 <div class="page-head">
 	<div>
-		<h1>{t('term.process_documentation')}</h1>
+		<h1>{t('term.process_documentation')}<Hint term="process_documentation" /></h1>
 		<p class="muted">{t('process.intro')}</p>
 	</div>
 </div>

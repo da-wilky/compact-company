@@ -3,6 +3,7 @@
 	import { dueLabel, formatDay } from '#lib/dates.ts';
 	import { daysUntil, deadlineTitle } from '#lib/deadlines.ts';
 	import { formatMoney } from '#lib/money.ts';
+	import GettingStarted from '#lib/components/GettingStarted.svelte';
 	import { t } from '#lib/i18n.svelte.ts';
 	import { session } from '#lib/session.svelte.ts';
 	import { clock, timers } from '#lib/timers.svelte.ts';
@@ -56,6 +57,10 @@
 
 {#if overview?.backup_failure}
 	<p class="alert" role="alert">{t('home.backup_failed')} <a href="/backup">{t('backup.title')}</a></p>
+{/if}
+
+{#if overview?.getting_started}
+	<GettingStarted steps={overview.getting_started} />
 {/if}
 
 {#if works}

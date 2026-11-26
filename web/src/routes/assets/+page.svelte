@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Hint from '#lib/components/Hint.svelte';
 	import { page } from '$app/state';
 	import { api, call, type ApiError, type Schemas } from '#lib/api/index.ts';
 	import Dialog from '#lib/components/Dialog.svelte';
@@ -197,7 +198,7 @@
 
 <div class="page-head">
 	<div>
-		<h1>{t('assets.title')}</h1>
+		<h1>{t('assets.title')}<Hint term="asset" /></h1>
 		<p class="muted">{t('assets.intro')}</p>
 	</div>
 	{#if owner && view}
@@ -417,6 +418,7 @@
 		</div>
 		<Field
 			label={t('assets.method')}
+			hint="gwg"
 			error={formError?.fields?.method}
 			note={overLimit ? t('assets.over_limit') : undefined}
 		>
@@ -426,7 +428,7 @@
 			</select>
 		</Field>
 		{#if method === 'straight_line'}
-			<Field label={t('assets.life_years')} error={formError?.fields?.life_years} note={t('assets.life_note')}>
+			<Field label={t('assets.life_years')} hint="depreciation" error={formError?.fields?.life_years} note={t('assets.life_note')}>
 				<input type="number" min="1" max="50" bind:value={life} />
 			</Field>
 		{/if}

@@ -308,7 +308,11 @@ fn csv(text: &str) -> Result<Statement, Error> {
         let Some(booking_date) = get(Some(date)).and_then(|d| csv_date(&d)) else {
             continue;
         };
-        let Some(cents) = get(Some(amount)).and_then(|a| csv_amount(&a)) else {
+        // banks list card checks as 0.00, which move no money and could never be matched
+        let Some(cents) = get(Some(amount))
+            .and_then(|a| csv_amount(&a))
+            .filter(|c| *c != 0)
+        else {
             continue;
         };
         if let Some(code) = get(currency).filter(|c| c != "EUR" && c != "€") {

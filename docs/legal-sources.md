@@ -189,6 +189,77 @@ Read 2026-11-16 at https://www.gesetze-im-internet.de/hgb/__241a.html and https:
 
 § 141 Abs. 1 AO requires books and a balance sheet for tax purposes above a Gesamtumsatz of 800 000 € per calendar year (Nr. 1) or a Gewinn aus Gewerbebetrieb of 80 000 € per Wirtschaftsjahr (Nr. 4).
 
+## Help texts – UStG, UStDV, EStG, AO, BGB
+
+Read 2026-11-25 at https://www.gesetze-im-internet.de/ (the norm's page each). The in-app help (`help.*` in `web/i18n`) rests on these.
+
+§ 19 Abs. 1 Satz 1 UStG:
+> Ein von einem im Inland oder in den in § 1 Absatz 3 bezeichneten Gebieten ansässigen Unternehmer bewirkter Umsatz im Sinne des § 1 Absatz 1 Nummer 1 ist steuerfrei, wenn der Gesamtumsatz nach Absatz 2 im vorangegangenen Kalenderjahr 25 000 Euro nicht überschritten hat und im laufenden Kalenderjahr 100 000 Euro nicht überschreitet.
+
+§ 15 Abs. 2 Satz 1 Nr. 1 UStG:
+> Vom Vorsteuerabzug ausgeschlossen ist die Steuer für die Lieferungen, die Einfuhr und den innergemeinschaftlichen Erwerb von Gegenständen sowie für die sonstigen Leistungen, die der Unternehmer zur Ausführung folgender Umsätze verwendet: 1. steuerfreie Umsätze;
+
+§ 14c Abs. 2 Satz 1 UStG:
+> Wer in einer Rechnung einen Steuerbetrag gesondert ausweist, obwohl er zum gesonderten Ausweis der Steuer nicht berechtigt ist (unberechtigter Steuerausweis), schuldet den ausgewiesenen Betrag.
+
+§ 34a UStDV, last sentence (Nr. 2 and 5 also read: tax number, VAT ID or Kleinunternehmer-ID; a note on the exemption):
+> Eine Rechnung nach Satz 1 kann abweichend von § 14 Absatz 2 Satz 2 des Gesetzes immer als sonstige Rechnung im Sinne von § 14 Absatz 1 Satz 4 des Gesetzes übermittelt werden.
+
+§ 13 Abs. 1 Nr. 1 a Satz 1 UStG:
+> bei der Berechnung der Steuer nach vereinbarten Entgelten (§ 16 Abs. 1 Satz 1) mit Ablauf des Voranmeldungszeitraums, in dem die Leistungen ausgeführt worden sind.
+
+§ 20 Satz 1 UStG: the tax office may allow, on application, the calculation by vereinnahmte Entgelte for a Gesamtumsatz of no more than 800 000 € in the previous year (Nr. 1) or for Umsätze of a freier Beruf under § 18 Abs. 1 Nr. 1 EStG (Nr. 3).
+
+§ 18 Abs. 2 Sätze 1–3 UStG:
+> Voranmeldungszeitraum ist das Kalendervierteljahr. Beträgt die Steuer für das vorangegangene Kalenderjahr mehr als 9 000 Euro, ist der Kalendermonat Voranmeldungszeitraum. Beträgt die Steuer für das vorangegangene Kalenderjahr nicht mehr als 2 000 Euro, kann das Finanzamt den Unternehmer von der Verpflichtung zur Abgabe der Voranmeldungen und Entrichtung der Vorauszahlungen befreien.
+
+Satz 4 (monthly in the founding year and the next) is replaced for 2021 to 2026 by Satz 6 (the expected tax counts), so the help leaves it out.
+
+§ 14 Abs. 1 Satz 3, Abs. 2 Satz 2 Nr. 1 and Abs. 4 Nr. 2 UStG:
+> Eine elektronische Rechnung ist eine Rechnung, die in einem strukturierten elektronischen Format ausgestellt, übermittelt und empfangen wird und eine elektronische Verarbeitung ermöglicht.
+
+> für eine Leistung an einen anderen Unternehmer für dessen Unternehmen; die Rechnung ist als elektronische Rechnung nach Absatz 1 Satz 3 und 6 auszustellen, wenn der leistende Unternehmer und der Leistungsempfänger im Inland oder in einem der in § 1 Absatz 3 bezeichneten Gebiete ansässig sind;
+
+> die dem leistenden Unternehmer vom Finanzamt erteilte Steuernummer oder die ihm vom Bundeszentralamt für Steuern erteilte Umsatzsteuer-Identifikationsnummer,
+
+§ 27 Abs. 38 Nr. 1 and 2 UStG: paper or, with the recipient's consent, another electronic format remain allowed until 31.12.2026 for Umsätze in 2025 and 2026, and until 31.12.2027 for Umsätze in 2027 when the issuer's Gesamtumsatz in the previous year was no more than 800 000 €.
+
+§ 4 Abs. 1 Satz 2 EStG:
+> Entnahmen sind alle Wirtschaftsgüter (Barentnahmen, Waren, Erzeugnisse, Nutzungen und Leistungen), die der Steuerpflichtige dem Betrieb für sich, für seinen Haushalt oder für andere betriebsfremde Zwecke im Laufe des Wirtschaftsjahres entnommen hat.
+
+§ 4 Abs. 3 Sätze 1 and 3 EStG:
+> Steuerpflichtige, die nicht auf Grund gesetzlicher Vorschriften verpflichtet sind, Bücher zu führen und regelmäßig Abschlüsse zu machen, und die auch keine Bücher führen und keine Abschlüsse machen, können als Gewinn den Überschuss der Betriebseinnahmen über die Betriebsausgaben ansetzen. […] Die Vorschriften über die Bewertungsfreiheit für geringwertige Wirtschaftsgüter (§ 6 Absatz 2), die Bildung eines Sammelpostens (§ 6 Absatz 2a) und über die Absetzung für Abnutzung oder Substanzverringerung sind zu befolgen.
+
+§ 11 Abs. 1 Satz 1, Abs. 2 Satz 1 EStG:
+> Einnahmen sind innerhalb des Kalenderjahres bezogen, in dem sie dem Steuerpflichtigen zugeflossen sind.
+
+> Ausgaben sind für das Kalenderjahr abzusetzen, in dem sie geleistet worden sind.
+
+§ 6 Abs. 2 Satz 1 EStG:
+> Die Anschaffungs- oder Herstellungskosten […] von abnutzbaren beweglichen Wirtschaftsgütern des Anlagevermögens, die einer selbständigen Nutzung fähig sind, können im Wirtschaftsjahr der Anschaffung, Herstellung oder Einlage des Wirtschaftsguts oder der Eröffnung des Betriebs in voller Höhe als Betriebsausgaben abgezogen werden, wenn die Anschaffungs- oder Herstellungskosten, vermindert um einen darin enthaltenen Vorsteuerbetrag (§ 9b Absatz 1), […] für das einzelne Wirtschaftsgut 800 Euro nicht übersteigen.
+
+Satz 4 begins "Wirtschaftsgüter im Sinne des Satzes 1, deren Wert 250 Euro übersteigt, si[nd]" and puts them in a register (the rest of the sentence was cut off in the copy).
+
+§ 7 Abs. 1 Sätze 1, 2 and 4 EStG:
+> Bei Wirtschaftsgütern, deren Verwendung oder Nutzung durch den Steuerpflichtigen zur Erzielung von Einkünften sich erfahrungsgemäß auf einen Zeitraum von mehr als einem Jahr erstreckt, ist jeweils für ein Jahr der Teil der Anschaffungs- oder Herstellungskosten abzusetzen, der bei gleichmäßiger Verteilung dieser Kosten auf die Gesamtdauer der Verwendung oder Nutzung auf ein Jahr entfällt […]. Die Absetzung bemisst sich hierbei nach der betriebsgewöhnlichen Nutzungsdauer des Wirtschaftsguts. […] Im Jahr der Anschaffung oder Herstellung des Wirtschaftsguts vermindert sich für dieses Jahr der Absetzungsbetrag nach Satz 1 um jeweils ein Zwölftel für jeden vollen Monat, der dem Monat der Anschaffung oder Herstellung vorangeht.
+
+§ 141 Abs. 1 Satz 1 AO: the duty to keep books applies to "Gewerbliche Unternehmer sowie Land- und Forstwirte" above the limits; Abs. 2: it starts with the Wirtschaftsjahr after the tax office's notice.
+
+§ 149 Abs. 2 Satz 1 AO:
+> Soweit die Steuergesetze nichts anderes bestimmen, sind Steuererklärungen, die sich auf ein Kalenderjahr oder auf einen gesetzlich bestimmten Zeitpunkt beziehen, spätestens sieben Monate nach Ablauf des Kalenderjahres oder sieben Monate nach dem gesetzlich bestimmten Zeitpunkt abzugeben.
+
+Abs. 3 gives a later deadline when a tax adviser prepares the return; its exact date wasn't read.
+
+§ 286 Abs. 1 Satz 1 and Abs. 3 Satz 1 BGB:
+> Leistet der Schuldner auf eine Mahnung des Gläubigers nicht, die nach dem Eintritt der Fälligkeit erfolgt, so kommt er durch die Mahnung in Verzug.
+
+> Der Schuldner einer Entgeltforderung kommt spätestens in Verzug, wenn er nicht innerhalb von 30 Tagen nach Fälligkeit und Zugang einer Rechnung oder gleichwertigen Zahlungsaufstellung leistet; dies gilt gegenüber einem Schuldner, der Verbraucher ist, nur, wenn auf diese Folgen in der Rechnung oder Zahlungsaufstellung besonders hingewiesen worden ist.
+
+§ 288 Abs. 1 Satz 2 and Abs. 2 BGB:
+> Der Verzugszinssatz beträgt für das Jahr fünf Prozentpunkte über dem Basiszinssatz.
+
+> Bei Rechtsgeschäften, an denen ein Verbraucher nicht beteiligt ist, beträgt der Zinssatz für Entgeltforderungen neun Prozentpunkte über dem Basiszinssatz.
+
 ## Not yet checked against the primary text
 
 - EN 16931 / XRechnung type codes for partial and final invoices (a standard, not law): built on 326 for a partial invoice and 380 with the paid amount (BT-113) for a final invoice, one note per deduction and its latest deduction as preceding invoice reference (BG-3; the CII schema takes only one), as secondary sources describe BR-DE-17 (allowed: 326, 380, 384, 389, 381, 875, 876, 877; 875–877 for construction). The KoSIT validator (configuration XRechnung 3.0.2, 2026-08-31) accepts them in CI; the KoSIT specification itself was not read.

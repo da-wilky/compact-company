@@ -1,13 +1,16 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import type { Schemas } from '#lib/api/index.ts';
+	import type { Term } from '#lib/help.svelte.ts';
 	import { t } from '#lib/i18n.svelte.ts';
+	import Hint from './Hint.svelte';
 
 	let {
 		label,
 		error,
 		note,
 		suffix,
+		hint,
 		inline = false,
 		children
 	}: {
@@ -16,13 +19,14 @@
 		note?: string;
 		/** Shown right after the input, such as a currency. */
 		suffix?: string;
+		hint?: Term;
 		inline?: boolean;
 		children: Snippet;
 	} = $props();
 </script>
 
 <label class:invalid={error} class:inline>
-	<span class="label">{label}</span>
+	<span class="label">{label}{#if hint}<Hint term={hint} />{/if}</span>
 	{#if suffix}
 		<span class="group">{@render children()}<span class="suffix">{suffix}</span></span>
 	{:else}

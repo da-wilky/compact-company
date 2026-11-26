@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Hint from '#lib/components/Hint.svelte';
 	import { goto } from '$app/navigation';
 	import { api, call, upload, type ApiError, type Schemas } from '#lib/api/index.ts';
 	import Icon from '#lib/components/Icon.svelte';
@@ -57,7 +58,7 @@
 
 <div class="page-head">
 	<div>
-		<h1>{t('receipts.title')}</h1>
+		<h1>{t('receipts.title')}<Hint term="receipt" /></h1>
 		<p class="muted">{t('receipts.intro')}</p>
 	</div>
 	{#if owner}
