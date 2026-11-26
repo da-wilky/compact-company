@@ -77,6 +77,7 @@ fn validate(business: Business) -> Result<Business, ApiError> {
             .text("vat_id", b.vat_id, 20)
             .map(|v| v.replace(' ', "").to_ascii_uppercase()),
         taxation: b.taxation,
+        simple_books: b.simple_books,
         legal_form: check.text("legal_form", b.legal_form, 100),
         register_court: check.text("register_court", b.register_court, 100),
         register_number: check.text("register_number", b.register_number, 50),

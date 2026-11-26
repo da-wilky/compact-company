@@ -267,8 +267,9 @@ pub async fn add_payment(
         Some(_) => Some(match input.account_id {
             Some(account) => {
                 let open: bool = sqlx::query_scalar(
-                    "SELECT count(*) > 0 FROM ledger_account
-                     WHERE id = ? AND type = 'asset' AND NOT archived",
+                    // private withdrawals: paid onto the owner's private account
+                    "SELECT count(*) > 0 FROM ledger_account WHERE id = ? AND NOT archived
+                     AND (type = 'asset' OR role = 'private_withdrawals')",
                 )
                 .bind(account)
                 .fetch_one(&mut *tx)

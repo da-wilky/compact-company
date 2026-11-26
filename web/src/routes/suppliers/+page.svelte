@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { api, call, type ApiError, type Schemas } from '#lib/api/index.ts';
+	import AccountSelect from '#lib/components/AccountSelect.svelte';
 	import Dialog from '#lib/components/Dialog.svelte';
 	import Field from '#lib/components/Field.svelte';
 	import Icon from '#lib/components/Icon.svelte';
@@ -11,6 +12,7 @@
 	type Input = Schemas['SupplierInput'];
 
 	const owner = $derived(session.view?.user?.role === 'owner');
+	const simple = $derived(session.view?.simple_books ?? false);
 	let archived = $state(false);
 	let suppliers = $state<Schemas['Supplier'][]>([]);
 	let accounts = $state<Schemas['Account'][]>([]);
@@ -33,7 +35,8 @@
 
 	const accountName = (id: number | null | undefined) => {
 		const account = accounts.find((a) => a.id === id);
-		return account ? `${account.number} ${account.name}` : '–';
+		if (!account) return '–';
+		return simple ? account.name : `${account.number} ${account.name}`;
 	};
 
 	function edit(supplier?: Schemas['Supplier']) {
@@ -112,7 +115,7 @@
 						<th>{t('customers.name')}</th>
 						<th>{t('customers.city')}</th>
 						<th>{t('business.vat_id')}</th>
-						<th>{t('suppliers.account')}</th>
+						<th>{t(simple ? 'simple.supplier_account' : 'suppliers.account')}</th>
 						{#if owner}<th></th>{/if}
 					</tr>
 				</thead>
@@ -122,7 +125,7 @@
 							<td data-label={t('customers.name')}><strong>{supplier.name}</strong></td>
 							<td data-label={t('customers.city')}>{supplier.city ?? '–'}</td>
 							<td data-label={t('business.vat_id')}>{supplier.vat_id ?? '–'}</td>
-							<td data-label={t('suppliers.account')}>{accountName(supplier.account_id)}</td>
+							<td data-label={t(simple ? 'simple.supplier_account' : 'suppliers.account')}>{accountName(supplier.account_id)}</td>
 							{#if owner}
 								<td class="actions">
 									<button class="ghost" onclick={() => edit(supplier)}>{t('app.edit')}</button>
@@ -150,13 +153,13 @@
 				</Field>
 			{/each}
 		</div>
-		<Field label={t('suppliers.account')} note={t('suppliers.account_note')} error={error?.fields?.account_id}>
-			<select bind:value={values.account_id}>
-				<option value={null}>–</option>
-				{#each accounts as account (account.id)}
-					<option value={account.id}>{account.number} {account.name}</option>
-				{/each}
-			</select>
+		<Field label={t(simple ? 'simple.supplier_account' : 'suppliers.account')} note={t('suppliers.account_note')} error={error?.fields?.account_id}>
+			<AccountSelect
+				accounts={accounts.filter((a) => a.type === 'expense' || a.type === 'asset')}
+				bind:value={values.account_id}
+				label={t(simple ? 'simple.supplier_account' : 'suppliers.account')}
+				placeholder="–"
+			/>
 		</Field>
 		{#if error}<p class="alert" role="alert">{t(error.message)}</p>{/if}
 		<div><button class="primary">{t('app.save')}</button></div>

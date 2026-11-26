@@ -261,6 +261,10 @@ _Avoid_: Profit and loss, P&L
 **EÜR line** (de: EÜR-Zeile):
 The line of the Anlage EÜR a ledger account counts on.
 
+**Simple books** (de: einfache Buchhaltung):
+The view of the books for an EÜR: ledger accounts chosen by name under their EÜR line, gross amounts, no journal or account numbers; the journal underneath is the same.
+_Avoid_: Simple mode, cash book, single entry
+
 **Deadline** (de: Frist):
 The day a VAT return, an annual VAT return or an EÜR is due at the tax office.
 _Avoid_: Due date (that is an invoice's)

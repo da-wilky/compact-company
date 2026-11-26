@@ -2,6 +2,7 @@
 	import type { Schemas } from '#lib/api/index.ts';
 	import { t } from '#lib/i18n.svelte.ts';
 	import Icon from './Icon.svelte';
+	import { session } from '#lib/session.svelte.ts';
 
 	let { steps }: { steps: Schemas['GettingStarted'] } = $props();
 
@@ -15,7 +16,12 @@
 		receipt: '/receipts',
 		process_documentation: '/process-documentation'
 	} as const;
-	const order = Object.keys(links) as (keyof typeof links)[];
+	// paying through the private account under simple books, there is no statement to import
+	const order = $derived(
+		(Object.keys(links) as (keyof typeof links)[]).filter(
+			(step) => step !== 'bank' || !session.view?.simple_books || session.view.business_bank
+		)
+	);
 	const done = $derived(order.filter((step) => steps[step]).length);
 
 	const key = 'getting-started-hidden';

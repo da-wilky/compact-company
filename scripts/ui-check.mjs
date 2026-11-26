@@ -649,6 +649,95 @@ try {
 	await settle();
 	if ((await statusOf(todos[1])) !== 2) failures.push('phone board: holding a card at the right edge did not move it to "In Arbeit"');
 	await screen('business', `${origin}/business`);
+	const { values: kept } = await api('GET', '/api/business');
+	await api('PUT', '/api/business', { ...kept, simple_books: true });
+	await screen('simple-overview', `${origin}/`);
+	await screen('simple-income', `${origin}/income`, async () => {
+		await click('[role=radiogroup] [role=radio]:nth-child(2)');
+		await settle();
+	});
+	await screen('simple-income-receive', `${origin}/income`, async () => {
+		await until('the invoices', () => evaluate("!!document.querySelector('td.actions button')"));
+		await click('td.actions button');
+		await until('the payment dialog', () => evaluate("!!document.querySelector('dialog[open] form')"));
+	});
+	await screen('simple-expenses', `${origin}/receipts`);
+	await screen('simple-receipt-draft', `${origin}/receipts/${photo.id}`);
+	await screen('simple-receipt-booked', `${origin}/receipts/${hosting.id}`);
+	await screen('simple-bank-match', `${origin}/bank`, async () => {
+		await until('the transactions', () => evaluate("!!document.querySelector('.transactions button')"));
+		await click('.transactions li:nth-child(2) button');
+		await until('the match dialog', () => evaluate("!!document.querySelector('dialog[open] .summary-box')"));
+		await click('dialog[open] form > .row button.ghost');
+		await settle();
+	});
+	await screen('simple-suppliers', `${origin}/suppliers`);
+	await screen('simple-business', `${origin}/business`);
+
+	// #131 step 13: a Kleinunternehmer paying through the private account
+	await api('PUT', '/api/business', { ...kept, taxation: 'small_business', simple_books: null });
+	await api('PUT', `/api/bank-accounts/${girokonto.id}`, { name: girokonto.name, archived: true });
+	const year = new Date().getFullYear();
+	const euerOf = () => api('GET', `/api/tax/euer?year=${year}`);
+	const before = await euerOf();
+	await open(`${origin}/`);
+	const nav = await evaluate("[...document.querySelectorAll('nav.sidebar a.item')].map((a) => a.getAttribute('href'))");
+	for (const href of ['/income', '/receipts']) if (!nav.includes(href)) failures.push(`private account: ${href} missing from the sidebar`);
+	for (const href of ['/bank', '/books', '/open-items']) if (nav.includes(href)) failures.push(`private account: ${href} still in the sidebar`);
+
+	const ticket = await uploadReceipt('bon.png', 'image/png', null);
+	await api('PUT', `/api/receipts/${ticket.id}`, {
+		supplier_id: restaurant.id,
+		date: `${year}-01-02`,
+		lines: [{ description: 'Druckerpapier', account_id: account('4930'), net: 2380, vat_rate: '0' }]
+	});
+	await open(`${origin}/receipts/${ticket.id}`);
+	await until('the paid-through choice', () => evaluate("!!document.querySelector('form.card select option:checked')"));
+	const paidThrough = await evaluate("[...document.querySelectorAll('form.card select')].at(-1).selectedOptions[0].textContent");
+	if (paidThrough !== 'Private account') failures.push(`private account: a receipt starts as paid through "${paidThrough}"`);
+	const paidOn = new Date().toISOString().slice(0, 10);
+	await evaluate(`(() => {
+		const el = [...document.querySelectorAll('form.card input[type=date]')].at(-1);
+		el.value = ${JSON.stringify(paidOn)};
+		el.dispatchEvent(new Event('input', { bubbles: true }));
+	})()`);
+	await evaluate("[...document.querySelectorAll('form.card .actions button')].at(-1).click()");
+	await until('the confirmation', () => evaluate("!!document.querySelector('dialog[open] form .row button.primary')"));
+	await click('dialog[open] form .row button.primary');
+	await until('the receipt to be booked', async () => (await api('GET', `/api/receipts/${ticket.id}`)).status === 'booked');
+	const booked = await api('GET', `/api/receipts/${ticket.id}`);
+	if (booked.amount_due !== 0 || booked.payments[0]?.account_id !== account('1890') || booked.payments[0]?.date !== paidOn)
+		failures.push(`private account: receipt paid ${JSON.stringify(booked.payments)}, due ${booked.amount_due}`);
+
+	const dueBefore = await api('GET', '/api/documents?kind=invoice&status=issued');
+	await open(`${origin}/income`);
+	await until('an open invoice', () => evaluate("!!document.querySelector('td.actions button')"));
+	await click('td.actions button');
+	await until('the payment dialog', () => evaluate("!!document.querySelector('dialog[open] form select')"));
+	const receivedOn = await evaluate("document.querySelector('dialog[open] form select').selectedOptions[0].textContent");
+	if (receivedOn !== 'Private account') failures.push(`private account: a payment starts as received on "${receivedOn}"`);
+	await click('dialog[open] form button.primary');
+	await until('the payment', async () =>
+		(await api('GET', '/api/documents?kind=invoice&status=issued')).some((d) => d.amount_due === 0 && dueBefore.find((b) => b.id === d.id)?.amount_due > 0)
+	);
+	const settled = (await api('GET', '/api/documents?kind=invoice&status=issued')).find(
+		(d) => d.amount_due === 0 && dueBefore.find((b) => b.id === d.id)?.amount_due > 0
+	);
+	const received = dueBefore.find((d) => d.id === settled.id).amount_due;
+	const payment = (await api('GET', `/api/documents/${settled.id}`)).payments.at(-1);
+	if (payment.account_id !== account('1800')) failures.push(`private account: invoice paid onto account ${payment.account_id}`);
+
+	const after = await euerOf();
+	if (after.deposits - before.deposits !== 2380) failures.push(`private account: Einlagen grew by ${after.deposits - before.deposits}, not 2380`);
+	if (after.withdrawals - before.withdrawals !== received) failures.push(`private account: Entnahmen grew by ${after.withdrawals - before.withdrawals}, not ${received}`);
+	if (after.expenses - before.expenses !== 2380) failures.push(`private account: expenses grew by ${after.expenses - before.expenses}, not 2380`);
+	if (after.income <= before.income) failures.push('private account: the payment added no income');
+	await screen('private-overview', `${origin}/`);
+	await screen('private-expenses', `${origin}/receipts`);
+	await screen('private-receipt-booked', `${origin}/receipts/${ticket.id}`);
+	await screen('private-income', `${origin}/income`);
+	await api('PUT', `/api/bank-accounts/${girokonto.id}`, { name: girokonto.name, archived: false });
+	await api('PUT', '/api/business', kept);
 	await screen('audit', `${origin}/audit`);
 	await api('POST', '/api/tokens', { name: 'Zeitimport', scopes: ['work:read', 'work:write'] });
 	await screen('account', `${origin}/account`);

@@ -3,6 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { api, call, clientError, type ApiError, type Schemas } from '#lib/api/index.ts';
+	import { accountLabel, moneyAccounts } from '#lib/accounts.ts';
 	import Dialog from '#lib/components/Dialog.svelte';
 	import Field from '#lib/components/Field.svelte';
 	import Icon from '#lib/components/Icon.svelte';
@@ -287,8 +288,8 @@
 	$effect(() => {
 		if (!owner) return;
 		call(api.GET('/api/accounts')).then(({ data }) => {
-			payAccounts = (data ?? []).filter((a) => a.type === 'asset' && ['bank', 'cash', 'money_transit'].includes(a.role ?? ''));
-			payAccount = payAccounts.find((a) => a.role === 'bank')?.id;
+			payAccounts = moneyAccounts(data ?? [], 'in');
+			payAccount = payAccounts[0]?.id;
 		});
 	});
 
@@ -794,9 +795,7 @@
 							{/if}
 							<Field label={t('documents.payment_account')} error={payError?.fields?.account_id}>
 								<select bind:value={payAccount}>
-									{#each payAccounts as account (account.id)}
-										<option value={account.id}>{account.number} {account.name}</option>
-									{/each}
+									{#each payAccounts as account (account.id)}<option value={account.id}>{accountLabel(account)}</option>{/each}
 								</select>
 							</Field>
 						{/if}

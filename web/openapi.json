@@ -6971,6 +6971,13 @@
             ],
             "format": "int64",
             "description": "The account it was paid from on its date, such as the cash box for a ticket; open until\npaid when unset."
+          },
+          "paid_on": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "ISO date it was paid with `paid_from`; the receipt's date when unset."
           }
         },
         "additionalProperties": false
@@ -6993,6 +7000,23 @@
           "started_at": {
             "type": "integer",
             "format": "int64"
+          }
+        }
+      },
+      "BooksMode": {
+        "type": "object",
+        "required": [
+          "simple_books",
+          "business_bank"
+        ],
+        "properties": {
+          "business_bank": {
+            "type": "boolean",
+            "description": "It has a business bank account to import statements of, rather than paying through the\nowner's private one."
+          },
+          "simple_books": {
+            "type": "boolean",
+            "description": "The business keeps simple books (ADR 0028)."
           }
         }
       },
@@ -7198,6 +7222,13 @@
               "null"
             ],
             "description": "Seller identifier (BT-29) in e-invoices, such as the Wirtschafts-Identifikationsnummer;\nstands in for the VAT ID and register number that EN 16931 wants one of (BR-CO-26)."
+          },
+          "simple_books": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "Simple books (ADR 0028): accounts by name under their EÜR line, gross amounts, no\njournal; on for a small business when unset."
           },
           "street": {
             "type": [
@@ -8619,6 +8650,14 @@
           "updated_at"
         ],
         "properties": {
+          "amount_due": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Of an issued invoice, in the minor unit of its currency."
+          },
           "currency": {
             "type": "string"
           },
@@ -11870,39 +11909,46 @@
         }
       },
       "SessionView": {
-        "type": "object",
-        "required": [
-          "setup_required"
-        ],
-        "properties": {
-          "csrf_token": {
-            "type": [
-              "string",
-              "null"
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/BooksMode"
+          },
+          {
+            "type": "object",
+            "required": [
+              "setup_required"
             ],
-            "description": "Send as `x-csrf-token` with every state-changing request."
-          },
-          "oidc": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "description": "Label of the identity provider's sign-in button, if one is configured."
-          },
-          "setup_required": {
-            "type": "boolean"
-          },
-          "user": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/User"
+            "properties": {
+              "csrf_token": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Send as `x-csrf-token` with every state-changing request."
               },
-              {
-                "type": "null"
+              "oidc": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Label of the identity provider's sign-in button, if one is configured."
+              },
+              "setup_required": {
+                "type": "boolean"
+              },
+              "user": {
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/User"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
               }
-            ]
+            }
           }
-        }
+        ]
       },
       "SetupStart": {
         "type": "object",

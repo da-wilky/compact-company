@@ -744,6 +744,16 @@ fn fixed(part: Part, taxation: Taxation) -> Vec<(Text, Text)> {
                     ),
                 },
             ),
+            (
+                t(
+                    "Zahlungen über ein Privatkonto",
+                    "Payments through a private account",
+                ),
+                t(
+                    "Läuft eine Zahlung über ein privates Konto des Inhabers, bucht ein Zahlungseingang Privatentnahme an Forderung und eine bezahlte Rechnung eines Lieferanten Verbindlichkeit an Privateinlage, jeweils am Tag der Zahlung. Die Auszüge des privaten Kontos werden nicht importiert; erfasst werden nur die betrieblichen Zahlungen.",
+                    "When a payment runs through an account of the owner's own, a payment received books private withdrawal to receivable and a paid supplier's invoice payable to private deposit, each on the day of payment. The private account's statements are not imported; only the business payments are recorded.",
+                ),
+            ),
         ],
         Part::Technical => vec![
             (
