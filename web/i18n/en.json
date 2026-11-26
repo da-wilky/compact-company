@@ -422,6 +422,7 @@
   "error.package_unavailable": "The package could not be downloaded.",
   "error.partial_invoice_partly_paid": "A partial invoice is paid only in part. Record the rest of the payment or cancel it before issuing the final invoice.",
   "error.passkey_cancelled": "The passkey prompt was cancelled.",
+  "error.passkey_origin": "Passkeys only work at the address this instance is set up for (public_url). Open the app there.",
   "error.passkey_rejected": "The passkey was not accepted.",
   "error.quote_decided": "The customer's answer is already recorded.",
   "error.quote_not_accepted": "The quote has not been accepted.",

@@ -28,8 +28,11 @@ async function ceremony(ask: () => Promise<Credential | null>): Promise<Result> 
 	try {
 		const credential = (await ask()) as PublicKeyCredential | null;
 		if (credential) return { credential: credential.toJSON() };
-	} catch {
-		// the browser reports cancellation and timeout alike
+	} catch (e) {
+		// cancellation and timeout are both NotAllowedError; SecurityError means the page is not on the RP ID
+		if (e instanceof DOMException && e.name === 'SecurityError') {
+			return { error: clientError('error.passkey_origin') };
+		}
 	}
 	return { error: clientError('error.passkey_cancelled') };
 }
