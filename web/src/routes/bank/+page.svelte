@@ -10,7 +10,7 @@
 	import { confirm } from '#lib/confirm.svelte.ts';
 	import { t } from '#lib/i18n.svelte.ts';
 	import { formatMoney, moneyInput, parseMoney } from '#lib/money.ts';
-	import { session } from '#lib/session.svelte.ts';
+	import { load, session } from '#lib/session.svelte.ts';
 	import { toast } from '#lib/toast.svelte.ts';
 
 	type Part = {
@@ -97,7 +97,7 @@
 		if (result.data) {
 			creating = false;
 			bankId = result.data.id;
-			await loadBanks();
+			await Promise.all([loadBanks(), load()]);
 		}
 	}
 

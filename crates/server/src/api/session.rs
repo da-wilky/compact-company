@@ -30,8 +30,33 @@ pub struct SessionView {
     setup_required: bool,
     /// Label of the identity provider's sign-in button, if one is configured.
     oidc: Option<String>,
+    #[serde(flatten)]
+    books: BooksMode,
+}
+
+#[derive(Default, Serialize, ToSchema)]
+struct BooksMode {
     /// The business keeps simple books (ADR 0028).
     simple_books: bool,
+    /// It has a business bank account to import statements of, rather than paying through the
+    /// owner's private one.
+    business_bank: bool,
+}
+
+async fn books_mode(app: &App) -> Result<BooksMode, ApiError> {
+    Ok(BooksMode {
+        simple_books: app
+            .settings
+            .business()
+            .await
+            .map_err(ApiError::internal)?
+            .simple_books(),
+        business_bank: sqlx::query_scalar(
+            "SELECT EXISTS (SELECT 1 FROM bank_account WHERE NOT archived)",
+        )
+        .fetch_one(&app.db)
+        .await?,
+    })
 }
 
 #[utoipa::path(get, path = "/session", tag = "session",
@@ -41,22 +66,18 @@ pub async fn get_session(
     headers: HeaderMap,
 ) -> Result<Json<SessionView>, ApiError> {
     let current = auth::current(&app, &headers).await?;
+    // how the books are kept is the business's own affair, not for signed-out visitors
+    let books = match current {
+        Some(_) => books_mode(&app).await?,
+        None => BooksMode::default(),
+    };
     Ok(Json(SessionView {
         setup_required: app.setup_required().await?,
         oidc: app.oidc.as_ref().map(|p| p.name.clone()),
         csrf_token: current.as_ref().map(|c| c.csrf_token.clone()),
         user: current.map(|c| c.user),
-        simple_books: simple_books(&app).await?,
+        books,
     }))
-}
-
-async fn simple_books(app: &App) -> Result<bool, ApiError> {
-    Ok(app
-        .settings
-        .business()
-        .await
-        .map_err(ApiError::internal)?
-        .simple_books())
 }
 
 #[derive(Deserialize, ToSchema)]
@@ -209,7 +230,7 @@ pub async fn signed_in(app: &App, session: NewSession, user: User) -> Result<Res
         csrf_token: Some(session.csrf_token),
         setup_required: false,
         oidc: app.oidc.as_ref().map(|p| p.name.clone()),
-        simple_books: simple_books(app).await?,
+        books: books_mode(app).await?,
     };
     Ok(([(header::SET_COOKIE, session.cookie)], Json(view)).into_response())
 }

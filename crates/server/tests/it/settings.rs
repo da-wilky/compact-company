@@ -73,6 +73,12 @@ async fn simple_books_follow_small_business_until_set() {
         false
     );
     assert_eq!(simple(json!({ "simple_books": true })).await, true);
+    let signed_out = json(app.get("/api/session").await).await;
+    assert_eq!(
+        (&signed_out["simple_books"], &signed_out["business_bank"]),
+        (&json!(false), &json!(false)),
+        "signed-out visitors learn nothing of the books"
+    );
 }
 
 #[tokio::test]

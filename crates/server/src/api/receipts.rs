@@ -759,6 +759,8 @@ pub struct BookInput {
     /// The account it was paid from on its date, such as the cash box for a ticket; open until
     /// paid when unset.
     paid_from: Option<i64>,
+    /// ISO date it was paid with `paid_from`; the receipt's date when unset.
+    paid_on: Option<String>,
 }
 
 /// Books a draft; it never changes afterwards.
@@ -773,7 +775,7 @@ pub async fn book_receipt(
 ) -> Result<Json<Receipt>, ApiError> {
     let business = business(&app).await?;
     let mut tx = app.db.begin_with("BEGIN IMMEDIATE").await?;
-    started(&mut tx).await?;
+    let books = started(&mut tx).await?;
     let receipt = draft(&mut tx, id).await?;
     if !receipt.missing.is_empty() {
         return Err(ApiError::fields(receipt.missing));
@@ -781,6 +783,18 @@ pub async fn book_receipt(
     if let Some(account) = input.paid_from {
         payment_account(&mut tx, account).await?;
     }
+    let paid_on = match input.paid_on {
+        Some(date) => {
+            let mut check = Check::default();
+            super::books::check_date(&mut check, "paid_on", &date, &books);
+            check.done()?;
+            date
+        }
+        None => receipt
+            .date
+            .clone()
+            .expect("a bookable receipt has its date"),
+    };
     rules::post_receipt(&mut tx, &business, auth.user.id, id)
         .await
         .map_err(rule_error)?;
@@ -808,7 +822,7 @@ pub async fn book_receipt(
     if let Some(account) = input.paid_from {
         let payment = NewReceiptPayment {
             receipt: id,
-            date: receipt.date.clone().expect("a booked receipt has its date"),
+            date: paid_on,
             amount: receipt.gross,
             eur_amount: eur_of(&receipt, receipt.gross),
             account,
@@ -828,9 +842,11 @@ fn eur_of(receipt: &Receipt, amount: i64) -> Option<i64> {
     (Decimal::from(amount) * rate).round().try_into().ok()
 }
 
+/// Money accounts, or private deposits for a receipt paid with the owner's own money.
 async fn payment_account(db: &mut SqliteConnection, account: i64) -> Result<(), ApiError> {
     let open: bool = sqlx::query_scalar(
-        "SELECT count(*) > 0 FROM ledger_account WHERE id = ? AND type = 'asset' AND NOT archived",
+        "SELECT count(*) > 0 FROM ledger_account WHERE id = ? AND NOT archived
+         AND (type = 'asset' OR role = 'private_deposits')",
     )
     .bind(account)
     .fetch_one(db)

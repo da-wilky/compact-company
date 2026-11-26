@@ -154,6 +154,9 @@ pub struct DocumentSummary {
     #[sqlx(skip)]
     #[schema(value_type = Option<String>)]
     gross: Option<Decimal>,
+    /// Of an issued invoice, in the minor unit of its currency.
+    #[sqlx(skip)]
+    amount_due: Option<i64>,
     updated_at: i64,
 }
 
@@ -236,6 +239,9 @@ pub async fn list_documents(
         let row = row(&mut db, summary.id).await?;
         let data = data(&mut db, &business, &row).await?;
         summary.gross = data.totals.map(|t| t.gross);
+        if summary.kind == Kind::Invoice && summary.status == Status::Issued {
+            summary.amount_due = Some(crate::documents::amount_due(&mut db, summary.id).await?);
+        }
     }
     Ok(Json(list))
 }

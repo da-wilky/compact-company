@@ -28,9 +28,11 @@
 		icon: IconName;
 		roles: Schemas['Role'][];
 		group: 'main' | 'admin' | 'me';
-		/** Hidden from the owner under simple books (ADR 0028). */
-		expert?: boolean;
+		/** Under simple books (ADR 0028) the owner sees an item of one mode only in that mode. */
+		mode?: 'simple' | 'full';
 	};
+	const user = $derived(session.view?.user);
+	const simple = $derived(session.view?.simple_books && user?.role === 'owner');
 	const all: Schemas['Role'][] = ['owner', 'staff', 'accountant'];
 	const items: Item[] = $derived([
 		{ href: '/', label: t('nav.overview'), icon: 'overview', roles: all, group: 'main' },
@@ -38,10 +40,11 @@
 		{ href: '/time', label: t('time.title'), icon: 'time', roles: ['owner', 'staff'], group: 'main' },
 		{ href: '/customers', label: t('customers.title'), icon: 'customers', roles: all, group: 'main' },
 		{ href: '/documents', label: t('documents.title'), icon: 'documents', roles: ['owner', 'accountant'], group: 'main' },
-		{ href: '/receipts', label: t('receipts.title'), icon: 'receipts', roles: ['owner', 'accountant'], group: 'main' },
-		{ href: '/bank', label: t('bank.title'), icon: 'bank', roles: ['owner', 'accountant'], group: 'main' },
-		{ href: '/open-items', label: t('open_items.title'), icon: 'open_items', roles: ['owner', 'accountant'], group: 'main', expert: true },
-		{ href: '/books', label: t('books.title'), icon: 'books', roles: ['owner', 'accountant'], group: 'main', expert: true },
+		{ href: '/income', label: t('simple.income'), icon: 'open_items', roles: ['owner'], group: 'main', mode: 'simple' },
+		{ href: '/receipts', label: t(simple ? 'simple.expenses' : 'receipts.title'), icon: 'receipts', roles: ['owner', 'accountant'], group: 'main' },
+		{ href: '/bank', label: t('bank.title'), icon: 'bank', roles: ['owner', 'accountant'], group: 'main', mode: session.view?.business_bank ? undefined : 'full' },
+		{ href: '/open-items', label: t('open_items.title'), icon: 'open_items', roles: ['owner', 'accountant'], group: 'main', mode: 'full' },
+		{ href: '/books', label: t('books.title'), icon: 'books', roles: ['owner', 'accountant'], group: 'main', mode: 'full' },
 		{ href: '/tax', label: t('tax.title'), icon: 'tax', roles: ['owner', 'accountant'], group: 'main' },
 		{ href: '/assets', label: t('assets.title'), icon: 'assets', roles: ['owner', 'accountant'], group: 'main' },
 		{ href: '/activities', label: t('activities.title'), icon: 'activities', roles: ['owner'], group: 'admin' },
@@ -69,9 +72,9 @@
 	const section = $derived(`/${page.url.pathname.split('/')[1]}`);
 
 	const open = ['/setup', '/sign-in', '/invitation'];
-	const user = $derived(session.view?.user);
-	const simple = $derived(session.view?.simple_books && user?.role === 'owner');
-	const visible = $derived(items.filter((item) => user && item.roles.includes(user.role) && !(simple && item.expert)));
+	const visible = $derived(
+		items.filter((item) => user && item.roles.includes(user.role) && (!item.mode || item.mode === (simple ? 'simple' : 'full')))
+	);
 	const main = $derived(visible.filter((item) => item.group === 'main'));
 	const admin = $derived(visible.filter((item) => item.group === 'admin'));
 	// the phone bar shows the everyday pages; the rest live in the "more" sheet

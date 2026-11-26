@@ -523,3 +523,102 @@ async fn bewirtung_is_split_70_30_and_only_deductible_gifts_count() {
     assert_eq!(euer["deposits"], 2_800);
     assert_eq!(euer["withdrawals"], 0);
 }
+
+#[tokio::test]
+async fn money_paid_through_the_private_account_counts_when_paid_and_as_private_movements() {
+    let app = start(Config::default()).await;
+    let mut owner = app.setup_owner().await;
+    let customer = app.ready_to_issue(&mut owner).await;
+    let today = day(0);
+    let year: i32 = today[..4].parse().unwrap();
+    app.ok(
+        &mut owner,
+        "POST",
+        "/api/books",
+        json!({ "chart": "skr04", "start_date": format!("{}-01-01", year - 1) }),
+    )
+    .await;
+    let deposits = common::account(&app, &mut owner, "2180").await;
+    let withdrawals = common::account(&app, &mut owner, "2100").await;
+    let office = common::account(&app, &mut owner, "6815").await;
+    let supplier = app
+        .ok(
+            &mut owner,
+            "POST",
+            "/api/suppliers",
+            json!({ "name": "Papeterie" }),
+        )
+        .await["id"]
+        .clone();
+    let draft = app
+        .multipart(
+            &mut owner,
+            "POST",
+            "/api/receipts",
+            &[("file", Some("bon.pdf"), b"%PDF-1.4 bon".as_slice())],
+        )
+        .await;
+    let receipt = body(draft).await["id"].as_i64().unwrap();
+    app.ok(
+        &mut owner,
+        "PUT",
+        &format!("/api/receipts/{receipt}"),
+        json!({ "supplier_id": supplier, "date": day(-1), "lines": [
+            { "description": "Papier", "account_id": office, "net": 5_000, "vat_rate": "0" }
+        ] }),
+    )
+    .await;
+    let booked = app
+        .ok(
+            &mut owner,
+            "POST",
+            &format!("/api/receipts/{receipt}/book"),
+            json!({ "paid_from": deposits, "paid_on": today }),
+        )
+        .await;
+    assert_eq!(booked["amount_due"], 0);
+    assert_eq!(booked["payments"][0]["date"], today.as_str());
+
+    let invoice = invoice(&app, &mut owner, customer).await;
+    let listed = app
+        .ok(
+            &mut owner,
+            "GET",
+            "/api/documents?kind=invoice&status=issued",
+            json!({}),
+        )
+        .await;
+    assert_eq!(listed[0]["amount_due"], 110_000);
+    let path = format!("/api/documents/{}/payments", invoice["id"]);
+    let wrong_way = app
+        .as_browser(
+            &mut owner,
+            "POST",
+            &path,
+            json!({ "date": today, "amount": 110_000, "account_id": deposits }),
+        )
+        .await;
+    assert_eq!(wrong_way.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    app.ok(
+        &mut owner,
+        "POST",
+        &path,
+        json!({ "date": today, "amount": 110_000, "account_id": withdrawals }),
+    )
+    .await;
+
+    let euer = app
+        .ok(
+            &mut owner,
+            "GET",
+            &format!("/api/tax/euer?year={year}"),
+            json!({}),
+        )
+        .await;
+    assert_eq!(
+        amounts(&euer["lines"]),
+        expect(&[("12", 110_000), ("51", 5_000)])
+    );
+    assert_eq!(euer["deposits"], 5_000);
+    assert_eq!(euer["withdrawals"], 110_000);
+}

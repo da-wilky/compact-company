@@ -58,8 +58,8 @@
 
 <div class="page-head">
 	<div>
-		<h1>{t('receipts.title')}<Hint term="receipt" /></h1>
-		<p class="muted">{t('receipts.intro')}</p>
+		<h1>{t(session.view?.simple_books ? 'simple.expenses' : 'receipts.title')}<Hint term="receipt" /></h1>
+		<p class="muted">{t(session.view?.simple_books ? 'simple.expenses_intro' : 'receipts.intro')}</p>
 	</div>
 	{#if owner}
 		<div class="row">
@@ -123,7 +123,7 @@
 							<td data-label={t('receipts.number')}>{receipt.number ?? '–'}</td>
 							<td data-label={t('receipts.gross')} class="amount">{formatMoney(receipt.gross, receipt.currency)}</td>
 							<td data-label={t('documents.amount_due')} class="amount">
-								{receipt.amount_due == null ? '–' : formatMoney(receipt.amount_due, receipt.currency)}
+								{#if receipt.amount_due === 0 && !receipt.reversed}<span class="badge accent">{t('documents.paid')}</span>{:else}{receipt.amount_due == null ? '–' : formatMoney(receipt.amount_due, receipt.currency)}{/if}
 							</td>
 						</tr>
 					{/each}

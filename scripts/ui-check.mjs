@@ -652,6 +652,16 @@ try {
 	const { values: kept } = await api('GET', '/api/business');
 	await api('PUT', '/api/business', { ...kept, simple_books: true });
 	await screen('simple-overview', `${origin}/`);
+	await screen('simple-income', `${origin}/income`, async () => {
+		await click('[role=radiogroup] [role=radio]:nth-child(2)');
+		await settle();
+	});
+	await screen('simple-income-receive', `${origin}/income`, async () => {
+		await until('the invoices', () => evaluate("!!document.querySelector('td.actions button')"));
+		await click('td.actions button');
+		await until('the payment dialog', () => evaluate("!!document.querySelector('dialog[open] form')"));
+	});
+	await screen('simple-expenses', `${origin}/receipts`);
 	await screen('simple-receipt-draft', `${origin}/receipts/${photo.id}`);
 	await screen('simple-receipt-booked', `${origin}/receipts/${hosting.id}`);
 	await screen('simple-bank-match', `${origin}/bank`, async () => {

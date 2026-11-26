@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { accountLabel, moneyAccounts } from '#lib/accounts.ts';
 	import { page } from '$app/state';
 	import { api, call, clientError, type ApiError, type Schemas } from '#lib/api/index.ts';
 	import AccountSelect from '#lib/components/AccountSelect.svelte';
@@ -89,16 +90,19 @@
 		load();
 	});
 	call(api.GET('/api/suppliers')).then(({ data }) => (suppliers = data ?? []));
-	call(api.GET('/api/accounts')).then(({ data }) => (accounts = data ?? []));
+	call(api.GET('/api/accounts')).then(({ data }) => {
+		accounts = data ?? [];
+		// simple books expect most receipts paid at once, through the usual account
+		if (simple) paidFrom = moneyAccounts(accounts, 'out')[0]?.id ?? null;
+	});
 	call(api.GET('/api/currencies')).then(({ data }) => (currencies = data ?? ['EUR']));
 	call(api.GET('/api/business')).then(({ data }) => (smallBusiness = data?.values.taxation === 'small_business'));
 
 	const expenseAccounts = $derived(accounts.filter((a) => a.type === 'expense' || a.type === 'asset'));
-	const moneyAccounts = $derived(accounts.filter((a) => ['bank', 'cash', 'money_transit'].includes(a.role ?? '')));
+	const paidThrough = $derived(moneyAccounts(accounts, 'out'));
 	const accountName = (id: number | null | undefined) => {
 		const account = accounts.find((a) => a.id === id);
-		if (!account) return '–';
-		return simple ? account.name : `${account.number} ${account.name}`;
+		return account ? accountLabel(account) : '–';
 	};
 
 	const totals = $derived.by(() => {
@@ -154,13 +158,18 @@
 		return !result.error;
 	}
 
+	// simple books expect most receipts paid at once, so they start as paid on the receipt's date
 	let paidFrom = $state<number | null>(null);
+	let paidOn = $state('');
 	async function book() {
 		if (!(await save())) return;
 		if (!(await confirm({ text: t('receipts.book_confirm'), action: t('books.book') }))) return;
 		busy = true;
 		const result = await call(
-			api.POST('/api/receipts/{id}/book', { params: { path: { id } }, body: { paid_from: paidFrom } })
+			api.POST('/api/receipts/{id}/book', {
+				params: { path: { id } },
+				body: { paid_from: paidFrom ?? null, paid_on: (paidFrom != null && paidOn) || null }
+			})
 		);
 		busy = false;
 		error = result.error;
@@ -206,7 +215,7 @@
 	let payAccount = $state<number>();
 	let payError = $state<ApiError>();
 	$effect(() => {
-		payAccount ??= moneyAccounts.find((a) => a.role === 'bank')?.id;
+		payAccount ??= paidThrough[0]?.id;
 	});
 
 	async function pay(event: SubmitEvent) {
@@ -248,7 +257,7 @@
 {#if receipt}
 	<div class="page-head">
 		<div>
-			<p class="crumbs"><a href="/receipts">{t('receipts.title')}</a> · {t('term.receipt')}</p>
+			<p class="crumbs"><a href="/receipts">{t(simple ? 'simple.expenses' : 'receipts.title')}</a> · {t('term.receipt')}</p>
 			<h1>{receipt.supplier_name ?? t('receipts.no_supplier')}{receipt.number ? ` · ${receipt.number}` : ''}</h1>
 			<p class="muted">
 				{t(receipt.status === 'draft' ? 'term.draft' : 'receipts.booked')}
@@ -381,15 +390,25 @@
 						<textarea rows="2" bind:value={note}></textarea>
 					</Field>
 
-					<div class="row actions">
-						<button class="ghost" disabled={busy}>{t('app.save')}</button>
-						<label class="paid">
-							<span class="muted">{t('receipts.paid_from')}</span>
+					<div class="grid">
+						<Field label={t('receipts.paid_from')} error={error?.fields?.account_id}>
 							<select bind:value={paidFrom}>
 								<option value={null}>{t('receipts.not_paid_yet')}</option>
-								{#each moneyAccounts as account (account.id)}<option value={account.id}>{accountName(account.id)}</option>{/each}
+								{#each paidThrough as account (account.id)}<option value={account.id}>{accountLabel(account)}</option>{/each}
 							</select>
-						</label>
+						</Field>
+						{#if paidFrom != null}
+							<Field label={t('receipts.paid_on')} error={error?.fields?.paid_on}>
+								<input type="date" value={paidOn || date} oninput={(e) => (paidOn = e.currentTarget.value)} />
+							</Field>
+						{/if}
+					</div>
+					{#if simple && !session.view?.business_bank}
+						<small class="muted">{t('simple.business_account_hint')} <a href="/bank">{t('bank.title')}</a></small>
+					{/if}
+
+					<div class="row actions">
+						<button class="ghost" disabled={busy}>{t('app.save')}</button>
 						<button type="button" class="primary" disabled={busy} onclick={book}>{t('books.book')}</button>
 					</div>
 				</form>
@@ -474,7 +493,7 @@
 								{/if}
 								<Field label={t('documents.payment_account')} error={payError?.fields?.account_id}>
 									<select bind:value={payAccount}>
-										{#each moneyAccounts as account (account.id)}<option value={account.id}>{accountName(account.id)}</option>{/each}
+										{#each paidThrough as account (account.id)}<option value={account.id}>{accountLabel(account)}</option>{/each}
 									</select>
 								</Field>
 								<button class="primary">{t('receipts.record_payment')}</button>
@@ -603,14 +622,6 @@
 	.actions {
 		justify-content: end;
 		flex-wrap: wrap;
-	}
-	.paid {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-	}
-	.paid select {
-		width: auto;
 	}
 	.pay {
 		display: flex;
