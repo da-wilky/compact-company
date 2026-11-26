@@ -45,6 +45,13 @@
 		);
 	});
 
+	const year = new Date().getFullYear();
+	let euer = $state<Schemas['EuerView']>();
+	$effect(() => {
+		if (!money || !session.view?.simple_books) return;
+		call(api.GET('/api/tax/euer', { params: { query: { year } } })).then(({ data }) => (euer = data));
+	});
+
 	const hours = $derived(week.reduce((sum, e) => sum + (e.ended_at ?? timers.now) - e.started_at, 0));
 </script>
 
@@ -97,6 +104,17 @@
 
 {#if overview && (money || overview.running.length)}
 	<div class="cards">
+		{#if euer}
+			<section class="card stack">
+				<h2>{t('simple.year', { year })}</h2>
+				<dl class="figures">
+					<dt>{t('tax.income')}</dt><dd>{formatMoney(euer.income, 'EUR')}</dd>
+					<dt>{t('tax.expenses')}</dt><dd>{formatMoney(euer.expenses, 'EUR')}</dd>
+					<dt><strong>{t('simple.profit')}</strong></dt><dd><strong>{formatMoney(euer.profit, 'EUR')}</strong></dd>
+				</dl>
+				<a href="/tax?tab=euer">{t('simple.to_euer')}</a>
+			</section>
+		{/if}
 		{#if money}
 			<section class="card stack">
 				<h2>{t('home.deadlines')}</h2>
@@ -230,6 +248,17 @@
 	.amount {
 		font-variant-numeric: tabular-nums;
 		white-space: nowrap;
+	}
+	.figures {
+		display: grid;
+		grid-template-columns: 1fr auto;
+		gap: 0.375rem 1rem;
+		margin: 0;
+	}
+	.figures dd {
+		margin: 0;
+		text-align: right;
+		font-variant-numeric: tabular-nums;
 	}
 	.hours {
 		font: 700 2.5rem var(--font-display);

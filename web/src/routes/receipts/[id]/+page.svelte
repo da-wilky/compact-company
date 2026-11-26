@@ -2,6 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { api, call, clientError, type ApiError, type Schemas } from '#lib/api/index.ts';
+	import AccountSelect from '#lib/components/AccountSelect.svelte';
 	import Dialog from '#lib/components/Dialog.svelte';
 	import Field from '#lib/components/Field.svelte';
 	import Icon from '#lib/components/Icon.svelte';
@@ -13,10 +14,12 @@
 	import { namePage } from '#lib/title.svelte.ts';
 	import { toast } from '#lib/toast.svelte.ts';
 
-	type Line = { description: string; account_id: number | null; net: string; vat_rate: string; tax: string };
+	type Line = { description: string; account_id: number | null; net: string; vat_rate: string; tax: string; gross: string };
 
 	const id = $derived(Number(page.params.id));
 	const owner = $derived(session.view?.user?.role === 'owner');
+	const simple = $derived(session.view?.simple_books ?? false);
+	let smallBusiness = $state(false);
 
 	let receipt = $state<Schemas['Receipt']>();
 	namePage(() => receipt && ([receipt.supplier_name, receipt.number].filter(Boolean).join(' ') || t('term.receipt')));
@@ -58,8 +61,21 @@
 			account_id: l.account_id ?? null,
 			net: input(l.net, data.currency),
 			vat_rate: l.vat_rate,
-			tax: input(l.tax, data.currency)
+			tax: input(l.tax, data.currency),
+			gross: input(l.net + l.tax, data.currency)
 		}));
+	}
+
+	/** Net and tax from the gross amount, unless they already add up to it. */
+	function fromGross(line: Line): { net: number | null; tax: number | null } {
+		const gross = signed(line.gross, currency);
+		if (gross == null || Number.isNaN(gross)) return { net: gross, tax: null };
+		const net = signed(line.net, currency);
+		const tax = signed(line.tax, currency);
+		if (net != null && tax != null && net + tax === gross) return { net, tax };
+		const rate = Number(line.vat_rate.replace(',', '.')) || 0;
+		const computed = Math.round((gross * 100) / (100 + rate));
+		return { net: computed, tax: gross - computed };
 	}
 
 	async function load() {
@@ -75,21 +91,24 @@
 	call(api.GET('/api/suppliers')).then(({ data }) => (suppliers = data ?? []));
 	call(api.GET('/api/accounts')).then(({ data }) => (accounts = data ?? []));
 	call(api.GET('/api/currencies')).then(({ data }) => (currencies = data ?? ['EUR']));
+	call(api.GET('/api/business')).then(({ data }) => (smallBusiness = data?.values.taxation === 'small_business'));
 
 	const expenseAccounts = $derived(accounts.filter((a) => a.type === 'expense' || a.type === 'asset'));
 	const moneyAccounts = $derived(accounts.filter((a) => ['bank', 'cash', 'money_transit'].includes(a.role ?? '')));
 	const accountName = (id: number | null | undefined) => {
 		const account = accounts.find((a) => a.id === id);
-		return account ? `${account.number} ${account.name}` : '–';
+		if (!account) return '–';
+		return simple ? account.name : `${account.number} ${account.name}`;
 	};
 
 	const totals = $derived.by(() => {
 		let net = 0;
 		let tax = 0;
 		for (const line of lines) {
-			const n = signed(line.net, currency) ?? 0;
+			const amounts = simple ? fromGross(line) : undefined;
+			const n = amounts ? (amounts.net ?? 0) : (signed(line.net, currency) ?? 0);
 			const r = Number(line.vat_rate.replace(',', '.')) || 0;
-			const t = line.tax.trim() ? (signed(line.tax, currency) ?? 0) : Math.round((n * r) / 100);
+			const t = amounts ? (amounts.tax ?? 0) : line.tax.trim() ? (signed(line.tax, currency) ?? 0) : Math.round((n * r) / 100);
 			net += Number.isNaN(n) ? 0 : n;
 			tax += Number.isNaN(t) ? 0 : t;
 		}
@@ -100,9 +119,8 @@
 		const parsed = lines.map((l) => ({
 			description: l.description,
 			account_id: l.account_id,
-			net: signed(l.net, currency),
-			vat_rate: l.vat_rate.replace(',', '.').trim() || '0',
-			tax: l.tax.trim() ? signed(l.tax, currency) : null
+			...(simple ? fromGross(l) : { net: signed(l.net, currency), tax: l.tax.trim() ? signed(l.tax, currency) : null }),
+			vat_rate: l.vat_rate.replace(',', '.').trim() || '0'
 		}));
 		const bad = parsed.findIndex((l) => l.net == null || Number.isNaN(l.net) || Number.isNaN(l.tax));
 		if (bad >= 0) {
@@ -316,16 +334,26 @@
 					<fieldset class="stack">
 						<legend>{t('books.lines')}</legend>
 						{#each lines as line, i (i)}
-							<div class="line">
+							<div class="line" class:simple>
 								<input class="description" aria-label={t('documents.description')} placeholder={t('documents.description')} bind:value={line.description} />
-								<select class="account" aria-label={t('term.ledger_account')} bind:value={line.account_id}>
-									<option value={null}>{t('books.choose_account')}</option>
-									{#each expenseAccounts as account (account.id)}<option value={account.id}>{account.number} {account.name}</option>{/each}
-								</select>
-								<input aria-label={t('receipts.net')} placeholder={t('receipts.net')} inputmode="decimal" bind:value={line.net} />
-								<input class="rate" aria-label={t('receipts.vat_rate')} placeholder="%" inputmode="decimal" bind:value={line.vat_rate} />
-								<input aria-label={t('receipts.tax')} placeholder={t('receipts.tax')} inputmode="decimal" bind:value={line.tax} />
-								<button type="button" class="ghost icon" aria-label={t('app.remove')} onclick={() => lines.splice(i, 1)}>
+								<AccountSelect
+									class="account"
+									accounts={expenseAccounts}
+									bind:value={line.account_id}
+									label={simple ? t('simple.what_for') : t('term.ledger_account')}
+									placeholder={simple ? t('simple.choose_what_for') : t('books.choose_account')}
+								/>
+								{#if simple}
+									<input class="gross" aria-label={t('receipts.gross')} placeholder={t('receipts.gross')} inputmode="decimal" bind:value={line.gross} />
+									{#if !smallBusiness}
+										<input class="rate" aria-label={t('receipts.vat_rate')} placeholder="%" inputmode="decimal" bind:value={line.vat_rate} />
+									{/if}
+								{:else}
+									<input aria-label={t('receipts.net')} placeholder={t('receipts.net')} inputmode="decimal" bind:value={line.net} />
+									<input class="rate" aria-label={t('receipts.vat_rate')} placeholder="%" inputmode="decimal" bind:value={line.vat_rate} />
+									<input aria-label={t('receipts.tax')} placeholder={t('receipts.tax')} inputmode="decimal" bind:value={line.tax} />
+								{/if}
+								<button type="button" class="ghost icon remove" aria-label={t('app.remove')} onclick={() => lines.splice(i, 1)}>
 									<Icon name="close" size={18} />
 								</button>
 								{#if error?.fields?.[`lines.${i}.net`] || error?.fields?.[`lines.${i}.description`] || missing(`lines.${i}.account_id`)}
@@ -334,7 +362,7 @@
 							</div>
 						{/each}
 						<div>
-							<button type="button" class="ghost" onclick={() => lines.push({ description: '', account_id: lines.at(-1)?.account_id ?? null, net: '', vat_rate: '19', tax: '' })}>
+							<button type="button" class="ghost" onclick={() => lines.push({ description: '', account_id: lines.at(-1)?.account_id ?? null, net: '', vat_rate: smallBusiness ? '0' : '19', tax: '', gross: '' })}>
 								<Icon name="plus" size={18} />{t('books.add_line')}
 							</button>
 						</div>
@@ -342,8 +370,10 @@
 					</fieldset>
 
 					<dl class="totals">
-						<dt>{t('receipts.net')}</dt><dd>{formatMoney(totals.net, currency)}</dd>
-						<dt>{t('receipts.tax')}</dt><dd>{formatMoney(totals.tax, currency)}</dd>
+						{#if !(simple && smallBusiness)}
+							<dt>{t('receipts.net')}</dt><dd>{formatMoney(totals.net, currency)}</dd>
+							<dt>{t('receipts.tax')}</dt><dd>{formatMoney(totals.tax, currency)}</dd>
+						{/if}
 						<dt><strong>{t('receipts.gross')}</strong></dt><dd><strong>{formatMoney(totals.gross, currency)}</strong></dd>
 					</dl>
 
@@ -357,7 +387,7 @@
 							<span class="muted">{t('receipts.paid_from')}</span>
 							<select bind:value={paidFrom}>
 								<option value={null}>{t('receipts.not_paid_yet')}</option>
-								{#each moneyAccounts as account (account.id)}<option value={account.id}>{account.number} {account.name}</option>{/each}
+								{#each moneyAccounts as account (account.id)}<option value={account.id}>{accountName(account.id)}</option>{/each}
 							</select>
 						</label>
 						<button type="button" class="primary" disabled={busy} onclick={book}>{t('books.book')}</button>
@@ -375,20 +405,28 @@
 							<thead>
 								<tr>
 									<th>{t('documents.description')}</th>
-									<th>{t('term.ledger_account')}</th>
-									<th class="amount">{t('receipts.net')}</th>
-									<th class="amount">{t('receipts.vat_rate')}</th>
-									<th class="amount">{t('receipts.tax')}</th>
+									<th>{simple ? t('simple.what_for') : t('term.ledger_account')}</th>
+									{#if simple}
+										<th class="amount">{t('receipts.gross')}</th>
+									{:else}
+										<th class="amount">{t('receipts.net')}</th>
+										<th class="amount">{t('receipts.vat_rate')}</th>
+										<th class="amount">{t('receipts.tax')}</th>
+									{/if}
 								</tr>
 							</thead>
 							<tbody>
 								{#each receipt.lines as line (line.id)}
 									<tr>
 										<td data-label={t('documents.description')}>{line.description}</td>
-										<td data-label={t('term.ledger_account')}>{accountName(line.account_id)}</td>
-										<td data-label={t('receipts.net')} class="amount">{formatMoney(line.net, receipt.currency)}</td>
-										<td data-label={t('receipts.vat_rate')} class="amount">{line.vat_rate} %</td>
-										<td data-label={t('receipts.tax')} class="amount">{formatMoney(line.tax, receipt.currency)}</td>
+										<td data-label={simple ? t('simple.what_for') : t('term.ledger_account')}>{accountName(line.account_id)}</td>
+										{#if simple}
+											<td data-label={t('receipts.gross')} class="amount">{formatMoney(line.net + line.tax, receipt.currency)}</td>
+										{:else}
+											<td data-label={t('receipts.net')} class="amount">{formatMoney(line.net, receipt.currency)}</td>
+											<td data-label={t('receipts.vat_rate')} class="amount">{line.vat_rate} %</td>
+											<td data-label={t('receipts.tax')} class="amount">{formatMoney(line.tax, receipt.currency)}</td>
+										{/if}
 									</tr>
 								{/each}
 							</tbody>
@@ -436,7 +474,7 @@
 								{/if}
 								<Field label={t('documents.payment_account')} error={payError?.fields?.account_id}>
 									<select bind:value={payAccount}>
-										{#each moneyAccounts as account (account.id)}<option value={account.id}>{account.number} {account.name}</option>{/each}
+										{#each moneyAccounts as account (account.id)}<option value={account.id}>{accountName(account.id)}</option>{/each}
 									</select>
 								</Field>
 								<button class="primary">{t('receipts.record_payment')}</button>
@@ -524,11 +562,17 @@
 	.line .description {
 		grid-column: 1 / 3;
 	}
-	.line .account {
+	.line :global(.account) {
 		grid-column: 3 / -1;
 	}
 	.line .wide {
 		grid-column: 1 / -1;
+	}
+	.line.simple .gross {
+		grid-column: 1;
+	}
+	.line .remove {
+		grid-column: -2;
 	}
 	.totals,
 	.facts {
@@ -607,7 +651,7 @@
 	}
 	@media (max-width: 40rem) {
 		.line .description,
-		.line .account {
+		.line :global(.account) {
 			grid-column: 1 / -1;
 		}
 		.preview img {

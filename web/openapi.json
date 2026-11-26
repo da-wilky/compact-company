@@ -7199,6 +7199,13 @@
             ],
             "description": "Seller identifier (BT-29) in e-invoices, such as the Wirtschafts-Identifikationsnummer;\nstands in for the VAT ID and register number that EN 16931 wants one of (BR-CO-26)."
           },
+          "simple_books": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "Simple books (ADR 0028): accounts by name under their EÜR line, gross amounts, no\njournal; on for a small business when unset."
+          },
           "street": {
             "type": [
               "string",
@@ -11872,7 +11879,8 @@
       "SessionView": {
         "type": "object",
         "required": [
-          "setup_required"
+          "setup_required",
+          "simple_books"
         ],
         "properties": {
           "csrf_token": {
@@ -11891,6 +11899,10 @@
           },
           "setup_required": {
             "type": "boolean"
+          },
+          "simple_books": {
+            "type": "boolean",
+            "description": "The business keeps simple books (ADR 0028)."
           },
           "user": {
             "oneOf": [

@@ -1,8 +1,9 @@
 <script lang="ts">
 	import { api, call, type ApiError, type Schemas } from '#lib/api/index.ts';
 	import Field from '#lib/components/Field.svelte';
+	import Hint from '#lib/components/Hint.svelte';
 	import { t } from '#lib/i18n.svelte.ts';
-	import { session } from '#lib/session.svelte.ts';
+	import { load, session } from '#lib/session.svelte.ts';
 	import { toast } from '#lib/toast.svelte.ts';
 
 	type Business = Schemas['Business'];
@@ -36,7 +37,10 @@
 		) as Business;
 		const result = await call(api.PUT('/api/business', { body }));
 		show(result);
-		if (!result.error) toast(t('app.saved'));
+		if (!result.error) {
+			toast(t('app.saved'));
+			await load();
+		}
 	}
 
 	call(api.GET('/api/business')).then(show);
@@ -115,6 +119,15 @@
 							{/each}
 						</select>
 					</Field>
+					<label class="check">
+						<input
+							type="checkbox"
+							checked={values.simple_books ?? values.taxation === 'small_business'}
+							onchange={(e) => (values.simple_books = e.currentTarget.checked)}
+							disabled={pinned.includes('simple_books')}
+						/>
+						{t('business.simple_books')}<Hint term="simple_books" />
+					</label>
 				{/if}
 			</section>
 		{/each}

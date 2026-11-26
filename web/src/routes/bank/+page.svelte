@@ -1,6 +1,7 @@
 <script lang="ts">
 	import Hint from '#lib/components/Hint.svelte';
 	import { api, call, clientError, upload, type ApiError, type Schemas } from '#lib/api/index.ts';
+	import AccountSelect from '#lib/components/AccountSelect.svelte';
 	import Dialog from '#lib/components/Dialog.svelte';
 	import Field from '#lib/components/Field.svelte';
 	import Icon from '#lib/components/Icon.svelte';
@@ -22,6 +23,7 @@
 	};
 
 	const owner = $derived(session.view?.user?.role === 'owner');
+	const simple = $derived(session.view?.simple_books ?? false);
 	const eur = (minor: number) => formatMoney(minor, 'EUR');
 	const day = (iso: string) => formatDay(iso, { dateStyle: 'medium' });
 
@@ -216,6 +218,8 @@
 	}
 
 	const bookable = $derived(accounts.filter((a) => !a.archived && !banks.some((b) => b.ledger_account_id === a.id)));
+	const partLabel = (part: Schemas['MatchPart']) =>
+		(simple && part.kind === 'account' && accounts.find((a) => a.id === part.id)?.name) || part.label;
 	const href = (part: Schemas['MatchPart']) =>
 		part.kind === 'invoice' ? `/documents/${part.id}` : part.kind === 'receipt' ? `/receipts/${part.id}` : undefined;
 </script>
@@ -278,7 +282,7 @@
 								<div class="parts">
 									{#each transaction.parts as part, i (i)}
 										<span class="badge accent">
-											{#if href(part)}<a href={href(part)}>{part.label}</a>{:else}{part.label}{/if}
+											{#if href(part)}<a href={href(part)}>{part.label}</a>{:else}{partLabel(part)}{/if}
 											{eur(part.amount)}
 										</span>
 									{/each}
@@ -346,10 +350,12 @@
 					{#each parts as part, i (i)}
 						<div class="part">
 							{#if part.kind === 'account'}
-								<select aria-label={t('term.ledger_account')} bind:value={part.id}>
-									<option value={null}>{t('books.choose_account')}</option>
-									{#each bookable as account (account.id)}<option value={account.id}>{account.number} {account.name}</option>{/each}
-								</select>
+								<AccountSelect
+									accounts={bookable}
+									bind:value={part.id}
+									label={simple ? t('simple.what_was_it') : t('term.ledger_account')}
+									placeholder={simple ? t('simple.choose_what_was_it') : t('books.choose_account')}
+								/>
 							{:else}
 								<span class="label">{part.label}</span>
 							{/if}
@@ -366,7 +372,7 @@
 			{/if}
 
 			<div class="row">
-				<button type="button" class="ghost" onclick={() => addAccount()}><Icon name="plus" size={18} />{t('bank.to_account')}</button>
+				<button type="button" class="ghost" onclick={() => addAccount()}><Icon name="plus" size={18} />{t(simple ? 'simple.without_receipt' : 'bank.to_account')}</button>
 				{#if rest !== 0}
 					{#each quick as account (account.id)}
 						<button type="button" class="ghost" onclick={() => addAccount(account.id)}>{account.name}</button>

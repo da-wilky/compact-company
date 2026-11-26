@@ -28,6 +28,8 @@
 		icon: IconName;
 		roles: Schemas['Role'][];
 		group: 'main' | 'admin' | 'me';
+		/** Hidden from the owner under simple books (ADR 0028). */
+		expert?: boolean;
 	};
 	const all: Schemas['Role'][] = ['owner', 'staff', 'accountant'];
 	const items: Item[] = $derived([
@@ -38,8 +40,8 @@
 		{ href: '/documents', label: t('documents.title'), icon: 'documents', roles: ['owner', 'accountant'], group: 'main' },
 		{ href: '/receipts', label: t('receipts.title'), icon: 'receipts', roles: ['owner', 'accountant'], group: 'main' },
 		{ href: '/bank', label: t('bank.title'), icon: 'bank', roles: ['owner', 'accountant'], group: 'main' },
-		{ href: '/open-items', label: t('open_items.title'), icon: 'open_items', roles: ['owner', 'accountant'], group: 'main' },
-		{ href: '/books', label: t('books.title'), icon: 'books', roles: ['owner', 'accountant'], group: 'main' },
+		{ href: '/open-items', label: t('open_items.title'), icon: 'open_items', roles: ['owner', 'accountant'], group: 'main', expert: true },
+		{ href: '/books', label: t('books.title'), icon: 'books', roles: ['owner', 'accountant'], group: 'main', expert: true },
 		{ href: '/tax', label: t('tax.title'), icon: 'tax', roles: ['owner', 'accountant'], group: 'main' },
 		{ href: '/assets', label: t('assets.title'), icon: 'assets', roles: ['owner', 'accountant'], group: 'main' },
 		{ href: '/activities', label: t('activities.title'), icon: 'activities', roles: ['owner'], group: 'admin' },
@@ -68,7 +70,8 @@
 
 	const open = ['/setup', '/sign-in', '/invitation'];
 	const user = $derived(session.view?.user);
-	const visible = $derived(items.filter((item) => user && item.roles.includes(user.role)));
+	const simple = $derived(session.view?.simple_books && user?.role === 'owner');
+	const visible = $derived(items.filter((item) => user && item.roles.includes(user.role) && !(simple && item.expert)));
 	const main = $derived(visible.filter((item) => item.group === 'main'));
 	const admin = $derived(visible.filter((item) => item.group === 'admin'));
 	// the phone bar shows the everyday pages; the rest live in the "more" sheet

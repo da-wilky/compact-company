@@ -251,5 +251,5 @@ pub async fn accept_finish(
     insert_passkey(&mut tx, user.id, &name, &passkey).await?;
     let session = auth::start_session(&mut tx, &app, user.id).await?;
     tx.commit().await?;
-    Ok(signed_in(&app, session, user))
+    signed_in(&app, session, user).await
 }

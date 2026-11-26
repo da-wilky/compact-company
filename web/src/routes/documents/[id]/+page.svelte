@@ -3,6 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { api, call, clientError, type ApiError, type Schemas } from '#lib/api/index.ts';
+	import AccountSelect from '#lib/components/AccountSelect.svelte';
 	import Dialog from '#lib/components/Dialog.svelte';
 	import Field from '#lib/components/Field.svelte';
 	import Icon from '#lib/components/Icon.svelte';
@@ -793,11 +794,7 @@
 								</Field>
 							{/if}
 							<Field label={t('documents.payment_account')} error={payError?.fields?.account_id}>
-								<select bind:value={payAccount}>
-									{#each payAccounts as account (account.id)}
-										<option value={account.id}>{account.number} {account.name}</option>
-									{/each}
-								</select>
+								<AccountSelect accounts={payAccounts} bind:value={payAccount} label={t('documents.payment_account')} />
 							</Field>
 						{/if}
 						<button class="primary">{t('documents.record_payment')}</button>

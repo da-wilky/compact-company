@@ -30,6 +30,8 @@ pub struct SessionView {
     setup_required: bool,
     /// Label of the identity provider's sign-in button, if one is configured.
     oidc: Option<String>,
+    /// The business keeps simple books (ADR 0028).
+    simple_books: bool,
 }
 
 #[utoipa::path(get, path = "/session", tag = "session",
@@ -44,7 +46,17 @@ pub async fn get_session(
         oidc: app.oidc.as_ref().map(|p| p.name.clone()),
         csrf_token: current.as_ref().map(|c| c.csrf_token.clone()),
         user: current.map(|c| c.user),
+        simple_books: simple_books(&app).await?,
     }))
+}
+
+async fn simple_books(app: &App) -> Result<bool, ApiError> {
+    Ok(app
+        .settings
+        .business()
+        .await
+        .map_err(ApiError::internal)?
+        .simple_books())
 }
 
 #[derive(Deserialize, ToSchema)]
@@ -123,7 +135,7 @@ pub async fn setup_finish(
     insert_passkey(&mut tx, user.id, &passkey_name, &passkey).await?;
     let session = auth::start_session(&mut tx, &app, user.id).await?;
     tx.commit().await?;
-    Ok(signed_in(&app, session, user))
+    signed_in(&app, session, user).await
 }
 
 pub async fn create_user(
@@ -191,14 +203,15 @@ pub async fn insert_passkey(
     Ok(())
 }
 
-pub fn signed_in(app: &App, session: NewSession, user: User) -> Response {
+pub async fn signed_in(app: &App, session: NewSession, user: User) -> Result<Response, ApiError> {
     let view = SessionView {
         user: Some(user),
         csrf_token: Some(session.csrf_token),
         setup_required: false,
         oidc: app.oidc.as_ref().map(|p| p.name.clone()),
+        simple_books: simple_books(app).await?,
     };
-    ([(header::SET_COOKIE, session.cookie)], Json(view)).into_response()
+    Ok(([(header::SET_COOKIE, session.cookie)], Json(view)).into_response())
 }
 
 #[utoipa::path(post, path = "/sign-in/start", tag = "session",
@@ -262,7 +275,7 @@ pub async fn sign_in_finish(
         name,
         role,
     };
-    Ok(signed_in(&app, session, user))
+    signed_in(&app, session, user).await
 }
 
 #[utoipa::path(post, path = "/sign-out", tag = "session",

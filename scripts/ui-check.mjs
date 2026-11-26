@@ -649,6 +649,21 @@ try {
 	await settle();
 	if ((await statusOf(todos[1])) !== 2) failures.push('phone board: holding a card at the right edge did not move it to "In Arbeit"');
 	await screen('business', `${origin}/business`);
+	const { values: kept } = await api('GET', '/api/business');
+	await api('PUT', '/api/business', { ...kept, simple_books: true });
+	await screen('simple-overview', `${origin}/`);
+	await screen('simple-receipt-draft', `${origin}/receipts/${photo.id}`);
+	await screen('simple-receipt-booked', `${origin}/receipts/${hosting.id}`);
+	await screen('simple-bank-match', `${origin}/bank`, async () => {
+		await until('the transactions', () => evaluate("!!document.querySelector('.transactions button')"));
+		await click('.transactions li:nth-child(2) button');
+		await until('the match dialog', () => evaluate("!!document.querySelector('dialog[open] .summary-box')"));
+		await click('dialog[open] form > .row button.ghost');
+		await settle();
+	});
+	await screen('simple-suppliers', `${origin}/suppliers`);
+	await screen('simple-business', `${origin}/business`);
+	await api('PUT', '/api/business', kept);
 	await screen('audit', `${origin}/audit`);
 	await api('POST', '/api/tokens', { name: 'Zeitimport', scopes: ['work:read', 'work:write'] });
 	await screen('account', `${origin}/account`);

@@ -21,6 +21,9 @@ pub struct Business {
     pub vat_id: Option<String>,
     /// How the business owes VAT; accrual when unset.
     pub taxation: Option<Taxation>,
+    /// Simple books (ADR 0028): accounts by name under their EÜR line, gross amounts, no
+    /// journal; on for a small business when unset.
+    pub simple_books: Option<bool>,
     /// The legal form of a UG or GmbH, such as `UG (haftungsbeschränkt)`; with it, documents
     /// must also carry the register and managing directors (§ 35a GmbHG).
     pub legal_form: Option<String>,
@@ -81,6 +84,10 @@ impl Business {
 
     pub fn small_business(&self) -> bool {
         self.taxation() == Taxation::SmallBusiness
+    }
+
+    pub fn simple_books(&self) -> bool {
+        self.simple_books.unwrap_or_else(|| self.small_business())
     }
 }
 

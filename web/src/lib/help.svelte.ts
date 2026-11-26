@@ -10,6 +10,7 @@ export const terms = [
 	'books_start',
 	'euer',
 	'euer_line',
+	'simple_books',
 	'receipt',
 	'asset',
 	'depreciation',

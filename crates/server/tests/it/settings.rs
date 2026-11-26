@@ -52,6 +52,30 @@ async fn business_is_stored_and_read_back() {
 }
 
 #[tokio::test]
+async fn simple_books_follow_small_business_until_set() {
+    let (app, mut owner) = owner_app(Config::default()).await;
+    let mut simple = async |body| {
+        let response = app
+            .as_browser(&mut owner, "PUT", "/api/business", body)
+            .await;
+        assert_eq!(response.status(), StatusCode::OK);
+        json(
+            app.as_browser(&mut owner, "GET", "/api/session", json!({}))
+                .await,
+        )
+        .await["simple_books"]
+            .clone()
+    };
+    assert_eq!(simple(json!({})).await, false);
+    assert_eq!(simple(json!({ "taxation": "small_business" })).await, true);
+    assert_eq!(
+        simple(json!({ "taxation": "small_business", "simple_books": false })).await,
+        false
+    );
+    assert_eq!(simple(json!({ "simple_books": true })).await, true);
+}
+
+#[tokio::test]
 async fn invalid_input_reports_field_errors() {
     let (app, mut owner) = owner_app(Config::default()).await;
     let response = app
