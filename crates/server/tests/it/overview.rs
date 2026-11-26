@@ -84,12 +84,20 @@ async fn the_overview_shows_timers_unbilled_time_and_open_invoices_by_role() {
         (json!(true), json!(true))
     );
     assert_eq!(
-        (steps["books"].clone(), steps["bank"].clone(), steps["receipt"].clone()),
+        (
+            steps["books"].clone(),
+            steps["bank"].clone(),
+            steps["receipt"].clone()
+        ),
         (json!(false), json!(false), json!(false))
     );
 
     let mine = app.ok(&mut staff, "GET", "/api/overview", json!({})).await;
-    assert_eq!(mine["getting_started"], json!(null), "first steps are the owner's");
+    assert_eq!(
+        mine["getting_started"],
+        json!(null),
+        "first steps are the owner's"
+    );
     assert_eq!(mine["running"].as_array().unwrap().len(), 1);
     assert_eq!(mine["running"][0]["description"], "Staff arbeitet");
     assert_eq!(mine["unbilled"], json!([]));
