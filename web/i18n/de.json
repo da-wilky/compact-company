@@ -327,7 +327,7 @@
   "documents.partial_state.partly_paid": "teilweise bezahlt, muss erst ausgeglichen oder storniert werden",
   "documents.partials_before": "Beim Ausstellen geschieht mit den Abschlagsrechnungen:",
   "documents.partials_taken": "Erfasste Abschlagsrechnungen:",
-  "documents.pay_until": "Zahlbar bis",
+  "documents.pay_until": "Fällig am",
   "documents.payment_account": "Konto",
   "documents.payment_amount": "Betrag",
   "documents.payment_date": "Eingegangen am",
