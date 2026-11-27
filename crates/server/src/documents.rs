@@ -427,6 +427,8 @@ pub struct Row {
     pub rounding: i64,
     pub dunning_level: Option<i64>,
     pub recurring_id: Option<i64>,
+    /// The billing address it is addressed to; the customer's default when none.
+    pub address_id: Option<i64>,
     pub invoice_type: Option<InvoiceType>,
 }
 
@@ -532,9 +534,13 @@ pub async fn draft_data(
     row: &Row,
 ) -> Result<Data, sqlx::Error> {
     let customer: CustomerData = sqlx::query_as(
-        "SELECT number, name, street, postcode, city, country, email, vat_id, leitweg_id, xrechnung
-         FROM customer WHERE id = ?",
+        "SELECT c.number, c.name, a.street, a.postcode, a.city, coalesce(a.country, 'DE') AS country,
+         c.email, c.vat_id, c.leitweg_id, c.xrechnung
+         FROM customer c LEFT JOIN customer_address a ON a.id = coalesce(?,
+             (SELECT id FROM customer_address WHERE customer_id = c.id AND is_default))
+         WHERE c.id = ?",
     )
+    .bind(row.address_id)
     .bind(row.customer_id)
     .fetch_one(&mut *db)
     .await?;

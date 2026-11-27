@@ -329,11 +329,17 @@ pub async fn anonymise_year(
 
     for customer in &plan.customers {
         sqlx::query(
-            "UPDATE customer SET name = printf(?, number), street = NULL,
-             postcode = NULL, city = NULL, vat_id = NULL, leitweg_id = NULL,
+            "UPDATE customer SET name = printf(?, number), vat_id = NULL, leitweg_id = NULL,
              email = NULL, note = NULL, anonymised = 1 WHERE id = ?",
         )
         .bind(&customer_name)
+        .bind(customer.id)
+        .execute(&mut *tx)
+        .await?;
+        sqlx::query(
+            "UPDATE customer_address SET label = NULL, street = NULL, postcode = NULL, city = NULL
+             WHERE customer_id = ?",
+        )
         .bind(customer.id)
         .execute(&mut *tx)
         .await?;

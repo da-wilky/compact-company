@@ -272,8 +272,8 @@ async fn foreign_currency_books_at_the_rate_given_and_the_difference_is_an_excha
             "POST",
             "/api/customers",
             json!({ "name": "Atelier Zürich", "language": "de", "currency": "CHF",
-                    "street": "Seestrasse 1", "postcode": "8002", "city": "Zürich",
-                    "country": "CH" }),
+                    "addresses": [{ "street": "Seestrasse 1", "postcode": "8002", "city": "Zürich",
+                    "country": "CH" }] }),
         )
         .await["id"]
         .as_i64()

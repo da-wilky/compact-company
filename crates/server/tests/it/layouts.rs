@@ -95,8 +95,8 @@ async fn an_uploaded_layout_renders_one_customers_invoices_and_the_others_keep_t
             &mut owner,
             "POST",
             "/api/customers",
-            json!({ "name": "Andere AG", "language": "en", "street": "Weg 1", "postcode": "10115",
-                    "city": "Berlin" }),
+            json!({ "name": "Andere AG", "language": "en",
+                    "addresses": [{ "street": "Weg 1", "postcode": "10115", "city": "Berlin" }] }),
         )
         .await["id"]
         .as_i64()

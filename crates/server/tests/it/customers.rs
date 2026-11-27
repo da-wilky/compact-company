@@ -164,3 +164,135 @@ async fn new_customers_use_the_business_currency() {
     .await;
     assert_eq!(created["currency"], "CHF");
 }
+
+#[tokio::test]
+async fn a_draft_is_addressed_to_the_billing_address_it_picks_and_keeps_it_when_issued() {
+    let app = start(Config::default()).await;
+    let mut owner = app.setup_owner().await;
+    let customer = app.ready_to_issue(&mut owner).await;
+    let path = format!("/api/customers/{customer}");
+    let main = app.ok(&mut owner, "GET", &path, json!({})).await["addresses"][0].clone();
+    assert_eq!(main["street"], "Brotgasse 2");
+    assert_eq!(main["is_default"], true);
+
+    let both = app
+        .ok(
+            &mut owner,
+            "PUT",
+            &path,
+            json!({ "name": "Bäckerei Krume", "language": "de", "addresses": [
+                { "id": main["id"], "street": "Brotgasse 2", "postcode": "04109", "city": "Leipzig" },
+                { "label": "Steuerbüro", "street": "c/o Steuerbüro Lind\nAm Ring 4",
+                  "postcode": "04103", "city": "Leipzig" }
+            ] }),
+        )
+        .await;
+    assert_eq!(both["addresses"][0]["id"], main["id"]);
+    let other = both["addresses"][1]["id"].as_i64().unwrap();
+
+    let draft = |address: Value| {
+        json!({ "kind": "invoice", "customer_id": customer, "address_id": address,
+                "lines": [{ "description": "Brot", "quantity": "1", "unit": "piece",
+                            "unit_price": 500 }] })
+    };
+    let plain = app
+        .ok(&mut owner, "POST", "/api/documents", draft(Value::Null))
+        .await;
+    assert_eq!(plain["data"]["customer"]["street"], "Brotgasse 2");
+    let picked = app
+        .ok(&mut owner, "POST", "/api/documents", draft(json!(other)))
+        .await;
+    assert_eq!(
+        picked["data"]["customer"]["street"],
+        "c/o Steuerbüro Lind\nAm Ring 4"
+    );
+    assert_eq!(picked["data"]["customer"]["name"], "Bäckerei Krume");
+    let id = picked["id"].as_i64().unwrap();
+    let issued = app
+        .ok(
+            &mut owner,
+            "POST",
+            &format!("/api/documents/{id}/issue"),
+            json!({}),
+        )
+        .await;
+
+    // the issued invoice's address is archived, the draft's falls back to the default
+    let only_main = app
+        .ok(
+            &mut owner,
+            "PUT",
+            &path,
+            json!({ "name": "Bäckerei Krume", "language": "de", "addresses": [
+                { "id": main["id"], "street": "Brotgasse 3", "postcode": "04109", "city": "Leipzig" }
+            ] }),
+        )
+        .await;
+    assert_eq!(only_main["addresses"].as_array().unwrap().len(), 1);
+    let again = app
+        .ok(
+            &mut owner,
+            "GET",
+            &format!("/api/documents/{id}"),
+            json!({}),
+        )
+        .await;
+    assert_eq!(again["data"], issued["data"]);
+    let dunning = app
+        .ok(
+            &mut owner,
+            "POST",
+            &format!("/api/documents/{id}/follow-up"),
+            json!({ "kind": "dunning" }),
+        )
+        .await;
+    assert_eq!(dunning["address_id"], Value::Null);
+    assert_eq!(dunning["data"]["customer"]["street"], "Brotgasse 3");
+
+    let refused = app
+        .as_browser(&mut owner, "POST", "/api/documents", draft(json!(other)))
+        .await;
+    assert_eq!(refused.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(
+        json(refused).await["fields"]["address_id"],
+        "invalid_format"
+    );
+    let foreign = app
+        .as_browser(
+            &mut owner,
+            "PUT",
+            &path,
+            json!({ "name": "Bäckerei Krume", "language": "de",
+                    "addresses": [{ "id": other, "city": "Leipzig" }] }),
+        )
+        .await;
+    assert_eq!(
+        json(foreign).await["fields"]["addresses.0.id"],
+        "invalid_format"
+    );
+    let four_lines = app
+        .as_browser(
+            &mut owner,
+            "PUT",
+            &path,
+            json!({ "name": "Bäckerei Krume", "language": "de",
+                    "addresses": [{ "street": "a\nb\nc\nd" }] }),
+        )
+        .await;
+    assert_eq!(
+        json(four_lines).await["fields"]["addresses.0.street"],
+        "invalid_format"
+    );
+    let taken = app
+        .as_browser(
+            &mut owner,
+            "POST",
+            "/api/customers",
+            json!({ "name": "Andere", "language": "de", "addresses": [{ "id": main["id"] }] }),
+        )
+        .await;
+    assert_eq!(
+        json(taken).await["fields"]["addresses.0.id"],
+        "invalid_format"
+    );
+}

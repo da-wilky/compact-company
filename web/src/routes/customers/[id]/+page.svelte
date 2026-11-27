@@ -6,6 +6,7 @@
 	import Icon from '#lib/components/Icon.svelte';
 	import ProjectForm from '#lib/components/ProjectForm.svelte';
 	import { t } from '#lib/i18n.svelte.ts';
+	import { addressLines } from '#lib/addresses.ts';
 	import { formatMoney } from '#lib/money.ts';
 	import { session } from '#lib/session.svelte.ts';
 	import { namePage } from '#lib/title.svelte.ts';
@@ -116,10 +117,12 @@
 				<dd>{customer.hourly_rate == null ? '–' : formatMoney(customer.hourly_rate, customer.currency)}</dd>
 				<dt>{t('customers.email')}</dt>
 				<dd>{customer.email ?? '–'}</dd>
-				<dt>{t('customers.address')}</dt>
-				<dd class="pre">{[customer.street, [customer.postcode, customer.city].filter(Boolean).join(' '), customer.country]
-						.filter(Boolean)
-						.join('\n')}</dd>
+				{#each customer.addresses as address (address.id)}
+					<dt>
+						{address.label ?? t('customers.billing_address')}{#if address.is_default && customer.addresses.length > 1}{` (${t('customers.default_address')})`}{/if}
+					</dt>
+					<dd class="pre">{customer.name}{'\n'}{addressLines(address)}</dd>
+				{/each}
 				<dt>{t('customers.language')}</dt>
 				<dd>{t(`language.${customer.language}`)}</dd>
 				<dt>{t('customers.currency')}</dt>

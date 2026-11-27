@@ -14,8 +14,9 @@ async fn an_issued_invoice_carries_zugferd_and_an_xrechnung_customer_gets_its_xm
         &mut owner,
         "PUT",
         &format!("/api/customers/{customer}"),
-        json!({ "name": "Stadt Leipzig", "language": "de", "street": "Markt 1", "postcode": "04109",
-                "city": "Leipzig", "email": "rechnung@leipzig.example", "leitweg_id": "991-12345-67",
+        json!({ "name": "Stadt Leipzig", "language": "de",
+                "addresses": [{ "street": "Markt 1", "postcode": "04109", "city": "Leipzig" }],
+                "email": "rechnung@leipzig.example", "leitweg_id": "991-12345-67",
                 "xrechnung": true }),
     )
     .await;

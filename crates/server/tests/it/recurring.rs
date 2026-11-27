@@ -167,7 +167,7 @@ async fn a_recurring_invoice_drafts_on_its_date_and_edits_affect_only_later_draf
         "PUT",
         &format!("/api/customers/{customer}"),
         json!({ "name": "Bäckerei Krume", "language": "de", "archived": true,
-                "street": "Brotgasse 2", "postcode": "04109", "city": "Leipzig" }),
+                "addresses": [{ "street": "Brotgasse 2", "postcode": "04109", "city": "Leipzig" }] }),
     )
     .await;
     assert_eq!(draft_due(&app.app, day("2030-10-01")).await.unwrap(), 0);
