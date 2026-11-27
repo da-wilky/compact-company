@@ -199,3 +199,73 @@ async fn recurring_lines_take_no_time_entries() {
         "invalid_format"
     );
 }
+
+#[tokio::test]
+async fn a_recurring_invoice_drafts_to_its_billing_address_until_the_address_is_removed() {
+    let app = start(Config::default()).await;
+    let mut owner = app.setup_owner().await;
+    let customer = app.ready_to_issue(&mut owner).await;
+    let path = format!("/api/customers/{customer}");
+    let main = app.ok(&mut owner, "GET", &path, json!({})).await["addresses"][0].clone();
+    let with_office = |extra: Value| {
+        json!({ "name": "Bäckerei Krume", "language": "de", "addresses": [
+            { "id": main["id"], "street": "Brotgasse 2", "postcode": "04109", "city": "Leipzig" },
+            extra
+        ] })
+    };
+    let office = app
+        .ok(
+            &mut owner,
+            "PUT",
+            &path,
+            with_office(json!({ "street": "c/o Steuerbüro Lind\nAm Ring 4", "city": "Leipzig" })),
+        )
+        .await["addresses"][1]["id"]
+        .clone();
+    let recurring = app
+        .ok(
+            &mut owner,
+            "POST",
+            "/api/recurring-invoices",
+            json!({
+                "customer_id": customer, "address_id": office, "interval": "monthly",
+                "period": "arrears", "next_date": "2026-01-31", "ends_on": "2026-01-31",
+                "lines": [{ "description": "Wartung", "quantity": "1", "unit": "month",
+                            "unit_price": 12000 }]
+            }),
+        )
+        .await;
+    assert_eq!(recurring["address_id"], office);
+    let draft = app
+        .ok(
+            &mut owner,
+            "GET",
+            &format!("/api/documents/{}", recurring["invoices"][0]["id"]),
+            json!({}),
+        )
+        .await;
+    assert_eq!(draft["address_id"], office);
+    assert_eq!(
+        draft["data"]["customer"]["street"],
+        "c/o Steuerbüro Lind\nAm Ring 4"
+    );
+
+    app.ok(
+        &mut owner,
+        "PUT",
+        &path,
+        json!({ "name": "Bäckerei Krume", "language": "de", "addresses": [
+            { "id": main["id"], "street": "Brotgasse 2", "postcode": "04109", "city": "Leipzig" }
+        ] }),
+    )
+    .await;
+    let after = app
+        .ok(
+            &mut owner,
+            "GET",
+            &format!("/api/recurring-invoices/{}", recurring["id"]),
+            json!({}),
+        )
+        .await;
+    assert_eq!(after["address_id"], Value::Null);
+}

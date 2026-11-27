@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { api, call, clientError, type ApiError, type Schemas } from '#lib/api/index.ts';
+	import { addressSummary } from '#lib/addresses.ts';
 	import Dialog from '#lib/components/Dialog.svelte';
 	import Field from '#lib/components/Field.svelte';
 	import Icon from '#lib/components/Icon.svelte';
@@ -33,6 +34,7 @@
 	let editing = $state<number>();
 	let customerId = $state<number>();
 	let projectId = $state<number | null>(null);
+	let addressId = $state<number | null>(null);
 	let title = $state('');
 	let interval = $state<Schemas['Interval']>('monthly');
 	let period = $state<Schemas['Period']>('advance');
@@ -43,6 +45,7 @@
 	let formError = $state<ApiError>();
 
 	const currency = $derived(customers.find((c) => c.id === customerId)?.currency ?? 'EUR');
+	const addresses = $derived(customers.find((c) => c.id === customerId)?.addresses ?? []);
 
 	$effect(() => {
 		const customer_id = customerId;
@@ -57,6 +60,7 @@
 		editing = item?.id;
 		customerId = item?.customer_id ?? customers[0]?.id;
 		projectId = item?.project_id ?? null;
+		addressId = item?.address_id ?? null;
 		title = item?.title ?? '';
 		interval = item?.interval ?? 'monthly';
 		period = item?.period ?? 'advance';
@@ -98,6 +102,7 @@
 		}
 		return {
 			customer_id: customerId,
+			address_id: addressId,
 			project_id: projectId,
 			title: title || null,
 			interval,
@@ -188,10 +193,24 @@
 <Dialog bind:open title={t(editing ? 'recurring.edit' : 'recurring.new')}>
 	<form class="stack" onsubmit={save}>
 		<Field label={t('term.customer')} error={fieldError('customer_id')}>
-			<select bind:value={customerId}>
+			<select bind:value={customerId} onchange={() => (addressId = null)}>
 				{#each customers as customer (customer.id)}<option value={customer.id}>{customer.name}</option>{/each}
 			</select>
 		</Field>
+		{#if addresses.length > 1}
+			<Field label={t('customers.billing_address')} error={fieldError('address_id')}>
+				<select
+					bind:value={
+						() => addressId ?? addresses.find((a) => a.is_default)?.id,
+						(v) => (addressId = addresses.find((a) => a.id === v)?.is_default ? null : (v ?? null))
+					}
+				>
+					{#each addresses as address (address.id)}
+						<option value={address.id}>{addressSummary(address)}</option>
+					{/each}
+				</select>
+			</Field>
+		{/if}
 		<Field label={t('term.project')} error={fieldError('project_id')}>
 			<select bind:value={projectId}>
 				<option value={null}>–</option>
