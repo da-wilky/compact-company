@@ -128,6 +128,7 @@ async fn a_work_token_tracks_time_and_is_refused_issuing_and_booking() {
         ("GET", "/api/tokens".to_owned()),
         ("PUT", "/api/business".to_owned()),
         ("POST", "/api/oidc/link".to_owned()),
+        ("DELETE", "/api/oidc/link".to_owned()),
     ] {
         let refused = with_token(&app, &token, method, &path, json!({})).await;
         assert_eq!(refused.status(), StatusCode::FORBIDDEN, "{method} {path}");

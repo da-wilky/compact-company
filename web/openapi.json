@@ -2890,6 +2890,33 @@
             }
           }
         }
+      },
+      "delete": {
+        "tags": [
+          "session"
+        ],
+        "summary": "Unlinks the identity provider from the signed-in user, who must keep a passkey to sign in.",
+        "operationId": "unlink_oidc",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OidcLink"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/oidc/start": {
@@ -8963,7 +8990,7 @@
           "invalid_setup_token",
           "ceremony_expired",
           "passkey_rejected",
-          "last_passkey",
+          "last_sign_in",
           "last_owner",
           "invitation_invalid",
           "oidc_failed",

@@ -87,7 +87,46 @@ pub async fn link_oidc(
     redirect_to_provider(&app, None, Some(auth.user.id)).await
 }
 
-async fn is_linked(db: impl sqlx::SqliteExecutor<'_>, user_id: i64) -> Result<bool, sqlx::Error> {
+/// Unlinks the identity provider from the signed-in user, who must keep a passkey to sign in.
+#[utoipa::path(delete, path = "/oidc/link", tag = "session",
+    responses((status = OK, body = OidcLink), (status = "default", body = ApiError)))]
+pub async fn unlink_oidc(
+    State(app): State<Arc<App>>,
+    auth: Auth,
+) -> Result<Json<OidcLink>, ApiError> {
+    let mut tx = app.db.begin_with("BEGIN IMMEDIATE").await?;
+    let passkeys: i64 = sqlx::query_scalar("SELECT count(*) FROM passkey WHERE user_id = ?")
+        .bind(auth.user.id)
+        .fetch_one(&mut *tx)
+        .await?;
+    let (issuer, subject): (String, String) =
+        sqlx::query_as("DELETE FROM oidc_identity WHERE user_id = ? RETURNING issuer, subject")
+            .bind(auth.user.id)
+            .fetch_optional(&mut *tx)
+            .await?
+            .ok_or(ApiError::new(ErrorCode::NotFound))?;
+    if passkeys == 0 {
+        return Err(ApiError::new(ErrorCode::LastSignIn));
+    }
+    let before = json!({ "issuer": issuer, "subject": subject });
+    let user = format!("user:{}", auth.user.id);
+    audit::record(
+        &mut tx,
+        auth.user.id,
+        "oidc.unlink",
+        &user,
+        Some(before),
+        None,
+    )
+    .await?;
+    tx.commit().await?;
+    Ok(Json(OidcLink { linked: false }))
+}
+
+pub(super) async fn is_linked(
+    db: impl sqlx::SqliteExecutor<'_>,
+    user_id: i64,
+) -> Result<bool, sqlx::Error> {
     sqlx::query_scalar("SELECT EXISTS (SELECT 1 FROM oidc_identity WHERE user_id = ?)")
         .bind(user_id)
         .fetch_one(db)

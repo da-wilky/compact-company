@@ -189,7 +189,7 @@ async fn passkeys_are_added_and_removed_but_never_the_last() {
         )
         .await;
     assert_eq!(response.status(), StatusCode::CONFLICT);
-    assert_eq!(json(response).await["code"], "last_passkey");
+    assert_eq!(json(response).await["code"], "last_sign_in");
 }
 
 #[tokio::test]

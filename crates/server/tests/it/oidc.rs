@@ -352,3 +352,103 @@ async fn linking_needs_a_session_and_its_csrf_token() {
         .await;
     assert_eq!(forged.status(), StatusCode::FORBIDDEN);
 }
+
+#[tokio::test]
+async fn unlinking_leaves_the_passkeys_to_sign_in_with() {
+    let provider = provider().await;
+    let app = app_with(&provider).await;
+    let mut owner = app.setup_owner().await;
+    round_trip(
+        &app,
+        &provider,
+        &mut owner,
+        "erika",
+        "/api/oidc/link",
+        json!({}),
+    )
+    .await;
+
+    let unlinked = app
+        .as_browser(&mut owner, "DELETE", "/api/oidc/link", json!({}))
+        .await;
+    assert_eq!(unlinked.status(), StatusCode::OK);
+    assert!(!linked(&app, &mut owner).await);
+    let audit = json(
+        app.as_browser(&mut owner, "GET", "/api/audit", json!({}))
+            .await,
+    )
+    .await;
+    assert!(
+        audit
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|entry| entry["action"] == "oidc.unlink" && entry["subject"] == "user:1")
+    );
+    let again = app
+        .as_browser(&mut owner, "DELETE", "/api/oidc/link", json!({}))
+        .await;
+    assert_eq!(again.status(), StatusCode::NOT_FOUND);
+    assert_eq!(
+        sign_in_as(&app, &provider, &mut Browser::new(), "erika", None).await,
+        "/sign-in#error.oidc_unknown_identity"
+    );
+}
+
+#[tokio::test]
+async fn a_linked_user_removes_the_last_passkey_but_then_keeps_the_link() {
+    let provider = provider().await;
+    let app = app_with(&provider).await;
+    let mut owner = app.setup_owner().await;
+    round_trip(
+        &app,
+        &provider,
+        &mut owner,
+        "erika",
+        "/api/oidc/link",
+        json!({}),
+    )
+    .await;
+    let passkeys = json(
+        app.as_browser(&mut owner, "GET", "/api/passkeys", json!({}))
+            .await,
+    )
+    .await;
+    let removed = app
+        .as_browser(
+            &mut owner,
+            "DELETE",
+            &format!("/api/passkeys/{}", passkeys[0]["id"]),
+            json!({}),
+        )
+        .await;
+    assert_eq!(removed.status(), StatusCode::OK);
+
+    let unlinked = app
+        .as_browser(&mut owner, "DELETE", "/api/oidc/link", json!({}))
+        .await;
+    assert_eq!(unlinked.status(), StatusCode::CONFLICT);
+    assert_eq!(json(unlinked).await["code"], "last_sign_in");
+    assert!(linked(&app, &mut owner).await);
+}
+
+#[tokio::test]
+async fn an_invitee_without_a_passkey_cannot_unlink() {
+    let provider = provider().await;
+    let app = app_with(&provider).await;
+    let mut owner = app.setup_owner().await;
+    let token = app.invite(&mut owner, "Alex", "staff").await;
+    let mut alex = Browser::new();
+    sign_in_as(&app, &provider, &mut alex, "alex", Some(&token)).await;
+    let session = json(
+        app.as_browser(&mut alex, "GET", "/api/session", json!({}))
+            .await,
+    )
+    .await;
+    alex.csrf_token = session["csrf_token"].as_str().map(str::to_owned);
+    let unlinked = app
+        .as_browser(&mut alex, "DELETE", "/api/oidc/link", json!({}))
+        .await;
+    assert_eq!(unlinked.status(), StatusCode::CONFLICT);
+    assert!(linked(&app, &mut alex).await);
+}

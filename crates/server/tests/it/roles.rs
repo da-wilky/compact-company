@@ -36,6 +36,7 @@ const SIGNED_IN: &[(&str, &str, &[&str])] = &[
     ("DELETE", "/api/passkeys/{id}", ANY),
     ("GET", "/api/oidc/link", ANY),
     ("POST", "/api/oidc/link", ANY),
+    ("DELETE", "/api/oidc/link", ANY),
     ("GET", "/api/business", OWNER_ACCOUNTANT),
     ("PUT", "/api/business", OWNER),
     ("GET", "/api/users", OWNER),

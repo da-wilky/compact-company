@@ -77,6 +77,13 @@
 		if (session.view?.oidc) call(api.GET('/api/oidc/link')).then(({ data }) => (oidcLinked = data?.linked ?? false));
 	});
 
+	async function unlinkOidc(name: string) {
+		if (!(await confirm({ text: t('account.oidc_unlink_confirm', { name }), action: t('account.oidc_unlink'), danger: true }))) return;
+		const result = await call(api.DELETE('/api/oidc/link'));
+		if (result.data) oidcLinked = result.data.linked;
+		oidcError = result.error;
+	}
+
 	const scopes: Schemas['Scope'][] = ['work:read', 'work:write', 'documents:read', 'documents:write', 'books:read'];
 	let tokens = $state<Schemas['Token'][]>([]);
 	let tokenName = $state('');
@@ -136,8 +143,8 @@
 					<button
 						class="ghost danger"
 						onclick={() => ask(passkey)}
-						disabled={passkeys.length === 1}
-						title={passkeys.length === 1 ? t('error.last_passkey') : undefined}
+						disabled={passkeys.length === 1 && !oidcLinked}
+						title={passkeys.length === 1 && !oidcLinked ? t('error.last_sign_in') : undefined}
 					>
 						{t('app.remove')}
 					</button>
@@ -163,6 +170,16 @@
 			<h2>{name}</h2>
 			{#if oidcLinked}
 				<p>{t('account.oidc_linked', { name })}</p>
+				<div>
+					<button
+						class="ghost danger"
+						onclick={() => unlinkOidc(name)}
+						disabled={passkeys.length === 0}
+						title={passkeys.length === 0 ? t('error.last_sign_in') : undefined}
+					>
+						{t('account.oidc_unlink')}
+					</button>
+				</div>
 			{:else}
 				<p class="muted">{t('account.oidc_hint', { name })}</p>
 				<div><button class="primary" onclick={async () => (oidcError = await linkOidc())}>{t('account.oidc_link', { name })}</button></div>
