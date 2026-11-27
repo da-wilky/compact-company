@@ -327,7 +327,7 @@
   "documents.partial_state.partly_paid": "paid in part, so it must be settled or cancelled first",
   "documents.partials_before": "When it is issued, its partial invoices are:",
   "documents.partials_taken": "Partial invoices taken in:",
-  "documents.pay_until": "Pay by",
+  "documents.pay_until": "Due date",
   "documents.payment_account": "Account",
   "documents.payment_amount": "Amount",
   "documents.payment_date": "Received on",
