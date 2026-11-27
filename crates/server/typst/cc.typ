@@ -52,7 +52,13 @@
   amount_due: ("Offener Betrag", "Amount due"),
   pay_until: ("Bitte überweisen Sie den offenen Betrag bis zum", "Please transfer the amount due by"),
   timesheet: ("Stundennachweis", "Timesheet"),
-  number: ("Nummer", "Number"),
+  quote_number: ("Angebotsnummer", "Quote number"),
+  order_confirmation_number: ("Auftragsnummer", "Order number"),
+  invoice_number: ("Rechnungsnummer", "Invoice number"),
+  cancellation_number: ("Rechnungsnummer", "Invoice number"),
+  delivery_note_number: ("Lieferscheinnummer", "Delivery note number"),
+  acceptance_report_number: ("Protokollnummer", "Report number"),
+  dunning_number: ("Mahnungsnummer", "Reminder number"),
   date: ("Datum", "Date"),
   customer_number: ("Kundennummer", "Customer number"),
   position: ("Pos.", "No."),
@@ -64,7 +70,7 @@
   vat: ("Umsatzsteuer", "VAT"),
   total: ("Gesamtbetrag", "Total"),
   service_period: ("Leistungszeitraum", "Service period"),
-  due_date: ("Zahlbar bis", "Due by"),
+  due_date: ("Fällig am", "Due date"),
   valid_until: ("Gültig bis", "Valid until"),
   draft: ("Entwurf", "Draft"),
   tax_number: ("Steuernummer", "Tax number"),
@@ -167,6 +173,9 @@
 }
 
 #let unit(data, value) = t(data, value)
+
+/// The label of the document's number, named after its kind, e.g. „Rechnungsnummer“.
+#let number-label(data) = t(data, data.kind + "_number")
 
 /// The document's title: its kind, or the draft marker.
 #let title(data) = {
