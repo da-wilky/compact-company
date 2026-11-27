@@ -6,3 +6,10 @@ export async function startOidc(invitation?: string): Promise<ApiError | undefin
 	if (data) location.assign(data.url);
 	return error;
 }
+
+/** Sends the browser to the identity provider to link it to the signed-in user. */
+export async function linkOidc(): Promise<ApiError | undefined> {
+	const { data, error } = await call(api.POST('/api/oidc/link'));
+	if (data) location.assign(data.url);
+	return error;
+}

@@ -29,7 +29,7 @@ _Avoid_: Tax advisor, bookkeeper
 A one-time link from the owner that lets one named person become a user with a given role.
 
 **Passkey** (de: Passkey):
-A credential on a user's device that signs them in; a user may have several and never fewer than one.
+A credential on a user's device that signs them in; a user may have several, and keeps at least one unless they sign in through the identity provider.
 _Avoid_: Password, key
 
 **Audit log** (de: Änderungsprotokoll):

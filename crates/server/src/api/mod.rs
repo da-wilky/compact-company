@@ -97,6 +97,11 @@ pub fn routes() -> OpenApiRouter<Arc<App>> {
         .routes(routes!(invitations::accept_finish))
         .routes(routes!(oidc::oidc_start))
         .routes(routes!(oidc::oidc_callback))
+        .routes(routes!(
+            oidc::get_oidc_link,
+            oidc::link_oidc,
+            oidc::unlink_oidc
+        ))
         .routes(routes!(audit::list_audit))
         .routes(routes!(currencies))
         .routes(routes!(

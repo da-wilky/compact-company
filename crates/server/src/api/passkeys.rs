@@ -8,6 +8,7 @@ use webauthn_rs::prelude::{CredentialID, PasskeyRegistration, Uuid};
 
 use super::{
     error::{ApiError, ErrorCode, FieldError, Json, Path},
+    oidc,
     session::{RegistrationFinish, insert_passkey},
 };
 use crate::{
@@ -151,8 +152,8 @@ pub async fn remove_passkey(
             .fetch_optional(&mut *tx)
             .await?
             .ok_or(ApiError::new(ErrorCode::NotFound))?;
-    if count <= 1 {
-        return Err(ApiError::new(ErrorCode::LastPasskey));
+    if count <= 1 && !oidc::is_linked(&mut *tx, auth.user.id).await? {
+        return Err(ApiError::new(ErrorCode::LastSignIn));
     }
     let before = json!({ "user_id": auth.user.id, "name": name });
     audit::record(

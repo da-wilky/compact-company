@@ -99,9 +99,13 @@ class Cdp {
 try {
 	const port = await freePort();
 	const origin = `http://localhost:${port}`;
+	// the provider is only contacted once someone signs in through it, so a made-up one shows its buttons
+	writeFileSync(join(work, 'oidc-secret'), 'secret');
 	writeFileSync(
 		join(work, 'config.toml'),
-		`listen = "127.0.0.1:${port}"\npublic_url = "${origin}"\ndata_dir = "${join(work, 'data')}"\n`
+		`listen = "127.0.0.1:${port}"\npublic_url = "${origin}"\ndata_dir = "${join(work, 'data')}"\n` +
+			`[oidc]\nissuer = "https://id.example.com/realms/example"\nclient_id = "compact-company"\n` +
+			`client_secret_file = "${join(work, 'oidc-secret')}"\nname = "Keycloak"\n`
 	);
 	let setupLink;
 	start(serverBin, ['serve', '--config', join(work, 'config.toml')], (line) => {
@@ -500,6 +504,7 @@ try {
 	await api('POST', `/api/documents/${finalDraft.id}/issue`);
 	await screen('overview', `${origin}/`);
 	await screen('help', `${origin}/help`);
+	await screen('account', `${origin}/account`);
 	await screen('hint-dialog', `${origin}/business`, () => click('.hint'));
 	await screen('recurring', `${origin}/recurring`);
 	await screen('recurring-edit', `${origin}/recurring`, () => click('.card-list .row'));

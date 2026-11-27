@@ -38,12 +38,13 @@ pub enum ErrorCode {
     InvalidSetupToken,
     CeremonyExpired,
     PasskeyRejected,
-    LastPasskey,
+    LastSignIn,
     LastOwner,
     InvitationInvalid,
     OidcFailed,
     OidcUnknownIdentity,
     OidcIdentityTaken,
+    OidcAlreadyLinked,
     Archived,
     StatusInUse,
     HasTime,
@@ -110,12 +111,13 @@ impl ErrorCode {
         Self::InvalidSetupToken,
         Self::CeremonyExpired,
         Self::PasskeyRejected,
-        Self::LastPasskey,
+        Self::LastSignIn,
         Self::LastOwner,
         Self::InvitationInvalid,
         Self::OidcFailed,
         Self::OidcUnknownIdentity,
         Self::OidcIdentityTaken,
+        Self::OidcAlreadyLinked,
         Self::Archived,
         Self::StatusInUse,
         Self::HasTime,
@@ -174,9 +176,10 @@ impl ErrorCode {
             | Self::InvalidSetupToken
             | Self::OidcUnknownIdentity => StatusCode::FORBIDDEN,
             Self::SetupDone
-            | Self::LastPasskey
+            | Self::LastSignIn
             | Self::LastOwner
             | Self::OidcIdentityTaken
+            | Self::OidcAlreadyLinked
             | Self::Archived
             | Self::StatusInUse
             | Self::HasTime
