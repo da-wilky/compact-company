@@ -764,7 +764,8 @@ pub async fn document_pdf(
         }
         None => {
             let business = business(&app).await?;
-            let data = data(&mut db, &business, &row).await?;
+            let mut data = data(&mut db, &business, &row).await?;
+            issue_dates(&business, row.kind, &mut data, today(&business)?);
             let layout = layouts::for_document(&app, &mut db, row.kind, row.customer_id).await?;
             drop(db);
             let (rendered, _) = render::render_blocking(layout, data, Vec::new())
@@ -856,48 +857,26 @@ pub async fn issue(
         return Err(ApiError::new(ErrorCode::DeductionsExceedInvoice));
     }
     let today = today(business)?;
-    let valid_until = match (row.kind, row.valid_until.as_deref()) {
-        (Kind::Quote, Some(date)) if date < today.to_string().as_str() => {
-            return Err(field_error("valid_until", FieldError::InvalidFormat));
-        }
-        (Kind::Quote, Some(date)) => Some(date.to_owned()),
-        (Kind::Quote, None) => {
-            let days = i64::from(business.quote_valid_days.unwrap_or(30));
-            Some(
-                today
-                    .saturating_add(jiff::Span::new().days(days))
-                    .to_string(),
-            )
-        }
-        _ => None,
-    };
+    if let (Kind::Quote, Some(date)) = (row.kind, row.valid_until.as_deref())
+        && date < today.to_string().as_str()
+    {
+        return Err(field_error("valid_until", FieldError::InvalidFormat));
+    }
+    if data
+        .dunning
+        .as_ref()
+        .is_some_and(|d| d.amount_due <= Decimal::ZERO)
+    {
+        return Err(ApiError::new(ErrorCode::FollowUpNotAllowed));
+    }
     let number = documents::next_number(tx, row.kind, business, today.year()).await?;
     data.number = Some(number.clone());
-    data.issue_date = Some(today.to_string());
-    data.valid_until = valid_until.clone();
-    // a dunning letter gives a week to pay
-    let days = match row.kind {
-        Kind::Invoice => Some(i64::from(business.payment_days.unwrap_or(14))),
-        Kind::Dunning => Some(7),
-        _ => None,
+    issue_dates(business, row.kind, &mut data, today);
+    let valid_until = data.valid_until.clone();
+    let due_date = match &data.dunning {
+        Some(dunning) => dunning.pay_until.clone(),
+        None => data.due_date.clone(),
     };
-    let due_date = days.map(|days| {
-        today
-            .saturating_add(jiff::Span::new().days(days))
-            .to_string()
-    });
-    if let Some(dunning) = &mut data.dunning {
-        if dunning.amount_due <= Decimal::ZERO {
-            return Err(ApiError::new(ErrorCode::FollowUpNotAllowed));
-        }
-        dunning.pay_until = due_date.clone();
-    } else {
-        data.due_date = due_date.clone();
-    }
-    if matches!(row.kind, Kind::Invoice | Kind::Cancellation) && data.service_from.is_none() {
-        data.service_from = Some(today.to_string());
-        data.service_to = Some(today.to_string());
-    }
     let layout = layouts::for_document(app, tx, row.kind, row.customer_id).await?;
     let layout_name = layout.name.clone();
     let e_invoice = matches!(row.kind, Kind::Invoice | Kind::Cancellation);
@@ -1004,6 +983,34 @@ pub async fn issue(
             .await?;
     }
     Ok(data)
+}
+
+/// Sets the dates issuing on `today` gives: issue date, a quote's validity, due date and,
+/// when none is set, the service period.
+fn issue_dates(business: &Business, kind: Kind, data: &mut Data, today: jiff::civil::Date) {
+    let after = |days: i64| {
+        today
+            .saturating_add(jiff::Span::new().days(days))
+            .to_string()
+    };
+    data.issue_date = Some(today.to_string());
+    if kind == Kind::Quote && data.valid_until.is_none() {
+        data.valid_until = Some(after(i64::from(business.quote_valid_days.unwrap_or(30))));
+    }
+    // a dunning letter gives a week to pay
+    let due_date = match kind {
+        Kind::Invoice => Some(after(i64::from(business.payment_days.unwrap_or(14)))),
+        Kind::Dunning => Some(after(7)),
+        _ => None,
+    };
+    match &mut data.dunning {
+        Some(dunning) => dunning.pay_until = due_date,
+        None => data.due_date = due_date,
+    }
+    if matches!(kind, Kind::Invoice | Kind::Cancellation) && data.service_from.is_none() {
+        data.service_from = Some(today.to_string());
+        data.service_to = Some(today.to_string());
+    }
 }
 
 /// Issues a cancellation invoice for every line of `invoice` not yet reversed.
