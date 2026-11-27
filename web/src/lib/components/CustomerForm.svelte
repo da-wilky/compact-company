@@ -22,6 +22,7 @@
 		postcode: '',
 		city: '',
 		country: 'DE',
+		email: '',
 		is_default
 	});
 	let addresses = $state<EditAddress[]>(initial?.addresses.map((a) => ({ ...a })) ?? [blank(true)]);
@@ -125,6 +126,15 @@
 				<Field label={t('customers.country')} error={error?.fields?.[`addresses.${i}.country`]}>
 					<input bind:value={address.country} maxlength="2" autocomplete="country" />
 				</Field>
+				<div class="wide">
+					<Field
+						label={t('customers.email')}
+						note={t('customers.address_email_hint')}
+						error={error?.fields?.[`addresses.${i}.email`]}
+					>
+						<input type="email" bind:value={address.email} />
+					</Field>
+				</div>
 			</div>
 		{/each}
 		<div>

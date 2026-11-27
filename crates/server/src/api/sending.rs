@@ -58,11 +58,13 @@ pub async fn send_document(
         return Err(ApiError::new(ErrorCode::FollowUpNotAllowed));
     };
     super::retention::kept(&mut db, &format!("document:{id}")).await?;
-    let customer_email: Option<String> =
-        sqlx::query_scalar("SELECT email FROM customer WHERE id = ?")
-            .bind(row.customer_id)
-            .fetch_one(&mut *db)
-            .await?;
+    let issued_to: Option<String> = sqlx::query_scalar(
+        "SELECT coalesce(json_extract(d.data, '$.customer.email'), c.email)
+         FROM document d JOIN customer c ON c.id = d.customer_id WHERE d.id = ?",
+    )
+    .bind(id)
+    .fetch_one(&mut *db)
+    .await?;
     drop(db);
     let (subject, body) = mail::default_text(
         row.kind,
@@ -71,7 +73,7 @@ pub async fn send_document(
         business.name.as_deref().unwrap_or_default(),
     );
     let mut check = Check::default();
-    let to = input.to.or(customer_email);
+    let to = input.to.or(issued_to);
     let to = check.required("to", to, 254);
     if !to.contains('@') || to.contains(char::is_whitespace) {
         check.fail("to", FieldError::InvalidFormat);

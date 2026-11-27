@@ -44,7 +44,7 @@ _Avoid_: Client, contact, account
 The permanent, never-reused identifier of a customer (e.g. `K-001`), assigned when the customer is created.
 
 **Billing address** (de: Rechnungsadresse):
-One of a customer's postal addresses a document is addressed to, under the customer's name; one is the default, and a draft may pick another.
+One of a customer's postal addresses a document is addressed to, under the customer's name, with an optional email it is sent to; one is the default, and a draft may pick another.
 _Avoid_: Invoice address, contact
 
 **Supplier** (de: Lieferant):

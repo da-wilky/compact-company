@@ -231,6 +231,7 @@
   "business.website": "Website",
   "customers.add_address": "Adresse hinzufügen",
   "customers.address_label": "Bezeichnung",
+  "customers.address_email_hint": "Rechnungen an diese Adresse gehen an diese E-Mail, auch in der E-Rechnung; leer: die E-Mail des Kunden.",
   "customers.addresses": "Rechnungsadressen",
   "customers.archive": "Archivieren",
   "customers.archived_done": "Kunde archiviert",

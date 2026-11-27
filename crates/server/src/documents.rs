@@ -535,7 +535,7 @@ pub async fn draft_data(
 ) -> Result<Data, sqlx::Error> {
     let customer: CustomerData = sqlx::query_as(
         "SELECT c.number, c.name, a.street, a.postcode, a.city, coalesce(a.country, 'DE') AS country,
-         c.email, c.vat_id, c.leitweg_id, c.xrechnung
+         coalesce(a.email, c.email) AS email, c.vat_id, c.leitweg_id, c.xrechnung
          FROM customer c LEFT JOIN customer_address a ON a.id = coalesce(?,
              (SELECT id FROM customer_address WHERE customer_id = c.id AND is_default))
          WHERE c.id = ?",

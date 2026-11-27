@@ -77,6 +77,8 @@ pub struct AddressInput {
     city: Option<String>,
     /// ISO 3166-1 alpha-2; DE when left out.
     country: Option<String>,
+    /// Where documents to this address are emailed; the customer's email when left out.
+    email: Option<String>,
     #[serde(default)]
     is_default: bool,
 }
@@ -91,6 +93,7 @@ pub struct Address {
     postcode: Option<String>,
     city: Option<String>,
     country: String,
+    email: Option<String>,
     is_default: bool,
 }
 
@@ -303,7 +306,7 @@ pub async fn find(db: &mut SqliteConnection, id: i64) -> Result<Customer, ApiErr
 
 async fn addresses(db: &mut SqliteConnection, customer: i64) -> Result<Vec<Address>, sqlx::Error> {
     sqlx::query_as(
-        "SELECT id, label, street, postcode, city, country, is_default FROM customer_address
+        "SELECT id, label, street, postcode, city, country, email, is_default FROM customer_address
          WHERE customer_id = ? AND NOT archived ORDER BY is_default DESC, id",
     )
     .bind(customer)
@@ -348,25 +351,27 @@ async fn save_addresses(
         let query = match a.id {
             Some(id) => sqlx::query(
                 "UPDATE customer_address SET label = ?, street = ?, postcode = ?, city = ?,
-                 country = ?, is_default = ? WHERE id = ? AND customer_id = ?",
+                 country = ?, email = ?, is_default = ? WHERE id = ? AND customer_id = ?",
             )
             .bind(a.label)
             .bind(a.street)
             .bind(a.postcode)
             .bind(a.city)
             .bind(a.country)
+            .bind(a.email)
             .bind(a.is_default)
             .bind(id),
             None => sqlx::query(
                 "INSERT INTO customer_address
-                 (label, street, postcode, city, country, is_default, customer_id)
-                 VALUES (?, ?, ?, ?, ?, ?, ?)",
+                 (label, street, postcode, city, country, email, is_default, customer_id)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
             )
             .bind(a.label)
             .bind(a.street)
             .bind(a.postcode)
             .bind(a.city)
             .bind(a.country)
+            .bind(a.email)
             .bind(a.is_default),
         };
         query.bind(customer).execute(&mut *tx).await?;
@@ -381,7 +386,19 @@ struct AddressFields {
     postcode: Option<String>,
     city: Option<String>,
     country: String,
+    email: Option<String>,
     is_default: bool,
+}
+
+fn checked_email(check: &mut Check, key: &str, value: Option<String>) -> Option<String> {
+    let email = check.text(key, value, 254);
+    if email
+        .as_deref()
+        .is_some_and(|e| !e.contains('@') || e.contains(char::is_whitespace))
+    {
+        check.fail(key, FieldError::InvalidFormat);
+    }
+    email
 }
 
 async fn validate(
@@ -402,13 +419,7 @@ async fn validate(
     if !money::is_currency(&currency) {
         check.fail("currency", FieldError::InvalidFormat);
     }
-    let email = check.text("email", input.email, 254);
-    if email
-        .as_deref()
-        .is_some_and(|e| !e.contains('@') || e.contains(char::is_whitespace))
-    {
-        check.fail("email", FieldError::InvalidFormat);
-    }
+    let email = checked_email(&mut check, "email", input.email);
     if input.hourly_rate.is_some_and(|rate| !money::is_rate(rate)) {
         check.fail("hourly_rate", FieldError::InvalidFormat);
     }
@@ -437,6 +448,7 @@ async fn validate(
                 postcode: check.text(&format!("addresses.{i}.postcode"), a.postcode, 20),
                 city: check.text(&format!("addresses.{i}.city"), a.city, 100),
                 country: check.country(&format!("addresses.{i}.country"), a.country),
+                email: checked_email(&mut check, &format!("addresses.{i}.email"), a.email),
                 is_default: a.is_default || (defaults == 0 && i == 0),
             }
         })

@@ -231,6 +231,7 @@
   "business.website": "Website",
   "customers.add_address": "Add address",
   "customers.address_label": "Label",
+  "customers.address_email_hint": "Documents to this address are emailed here, and the e-invoice names it; empty: the customer's email.",
   "customers.addresses": "Billing addresses",
   "customers.archive": "Archive",
   "customers.archived_done": "Customer archived",

@@ -121,7 +121,7 @@
 					<dt>
 						{address.label ?? t('customers.billing_address')}{#if address.is_default && customer.addresses.length > 1}{` (${t('customers.default_address')})`}{/if}
 					</dt>
-					<dd class="pre">{customer.name}{'\n'}{addressLines(address)}</dd>
+					<dd class="pre">{[customer.name, addressLines(address), address.email].filter(Boolean).join('\n')}</dd>
 				{/each}
 				<dt>{t('customers.language')}</dt>
 				<dd>{t(`language.${customer.language}`)}</dd>
