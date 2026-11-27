@@ -112,14 +112,21 @@ async fn sign_in_as(
     subject: &str,
     invitation: Option<&str>,
 ) -> String {
-    let start = app
-        .as_browser(
-            browser,
-            "POST",
-            "/api/oidc/start",
-            json!({ "invitation": invitation }),
-        )
-        .await;
+    let body = json!({ "invitation": invitation });
+    round_trip(app, provider, browser, subject, "/api/oidc/start", body).await
+}
+
+/// Starts at `path`, goes through the provider as `subject` and returns where the callback sends
+/// the browser.
+async fn round_trip(
+    app: &TestApp,
+    provider: &Provider,
+    browser: &mut Browser,
+    subject: &str,
+    path: &str,
+    body: Value,
+) -> String {
+    let start = app.as_browser(browser, "POST", path, body).await;
     assert_eq!(start.status(), StatusCode::OK);
     let url = url::Url::parse(json(start).await["url"].as_str().unwrap()).unwrap();
     assert!(
@@ -249,4 +256,99 @@ async fn a_callback_from_another_browser_is_refused() {
         "/sign-in#error.oidc_failed"
     );
     assert!(!alex.cookies.contains_key("session"));
+}
+
+async fn linked(app: &TestApp, browser: &mut Browser) -> bool {
+    let response = app
+        .as_browser(browser, "GET", "/api/oidc/link", json!({}))
+        .await;
+    assert_eq!(response.status(), StatusCode::OK);
+    json(response).await["linked"].as_bool().unwrap()
+}
+
+#[tokio::test]
+async fn a_signed_in_user_links_the_provider_and_signs_in_through_it() {
+    let provider = provider().await;
+    let app = app_with(&provider).await;
+    let mut owner = app.setup_owner().await;
+    assert!(!linked(&app, &mut owner).await);
+
+    let location = round_trip(
+        &app,
+        &provider,
+        &mut owner,
+        "erika",
+        "/api/oidc/link",
+        json!({}),
+    )
+    .await;
+    assert_eq!(location, "/account");
+    assert!(linked(&app, &mut owner).await);
+    let audit = json(
+        app.as_browser(&mut owner, "GET", "/api/audit", json!({}))
+            .await,
+    )
+    .await;
+    assert!(
+        audit
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|entry| entry["action"] == "oidc.link" && entry["subject"] == "user:1")
+    );
+    let again = app
+        .as_browser(&mut owner, "POST", "/api/oidc/link", json!({}))
+        .await;
+    assert_eq!(again.status(), StatusCode::CONFLICT);
+    assert_eq!(json(again).await["message"], "error.oidc_already_linked");
+
+    let mut later = Browser::new();
+    assert_eq!(
+        sign_in_as(&app, &provider, &mut later, "erika", None).await,
+        "/"
+    );
+    let session = json(
+        app.as_browser(&mut later, "GET", "/api/session", json!({}))
+            .await,
+    )
+    .await;
+    assert_eq!(session["user"]["name"], "Erika");
+    assert_eq!(session["user"]["role"], "owner");
+}
+
+#[tokio::test]
+async fn linking_an_identity_of_another_user_is_refused() {
+    let provider = provider().await;
+    let app = app_with(&provider).await;
+    let mut owner = app.setup_owner().await;
+    let token = app.invite(&mut owner, "Alex", "staff").await;
+    sign_in_as(&app, &provider, &mut Browser::new(), "alex", Some(&token)).await;
+
+    let location = round_trip(
+        &app,
+        &provider,
+        &mut owner,
+        "alex",
+        "/api/oidc/link",
+        json!({}),
+    )
+    .await;
+    assert_eq!(location, "/account#error.oidc_identity_taken");
+    assert!(!linked(&app, &mut owner).await);
+}
+
+#[tokio::test]
+async fn linking_needs_a_session_and_its_csrf_token() {
+    let provider = provider().await;
+    let app = app_with(&provider).await;
+    let mut owner = app.setup_owner().await;
+    let anonymous = app
+        .as_browser(&mut Browser::new(), "POST", "/api/oidc/link", json!({}))
+        .await;
+    assert_eq!(anonymous.status(), StatusCode::UNAUTHORIZED);
+    owner.csrf_token = None;
+    let forged = app
+        .as_browser(&mut owner, "POST", "/api/oidc/link", json!({}))
+        .await;
+    assert_eq!(forged.status(), StatusCode::FORBIDDEN);
 }

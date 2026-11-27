@@ -1,4 +1,7 @@
 {
+  "account.oidc_hint": "Verknüpfen Sie Ihr Konto, um sich außer mit einem Passkey auch mit {name} anzumelden.",
+  "account.oidc_link": "Mit {name} verknüpfen",
+  "account.oidc_linked": "Verknüpft: Sie können sich mit {name} anmelden.",
   "account.title": "Konto",
   "activities.add_rate": "Satz hinzufügen",
   "activities.edit": "Tätigkeit bearbeiten",
@@ -418,6 +421,7 @@
   "error.no_unbilled_time": "Für diese Auswahl gibt es keine nicht abgerechnete Zeit.",
   "error.not_found": "Nicht gefunden.",
   "error.nothing_to_delete": "In diesem Jahr darf noch nichts gelöscht werden.",
+  "error.oidc_already_linked": "Ihr Konto ist bereits mit dem Identitätsanbieter verknüpft.",
   "error.oidc_failed": "Die Anmeldung über den Identitätsanbieter ist fehlgeschlagen.",
   "error.oidc_identity_taken": "Diese Identität gehört bereits einem anderen Benutzer.",
   "error.oidc_unknown_identity": "Diese Identität gehört zu keinem Benutzer; bitte den Inhaber um eine Einladung.",

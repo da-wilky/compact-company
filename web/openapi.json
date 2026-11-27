@@ -2837,6 +2837,61 @@
         }
       }
     },
+    "/api/oidc/link": {
+      "get": {
+        "tags": [
+          "session"
+        ],
+        "operationId": "get_oidc_link",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OidcLink"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "session"
+        ],
+        "summary": "Starts linking the identity provider to the signed-in user; the callback returns to the\naccount page.",
+        "operationId": "link_oidc",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OidcRedirect"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/oidc/start": {
       "post": {
         "tags": [
@@ -8914,6 +8969,7 @@
           "oidc_failed",
           "oidc_unknown_identity",
           "oidc_identity_taken",
+          "oidc_already_linked",
           "archived",
           "status_in_use",
           "has_time",
@@ -9801,6 +9857,18 @@
           "link": {
             "type": "string",
             "description": "The one-time link to hand to the invitee; it is not shown again."
+          }
+        }
+      },
+      "OidcLink": {
+        "type": "object",
+        "required": [
+          "linked"
+        ],
+        "properties": {
+          "linked": {
+            "type": "boolean",
+            "description": "Whether the current user signs in through the identity provider."
           }
         }
       },

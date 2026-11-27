@@ -1,11 +1,12 @@
 <script lang="ts">
-	import { api, call, type ApiError, type Schemas } from '#lib/api/index.ts';
+	import { api, call, clientError, type ApiError, type Schemas } from '#lib/api/index.ts';
 	import Dialog from '#lib/components/Dialog.svelte';
 	import Field from '#lib/components/Field.svelte';
 	import Icon from '#lib/components/Icon.svelte';
 	import Preferences from '#lib/components/Preferences.svelte';
 	import { confirm } from '#lib/confirm.svelte.ts';
-	import { i18n, t } from '#lib/i18n.svelte.ts';
+	import { has, i18n, t } from '#lib/i18n.svelte.ts';
+	import { linkOidc } from '#lib/oidc.ts';
 	import { session } from '#lib/session.svelte.ts';
 	import { toast } from '#lib/toast.svelte.ts';
 	import { createPasskey } from '#lib/webauthn.ts';
@@ -64,6 +65,17 @@
 		secs ? new Date(secs * 1000).toLocaleString(i18n.locale) : t('app.never');
 
 	load();
+
+	let oidcLinked = $state(false);
+	// the OIDC callback reports a failed link in the fragment
+	const reported = decodeURIComponent(location.hash.slice(1));
+	let oidcError = $state<ApiError | undefined>(
+		reported.startsWith('error.') && has(reported) ? clientError(reported) : undefined
+	);
+
+	$effect(() => {
+		if (session.view?.oidc) call(api.GET('/api/oidc/link')).then(({ data }) => (oidcLinked = data?.linked ?? false));
+	});
 
 	const scopes: Schemas['Scope'][] = ['work:read', 'work:write', 'documents:read', 'documents:write', 'books:read'];
 	let tokens = $state<Schemas['Token'][]>([]);
@@ -144,6 +156,20 @@
 		</form>
 		{#if error}<p class="alert" role="alert">{t(error.message)}</p>{/if}
 	</section>
+
+	{#if session.view?.oidc}
+		{@const name = session.view.oidc}
+		<section class="card stack">
+			<h2>{name}</h2>
+			{#if oidcLinked}
+				<p>{t('account.oidc_linked', { name })}</p>
+			{:else}
+				<p class="muted">{t('account.oidc_hint', { name })}</p>
+				<div><button class="primary" onclick={async () => (oidcError = await linkOidc())}>{t('account.oidc_link', { name })}</button></div>
+			{/if}
+			{#if oidcError}<p class="alert" role="alert">{t(oidcError.message)}</p>{/if}
+		</section>
+	{/if}
 
 	<section class="card stack">
 		<h2>{t('tokens.title')}</h2>

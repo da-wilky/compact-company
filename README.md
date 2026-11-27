@@ -163,7 +163,8 @@ endpoint = "https://s3.example.com"
 access_key_id = "…"
 secret_access_key_file = "/run/secrets/s3"
 
-[oidc]                         # sign-in through an identity provider; it never creates users
+[oidc]                         # sign-in through an identity provider; it never creates users:
+                               # invitees sign up through it, others link it on their account page
 issuer = "https://id.example.com/realms/example"
 client_id = "compact-company"  # redirect URI: <public_url>/api/oidc/callback
 client_secret_file = "/run/secrets/oidc"

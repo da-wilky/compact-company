@@ -44,6 +44,7 @@ pub enum ErrorCode {
     OidcFailed,
     OidcUnknownIdentity,
     OidcIdentityTaken,
+    OidcAlreadyLinked,
     Archived,
     StatusInUse,
     HasTime,
@@ -116,6 +117,7 @@ impl ErrorCode {
         Self::OidcFailed,
         Self::OidcUnknownIdentity,
         Self::OidcIdentityTaken,
+        Self::OidcAlreadyLinked,
         Self::Archived,
         Self::StatusInUse,
         Self::HasTime,
@@ -177,6 +179,7 @@ impl ErrorCode {
             | Self::LastPasskey
             | Self::LastOwner
             | Self::OidcIdentityTaken
+            | Self::OidcAlreadyLinked
             | Self::Archived
             | Self::StatusInUse
             | Self::HasTime
