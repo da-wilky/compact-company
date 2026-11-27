@@ -284,7 +284,7 @@ try {
 		email: 'info@krume.example',
 		addresses: [
 			{ street: 'Brotgasse 3', postcode: '12345', city: 'Musterstadt' },
-			{ label: 'Steuerbüro', street: 'c/o Steuerbüro Lind\nAm Ring 4', postcode: '12345', city: 'Musterstadt' }
+			{ label: 'Steuerbüro', street: 'c/o Steuerbüro Lind\nAm Ring 4', postcode: '12345', city: 'Musterstadt', email: 'krume@lind.example' }
 		],
 		hourly_rate: 8500
 	});

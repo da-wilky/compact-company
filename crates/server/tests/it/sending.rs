@@ -94,3 +94,76 @@ async fn without_smtp_nothing_is_sent() {
         .await;
     assert_eq!(json(response).await["code"], "mail_not_configured");
 }
+
+#[tokio::test]
+async fn a_document_to_a_billing_address_with_its_own_email_goes_there_as_issued() {
+    let (port, received) = smtp(false).await;
+    let app = start(config(port)).await;
+    let mut owner = app.setup_owner().await;
+    let customer = app.ready_to_issue(&mut owner).await;
+    let customer_path = format!("/api/customers/{customer}");
+    let main = app.ok(&mut owner, "GET", &customer_path, json!({})).await["addresses"][0].clone();
+    let with_office = |office_email: &str| {
+        json!({ "name": "Bäckerei Krume", "language": "de", "email": "info@krume.example",
+                "addresses": [
+                    { "id": main["id"], "street": "Brotgasse 2", "postcode": "04109",
+                      "city": "Leipzig" },
+                    { "street": "c/o Steuerbüro Lind\nAm Ring 4", "postcode": "04103",
+                      "city": "Leipzig", "email": office_email }
+                ] })
+    };
+    let office = app
+        .ok(
+            &mut owner,
+            "PUT",
+            &customer_path,
+            with_office("krume@lind.example"),
+        )
+        .await["addresses"][1]
+        .clone();
+    assert_eq!(office["email"], "krume@lind.example");
+    let draft = |address: &serde_json::Value| {
+        json!({ "kind": "invoice", "customer_id": customer, "address_id": address,
+                "lines": [{ "description": "Beratung", "quantity": "1", "unit": "hour",
+                            "unit_price": 9000 }] })
+    };
+    let plain = app
+        .ok(
+            &mut owner,
+            "POST",
+            "/api/documents",
+            draft(&serde_json::Value::Null),
+        )
+        .await;
+    assert_eq!(plain["data"]["customer"]["email"], "info@krume.example");
+    let picked = app
+        .ok(&mut owner, "POST", "/api/documents", draft(&office["id"]))
+        .await;
+    assert_eq!(picked["data"]["customer"]["email"], "krume@lind.example");
+    let path = format!("/api/documents/{}", picked["id"]);
+    app.ok(&mut owner, "POST", &format!("{path}/issue"), json!({}))
+        .await;
+
+    // the issued invoice keeps the email it was issued with
+    let mut changed = with_office("neu@lind.example");
+    changed["addresses"][1]["id"] = office["id"].clone();
+    app.ok(&mut owner, "PUT", &customer_path, changed).await;
+    let sent = app
+        .ok(&mut owner, "POST", &format!("{path}/send"), json!({}))
+        .await;
+    assert_eq!(sent["sent"][0]["recipient"], "krume@lind.example");
+    assert!(received.lock().unwrap()[0].contains("To: krume@lind.example"));
+
+    let refused = app
+        .as_browser(
+            &mut owner,
+            "PUT",
+            &customer_path,
+            with_office("kein-at-zeichen"),
+        )
+        .await;
+    assert_eq!(
+        json(refused).await["fields"]["addresses.1.email"],
+        "invalid_format"
+    );
+}

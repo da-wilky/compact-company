@@ -337,7 +337,8 @@ pub async fn anonymise_year(
         .execute(&mut *tx)
         .await?;
         sqlx::query(
-            "UPDATE customer_address SET label = NULL, street = NULL, postcode = NULL, city = NULL
+            "UPDATE customer_address SET label = NULL, street = NULL, postcode = NULL, city = NULL,
+             email = NULL
              WHERE customer_id = ?",
         )
         .bind(customer.id)

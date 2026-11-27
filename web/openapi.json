@@ -6260,6 +6260,13 @@
             ],
             "description": "ISO 3166-1 alpha-2; DE when left out."
           },
+          "email": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Where documents to this address are emailed; the customer's email when left out."
+          },
           "id": {
             "type": [
               "integer",
@@ -7773,6 +7780,12 @@
           },
           "country": {
             "type": "string"
+          },
+          "email": {
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "id": {
             "type": "integer",
