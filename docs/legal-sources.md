@@ -260,6 +260,18 @@ Abs. 3 gives a later deadline when a tax adviser prepares the return; its exact 
 
 > Bei Rechtsgeschäften, an denen ein Verbraucher nicht beteiligt ist, beträgt der Zinssatz für Entgeltforderungen neun Prozentpunkte über dem Basiszinssatz.
 
+## EN 16931 CII – Postal address and buyer contact (a standard, not law)
+
+Read in the KoSIT validator configuration XRechnung 3.0.2 (2026-08-31), `EN16931-CII-validation.xsl` and the CII D16B XSD. Of `ram:PostalTradeAddress` only `PostcodeCode`, `LineOne`–`LineThree`, `CityName`, `CountryID` and `CountrySubDivisionName` may be used; CII-DT-083 to CII-DT-096 forbid the rest of the XSD's elements:
+> [CII-DT-086] - LineFour shall not be used. … [CII-DT-088] - StreetName shall not be used. … [CII-DT-092] - AttentionOf shall not be used. [CII-DT-093] - CareOf shall not be used. [CII-DT-094] - BuildingNumber shall not be used. [CII-DT-095] - DepartmentName shall not be used.
+
+The buyer's contact goes into `ram:BuyerTradeParty/ram:DefinedTradeContact` instead:
+> [CII-SR-456] - DefinedTradeContact of BuyerTradeParty shall exist maximum once
+
+XRechnung additionally requires the buyer's city and postcode:
+> [BR-DE-8] Das Element "Buyer city" (BT-52) muss übermittelt werden.
+> [BR-DE-9] Das Element "Buyer post code" (BT-53) muss übermittelt werden.
+
 ## Not yet checked against the primary text
 
 - EN 16931 / XRechnung type codes for partial and final invoices (a standard, not law): built on 326 for a partial invoice and 380 with the paid amount (BT-113) for a final invoice, one note per deduction and its latest deduction as preceding invoice reference (BG-3; the CII schema takes only one), as secondary sources describe BR-DE-17 (allowed: 326, 380, 384, 389, 381, 875, 876, 877; 875–877 for construction). The KoSIT validator (configuration XRechnung 3.0.2, 2026-08-31) accepts them in CI; the KoSIT specification itself was not read.

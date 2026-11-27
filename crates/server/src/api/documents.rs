@@ -37,6 +37,8 @@ pub struct DocumentInput {
     /// Fixed once the draft exists.
     pub(super) kind: Kind,
     pub(super) customer_id: i64,
+    /// One of the customer's billing addresses; the default when left out.
+    pub(super) address_id: Option<i64>,
     pub(super) project_id: Option<i64>,
     /// The customer's language when left out.
     pub(super) language: Option<Language>,
@@ -89,6 +91,8 @@ pub struct Document {
     kind: Kind,
     status: Status,
     customer_id: i64,
+    /// The billing address it is addressed to; the customer's default when none.
+    address_id: Option<i64>,
     customer_name: String,
     project_id: Option<i64>,
     language: Language,
@@ -564,8 +568,8 @@ pub(super) async fn insert_draft(
     let id: i64 = sqlx::query_scalar(
         "INSERT INTO document (kind, status, customer_id, project_id, language, currency, title,
          intro, outro, valid_until, pricing, source_id, service_from, service_to, timesheet,
-         rounding, dunning_level, invoice_type, created_at, updated_at)
-         VALUES (?, 'draft', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id",
+         rounding, dunning_level, invoice_type, address_id, created_at, updated_at)
+         VALUES (?, 'draft', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id",
     )
     .bind(draft.kind)
     .bind(draft.customer_id)
@@ -584,6 +588,7 @@ pub(super) async fn insert_draft(
     .bind(draft.rounding)
     .bind(draft.dunning_level)
     .bind(draft.invoice_type)
+    .bind(draft.address_id)
     .bind(at)
     .bind(at)
     .fetch_one(&mut *tx)
@@ -637,7 +642,8 @@ pub async fn put_document(
     sqlx::query(
         "UPDATE document SET customer_id = ?, project_id = ?, language = ?, currency = ?,
          title = ?, intro = ?, outro = ?, valid_until = ?, pricing = ?, service_from = ?,
-         service_to = ?, timesheet = ?, invoice_type = ?, updated_at = ?
+         service_to = ?, timesheet = ?, invoice_type = ?, address_id = ?,
+         updated_at = ?
          WHERE id = ?",
     )
     .bind(draft.customer_id)
@@ -653,6 +659,7 @@ pub async fn put_document(
     .bind(&draft.service_to)
     .bind(draft.timesheet)
     .bind(draft.invoice_type)
+    .bind(draft.address_id)
     .bind(now())
     .bind(id)
     .execute(&mut *tx)
@@ -1163,6 +1170,7 @@ pub async fn find(
         kind: row.kind,
         status: row.status,
         customer_id: row.customer_id,
+        address_id: row.address_id,
         customer_name,
         project_id: row.project_id,
         language: row.language,
@@ -1207,6 +1215,7 @@ pub async fn find(
 pub struct Draft {
     pub(super) kind: Kind,
     pub(super) customer_id: i64,
+    pub(super) address_id: Option<i64>,
     pub(super) project_id: Option<i64>,
     pub(super) language: Language,
     pub(super) currency: String,
@@ -1242,6 +1251,7 @@ async fn snapshot(db: &mut SqliteConnection, row: &Row) -> Result<Draft, ApiErro
     Ok(Draft {
         kind: row.kind,
         customer_id: row.customer_id,
+        address_id: live_address(db, row.address_id).await?,
         project_id: row.project_id,
         language: row.language,
         currency: row.currency.clone(),
@@ -1273,6 +1283,17 @@ async fn snapshot(db: &mut SqliteConnection, row: &Row) -> Result<Draft, ApiErro
             })
             .collect(),
     })
+}
+
+/// An archived address is not carried over to a new draft.
+async fn live_address(
+    db: &mut SqliteConnection,
+    address: Option<i64>,
+) -> Result<Option<i64>, sqlx::Error> {
+    sqlx::query_scalar("SELECT id FROM customer_address WHERE id = ? AND NOT archived")
+        .bind(address)
+        .fetch_optional(db)
+        .await
 }
 
 async fn write_lines(tx: &mut SqliteConnection, id: i64, lines: &[Line]) -> Result<(), ApiError> {
@@ -1333,6 +1354,19 @@ pub(super) async fn validate(
     let project_ok = |id: i64| projects.iter().any(|(p, _)| *p == id);
     if input.project_id.is_some_and(|p| !project_ok(p)) {
         check.fail("project_id", FieldError::InvalidFormat);
+    }
+    if let Some(address) = input.address_id {
+        let ok: bool = sqlx::query_scalar(
+            "SELECT EXISTS (SELECT 1 FROM customer_address
+             WHERE id = ? AND customer_id = ? AND NOT archived)",
+        )
+        .bind(address)
+        .bind(input.customer_id)
+        .fetch_one(&mut *db)
+        .await?;
+        if !ok {
+            check.fail("address_id", FieldError::InvalidFormat);
+        }
     }
     let activities: Vec<i64> = sqlx::query_scalar("SELECT id FROM activity")
         .fetch_all(&mut *db)
@@ -1431,6 +1465,7 @@ pub(super) async fn validate(
     let draft = Draft {
         kind: input.kind,
         customer_id: input.customer_id,
+        address_id: input.address_id,
         project_id: input.project_id,
         language: input.language.unwrap_or(customer_language),
         currency,

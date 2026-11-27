@@ -335,7 +335,7 @@ impl TestApp {
                 "/api/customers",
                 json!({
                     "name": "Bäckerei Krume", "language": "de", "hourly_rate": 8000,
-                    "street": "Brotgasse 2", "postcode": "04109", "city": "Leipzig",
+                    "addresses": [{ "street": "Brotgasse 2", "postcode": "04109", "city": "Leipzig" }],
                     "email": "info@krume.example"
                 }),
             )

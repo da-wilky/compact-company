@@ -6244,6 +6244,56 @@
         },
         "additionalProperties": false
       },
+      "AddressInput": {
+        "type": "object",
+        "properties": {
+          "city": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "country": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "ISO 3166-1 alpha-2; DE when left out."
+          },
+          "id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "An existing address of this customer; a new one when left out."
+          },
+          "is_default": {
+            "type": "boolean"
+          },
+          "label": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "A name to pick it by, e.g. Buchhaltung."
+          },
+          "postcode": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "street": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "One line each for c/o, department and street; at most three."
+          }
+        },
+        "additionalProperties": false
+      },
       "Anonymisation": {
         "type": "object",
         "description": "What anonymising a year does, for the owner to see first.",
@@ -7706,6 +7756,51 @@
           }
         ]
       },
+      "CustomerAddress": {
+        "type": "object",
+        "description": "A billing address; the customer's name heads it on every document.",
+        "required": [
+          "id",
+          "country",
+          "is_default"
+        ],
+        "properties": {
+          "city": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "country": {
+            "type": "string"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "is_default": {
+            "type": "boolean"
+          },
+          "label": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "postcode": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "street": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
       "CustomerData": {
         "type": "object",
         "required": [
@@ -7772,24 +7867,22 @@
         "description": "What an edit may change; also the snapshot the audit log compares.",
         "required": [
           "name",
-          "country",
+          "addresses",
           "language",
           "currency",
           "xrechnung",
           "archived"
         ],
         "properties": {
+          "addresses": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CustomerAddress"
+            },
+            "description": "The default first, then in the order they were added."
+          },
           "archived": {
             "type": "boolean"
-          },
-          "city": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "country": {
-            "type": "string"
           },
           "currency": {
             "type": "string"
@@ -7826,18 +7919,6 @@
               "null"
             ]
           },
-          "postcode": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "street": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
           "vat_id": {
             "type": [
               "string",
@@ -7855,21 +7936,15 @@
           "language"
         ],
         "properties": {
+          "addresses": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AddressInput"
+            },
+            "description": "All of the customer's billing addresses: one without an id is added, one left out is\nremoved. The first is the default unless one says otherwise."
+          },
           "archived": {
             "type": "boolean"
-          },
-          "city": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "country": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "description": "ISO 3166-1 alpha-2; DE when left out."
           },
           "currency": {
             "type": [
@@ -7909,18 +7984,6 @@
             ]
           },
           "note": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "postcode": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "street": {
             "type": [
               "string",
               "null"
@@ -8063,6 +8126,14 @@
           "updated_at"
         ],
         "properties": {
+          "address_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "The billing address it is addressed to; the customer's default when none."
+          },
           "amount_due": {
             "oneOf": [
               {
@@ -8484,6 +8555,14 @@
           "customer_id"
         ],
         "properties": {
+          "address_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "One of the customer's billing addresses; the default when left out."
+          },
           "customer_id": {
             "type": "integer",
             "format": "int64"

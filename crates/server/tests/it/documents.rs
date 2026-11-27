@@ -62,8 +62,8 @@ async fn an_issued_document_keeps_its_data_amounts_and_number() {
         &mut owner,
         "PUT",
         &format!("/api/customers/{customer}"),
-        json!({ "name": "Krume GmbH", "language": "de", "street": "Neuer Weg 9",
-                "postcode": "04109", "city": "Leipzig" }),
+        json!({ "name": "Krume GmbH", "language": "de", "addresses": [{ "street": "Neuer Weg 9",
+                "postcode": "04109", "city": "Leipzig" }] }),
     )
     .await;
     app.ok(

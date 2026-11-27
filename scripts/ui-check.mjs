@@ -282,9 +282,10 @@ try {
 		name: 'Bäckerei Krume',
 		language: 'de',
 		email: 'info@krume.example',
-		street: 'Brotgasse 3',
-		postcode: '12345',
-		city: 'Musterstadt',
+		addresses: [
+			{ street: 'Brotgasse 3', postcode: '12345', city: 'Musterstadt' },
+			{ label: 'Steuerbüro', street: 'c/o Steuerbüro Lind\nAm Ring 4', postcode: '12345', city: 'Musterstadt' }
+		],
 		hourly_rate: 8500
 	});
 	const zurich = await api('POST', '/api/customers', { name: 'Atelier Zürich', language: 'en', currency: 'CHF', hourly_rate: 12000 });
@@ -511,6 +512,7 @@ try {
 	await screen('document-final', `${origin}/documents/${finalDraft.id}`);
 	await screen('customers', `${origin}/customers`);
 	await screen('customer', `${origin}/customers/${krume.id}`);
+	await screen('customer-edit', `${origin}/customers/${krume.id}`, () => click('.page-head .row button'));
 	await screen('activities', `${origin}/activities`);
 	await screen('statuses', `${origin}/statuses`);
 	await screen('layouts', `${origin}/layouts`);

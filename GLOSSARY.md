@@ -43,6 +43,10 @@ _Avoid_: Client, contact, account
 **Customer number** (de: Kundennummer):
 The permanent, never-reused identifier of a customer (e.g. `K-001`), assigned when the customer is created.
 
+**Billing address** (de: Rechnungsadresse):
+One of a customer's postal addresses a document is addressed to, under the customer's name; one is the default, and a draft may pick another.
+_Avoid_: Invoice address, contact
+
 **Supplier** (de: Lieferant):
 A person or organization the business buys from; receipts come from suppliers.
 _Avoid_: Vendor, creditor, contact

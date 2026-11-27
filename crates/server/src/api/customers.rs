@@ -43,11 +43,10 @@ impl Language {
 #[serde(deny_unknown_fields)]
 pub struct CustomerInput {
     name: Option<String>,
-    street: Option<String>,
-    postcode: Option<String>,
-    city: Option<String>,
-    /// ISO 3166-1 alpha-2; DE when left out.
-    country: Option<String>,
+    /// All of the customer's billing addresses: one without an id is added, one left out is
+    /// removed. The first is the default unless one says otherwise.
+    #[serde(default)]
+    addresses: Vec<AddressInput>,
     email: Option<String>,
     language: Language,
     /// The business's currency when left out.
@@ -65,6 +64,36 @@ pub struct CustomerInput {
     archived: bool,
 }
 
+#[derive(Debug, Deserialize, ToSchema)]
+#[serde(deny_unknown_fields)]
+pub struct AddressInput {
+    /// An existing address of this customer; a new one when left out.
+    id: Option<i64>,
+    /// A name to pick it by, e.g. Buchhaltung.
+    label: Option<String>,
+    /// One line each for c/o, department and street; at most three.
+    street: Option<String>,
+    postcode: Option<String>,
+    city: Option<String>,
+    /// ISO 3166-1 alpha-2; DE when left out.
+    country: Option<String>,
+    #[serde(default)]
+    is_default: bool,
+}
+
+/// A billing address; the customer's name heads it on every document.
+#[derive(Debug, Serialize, ToSchema, sqlx::FromRow)]
+#[schema(as = CustomerAddress)]
+pub struct Address {
+    id: i64,
+    label: Option<String>,
+    street: Option<String>,
+    postcode: Option<String>,
+    city: Option<String>,
+    country: String,
+    is_default: bool,
+}
+
 #[derive(Debug, Serialize, ToSchema, sqlx::FromRow)]
 pub struct Customer {
     id: i64,
@@ -80,10 +109,9 @@ pub struct Customer {
 #[derive(Debug, Serialize, ToSchema, sqlx::FromRow)]
 pub struct CustomerFields {
     name: String,
-    street: Option<String>,
-    postcode: Option<String>,
-    city: Option<String>,
-    country: String,
+    /// The default first, then in the order they were added.
+    #[sqlx(skip)]
+    addresses: Vec<Address>,
     email: Option<String>,
     language: Language,
     currency: String,
@@ -111,12 +139,16 @@ pub async fn list_customers(
     _: Auth,
     Query(filter): Query<CustomerFilter>,
 ) -> Result<Json<Vec<Customer>>, ApiError> {
-    Ok(Json(
+    let mut db = app.db.acquire().await?;
+    let mut customers: Vec<Customer> =
         sqlx::query_as("SELECT * FROM customer WHERE archived = ? ORDER BY name COLLATE NOCASE")
             .bind(filter.archived)
-            .fetch_all(&app.db)
-            .await?,
-    ))
+            .fetch_all(&mut *db)
+            .await?;
+    for customer in &mut customers {
+        customer.fields.addresses = addresses(&mut db, customer.id).await?;
+    }
+    Ok(Json(customers))
 }
 
 #[utoipa::path(get, path = "/customers/{id}", tag = "customers", params(("id" = i64, Path)),
@@ -136,7 +168,14 @@ pub async fn create_customer(
     auth: Auth<OwnerOnly>,
     Json(input): Json<CustomerInput>,
 ) -> Result<Json<Customer>, ApiError> {
-    let fields = validate(&app, input).await?;
+    let (fields, addresses) = validate(&app, input).await?;
+    let mut check = Check::default();
+    for (i, address) in addresses.iter().enumerate() {
+        if address.id.is_some() {
+            check.fail(&format!("addresses.{i}.id"), FieldError::InvalidFormat);
+        }
+    }
+    check.done()?;
     let mut tx = app.db.begin_with("BEGIN IMMEDIATE").await?;
     let next: i64 = sqlx::query_scalar(
         "UPDATE sequence SET last = last + 1 WHERE name = 'customer' RETURNING last",
@@ -145,16 +184,12 @@ pub async fn create_customer(
     .await?;
     let id: i64 = sqlx::query_scalar(
         "INSERT INTO customer
-         (number, name, street, postcode, city, country, email, language, currency, hourly_rate, note,
+         (number, name, email, language, currency, hourly_rate, note,
           vat_id, leitweg_id, xrechnung, archived, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id",
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id",
     )
     .bind(format!("K-{next:03}"))
     .bind(&fields.name)
-    .bind(&fields.street)
-    .bind(&fields.postcode)
-    .bind(&fields.city)
-    .bind(&fields.country)
     .bind(&fields.email)
     .bind(fields.language)
     .bind(&fields.currency)
@@ -167,6 +202,7 @@ pub async fn create_customer(
     .bind(now())
     .fetch_one(&mut *tx)
     .await?;
+    save_addresses(&mut tx, id, addresses).await?;
     let customer = find(&mut tx, id).await?;
     audit::record(
         &mut tx,
@@ -190,7 +226,7 @@ pub async fn put_customer(
     Path(id): Path<i64>,
     Json(input): Json<CustomerInput>,
 ) -> Result<Json<Customer>, ApiError> {
-    let fields = validate(&app, input).await?;
+    let (fields, addresses) = validate(&app, input).await?;
     let mut tx = app.db.begin_with("BEGIN IMMEDIATE").await?;
     let before = find(&mut tx, id).await?;
     // project rates are in the customer's currency and would silently change meaning
@@ -200,21 +236,24 @@ pub async fn put_customer(
     .bind(id)
     .fetch_one(&mut *tx)
     .await?;
+    let mut check = Check::default();
     if rated && fields.currency != before.fields.currency {
-        let mut check = Check::default();
         check.fail("currency", FieldError::Locked);
-        check.done()?;
     }
+    for (i, address) in addresses.iter().enumerate() {
+        if address
+            .id
+            .is_some_and(|a| !before.fields.addresses.iter().any(|b| b.id == a))
+        {
+            check.fail(&format!("addresses.{i}.id"), FieldError::InvalidFormat);
+        }
+    }
+    check.done()?;
     sqlx::query(
-        "UPDATE customer SET name = ?, street = ?, postcode = ?, city = ?, country = ?, email = ?,
-         language = ?, currency = ?,
+        "UPDATE customer SET name = ?, email = ?, language = ?, currency = ?,
          hourly_rate = ?, note = ?, vat_id = ?, leitweg_id = ?, xrechnung = ?, archived = ? WHERE id = ?",
     )
     .bind(&fields.name)
-    .bind(&fields.street)
-    .bind(&fields.postcode)
-    .bind(&fields.city)
-    .bind(&fields.country)
     .bind(&fields.email)
     .bind(fields.language)
     .bind(&fields.currency)
@@ -227,7 +266,17 @@ pub async fn put_customer(
     .bind(id)
     .execute(&mut *tx)
     .await?;
-    if let Some((old, new)) = audit::changes(&before.fields, &fields) {
+    for gone in before
+        .fields
+        .addresses
+        .iter()
+        .filter(|b| !addresses.iter().any(|a| a.id == Some(b.id)))
+    {
+        remove_address(&mut tx, gone.id).await?;
+    }
+    save_addresses(&mut tx, id, addresses).await?;
+    let customer = find(&mut tx, id).await?;
+    if let Some((old, new)) = audit::changes(&before.fields, &customer.fields) {
         audit::record(
             &mut tx,
             auth.user.id,
@@ -238,20 +287,104 @@ pub async fn put_customer(
         )
         .await?;
     }
-    let customer = find(&mut tx, id).await?;
     tx.commit().await?;
     Ok(Json(customer))
 }
 
 pub async fn find(db: &mut SqliteConnection, id: i64) -> Result<Customer, ApiError> {
-    sqlx::query_as("SELECT * FROM customer WHERE id = ?")
+    let mut customer: Customer = sqlx::query_as("SELECT * FROM customer WHERE id = ?")
         .bind(id)
-        .fetch_optional(db)
+        .fetch_optional(&mut *db)
         .await?
-        .ok_or(ApiError::new(ErrorCode::NotFound))
+        .ok_or(ApiError::new(ErrorCode::NotFound))?;
+    customer.fields.addresses = addresses(db, id).await?;
+    Ok(customer)
 }
 
-async fn validate(app: &App, input: CustomerInput) -> Result<CustomerFields, ApiError> {
+async fn addresses(db: &mut SqliteConnection, customer: i64) -> Result<Vec<Address>, sqlx::Error> {
+    sqlx::query_as(
+        "SELECT id, label, street, postcode, city, country, is_default FROM customer_address
+         WHERE customer_id = ? AND NOT archived ORDER BY is_default DESC, id",
+    )
+    .bind(customer)
+    .fetch_all(db)
+    .await
+}
+
+/// Drafts that named it fall back to the default; an issued document keeps naming it.
+async fn remove_address(tx: &mut SqliteConnection, id: i64) -> Result<(), sqlx::Error> {
+    sqlx::query("UPDATE document SET address_id = NULL WHERE address_id = ? AND status = 'draft'")
+        .bind(id)
+        .execute(&mut *tx)
+        .await?;
+    let issued: bool =
+        sqlx::query_scalar("SELECT EXISTS (SELECT 1 FROM document WHERE address_id = ?)")
+            .bind(id)
+            .fetch_one(&mut *tx)
+            .await?;
+    let sql = if issued {
+        "UPDATE customer_address SET archived = 1, is_default = 0 WHERE id = ?"
+    } else {
+        "DELETE FROM customer_address WHERE id = ?"
+    };
+    sqlx::query(sql).bind(id).execute(&mut *tx).await?;
+    Ok(())
+}
+
+async fn save_addresses(
+    tx: &mut SqliteConnection,
+    customer: i64,
+    addresses: Vec<AddressFields>,
+) -> Result<(), sqlx::Error> {
+    // the unique default index would refuse moving the default in one step
+    sqlx::query("UPDATE customer_address SET is_default = 0 WHERE customer_id = ?")
+        .bind(customer)
+        .execute(&mut *tx)
+        .await?;
+    for a in addresses {
+        let query = match a.id {
+            Some(id) => sqlx::query(
+                "UPDATE customer_address SET label = ?, street = ?, postcode = ?, city = ?,
+                 country = ?, is_default = ? WHERE id = ? AND customer_id = ?",
+            )
+            .bind(a.label)
+            .bind(a.street)
+            .bind(a.postcode)
+            .bind(a.city)
+            .bind(a.country)
+            .bind(a.is_default)
+            .bind(id),
+            None => sqlx::query(
+                "INSERT INTO customer_address
+                 (label, street, postcode, city, country, is_default, customer_id)
+                 VALUES (?, ?, ?, ?, ?, ?, ?)",
+            )
+            .bind(a.label)
+            .bind(a.street)
+            .bind(a.postcode)
+            .bind(a.city)
+            .bind(a.country)
+            .bind(a.is_default),
+        };
+        query.bind(customer).execute(&mut *tx).await?;
+    }
+    Ok(())
+}
+
+struct AddressFields {
+    id: Option<i64>,
+    label: Option<String>,
+    street: Option<String>,
+    postcode: Option<String>,
+    city: Option<String>,
+    country: String,
+    is_default: bool,
+}
+
+async fn validate(
+    app: &App,
+    input: CustomerInput,
+) -> Result<(CustomerFields, Vec<AddressFields>), ApiError> {
     let mut check = Check::default();
     let currency = match input.currency {
         Some(currency) => currency,
@@ -276,12 +409,38 @@ async fn validate(app: &App, input: CustomerInput) -> Result<CustomerFields, Api
     if input.hourly_rate.is_some_and(|rate| !money::is_rate(rate)) {
         check.fail("hourly_rate", FieldError::InvalidFormat);
     }
+    let defaults = input.addresses.iter().filter(|a| a.is_default).count();
+    if defaults > 1 || input.addresses.len() > 50 {
+        check.fail("addresses", FieldError::InvalidFormat);
+    }
+    let mut ids = std::collections::BTreeSet::new();
+    let addresses = input
+        .addresses
+        .into_iter()
+        .enumerate()
+        .map(|(i, a)| {
+            if a.id.is_some_and(|id| !ids.insert(id)) {
+                check.fail(&format!("addresses.{i}.id"), FieldError::InvalidFormat);
+            }
+            let street = check.text(&format!("addresses.{i}.street"), a.street, 500);
+            // an e-invoice carries three address lines
+            if street.as_deref().is_some_and(|s| s.lines().count() > 3) {
+                check.fail(&format!("addresses.{i}.street"), FieldError::InvalidFormat);
+            }
+            AddressFields {
+                id: a.id,
+                label: check.text(&format!("addresses.{i}.label"), a.label, 100),
+                street,
+                postcode: check.text(&format!("addresses.{i}.postcode"), a.postcode, 20),
+                city: check.text(&format!("addresses.{i}.city"), a.city, 100),
+                country: check.country(&format!("addresses.{i}.country"), a.country),
+                is_default: a.is_default || (defaults == 0 && i == 0),
+            }
+        })
+        .collect();
     let fields = CustomerFields {
         name: check.required("name", input.name, 200),
-        street: check.text("street", input.street, 500),
-        postcode: check.text("postcode", input.postcode, 20),
-        city: check.text("city", input.city, 100),
-        country: check.country("country", input.country),
+        addresses: Vec::new(),
         email,
         language: input.language,
         currency,
@@ -295,5 +454,5 @@ async fn validate(app: &App, input: CustomerInput) -> Result<CustomerFields, Api
         archived: input.archived,
     };
     check.done()?;
-    Ok(fields)
+    Ok((fields, addresses))
 }

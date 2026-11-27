@@ -375,6 +375,7 @@ async fn write(
         DocumentInput {
             kind: Kind::Invoice,
             customer_id: input.customer_id,
+            address_id: None,
             project_id: input.project_id,
             language: None,
             title: input.title,
@@ -501,6 +502,7 @@ async fn draft(tx: &mut SqliteConnection, row: &Row, date: Date) -> Result<i64, 
         DocumentInput {
             kind: Kind::Invoice,
             customer_id: row.customer_id,
+            address_id: None,
             project_id: row.project_id,
             language: None,
             title: row.title.clone(),

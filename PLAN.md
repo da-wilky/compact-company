@@ -32,13 +32,14 @@ Time tracking, invoicing and bookkeeping usually live in two or three tools with
 | Mirror and backup | One-way WebDAV mirror to read; age-encrypted S3 snapshots with rotation to restore | 0026 |
 | Process documentation | Generated where the instance knows, questionnaire for the rest, versioned | 0027 |
 | Simple books | A view over the journal: Einnahmen and Ausgaben pages, accounts by name under their EÜR line, gross amounts, payments through a private account as private movements; default for a small business | 0028 |
+| Billing addresses | Several per customer, one default, a draft picks one; the name is always the customer's | 0029 |
 | Languages | UI and documents in German and English | – |
 | Platforms | x86_64 and arm64; NixOS module and OCI image | – |
 
 ## Scope
 
 **Work**
-- Customers with permanent numbers, projects, archiving
+- Customers with permanent numbers, billing addresses, projects, archiving
 - Hourly rates: customer default, project override, activity types with their own rate
 - Todos per project: list and board over one shared status list, priority, due date, assignee, comments
 - Timers on a project or todo, several running per user; manual entries; week view
