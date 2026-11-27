@@ -311,12 +311,15 @@ async fn addresses(db: &mut SqliteConnection, customer: i64) -> Result<Vec<Addre
     .await
 }
 
-/// Drafts that named it fall back to the default; an issued document keeps naming it.
+/// Drafts and recurring invoices that named it fall back to the default; an issued document
+/// keeps naming it.
 async fn remove_address(tx: &mut SqliteConnection, id: i64) -> Result<(), sqlx::Error> {
-    sqlx::query("UPDATE document SET address_id = NULL WHERE address_id = ? AND status = 'draft'")
-        .bind(id)
-        .execute(&mut *tx)
-        .await?;
+    for sql in [
+        "UPDATE document SET address_id = NULL WHERE address_id = ? AND status = 'draft'",
+        "UPDATE recurring_invoice SET address_id = NULL WHERE address_id = ?",
+    ] {
+        sqlx::query(sql).bind(id).execute(&mut *tx).await?;
+    }
     let issued: bool =
         sqlx::query_scalar("SELECT EXISTS (SELECT 1 FROM document WHERE address_id = ?)")
             .bind(id)

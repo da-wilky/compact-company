@@ -51,6 +51,8 @@ impl Interval {
 #[serde(deny_unknown_fields)]
 pub struct RecurringInput {
     customer_id: i64,
+    /// One of the customer's billing addresses; the default when left out.
+    address_id: Option<i64>,
     project_id: Option<i64>,
     title: Option<String>,
     intro: Option<String>,
@@ -71,6 +73,7 @@ pub struct RecurringInput {
 pub struct Recurring {
     id: i64,
     customer_id: i64,
+    address_id: Option<i64>,
     customer_name: String,
     project_id: Option<i64>,
     title: Option<String>,
@@ -113,6 +116,7 @@ pub struct Produced {
 struct Row {
     id: i64,
     customer_id: i64,
+    address_id: Option<i64>,
     project_id: Option<i64>,
     title: Option<String>,
     intro: Option<String>,
@@ -189,6 +193,7 @@ async fn find(db: &mut SqliteConnection, id: i64) -> Result<Recurring, ApiError>
     Ok(Recurring {
         id,
         customer_id: row.customer_id,
+        address_id: row.address_id,
         customer_name,
         project_id: row.project_id,
         next_date: row.next().map(|d| d.to_string()),
@@ -375,7 +380,7 @@ async fn write(
         DocumentInput {
             kind: Kind::Invoice,
             customer_id: input.customer_id,
-            address_id: None,
+            address_id: input.address_id,
             project_id: input.project_id,
             language: None,
             title: input.title,
@@ -402,11 +407,13 @@ async fn write(
         (next, 0)
     };
     sqlx::query(
-        "UPDATE recurring_invoice SET customer_id = ?, project_id = ?, title = ?, intro = ?,
+        "UPDATE recurring_invoice SET customer_id = ?, address_id = ?, project_id = ?, title = ?,
+         intro = ?,
          outro = ?, interval = ?, period = ?, starts_on = ?, occurrences = ?, ends_on = ?,
          paused = ?, updated_at = ? WHERE id = ?",
     )
     .bind(draft.customer_id)
+    .bind(draft.address_id)
     .bind(draft.project_id)
     .bind(&draft.title)
     .bind(&draft.intro)
@@ -502,7 +509,7 @@ async fn draft(tx: &mut SqliteConnection, row: &Row, date: Date) -> Result<i64, 
         DocumentInput {
             kind: Kind::Invoice,
             customer_id: row.customer_id,
-            address_id: None,
+            address_id: row.address_id,
             project_id: row.project_id,
             language: None,
             title: row.title.clone(),

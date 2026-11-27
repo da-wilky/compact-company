@@ -11425,6 +11425,13 @@
           "invoices"
         ],
         "properties": {
+          "address_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
           "customer_id": {
             "type": "integer",
             "format": "int64"
@@ -11508,6 +11515,14 @@
           "lines"
         ],
         "properties": {
+          "address_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "One of the customer's billing addresses; the default when left out."
+          },
           "customer_id": {
             "type": "integer",
             "format": "int64"
