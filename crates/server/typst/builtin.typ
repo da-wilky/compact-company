@@ -7,9 +7,7 @@
 
 #let _info(data) = {
   let rows = ()
-  rows.push((cc.t(data, "number"), if data.number != none { data.number } else { cc.t(data, "draft") }))
   if data.issue_date != none { rows.push((cc.t(data, "date"), cc.date(data, data.issue_date))) }
-  rows.push((cc.t(data, "customer_number"), data.customer.number))
   if data.service_from != none {
     let from = cc.date(data, data.service_from)
     let to = cc.date(data, data.service_to)
@@ -17,6 +15,8 @@
   }
   if data.valid_until != none { rows.push((cc.t(data, "valid_until"), cc.date(data, data.valid_until))) }
   if data.due_date != none { rows.push((cc.t(data, "due_date"), cc.date(data, data.due_date))) }
+  rows.push((cc.number-label(data), if data.number != none { data.number } else { cc.t(data, "draft") }))
+  rows.push((cc.t(data, "customer_number"), data.customer.number))
   grid(
     columns: 2,
     column-gutter: 1em,
